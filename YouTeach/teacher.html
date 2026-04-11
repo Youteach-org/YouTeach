@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YouTeach | Profesor</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Panel del Profesor</h1>
+
+    <div class="card">
+      <h2>Registrar alumno</h2>
+      <input id="studentName" type="text" placeholder="Nombre del alumno">
+      <button id="createStudent">Crear alumno</button>
+    </div>
+
+    <div class="card">
+      <h2>Generar equipos</h2>
+      <input id="numTeams" type="number" min="2" max="10" placeholder="Número de equipos">
+      <button id="createTeams">Generar equipos</button>
+    </div>
+
+    <div class="card">
+      <h2>Equipos actuales</h2>
+      <div id="teamsList"></div>
+    </div>
+
+    <div class="card">
+      <h2>Alumnos registrados</h2>
+      <div id="studentsList"></div>
+    </div>
+  </div>
+
+  <script type="module" src="teacher.js"></script>
+</body>
+</html>
