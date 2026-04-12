@@ -1,6 +1,6 @@
 ﻿import { db } from "./firebase.js";
 import { ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-import { requireStudentSession, clearStudentSession } from "./student-auth.js";
+import { requireStudentSession, clearStudentSession, setStudentActiveFlag } from "./student-auth.js";
 
 const session = requireStudentSession();
 if (!session) throw new Error("Student session required.");
@@ -8,6 +8,8 @@ if (!session) throw new Error("Student session required.");
 const { studentKey } = session;
 
 const logoutBtn = document.getElementById("logoutBtn");
+const menuToggle = document.getElementById("menuToggle");
+const sidebar = document.getElementById("sidebar");
 const studentIdentity = document.getElementById("studentIdentity");
 const displayNameCard = document.getElementById("displayNameCard");
 const activeBlockCard = document.getElementById("activeBlockCard");
@@ -22,6 +24,10 @@ let currentStudent = null;
 let currentSession = null;
 let settingsCache = {};
 let pointsLogCache = {};
+
+menuToggle.addEventListener("click", () => {
+  sidebar.classList.toggle("sidebar-open");
+});
 
 function getStudentBlockPoints(student, blockName) {
   return Number(student?.blockPoints?.[blockName] || 0);
@@ -86,7 +92,8 @@ function renderAll() {
   }
 }
 
-logoutBtn.addEventListener("click", () => {
+logoutBtn.addEventListener("click", async () => {
+  await setStudentActiveFlag(studentKey, false);
   clearStudentSession();
   window.location.href = "student.html";
 });

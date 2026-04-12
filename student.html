@@ -7,72 +7,18 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="menu-shell">
-    <aside class="sidebar">
-      <div class="brand">
-        <h1>YouTeach</h1>
-        <p>Student Menu</p>
+  <div class="auth-shell">
+    <div class="auth-card small-auth-card">
+      <h1>YouTeach</h1>
+      <h2>Student Login</h2>
+
+      <div class="stack-controls">
+        <input id="studentId" placeholder="External ID">
+        <input id="studentPassword" type="password" placeholder="Password">
+        <button id="studentLoginBtn">Login</button>
+        <p id="studentLoginMessage" class="status-text"></p>
       </div>
-
-      <div class="sidebar-links">
-        <a class="sidebar-link active-link" href="student.html">Login / Menu</a>
-        <a class="sidebar-link" href="student-summary.html">My Summary</a>
-        <a class="sidebar-link" href="student-buzzer.html">Buzzer</a>
-        <a class="sidebar-link" href="student-settings.html">Settings</a>
-        <a class="sidebar-link" href="index.html">Home</a>
-        <button id="logoutBtn" class="logout-btn">Logout</button>
-      </div>
-    </aside>
-
-    <main class="main-content">
-      <header class="topbar">
-        <div>
-          <h2>Student Menu</h2>
-          <p>Login once, then use the pages you need</p>
-        </div>
-        <div class="topbar-right">
-          <span id="studentIdentity" class="teacher-identity">Student</span>
-        </div>
-      </header>
-
-      <div class="section-grid two-columns">
-        <div class="panel-card">
-          <div class="panel-card-header">
-            <h3>Login</h3>
-          </div>
-
-          <div class="stack-controls">
-            <input id="studentId" placeholder="Internal ID">
-            <input id="studentPassword" type="password" placeholder="Password">
-            <button id="studentLoginBtn">Login</button>
-            <div id="studentLoginMessage" class="preview-box">Use your internal ID. Default password is your same internal ID until you change it.</div>
-          </div>
-        </div>
-
-        <div class="panel-card">
-          <div class="panel-card-header">
-            <h3>Student Pages</h3>
-          </div>
-
-          <div class="landing-grid simple-grid">
-            <a class="landing-link-card" href="student-summary.html">
-              <h2>My Summary</h2>
-              <p>See points, team and history.</p>
-            </a>
-
-            <a class="landing-link-card" href="student-buzzer.html">
-              <h2>Buzzer</h2>
-              <p>Open the buzzer page only.</p>
-            </a>
-
-            <a class="landing-link-card" href="student-settings.html">
-              <h2>Settings</h2>
-              <p>Change password and nickname.</p>
-            </a>
-          </div>
-        </div>
-      </div>
-    </main>
+    </div>
   </div>
 
   <script type="module" src="student-menu.js"></script>

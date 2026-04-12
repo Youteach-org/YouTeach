@@ -7,8 +7,12 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <button id="menuToggle" class="hamburger-btn" aria-label="Open menu">
+    <span></span><span></span><span></span>
+  </button>
+
   <div class="menu-shell">
-    <aside class="sidebar">
+    <aside id="sidebar" class="sidebar collapsible-sidebar">
       <div class="brand">
         <h1>YouTeach</h1>
         <p>Teacher Menu</p>
@@ -45,7 +49,7 @@
           <div class="stack-controls">
             <input id="studentName" placeholder="Full name">
             <input id="studentNickname" placeholder="Nickname">
-            <input id="studentNumberManual" placeholder="Student number (optional)">
+            <input id="studentNumberManual" placeholder="External ID">
             <button id="createStudent">Add Student</button>
           </div>
         </div>

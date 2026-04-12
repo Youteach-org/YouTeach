@@ -1,13 +1,15 @@
 ﻿import { db } from "./firebase.js";
 import { ref, onValue, update, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-import { requireStudentSession, clearStudentSession } from "./student-auth.js";
+import { requireStudentSession, clearStudentSession, setStudentActiveFlag } from "./student-auth.js";
 
 const session = requireStudentSession();
 if (!session) throw new Error("Student session required.");
 
-const { studentKey, internalId } = session;
+const { studentKey } = session;
 
 const logoutBtn = document.getElementById("logoutBtn");
+const menuToggle = document.getElementById("menuToggle");
+const sidebar = document.getElementById("sidebar");
 const studentIdentity = document.getElementById("studentIdentity");
 const nicknameInput = document.getElementById("nicknameInput");
 const saveNicknameBtn = document.getElementById("saveNicknameBtn");
@@ -18,11 +20,16 @@ const settingsMessage = document.getElementById("settingsMessage");
 
 let currentStudent = null;
 
+menuToggle.addEventListener("click", () => {
+  sidebar.classList.toggle("sidebar-open");
+});
+
 function getDisplayName(student) {
   return student?.nickname || student?.fullName || student?.name || "Student";
 }
 
-logoutBtn.addEventListener("click", () => {
+logoutBtn.addEventListener("click", async () => {
+  await setStudentActiveFlag(studentKey, false);
   clearStudentSession();
   window.location.href = "student.html";
 });
@@ -56,7 +63,7 @@ savePasswordBtn.addEventListener("click", async () => {
     return;
   }
 
-  const validCurrentPassword = student.password || internalId;
+  const validCurrentPassword = student.password || "1234";
   if (currentPassword !== validCurrentPassword) {
     settingsMessage.textContent = "Current password is incorrect.";
     return;

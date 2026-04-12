@@ -1,6 +1,6 @@
 ﻿import { db } from "./firebase.js";
 import { ref, onValue, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-import { requireStudentSession, clearStudentSession } from "./student-auth.js";
+import { requireStudentSession, clearStudentSession, setStudentActiveFlag } from "./student-auth.js";
 
 const session = requireStudentSession();
 if (!session) throw new Error("Student session required.");
@@ -8,6 +8,8 @@ if (!session) throw new Error("Student session required.");
 const { studentKey } = session;
 
 const logoutBtn = document.getElementById("logoutBtn");
+const menuToggle = document.getElementById("menuToggle");
+const sidebar = document.getElementById("sidebar");
 const studentIdentity = document.getElementById("studentIdentity");
 const buzzBtn = document.getElementById("buzzBtn");
 const buzzerMessage = document.getElementById("buzzerMessage");
@@ -15,6 +17,10 @@ const studentStatusBox = document.getElementById("studentStatusBox");
 
 let currentStudent = null;
 let currentSession = null;
+
+menuToggle.addEventListener("click", () => {
+  sidebar.classList.toggle("sidebar-open");
+});
 
 function renderBuzzer() {
   if (!currentStudent) return;
@@ -25,7 +31,7 @@ function renderBuzzer() {
   if (!currentSession?.active) {
     buzzBtn.disabled = true;
     buzzerMessage.textContent = "No active session.";
-    studentStatusBox.textContent = "No active session.";
+    studentStatusBox.textContent = `Name: ${displayName}`;
     return;
   }
 
@@ -64,7 +70,8 @@ function renderBuzzer() {
   buzzerMessage.textContent = "Round is closed.";
 }
 
-logoutBtn.addEventListener("click", () => {
+logoutBtn.addEventListener("click", async () => {
+  await setStudentActiveFlag(studentKey, false);
   clearStudentSession();
   window.location.href = "student.html";
 });
@@ -82,7 +89,7 @@ buzzBtn.addEventListener("click", async () => {
 
     buzzer.currentBuzz = {
       studentKey,
-      id: currentStudent.id,
+      id: currentStudent.studentNumber || currentStudent.id,
       name: currentStudent.nickname || currentStudent.fullName || currentStudent.name,
       team,
       timestamp: Date.now()

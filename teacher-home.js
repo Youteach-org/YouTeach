@@ -4,6 +4,8 @@ import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-aut
 
 requireTeacherAuth();
 
+const menuToggle = document.getElementById("menuToggle");
+const sidebar = document.getElementById("sidebar");
 const teacherIdentity = document.getElementById("teacherIdentity");
 const logoutBtn = document.getElementById("logoutBtn");
 const activeBlockCard = document.getElementById("activeBlockCard");
@@ -13,6 +15,10 @@ const sessionCard = document.getElementById("sessionCard");
 
 teacherIdentity.textContent = getTeacherName();
 logoutBtn.addEventListener("click", logoutTeacher);
+
+menuToggle.addEventListener("click", () => {
+  sidebar.classList.toggle("sidebar-open");
+});
 
 let activeBlock = "Block 1";
 let closedBlocks = {};

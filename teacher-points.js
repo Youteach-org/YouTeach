@@ -4,6 +4,8 @@ import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-aut
 
 requireTeacherAuth();
 
+const menuToggle = document.getElementById("menuToggle");
+const sidebar = document.getElementById("sidebar");
 const teacherIdentity = document.getElementById("teacherIdentity");
 const logoutBtn = document.getElementById("logoutBtn");
 
@@ -25,6 +27,10 @@ const currentBlockStatusLabel = document.getElementById("currentBlockStatusLabel
 
 teacherIdentity.textContent = getTeacherName();
 logoutBtn.addEventListener("click", logoutTeacher);
+
+menuToggle.addEventListener("click", () => {
+  sidebar.classList.toggle("sidebar-open");
+});
 
 let studentsCache = {};
 let settingsCache = {};
@@ -95,7 +101,7 @@ function renderManualOptions() {
     `<option value="">Select a student</option>` +
     entries.map(([key, student]) => `
       <option value="${key}">
-        ${(student.nickname || student.fullName || student.name || "")} | ${student.studentNumber || "No number"} | ${student.id || ""}
+        ${(student.nickname || student.fullName || student.name || "")} | ${student.studentNumber || "No ID"} | ${student.id || ""}
       </option>
     `).join("");
 
@@ -117,7 +123,7 @@ function renderManualPreview() {
   manualStudentPreview.innerHTML = `
     <strong>${student.fullName || student.name || ""}</strong><br>
     Nickname: ${student.nickname || ""}<br>
-    Student Number: ${student.studentNumber || ""}<br>
+    External ID: ${student.studentNumber || ""}<br>
     Internal ID: ${student.id || ""}<br>
     Current Points in ${selectedBlock}: ${blockPoints[selectedBlock]}<br>
     Block Status: ${isBlockClosed(selectedBlock) ? "CLOSED" : "OPEN"}
@@ -144,7 +150,7 @@ function exportBlock(selectedBlock) {
     return;
   }
 
-  const lines = [["internalId", "studentNumber", "nickname", "fullName", "block", "points"].join(",")];
+  const lines = [["internalId", "externalId", "nickname", "fullName", "block", "points"].join(",")];
 
   for (const [, student] of students) {
     const blockPoints = ensureBlockPointsObject(student);

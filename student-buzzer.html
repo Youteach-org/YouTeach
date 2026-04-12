@@ -7,17 +7,20 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <button id="menuToggle" class="hamburger-btn" aria-label="Open menu">
+    <span></span><span></span><span></span>
+  </button>
+
   <div class="menu-shell">
-    <aside class="sidebar">
+    <aside id="sidebar" class="sidebar collapsible-sidebar">
       <div class="brand">
         <h1>YouTeach</h1>
         <p>Student Menu</p>
       </div>
 
       <div class="sidebar-links">
-        <a class="sidebar-link" href="student.html">Login / Menu</a>
-        <a class="sidebar-link" href="student-summary.html">My Summary</a>
         <a class="sidebar-link active-link" href="student-buzzer.html">Buzzer</a>
+        <a class="sidebar-link" href="student-summary.html">My Summary</a>
         <a class="sidebar-link" href="student-settings.html">Settings</a>
         <a class="sidebar-link" href="index.html">Home</a>
         <button id="logoutBtn" class="logout-btn">Logout</button>

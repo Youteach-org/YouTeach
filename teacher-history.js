@@ -4,6 +4,8 @@ import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-aut
 
 requireTeacherAuth();
 
+const menuToggle = document.getElementById("menuToggle");
+const sidebar = document.getElementById("sidebar");
 const teacherIdentity = document.getElementById("teacherIdentity");
 const logoutBtn = document.getElementById("logoutBtn");
 const pointHistorySearch = document.getElementById("pointHistorySearch");
@@ -14,6 +16,10 @@ const sessionHistoryTableBody = document.getElementById("sessionHistoryTableBody
 
 teacherIdentity.textContent = getTeacherName();
 logoutBtn.addEventListener("click", logoutTeacher);
+
+menuToggle.addEventListener("click", () => {
+  sidebar.classList.toggle("sidebar-open");
+});
 
 let pointsLogCache = {};
 let sessionHistoryCache = {};

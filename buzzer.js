@@ -12,6 +12,8 @@ import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-aut
 
 requireTeacherAuth();
 
+const menuToggle = document.getElementById("menuToggle");
+const sidebar = document.getElementById("sidebar");
 const teacherIdentity = document.getElementById("teacherIdentity");
 const logoutBtn = document.getElementById("logoutBtn");
 const numTeamsInput = document.getElementById("numTeams");
@@ -39,6 +41,10 @@ const studentCountLabel = document.getElementById("studentCountLabel");
 
 teacherIdentity.textContent = getTeacherName();
 logoutBtn.addEventListener("click", logoutTeacher);
+
+menuToggle.addEventListener("click", () => {
+  sidebar.classList.toggle("sidebar-open");
+});
 
 let studentsCache = {};
 let pairHistoryCache = {};
@@ -112,7 +118,7 @@ function buildSmartTeams(studentEntries, numTeams) {
     }
 
     teams[bestTeamIndex].memberKeys.push(studentKey);
-    teams[bestTeamIndex].memberNames.push(student.fullName || student.name);
+    teams[bestTeamIndex].memberNames.push(student.nickname || student.fullName || student.name);
   }
 
   return teams;
@@ -219,8 +225,10 @@ createTeamsBtn.addEventListener("click", async () => {
     return;
   }
 
-  const studentEntries = Object.entries(students);
-  const smartTeams = buildSmartTeams(studentEntries, numTeams);
+  const activeStudents = Object.entries(students).filter(([, student]) => student.activeNow !== false);
+  const sourceEntries = activeStudents.length ? activeStudents : Object.entries(students);
+
+  const smartTeams = buildSmartTeams(sourceEntries, numTeams);
 
   const sessionTeams = {};
   const assignments = {};
@@ -394,7 +402,7 @@ applyStudentPointsBtn.addEventListener("click", async () => {
       type: "student",
       block: activeBlockCache,
       studentKey,
-      studentName: student.fullName || student.name || "",
+      studentName: student.nickname || student.fullName || student.name || "",
       addedPoints: addValue,
       previousPoints,
       newPoints: blockPoints[activeBlockCache],
@@ -446,7 +454,7 @@ applyTeamPointsBtn.addEventListener("click", async () => {
       block: activeBlockCache,
       teamLabel,
       studentKey,
-      studentName: student.fullName || student.name || "",
+      studentName: student.nickname || student.fullName || student.name || "",
       addedPoints: teamValue,
       previousPoints,
       newPoints: blockPoints[activeBlockCache],

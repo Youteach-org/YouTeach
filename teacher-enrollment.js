@@ -5,6 +5,8 @@ import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-aut
 
 requireTeacherAuth();
 
+const menuToggle = document.getElementById("menuToggle");
+const sidebar = document.getElementById("sidebar");
 const teacherIdentity = document.getElementById("teacherIdentity");
 const logoutBtn = document.getElementById("logoutBtn");
 const createStudentBtn = document.getElementById("createStudent");
@@ -19,6 +21,10 @@ const bulkTextInput = document.getElementById("bulkText");
 
 teacherIdentity.textContent = getTeacherName();
 logoutBtn.addEventListener("click", logoutTeacher);
+
+menuToggle.addEventListener("click", () => {
+  sidebar.classList.toggle("sidebar-open");
+});
 
 function parseCsvLine(line) {
   const result = [];
@@ -112,7 +118,8 @@ async function saveStudent(fullName, nickname = "", studentNumber = "") {
     nickname: cleanNickname,
     studentNumber: cleanNumber,
     id: internalId,
-    password: internalId,
+    password: "1234",
+    activeNow: true,
     blockPoints: {
       "Block 1": 0,
       "Block 2": 0,
