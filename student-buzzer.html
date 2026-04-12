@@ -1,57 +1,123 @@
-<!DOCTYPE html>
-<html>
+﻿<!DOCTYPE html>
+<html lang="en">
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-body {
-  background: black;
-  color: white;
-  text-align: center;
-  font-family: Arial;
-}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YouTeach - Student Buzzer</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .student-buzzer-shell {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 18px 28px 18px;
+    }
 
-#name {
-  font-size: 28px;
-  margin-top: 20px;
-}
+    .student-buzzer-name {
+      font-size: clamp(28px, 6vw, 42px);
+      font-weight: 700;
+      text-align: center;
+      line-height: 1.1;
+      margin: 0;
+    }
 
-#team {
-  font-size: 20px;
-  margin-bottom: 20px;
-}
+    .student-buzzer-team {
+      font-size: clamp(22px, 5vw, 34px);
+      font-weight: 700;
+      color: #1d4ed8;
+      text-align: center;
+      margin: 0;
+    }
 
-#buzz {
-  width: 90vw;
-  height: 60vh;
-  border-radius: 50%;
-  background: red;
-  border: none;
-  font-size: 40px;
-  color: white;
-}
-</style>
+    .student-buzzer-status {
+      font-size: 16px;
+      color: #475569;
+      text-align: center;
+      margin: 0;
+    }
+
+    .student-buzzer-button-wrap {
+      width: min(92vw, 520px);
+      aspect-ratio: 1 / 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .student-buzz-btn {
+      width: 100%;
+      height: 100%;
+      border: none;
+      border-radius: 50%;
+      background: #dc2626;
+      color: #ffffff;
+      font-size: clamp(36px, 10vw, 64px);
+      font-weight: 700;
+      box-shadow: 0 16px 30px rgba(220,38,38,0.35);
+    }
+
+    .student-buzz-btn:hover {
+      background: #b91c1c;
+    }
+
+    .student-buzz-btn:disabled {
+      background: #94a3b8;
+      box-shadow: none;
+    }
+
+    @media (max-width: 600px) {
+      .student-buzzer-shell {
+        justify-content: flex-start;
+        padding-top: 90px;
+      }
+
+      .student-buzzer-button-wrap {
+        width: 94vw;
+      }
+    }
+  </style>
 </head>
-
 <body>
+  <button id="menuToggle" class="hamburger-btn" aria-label="Open menu">
+    <span></span><span></span><span></span>
+  </button>
 
-<div id="name"></div>
-<div id="team"></div>
+  <div class="menu-shell">
+    <aside id="sidebar" class="sidebar collapsible-sidebar">
+      <div class="brand">
+        <h1>YouTeach</h1>
+        <p>Student Menu</p>
+      </div>
 
-<button id="buzz">BUZZ</button>
+      <div class="sidebar-links">
+        <a class="sidebar-link active-link" href="student-buzzer.html">Buzzer</a>
+        <a class="sidebar-link" href="student-summary.html">My Summary</a>
+        <a class="sidebar-link" href="student-settings.html">Settings</a>
+        <a class="sidebar-link" href="index.html">Home</a>
+        <button id="logoutBtn" class="logout-btn">Logout</button>
+      </div>
+    </aside>
 
-<audio id="sound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
+    <main class="main-content">
+      <div class="student-buzzer-shell">
+        <h1 id="studentName" class="student-buzzer-name">Student</h1>
+        <p id="studentTeam" class="student-buzzer-team">No team</p>
+        <p id="studentStatus" class="student-buzzer-status">Waiting...</p>
 
-<script type="module">
-import { requireStudentSession } from "./student-auth.js";
+        <div class="student-buzzer-button-wrap">
+          <button id="buzzBtn" class="student-buzz-btn">BUZZ</button>
+        </div>
+      </div>
+    </main>
+  </div>
 
-const session = requireStudentSession();
+  <audio id="buzzSound" preload="auto">
+    <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
+  </audio>
 
-document.getElementById("name").textContent = session.externalId;
-
-document.getElementById("buzz").onclick = () => {
-  document.getElementById("sound").play();
-};
-</script>
-
+  <script type="module" src="student-buzzer.js"></script>
 </body>
 </html>

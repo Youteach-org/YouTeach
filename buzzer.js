@@ -16,6 +16,7 @@ const menuToggle = document.getElementById("menuToggle");
 const sidebar = document.getElementById("sidebar");
 const teacherIdentity = document.getElementById("teacherIdentity");
 const logoutBtn = document.getElementById("logoutBtn");
+
 const groupSelect = document.getElementById("groupSelect");
 const numTeamsInput = document.getElementById("numTeams");
 const createTeamsBtn = document.getElementById("createTeams");
@@ -31,14 +32,17 @@ const resetLivePointsBtn = document.getElementById("resetLivePointsBtn");
 const applyStudentPointsBtn = document.getElementById("applyStudentPointsBtn");
 const applyTeamPointsBtn = document.getElementById("applyTeamPointsBtn");
 
-const buzzerStatus = document.getElementById("buzzerStatus");
-const teamsList = document.getElementById("teamsList");
-const liveScores = document.getElementById("liveScores");
-
 const activeBlockLabel = document.getElementById("activeBlockLabel");
 const blockStatusLabel = document.getElementById("blockStatusLabel");
 const sessionStatusLabel = document.getElementById("sessionStatusLabel");
 const studentCountLabel = document.getElementById("studentCountLabel");
+
+const resultGroup = document.getElementById("resultGroup");
+const resultRound = document.getElementById("resultRound");
+const resultBuzz = document.getElementById("resultBuzz");
+const resultLocked = document.getElementById("resultLocked");
+const teacherStatusNote = document.getElementById("teacherStatusNote");
+const liveScores = document.getElementById("liveScores");
 
 teacherIdentity.textContent = getTeacherName();
 logoutBtn.addEventListener("click", logoutTeacher);
@@ -55,6 +59,12 @@ let attendanceCache = {};
 function todayKey() {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+}
+
+function getFirstName(student) {
+  const full = (student?.fullName || student?.name || "").trim();
+  if (!full) return student?.nickname || "Student";
+  return full.split(/\s+/)[0];
 }
 
 function ensureBlockPointsObject(student) {
@@ -123,7 +133,7 @@ function buildSmartTeams(studentEntries, numTeams) {
     }
 
     teams[bestTeamIndex].memberKeys.push(studentKey);
-    teams[bestTeamIndex].memberNames.push(student.nickname || student.nickname || (student.fullName || student.nickname || (student.fullName || student.name || "").split(" ")[0] || "").split(" ")[0] || student.nickname || (student.fullName || student.name || "").split(" ")[0]);
+    teams[bestTeamIndex].memberNames.push(getFirstName(student));
   }
 
   return teams;
@@ -168,66 +178,60 @@ function renderHeader() {
   studentCountLabel.textContent = String(activePresentStudentsForGroup(selectedGroup).length);
 }
 
-function renderBuzzerStatus() {
-  if (!sessionCache || !sessionCache.active) {
-    buzzerStatus.innerHTML = "No active session.";
+function renderResult() {
+  if (!sessionCache?.active) {
+    resultGroup.textContent = groupSelect.value || "---";
+    resultRound.textContent = "CLOSED";
+    resultBuzz.textContent = "None yet";
+    resultLocked.textContent = "0";
+    teacherStatusNote.textContent = "No active session.";
     return;
   }
 
   const buzzer = sessionCache.buzzer || {};
   const currentBuzz = buzzer.currentBuzz || null;
 
-  buzzerStatus.innerHTML = `
-    <strong>Group:</strong> ${sessionCache.groupName || ""}<br>
-    <strong>Round Status:</strong> ${buzzer.roundOpen ? "OPEN" : "CLOSED"}<br>
-    <strong>Current Buzz:</strong> ${currentBuzz ? `${currentBuzz.name} (${currentBuzz.team})` : "None yet"}<br>
-    <strong>Locked Out:</strong> ${Object.keys(buzzer.lockedOut || {}).length}
-  `;
-}
-
-function renderTeams() {
-  if (!sessionCache?.teams) {
-    teamsList.innerHTML = "No active session.";
-    return;
-  }
-
-  teamsList.innerHTML = Object.entries(sessionCache.teams).map(([team, members]) => `
-    <div class="info-card">
-      <h4>${team.replace("team", "Team ")}</h4>
-      <ul class="compact-list">${members.map((member) => `<li>${member}</li>`).join("")}</ul>
-    </div>
-  `).join("");
+  resultGroup.textContent = sessionCache.groupName || "---";
+  resultRound.textContent = buzzer.roundOpen ? "OPEN" : "CLOSED";
+  resultBuzz.textContent = currentBuzz ? `${currentBuzz.name} (${currentBuzz.team})` : "None yet";
+  resultLocked.textContent = String(Object.keys(buzzer.lockedOut || {}).length);
+  teacherStatusNote.textContent = currentBuzz ? "A student has buzzed." : "Waiting for buzz.";
 }
 
 function renderLiveScores() {
   if (!sessionCache?.active) {
-    liveScores.innerHTML = "No active session.";
+    liveScores.innerHTML = '<div class="empty-state">No active session.</div>';
     return;
   }
 
-  const teamPoints = sessionCache.liveTeamPoints || {};
-  const studentPoints = sessionCache.liveStudentPoints || {};
+  const liveTeamPoints = sessionCache.liveTeamPoints || {};
+  const assignments = sessionCache.assignments || {};
+  const teamsFromAssignments = {};
 
-  const teamHtml = Object.entries(teamPoints).map(([team, points]) => `
-    <div class="info-card"><strong>${team}</strong><br>Live Team Points: ${Number(points || 0)}</div>
-  `).join("");
-
-  const studentHtml = Object.entries(studentPoints).map(([studentKey, points]) => {
+  Object.entries(assignments).forEach(([studentKey, teamLabel]) => {
+    if (!teamsFromAssignments[teamLabel]) teamsFromAssignments[teamLabel] = [];
     const student = studentsCache[studentKey];
-    const label = student?.nickname || student?.fullName || student?.name || studentKey;
-    return `<div class="info-card"><strong>${label}</strong><br>Pending Student Points: ${Number(points || 0)}</div>`;
-  }).join("");
+    if (student) teamsFromAssignments[teamLabel].push(getFirstName(student));
+  });
 
-  liveScores.innerHTML = `
-    <div class="card-list-block">
-      <h4>Team Scores</h4>
-      <div class="card-list">${teamHtml || "No live team points."}</div>
-    </div>
-    <div class="card-list-block">
-      <h4>Pending Student Points</h4>
-      <div class="card-list">${studentHtml || "No pending student points."}</div>
-    </div>
-  `;
+  const teamCards = Object.keys(liveTeamPoints).sort().map((teamLabel) => {
+    const members = teamsFromAssignments[teamLabel] || [];
+    const membersHtml = members.length
+      ? members.map((name) => `<span class="team-member-chip">${name}</span>`).join("")
+      : '<span class="empty-state">No members</span>';
+
+    return `
+      <div class="live-score-card">
+        <div class="live-score-top">
+          <strong>${teamLabel}</strong>
+          <span class="live-score-points">${Number(liveTeamPoints[teamLabel] || 0)} pts</span>
+        </div>
+        <div class="team-members">${membersHtml}</div>
+      </div>
+    `;
+  });
+
+  liveScores.innerHTML = teamCards.join("") || '<div class="empty-state">No live scores yet.</div>';
 }
 
 groupSelect.addEventListener("change", renderHeader);
@@ -384,8 +388,8 @@ resetLivePointsBtn.addEventListener("click", async () => {
   }
 
   const teamPoints = {};
-  Object.keys(sessionCache.teams || {}).forEach((teamKey) => {
-    teamPoints[teamKey.replace("team", "Team ")] = 0;
+  Object.keys(sessionCache.liveTeamPoints || {}).forEach((teamLabel) => {
+    teamPoints[teamLabel] = 0;
   });
 
   await update(ref(db, "session/current"), {
@@ -428,7 +432,7 @@ applyStudentPointsBtn.addEventListener("click", async () => {
       type: "student",
       block: activeBlockCache,
       studentKey,
-      studentName: student.nickname || student.nickname || (student.fullName || student.nickname || (student.fullName || student.name || "").split(" ")[0] || "").split(" ")[0] || student.nickname || (student.fullName || student.name || "").split(" ")[0] || "",
+      studentName: getFirstName(student),
       addedPoints: addValue,
       previousPoints,
       newPoints: blockPoints[activeBlockCache],
@@ -481,7 +485,7 @@ applyTeamPointsBtn.addEventListener("click", async () => {
       block: activeBlockCache,
       teamLabel,
       studentKey,
-      studentName: student.nickname || student.nickname || (student.fullName || student.nickname || (student.fullName || student.name || "").split(" ")[0] || "").split(" ")[0] || student.nickname || (student.fullName || student.name || "").split(" ")[0] || "",
+      studentName: getFirstName(student),
       addedPoints: teamValue,
       previousPoints,
       newPoints: blockPoints[activeBlockCache],
@@ -502,6 +506,7 @@ applyTeamPointsBtn.addEventListener("click", async () => {
 onValue(ref(db, "students"), (snapshot) => {
   studentsCache = snapshot.val() || {};
   renderHeader();
+  renderLiveScores();
 });
 
 onValue(ref(db, "groups"), (snapshot) => {
@@ -522,14 +527,11 @@ onValue(ref(db, "settings"), (snapshot) => {
   settingsCache = snapshot.val() || {};
   activeBlockCache = settingsCache.activeBlock || "Block 1";
   renderHeader();
-  renderBuzzerStatus();
 });
 
 onValue(ref(db, "session/current"), (snapshot) => {
   sessionCache = snapshot.val() || null;
   renderHeader();
-  renderTeams();
-  renderBuzzerStatus();
+  renderResult();
   renderLiveScores();
 });
-

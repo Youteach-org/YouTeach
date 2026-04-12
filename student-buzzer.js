@@ -10,26 +10,35 @@ const { studentKey } = session;
 const logoutBtn = document.getElementById("logoutBtn");
 const menuToggle = document.getElementById("menuToggle");
 const sidebar = document.getElementById("sidebar");
-const studentIdentity = document.getElementById("studentIdentity");
+const studentName = document.getElementById("studentName");
+const studentTeam = document.getElementById("studentTeam");
+const studentStatus = document.getElementById("studentStatus");
 const buzzBtn = document.getElementById("buzzBtn");
-const buzzerMessage = document.getElementById("buzzerMessage");
-const studentStatusBox = document.getElementById("studentStatusBox");
+const buzzSound = document.getElementById("buzzSound");
 
 let currentStudent = null;
 let currentSession = null;
 
-menuToggle.addEventListener("click", () => sidebar.classList.toggle("sidebar-open"));
+function getFirstName(student) {
+  const full = (student?.fullName || student?.name || "").trim();
+  if (!full) return student?.nickname || "Student";
+  return full.split(/\s+/)[0];
+}
+
+menuToggle.addEventListener("click", () => {
+  sidebar.classList.toggle("sidebar-open");
+});
 
 function renderBuzzer() {
   if (!currentStudent) return;
 
-  const displayName = currentStudent.nickname || currentStudent.fullName || currentStudent.name || "Student";
-  studentIdentity.textContent = displayName;
+  const displayName = getFirstName(currentStudent);
+  studentName.textContent = displayName;
 
   if (!currentSession?.active) {
+    studentTeam.textContent = "No team assigned";
+    studentStatus.textContent = "No active session.";
     buzzBtn.disabled = true;
-    buzzerMessage.textContent = "No active session.";
-    studentStatusBox.textContent = `Name: ${displayName} | Group: ${currentStudent.groupName || ""}`;
     return;
   }
 
@@ -38,34 +47,34 @@ function renderBuzzer() {
   const currentBuzz = buzzer.currentBuzz || null;
   const lockedOut = Boolean(buzzer.lockedOut?.[studentKey]);
 
-  studentStatusBox.textContent = `Name: ${displayName} | Group: ${currentStudent.groupName || ""} | Team: ${team}`;
+  studentTeam.textContent = team;
 
   if (currentBuzz?.studentKey === studentKey) {
     buzzBtn.disabled = true;
-    buzzerMessage.textContent = "You buzzed first. Waiting for teacher decision.";
+    studentStatus.textContent = "You buzzed first. Waiting for teacher decision.";
     return;
   }
 
   if (currentBuzz && currentBuzz.studentKey !== studentKey) {
     buzzBtn.disabled = true;
-    buzzerMessage.textContent = `Current buzz: ${currentBuzz.name} (${currentBuzz.team})`;
+    studentStatus.textContent = `Current buzz: ${currentBuzz.name}`;
     return;
   }
 
   if (lockedOut) {
     buzzBtn.disabled = true;
-    buzzerMessage.textContent = "You are locked out for this round.";
+    studentStatus.textContent = "You are locked out for this round.";
     return;
   }
 
   if (buzzer.roundOpen) {
     buzzBtn.disabled = false;
-    buzzerMessage.textContent = "Round is open. Press Buzz!";
+    studentStatus.textContent = "Round is open. Tap the buzzer.";
     return;
   }
 
   buzzBtn.disabled = true;
-  buzzerMessage.textContent = "Round is closed.";
+  studentStatus.textContent = "Round is closed.";
 }
 
 logoutBtn.addEventListener("click", async () => {
@@ -80,6 +89,11 @@ buzzBtn.addEventListener("click", async () => {
 
   const team = currentSession.assignments?.[studentKey] || "No team";
 
+  try {
+    buzzSound.currentTime = 0;
+    await buzzSound.play();
+  } catch (error) {}
+
   await runTransaction(ref(db, "session/current/buzzer"), (buzzer) => {
     if (!buzzer) return buzzer;
     if (!buzzer.roundOpen) return buzzer;
@@ -89,7 +103,7 @@ buzzBtn.addEventListener("click", async () => {
     buzzer.currentBuzz = {
       studentKey,
       id: currentStudent.studentNumber || currentStudent.id,
-      name: currentStudent.nickname || currentStudent.fullName || currentStudent.name,
+      name: getFirstName(currentStudent),
       team,
       timestamp: Date.now()
     };
