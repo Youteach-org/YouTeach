@@ -21,20 +21,19 @@ const saveBlockBtn = document.getElementById("saveBlockBtn");
 const closeBlockBtn = document.getElementById("closeBlockBtn");
 const reopenBlockBtn = document.getElementById("reopenBlockBtn");
 const exportBlockSelect = document.getElementById("exportBlockSelect");
+const exportGroupSelect = document.getElementById("exportGroupSelect");
 const exportBlockBtn = document.getElementById("exportBlockBtn");
 const currentBlockLabel = document.getElementById("currentBlockLabel");
 const currentBlockStatusLabel = document.getElementById("currentBlockStatusLabel");
 
 teacherIdentity.textContent = getTeacherName();
 logoutBtn.addEventListener("click", logoutTeacher);
-
-menuToggle.addEventListener("click", () => {
-  sidebar.classList.toggle("sidebar-open");
-});
+menuToggle.addEventListener("click", () => sidebar.classList.toggle("sidebar-open"));
 
 let studentsCache = {};
 let settingsCache = {};
 let activeBlockCache = "Block 1";
+let groupsCache = {};
 
 function normalizeText(text) {
   return String(text || "")
@@ -84,6 +83,11 @@ function downloadTextFile(filename, content, mimeType = "text/plain;charset=utf-
   URL.revokeObjectURL(url);
 }
 
+function renderExportGroups() {
+  const groups = Object.keys(groupsCache || {}).sort();
+  exportGroupSelect.innerHTML = '<option value="">All groups</option>' + groups.map((group) => `<option value="${group}">${group}</option>`).join("");
+}
+
 function renderManualOptions() {
   const query = normalizeText(manualStudentSearch.value);
 
@@ -92,7 +96,8 @@ function renderManualOptions() {
       student.fullName || student.name || "",
       student.nickname || "",
       student.studentNumber || "",
-      student.id || ""
+      student.id || "",
+      student.groupName || ""
     ].join(" "));
     return !query || searchable.includes(query);
   });
@@ -101,7 +106,7 @@ function renderManualOptions() {
     `<option value="">Select a student</option>` +
     entries.map(([key, student]) => `
       <option value="${key}">
-        ${(student.nickname || student.fullName || student.name || "")} | ${student.studentNumber || "No ID"} | ${student.id || ""}
+        ${(student.nickname || student.fullName || student.name || "")} | ${student.studentNumber || "No ID"} | ${student.groupName || "No group"}
       </option>
     `).join("");
 
@@ -125,6 +130,7 @@ function renderManualPreview() {
     Nickname: ${student.nickname || ""}<br>
     External ID: ${student.studentNumber || ""}<br>
     Internal ID: ${student.id || ""}<br>
+    Group: ${student.groupName || ""}<br>
     Current Points in ${selectedBlock}: ${blockPoints[selectedBlock]}<br>
     Block Status: ${isBlockClosed(selectedBlock) ? "CLOSED" : "OPEN"}
   `;
@@ -138,19 +144,21 @@ function renderBlockInfo() {
   manualBlockSelect.value = activeBlockCache;
 }
 
-function exportBlock(selectedBlock) {
-  const students = Object.entries(studentsCache || {}).sort((a, b) => {
-    const nameA = a[1]?.fullName || a[1]?.name || "";
-    const nameB = b[1]?.fullName || b[1]?.name || "";
-    return nameA.localeCompare(nameB);
-  });
+function exportBlock(selectedBlock, selectedGroup) {
+  const students = Object.entries(studentsCache || {})
+    .filter(([, student]) => !selectedGroup || (student.groupName || "") === selectedGroup)
+    .sort((a, b) => {
+      const nameA = a[1]?.fullName || a[1]?.name || "";
+      const nameB = b[1]?.fullName || b[1]?.name || "";
+      return nameA.localeCompare(nameB);
+    });
 
   if (!students.length) {
     alert("No students available to export.");
     return;
   }
 
-  const lines = [["internalId", "externalId", "nickname", "fullName", "block", "points"].join(",")];
+  const lines = [["internalId", "externalId", "nickname", "fullName", "group", "block", "points"].join(",")];
 
   for (const [, student] of students) {
     const blockPoints = ensureBlockPointsObject(student);
@@ -159,12 +167,14 @@ function exportBlock(selectedBlock) {
       escapeCsv(student.studentNumber || ""),
       escapeCsv(student.nickname || ""),
       escapeCsv(student.fullName || student.name || ""),
+      escapeCsv(student.groupName || ""),
       escapeCsv(selectedBlock),
       escapeCsv(blockPoints[selectedBlock] || 0)
     ].join(","));
   }
 
-  downloadTextFile(`${selectedBlock.replace(/\s+/g, "_").toLowerCase()}_points.csv`, lines.join("\n"), "text/csv;charset=utf-8");
+  const groupSuffix = selectedGroup ? `_${selectedGroup.replace(/\s+/g, "_")}` : "_all_groups";
+  downloadTextFile(`${selectedBlock.replace(/\s+/g, "_").toLowerCase()}${groupSuffix}.csv`, lines.join("\n"), "text/csv;charset=utf-8");
 }
 
 applyManualPointsBtn.addEventListener("click", async () => {
@@ -209,7 +219,7 @@ reopenBlockBtn.addEventListener("click", async () => {
 });
 
 exportBlockBtn.addEventListener("click", () => {
-  exportBlock(exportBlockSelect.value);
+  exportBlock(exportBlockSelect.value, exportGroupSelect.value);
 });
 
 manualStudentSearch.addEventListener("input", renderManualOptions);
@@ -219,6 +229,11 @@ manualBlockSelect.addEventListener("change", renderManualPreview);
 onValue(ref(db, "students"), (snapshot) => {
   studentsCache = snapshot.val() || {};
   renderManualOptions();
+});
+
+onValue(ref(db, "groups"), (snapshot) => {
+  groupsCache = snapshot.val() || {};
+  renderExportGroups();
 });
 
 onValue(ref(db, "settings"), (snapshot) => {

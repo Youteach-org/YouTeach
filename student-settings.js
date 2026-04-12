@@ -1,6 +1,6 @@
 ﻿import { db } from "./firebase.js";
 import { ref, onValue, update, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-import { requireStudentSession, clearStudentSession, setStudentActiveFlag } from "./student-auth.js";
+import { requireStudentSession, clearStudentSession, saveLeaveLog } from "./student-auth.js";
 
 const session = requireStudentSession();
 if (!session) throw new Error("Student session required.");
@@ -20,16 +20,15 @@ const settingsMessage = document.getElementById("settingsMessage");
 
 let currentStudent = null;
 
-menuToggle.addEventListener("click", () => {
-  sidebar.classList.toggle("sidebar-open");
-});
+menuToggle.addEventListener("click", () => sidebar.classList.toggle("sidebar-open"));
 
 function getDisplayName(student) {
   return student?.nickname || student?.fullName || student?.name || "Student";
 }
 
 logoutBtn.addEventListener("click", async () => {
-  await setStudentActiveFlag(studentKey, false);
+  const reason = prompt("Reason for leaving class (optional):", "") || "";
+  await saveLeaveLog(studentKey, reason);
   clearStudentSession();
   window.location.href = "student.html";
 });

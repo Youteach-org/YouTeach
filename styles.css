@@ -325,6 +325,10 @@ a {
   margin-top: 20px;
 }
 
+.two-home-cards {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .landing-link-card {
   display: block;
   background: #eff6ff;
@@ -351,6 +355,10 @@ a {
 
 .status-text.bad {
   color: #b91c1c;
+}
+
+.status-text.ok {
+  color: #166534;
 }
 
 .student-info-grid {
@@ -412,7 +420,8 @@ a {
   .summary-grid,
   .two-columns,
   .landing-grid,
-  .student-info-grid {
+  .student-info-grid,
+  .two-home-cards {
     grid-template-columns: 1fr;
   }
 

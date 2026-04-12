@@ -1,6 +1,4 @@
-﻿import { db } from "./firebase.js";
-import { ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-import { loginStudentByExternalIdAndPassword, setStudentActiveFlag } from "./student-auth.js";
+﻿import { loginStudentByExternalIdAndPassword } from "./student-auth.js";
 
 const studentIdInput = document.getElementById("studentId");
 const studentPasswordInput = document.getElementById("studentPassword");
@@ -11,22 +9,35 @@ studentLoginBtn.addEventListener("click", async () => {
   const externalId = studentIdInput.value.trim();
   const password = studentPasswordInput.value;
 
+  studentLoginMessage.textContent = "";
+
   if (!externalId || !password) {
     studentLoginMessage.textContent = "Enter external ID and password.";
     studentLoginMessage.className = "status-text bad";
     return;
   }
 
-  const result = await loginStudentByExternalIdAndPassword(externalId, password);
+  studentLoginBtn.disabled = true;
+  studentLoginMessage.textContent = "Checking login...";
+  studentLoginMessage.className = "status-text";
 
-  if (!result.ok) {
-    studentLoginMessage.textContent = result.message;
+  try {
+    const result = await loginStudentByExternalIdAndPassword(externalId, password);
+
+    if (!result.ok) {
+      studentLoginMessage.textContent = result.message;
+      studentLoginMessage.className = "status-text bad";
+      studentLoginBtn.disabled = false;
+      return;
+    }
+
+    studentLoginMessage.textContent = "Login successful.";
+    studentLoginMessage.className = "status-text ok";
+    window.location.href = "student-buzzer.html";
+  } catch (error) {
+    console.error(error);
+    studentLoginMessage.textContent = "Login failed. Check your connection or data.";
     studentLoginMessage.className = "status-text bad";
-    return;
+    studentLoginBtn.disabled = false;
   }
-
-  await setStudentActiveFlag(result.key, true);
-  window.location.href = "student-buzzer.html";
 });
-
-onValue(ref(db, "students"), () => {});

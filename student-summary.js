@@ -1,6 +1,6 @@
 ﻿import { db } from "./firebase.js";
 import { ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-import { requireStudentSession, clearStudentSession, setStudentActiveFlag } from "./student-auth.js";
+import { requireStudentSession, clearStudentSession, saveLeaveLog } from "./student-auth.js";
 
 const session = requireStudentSession();
 if (!session) throw new Error("Student session required.");
@@ -12,9 +12,9 @@ const menuToggle = document.getElementById("menuToggle");
 const sidebar = document.getElementById("sidebar");
 const studentIdentity = document.getElementById("studentIdentity");
 const displayNameCard = document.getElementById("displayNameCard");
+const groupCard = document.getElementById("groupCard");
 const activeBlockCard = document.getElementById("activeBlockCard");
 const officialPointsCard = document.getElementById("officialPointsCard");
-const teamCard = document.getElementById("teamCard");
 const liveTeamPointsCard = document.getElementById("liveTeamPointsCard");
 const liveStudentPointsCard = document.getElementById("liveStudentPointsCard");
 const buzzerStatusBox = document.getElementById("buzzerStatusBox");
@@ -25,9 +25,7 @@ let currentSession = null;
 let settingsCache = {};
 let pointsLogCache = {};
 
-menuToggle.addEventListener("click", () => {
-  sidebar.classList.toggle("sidebar-open");
-});
+menuToggle.addEventListener("click", () => sidebar.classList.toggle("sidebar-open"));
 
 function getStudentBlockPoints(student, blockName) {
   return Number(student?.blockPoints?.[blockName] || 0);
@@ -51,9 +49,9 @@ function renderAll() {
 
   studentIdentity.textContent = displayName;
   displayNameCard.textContent = displayName;
+  groupCard.textContent = currentStudent.groupName || "";
   activeBlockCard.textContent = `${activeBlock}${settingsCache.closedBlocks?.[activeBlock] ? " (CLOSED)" : " (OPEN)"}`;
   officialPointsCard.textContent = String(officialPoints);
-  teamCard.textContent = currentTeam;
   liveTeamPointsCard.textContent = String(liveTeamPoints);
   liveStudentPointsCard.textContent = String(liveStudentPoints);
 
@@ -93,7 +91,8 @@ function renderAll() {
 }
 
 logoutBtn.addEventListener("click", async () => {
-  await setStudentActiveFlag(studentKey, false);
+  const reason = prompt("Reason for leaving class (optional):", "") || "";
+  await saveLeaveLog(studentKey, reason);
   clearStudentSession();
   window.location.href = "student.html";
 });

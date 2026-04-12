@@ -11,18 +11,19 @@ const logoutBtn = document.getElementById("logoutBtn");
 const activeBlockCard = document.getElementById("activeBlockCard");
 const blockStatusCard = document.getElementById("blockStatusCard");
 const studentCountCard = document.getElementById("studentCountCard");
-const sessionCard = document.getElementById("sessionCard");
+const presentCountCard = document.getElementById("presentCountCard");
 
 teacherIdentity.textContent = getTeacherName();
 logoutBtn.addEventListener("click", logoutTeacher);
+menuToggle.addEventListener("click", () => sidebar.classList.toggle("sidebar-open"));
 
-menuToggle.addEventListener("click", () => {
-  sidebar.classList.toggle("sidebar-open");
-});
+function todayKey() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+}
 
 let activeBlock = "Block 1";
 let closedBlocks = {};
-let session = null;
 
 onValue(ref(db, "settings"), (snapshot) => {
   const settings = snapshot.val() || {};
@@ -37,7 +38,8 @@ onValue(ref(db, "students"), (snapshot) => {
   studentCountCard.textContent = String(Object.keys(students).length);
 });
 
-onValue(ref(db, "session/current"), (snapshot) => {
-  session = snapshot.val() || null;
-  sessionCard.textContent = session?.active ? "Yes" : "No";
+onValue(ref(db, `attendance/${todayKey()}`), (snapshot) => {
+  const attendance = snapshot.val() || {};
+  const present = Object.values(attendance).filter((row) => row.activeNow !== false).length;
+  presentCountCard.textContent = String(present);
 });

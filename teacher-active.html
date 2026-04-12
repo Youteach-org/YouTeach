@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>YouTeach - Students</title>
+  <title>YouTeach - Active Today</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -20,9 +20,9 @@
 
       <div class="sidebar-links">
         <a class="sidebar-link" href="teacher.html">Teacher Home</a>
-        <a class="sidebar-link active-link" href="teacher-students.html">Students</a>
+        <a class="sidebar-link" href="teacher-students.html">Students</a>
         <a class="sidebar-link" href="teacher-enrollment.html">Groups / Import</a>
-        <a class="sidebar-link" href="teacher-active.html">Active Today</a>
+        <a class="sidebar-link active-link" href="teacher-active.html">Active Today</a>
         <a class="sidebar-link" href="teacher-points.html">Points / Export</a>
         <a class="sidebar-link" href="teacher-history.html">History</a>
         <a class="sidebar-link" href="buzzer.html">Buzzer</a>
@@ -33,48 +33,47 @@
     <main class="main-content">
       <header class="topbar">
         <div>
-          <h2>Students</h2>
-          <p>All registered students</p>
+          <h2>Active Today</h2>
+          <p>Attendance and early leave control</p>
         </div>
         <div class="topbar-right">
           <span id="teacherIdentity" class="teacher-identity">Teacher</span>
         </div>
       </header>
 
-      <div class="panel-card">
-        <div class="toolbar-row">
-          <input id="searchStudent" placeholder="Search by name, nickname, external ID, internal ID, or group">
-        </div>
+      <div class="toolbar-row multi">
+        <select id="groupFilter">
+          <option value="">All groups</option>
+        </select>
+        <select id="statusFilter">
+          <option value="">All statuses</option>
+          <option value="active">Active now</option>
+          <option value="left">Left early</option>
+        </select>
+      </div>
 
-        <div class="table-wrap">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Full Name</th>
-                <th>Nickname</th>
-                <th>External ID</th>
-                <th>Internal ID</th>
-                <th>Group</th>
-                <th>Today Active</th>
-                <th>Block 1</th>
-                <th>Block 2</th>
-                <th>Block 3</th>
-                <th>Edit Nickname</th>
-                <th>Edit Group</th>
-                <th>Save</th>
-              </tr>
-            </thead>
-            <tbody id="studentsTableBody">
-              <tr>
-                <td colspan="12">No students found.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Student</th>
+              <th>External ID</th>
+              <th>Group</th>
+              <th>Login Time</th>
+              <th>Status</th>
+              <th>Leave Time</th>
+              <th>Leave Reason</th>
+              <th>Register Leave</th>
+            </tr>
+          </thead>
+          <tbody id="activeTableBody">
+            <tr><td colspan="8">No attendance today.</td></tr>
+          </tbody>
+        </table>
       </div>
     </main>
   </div>
 
-  <script type="module" src="teacher-students.js"></script>
+  <script type="module" src="teacher-active.js"></script>
 </body>
 </html>

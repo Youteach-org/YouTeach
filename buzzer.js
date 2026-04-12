@@ -16,6 +16,7 @@ const menuToggle = document.getElementById("menuToggle");
 const sidebar = document.getElementById("sidebar");
 const teacherIdentity = document.getElementById("teacherIdentity");
 const logoutBtn = document.getElementById("logoutBtn");
+const groupSelect = document.getElementById("groupSelect");
 const numTeamsInput = document.getElementById("numTeams");
 const createTeamsBtn = document.getElementById("createTeams");
 const resetSessionBtn = document.getElementById("resetSession");
@@ -41,16 +42,20 @@ const studentCountLabel = document.getElementById("studentCountLabel");
 
 teacherIdentity.textContent = getTeacherName();
 logoutBtn.addEventListener("click", logoutTeacher);
-
-menuToggle.addEventListener("click", () => {
-  sidebar.classList.toggle("sidebar-open");
-});
+menuToggle.addEventListener("click", () => sidebar.classList.toggle("sidebar-open"));
 
 let studentsCache = {};
 let pairHistoryCache = {};
 let sessionCache = null;
 let settingsCache = {};
 let activeBlockCache = "Block 1";
+let groupsCache = {};
+let attendanceCache = {};
+
+function todayKey() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+}
 
 function ensureBlockPointsObject(student) {
   return {
@@ -141,11 +146,26 @@ async function savePairHistory(teams) {
   }
 }
 
+function activePresentStudentsForGroup(groupName) {
+  return Object.entries(attendanceCache || {})
+    .filter(([studentKey, row]) => row.activeNow !== false && (!groupName || (row.groupName || "") === groupName))
+    .map(([studentKey]) => [studentKey, studentsCache[studentKey]])
+    .filter(([, student]) => Boolean(student));
+}
+
+function renderGroupOptions() {
+  const groups = Object.keys(groupsCache || {}).sort();
+  const selected = groupSelect.value;
+  groupSelect.innerHTML = '<option value="">Select group</option>' + groups.map((group) => `<option value="${group}">${group}</option>`).join("");
+  if (groups.includes(selected)) groupSelect.value = selected;
+}
+
 function renderHeader() {
+  const selectedGroup = groupSelect.value;
   activeBlockLabel.textContent = activeBlockCache;
   blockStatusLabel.textContent = isBlockClosed(activeBlockCache) ? "CLOSED" : "OPEN";
   sessionStatusLabel.textContent = sessionCache?.active ? "Active session" : "No active session";
-  studentCountLabel.textContent = String(Object.keys(studentsCache || {}).length);
+  studentCountLabel.textContent = String(activePresentStudentsForGroup(selectedGroup).length);
 }
 
 function renderBuzzerStatus() {
@@ -158,6 +178,7 @@ function renderBuzzerStatus() {
   const currentBuzz = buzzer.currentBuzz || null;
 
   buzzerStatus.innerHTML = `
+    <strong>Group:</strong> ${sessionCache.groupName || ""}<br>
     <strong>Round Status:</strong> ${buzzer.roundOpen ? "OPEN" : "CLOSED"}<br>
     <strong>Current Buzz:</strong> ${currentBuzz ? `${currentBuzz.name} (${currentBuzz.team})` : "None yet"}<br>
     <strong>Locked Out:</strong> ${Object.keys(buzzer.lockedOut || {}).length}
@@ -209,24 +230,28 @@ function renderLiveScores() {
   `;
 }
 
+groupSelect.addEventListener("change", renderHeader);
+
 createTeamsBtn.addEventListener("click", async () => {
   const numTeams = parseInt(numTeamsInput.value, 10);
+  const groupName = groupSelect.value;
+
+  if (!groupName) {
+    alert("Select a group first.");
+    return;
+  }
 
   if (!numTeams || numTeams < 2) {
     alert("Please enter a valid number of teams.");
     return;
   }
 
-  const snapshot = await get(ref(db, "students"));
-  const students = snapshot.val() || {};
+  const sourceEntries = activePresentStudentsForGroup(groupName);
 
-  if (!Object.keys(students).length) {
-    alert("No students found.");
+  if (!sourceEntries.length) {
+    alert("There are no active students for this group today.");
     return;
   }
-
-  const activeStudents = Object.entries(students).filter(([, student]) => student.activeNow !== false);
-  const sourceEntries = activeStudents.length ? activeStudents : Object.entries(students);
 
   const smartTeams = buildSmartTeams(sourceEntries, numTeams);
 
@@ -246,6 +271,7 @@ createTeamsBtn.addEventListener("click", async () => {
   await set(ref(db, "session/current"), {
     active: true,
     createdAt: Date.now(),
+    groupName,
     teams: sessionTeams,
     assignments,
     liveTeamPoints,
@@ -406,6 +432,7 @@ applyStudentPointsBtn.addEventListener("click", async () => {
       addedPoints: addValue,
       previousPoints,
       newPoints: blockPoints[activeBlockCache],
+      groupName: session.groupName || "",
       appliedAt: Date.now()
     });
   }
@@ -458,6 +485,7 @@ applyTeamPointsBtn.addEventListener("click", async () => {
       addedPoints: teamValue,
       previousPoints,
       newPoints: blockPoints[activeBlockCache],
+      groupName: session.groupName || "",
       appliedAt: Date.now()
     });
   }
@@ -473,6 +501,16 @@ applyTeamPointsBtn.addEventListener("click", async () => {
 
 onValue(ref(db, "students"), (snapshot) => {
   studentsCache = snapshot.val() || {};
+  renderHeader();
+});
+
+onValue(ref(db, "groups"), (snapshot) => {
+  groupsCache = snapshot.val() || {};
+  renderGroupOptions();
+});
+
+onValue(ref(db, `attendance/${todayKey()}`), (snapshot) => {
+  attendanceCache = snapshot.val() || {};
   renderHeader();
 });
 

@@ -1,6 +1,6 @@
 ﻿import { db } from "./firebase.js";
 import { ref, onValue, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-import { requireStudentSession, clearStudentSession, setStudentActiveFlag } from "./student-auth.js";
+import { requireStudentSession, clearStudentSession, saveLeaveLog } from "./student-auth.js";
 
 const session = requireStudentSession();
 if (!session) throw new Error("Student session required.");
@@ -18,9 +18,7 @@ const studentStatusBox = document.getElementById("studentStatusBox");
 let currentStudent = null;
 let currentSession = null;
 
-menuToggle.addEventListener("click", () => {
-  sidebar.classList.toggle("sidebar-open");
-});
+menuToggle.addEventListener("click", () => sidebar.classList.toggle("sidebar-open"));
 
 function renderBuzzer() {
   if (!currentStudent) return;
@@ -31,7 +29,7 @@ function renderBuzzer() {
   if (!currentSession?.active) {
     buzzBtn.disabled = true;
     buzzerMessage.textContent = "No active session.";
-    studentStatusBox.textContent = `Name: ${displayName}`;
+    studentStatusBox.textContent = `Name: ${displayName} | Group: ${currentStudent.groupName || ""}`;
     return;
   }
 
@@ -40,7 +38,7 @@ function renderBuzzer() {
   const currentBuzz = buzzer.currentBuzz || null;
   const lockedOut = Boolean(buzzer.lockedOut?.[studentKey]);
 
-  studentStatusBox.textContent = `Name: ${displayName} | Team: ${team}`;
+  studentStatusBox.textContent = `Name: ${displayName} | Group: ${currentStudent.groupName || ""} | Team: ${team}`;
 
   if (currentBuzz?.studentKey === studentKey) {
     buzzBtn.disabled = true;
@@ -71,7 +69,8 @@ function renderBuzzer() {
 }
 
 logoutBtn.addEventListener("click", async () => {
-  await setStudentActiveFlag(studentKey, false);
+  const reason = prompt("Reason for leaving class (optional):", "") || "";
+  await saveLeaveLog(studentKey, reason);
   clearStudentSession();
   window.location.href = "student.html";
 });

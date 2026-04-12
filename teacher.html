@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>YouTeach - Teacher Menu</title>
+  <title>YouTeach - Teacher Home</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -21,7 +21,8 @@
       <div class="sidebar-links">
         <a class="sidebar-link active-link" href="teacher.html">Teacher Home</a>
         <a class="sidebar-link" href="teacher-students.html">Students</a>
-        <a class="sidebar-link" href="teacher-enrollment.html">Add / Import</a>
+        <a class="sidebar-link" href="teacher-enrollment.html">Groups / Import</a>
+        <a class="sidebar-link" href="teacher-active.html">Active Today</a>
         <a class="sidebar-link" href="teacher-points.html">Points / Export</a>
         <a class="sidebar-link" href="teacher-history.html">History</a>
         <a class="sidebar-link" href="buzzer.html">Buzzer</a>
@@ -55,35 +56,35 @@
           <strong id="studentCountCard">0</strong>
         </div>
         <div class="summary-card">
-          <span class="summary-label">Active Session</span>
-          <strong id="sessionCard">No</strong>
+          <span class="summary-label">Present Today</span>
+          <strong id="presentCountCard">0</strong>
         </div>
       </div>
 
       <div class="landing-grid">
-        <a class="landing-link-card" href="teacher-students.html">
-          <h2>Students</h2>
-          <p>Open the full student table and edit records.</p>
-        </a>
-
-        <a class="landing-link-card" href="teacher-enrollment.html">
-          <h2>Add / Import</h2>
-          <p>Add students manually or import a full list.</p>
-        </a>
-
-        <a class="landing-link-card" href="teacher-points.html">
-          <h2>Points / Export</h2>
-          <p>Adjust points and export block results.</p>
-        </a>
-
-        <a class="landing-link-card" href="teacher-history.html">
-          <h2>History</h2>
-          <p>See point history and past sessions in tables.</p>
-        </a>
-
         <a class="landing-link-card" href="buzzer.html">
           <h2>Buzzer</h2>
-          <p>Run team rounds and live scoring from a separate page.</p>
+          <p>Make teams only from active students of the selected group.</p>
+        </a>
+        <a class="landing-link-card" href="teacher-active.html">
+          <h2>Active Today</h2>
+          <p>See who logged in today and who left early.</p>
+        </a>
+        <a class="landing-link-card" href="teacher-students.html">
+          <h2>Students</h2>
+          <p>See all registered students, not only active ones.</p>
+        </a>
+        <a class="landing-link-card" href="teacher-enrollment.html">
+          <h2>Groups / Import</h2>
+          <p>Create groups and assign students to groups.</p>
+        </a>
+        <a class="landing-link-card" href="teacher-points.html">
+          <h2>Points / Export</h2>
+          <p>Adjust block points and export results.</p>
+        </a>
+        <a class="landing-link-card" href="teacher-history.html">
+          <h2>History</h2>
+          <p>Attendance, point history and past sessions.</p>
         </a>
       </div>
     </main>
