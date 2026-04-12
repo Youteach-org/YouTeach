@@ -255,7 +255,7 @@ function parseCsv(text) {
       studentNumber: "",
       fullName: (cols[0] || "").trim()
     };
-  }).filter((student) => student.fullName.length > 0);
+  }).filter((student) => student.nickname || (student.fullName || student.nickname || (student.fullName || student.name || "").split(" ")[0] || "").split(" ")[0].length > 0);
 }
 
 function parseBulkText(text) {
@@ -286,7 +286,7 @@ function parseBulkText(text) {
       studentNumber: "",
       fullName: line.trim()
     };
-  }).filter((student) => student.fullName.length > 0);
+  }).filter((student) => student.nickname || (student.fullName || student.nickname || (student.fullName || student.name || "").split(" ")[0] || "").split(" ")[0].length > 0);
 }
 
 async function saveStudent(fullName, studentNumber = "") {
@@ -319,7 +319,7 @@ function renderStudents(students) {
 
   const filtered = query
     ? allStudents.filter(([, student]) =>
-        normalizeText(student.searchIndex || buildSearchIndex(student.fullName || student.name, student.studentNumber)).includes(query)
+        normalizeText(student.searchIndex || buildSearchIndex(student.nickname || (student.fullName || student.nickname || (student.fullName || student.name || "").split(" ")[0] || "").split(" ")[0] || student.nickname || (student.fullName || student.name || "").split(" ")[0], student.studentNumber)).includes(query)
       )
     : allStudents;
 
@@ -333,7 +333,7 @@ function renderStudents(students) {
   }
 
   studentsTableBody.innerHTML = filtered.map(([key, student]) => {
-    const displayName = student.fullName || student.name || "";
+    const displayName = student.nickname || (student.fullName || student.nickname || (student.fullName || student.name || "").split(" ")[0] || "").split(" ")[0] || student.nickname || (student.fullName || student.name || "").split(" ")[0] || "";
     const displayNumber = student.studentNumber || "";
     const blockPoints = ensureBlockPointsObject(student);
 
@@ -365,7 +365,7 @@ function renderManualStudentOptions() {
   const entries = Object.entries(studentsCache || {}).filter(([, student]) => {
     if (!query) return true;
     const searchable = normalizeText(
-      `${student.fullName || student.name || ""} ${student.studentNumber || ""} ${student.id || ""}`
+      `${student.nickname || (student.fullName || student.nickname || (student.fullName || student.name || "").split(" ")[0] || "").split(" ")[0] || student.nickname || (student.fullName || student.name || "").split(" ")[0] || ""} ${student.studentNumber || ""} ${student.id || ""}`
     );
     return searchable.includes(query);
   });
@@ -373,7 +373,7 @@ function renderManualStudentOptions() {
   manualStudentSelect.innerHTML =
     `<option value="">Select a student</option>` +
     entries.map(([key, student]) => {
-      const label = `${student.fullName || student.name || ""} | ${student.studentNumber || "No student number"} | ${student.id || ""}`;
+      const label = `${student.nickname || (student.fullName || student.nickname || (student.fullName || student.name || "").split(" ")[0] || "").split(" ")[0] || student.nickname || (student.fullName || student.name || "").split(" ")[0] || ""} | ${student.studentNumber || "No student number"} | ${student.id || ""}`;
       return `<option value="${key}">${label}</option>`;
     }).join("");
 
@@ -394,7 +394,7 @@ function renderManualStudentPreview() {
 
   manualStudentPreview.innerHTML = `
     <div>
-      <strong>${student.fullName || student.name || ""}</strong><br>
+      <strong>${student.nickname || (student.fullName || student.nickname || (student.fullName || student.name || "").split(" ")[0] || "").split(" ")[0] || student.nickname || (student.fullName || student.name || "").split(" ")[0] || ""}</strong><br>
       Student Number: ${student.studentNumber || "None"}<br>
       Internal ID: ${student.id || ""}<br>
       Current Points in ${selectedBlock}: ${points}<br>
@@ -528,7 +528,7 @@ function exportBlock(selectedBlock) {
     lines.push([
       escapeCsv(student.id || ""),
       escapeCsv(student.studentNumber || ""),
-      escapeCsv(student.fullName || student.name || ""),
+      escapeCsv(student.nickname || (student.fullName || student.nickname || (student.fullName || student.name || "").split(" ")[0] || "").split(" ")[0] || student.nickname || (student.fullName || student.name || "").split(" ")[0] || ""),
       escapeCsv(selectedBlock),
       escapeCsv(getStudentBlockPoints(student, selectedBlock))
     ].join(","));
@@ -676,7 +676,7 @@ importCsvBtn.onclick = async () => {
     }
 
     for (const student of students) {
-      await saveStudent(student.fullName, student.studentNumber || "");
+      await saveStudent(student.nickname || (student.fullName || student.nickname || (student.fullName || student.name || "").split(" ")[0] || "").split(" ")[0], student.studentNumber || "");
     }
 
     csvFileInput.value = "";
@@ -704,7 +704,7 @@ importTextBtn.onclick = async () => {
     }
 
     for (const student of students) {
-      await saveStudent(student.fullName, student.studentNumber || "");
+      await saveStudent(student.nickname || (student.fullName || student.nickname || (student.fullName || student.name || "").split(" ")[0] || "").split(" ")[0], student.studentNumber || "");
     }
 
     bulkTextInput.value = "";
@@ -779,3 +779,4 @@ onValue(ref(db, "session/current"), (snapshot) => {
 });
 
 switchSection("dashboardSection");
+

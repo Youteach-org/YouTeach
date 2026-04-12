@@ -40,7 +40,7 @@ function renderAll() {
   if (!currentStudent) return;
 
   const activeBlock = settingsCache.activeBlock || "Block 1";
-  const displayName = currentStudent.nickname || currentStudent.fullName || currentStudent.name || "Student";
+  const displayName = currentStudent.nickname || currentstudent.nickname || (student.fullName || student.nickname || (student.fullName || student.name || "").split(" ")[0] || "").split(" ")[0] || currentstudent.nickname || (student.fullName || student.name || "").split(" ")[0] || "Student";
   const currentTeam = currentSession?.assignments?.[studentKey] || "No active session";
   const liveTeamPoints = Number(currentSession?.liveTeamPoints?.[currentTeam] || 0);
   const liveStudentPoints = Number(currentSession?.liveStudentPoints?.[studentKey] || 0);
@@ -121,3 +121,4 @@ onValue(ref(db, "pointsLog"), (snapshot) => {
   pointsLogCache = snapshot.val() || {};
   renderAll();
 });
+

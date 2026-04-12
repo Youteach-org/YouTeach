@@ -123,7 +123,7 @@ function buildSmartTeams(studentEntries, numTeams) {
     }
 
     teams[bestTeamIndex].memberKeys.push(studentKey);
-    teams[bestTeamIndex].memberNames.push(student.nickname || student.fullName || student.name);
+    teams[bestTeamIndex].memberNames.push(student.nickname || student.nickname || (student.fullName || student.nickname || (student.fullName || student.name || "").split(" ")[0] || "").split(" ")[0] || student.nickname || (student.fullName || student.name || "").split(" ")[0]);
   }
 
   return teams;
@@ -428,7 +428,7 @@ applyStudentPointsBtn.addEventListener("click", async () => {
       type: "student",
       block: activeBlockCache,
       studentKey,
-      studentName: student.nickname || student.fullName || student.name || "",
+      studentName: student.nickname || student.nickname || (student.fullName || student.nickname || (student.fullName || student.name || "").split(" ")[0] || "").split(" ")[0] || student.nickname || (student.fullName || student.name || "").split(" ")[0] || "",
       addedPoints: addValue,
       previousPoints,
       newPoints: blockPoints[activeBlockCache],
@@ -481,7 +481,7 @@ applyTeamPointsBtn.addEventListener("click", async () => {
       block: activeBlockCache,
       teamLabel,
       studentKey,
-      studentName: student.nickname || student.fullName || student.name || "",
+      studentName: student.nickname || student.nickname || (student.fullName || student.nickname || (student.fullName || student.name || "").split(" ")[0] || "").split(" ")[0] || student.nickname || (student.fullName || student.name || "").split(" ")[0] || "",
       addedPoints: teamValue,
       previousPoints,
       newPoints: blockPoints[activeBlockCache],
@@ -532,3 +532,4 @@ onValue(ref(db, "session/current"), (snapshot) => {
   renderBuzzerStatus();
   renderLiveScores();
 });
+

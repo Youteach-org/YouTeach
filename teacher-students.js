@@ -47,7 +47,7 @@ function renderStudents() {
 
   const entries = Object.entries(studentsCache || {}).filter(([, student]) => {
     const searchable = normalizeText([
-      student.fullName || student.name || "",
+      student.nickname || (student.fullName || student.nickname || (student.fullName || student.name || "").split(" ")[0] || "").split(" ")[0] || student.nickname || (student.fullName || student.name || "").split(" ")[0] || "",
       student.nickname || "",
       student.studentNumber || "",
       student.id || "",
@@ -65,7 +65,7 @@ function renderStudents() {
     const blockPoints = ensureBlockPointsObject(student);
     return `
       <tr>
-        <td>${student.fullName || student.name || ""}</td>
+        <td>${student.nickname || (student.fullName || student.nickname || (student.fullName || student.name || "").split(" ")[0] || "").split(" ")[0] || student.nickname || (student.fullName || student.name || "").split(" ")[0] || ""}</td>
         <td>${student.nickname || ""}</td>
         <td>${student.studentNumber || ""}</td>
         <td>${student.id || ""}</td>
@@ -117,3 +117,4 @@ onValue(ref(db, "groups"), (snapshot) => {
   groupsCache = snapshot.val() || {};
   renderStudents();
 });
+
