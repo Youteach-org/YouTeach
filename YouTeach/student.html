@@ -1,25 +1,88 @@
-<!DOCTYPE html>
-<html lang="es">
+﻿<!DOCTYPE html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>YouTeach | Alumno</title>
+  <title>YouTeach - Student Panel</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="container">
-    <h1>Panel del Alumno</h1>
+  <div class="student-shell">
+    <header class="student-topbar">
+      <div>
+        <h1>Student Panel</h1>
+        <p>Check your points, team and buzzer status</p>
+      </div>
+      <div class="student-top-links">
+        <a class="action-link-btn" href="index.html">Home</a>
+      </div>
+    </header>
 
-    <div class="card">
-      <h2>Entrar</h2>
-      <input id="id" type="text" placeholder="Tu ID interno">
-      <button id="load">Entrar</button>
+    <div class="section-grid two-columns">
+      <div class="panel-card">
+        <div class="panel-card-header">
+          <h3>Login</h3>
+        </div>
+
+        <div class="stack-controls">
+          <input id="id" placeholder="Enter your internal ID">
+          <button id="load">Enter</button>
+        </div>
+      </div>
+
+      <div class="panel-card">
+        <div class="panel-card-header">
+          <h3>Current Block</h3>
+        </div>
+
+        <div id="activeBlockText" class="preview-box">Active Block: Block 1</div>
+      </div>
     </div>
 
-    <div class="card">
-      <h2>Mis datos</h2>
-      <h3 id="name"></h3>
-      <p id="points">Puntos: 0 | Equipo: Sin equipo</p>
+    <div class="section-grid two-columns">
+      <div class="panel-card">
+        <div class="panel-card-header">
+          <h3>My Info</h3>
+        </div>
+
+        <div class="student-info-grid">
+          <div class="summary-card mini">
+            <span class="summary-label">Name</span>
+            <strong id="name">---</strong>
+          </div>
+          <div class="summary-card mini">
+            <span class="summary-label">Official Points</span>
+            <strong id="points">---</strong>
+          </div>
+          <div class="summary-card mini">
+            <span class="summary-label">Live Team Points</span>
+            <strong id="liveTeamPoints">---</strong>
+          </div>
+          <div class="summary-card mini">
+            <span class="summary-label">Pending Student Points</span>
+            <strong id="liveStudentPoints">---</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-card">
+        <div class="panel-card-header">
+          <h3>Buzzer</h3>
+        </div>
+
+        <div class="stack-controls">
+          <button id="buzzBtn">Buzz!</button>
+          <div id="buzzerMessage" class="preview-box">Login first.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-card">
+      <div class="panel-card-header">
+        <h3>My Point History</h3>
+      </div>
+
+      <div id="studentPointsHistory" class="card-list">Login first.</div>
     </div>
   </div>
 
