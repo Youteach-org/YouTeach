@@ -1,17 +1,15 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+﻿import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getDatabase } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyD0MGu1Izo7-u6IVya50S3hirWjCwT4_44",
-  authDomain: "team-assigner-9a2e2.firebaseapp.com",
-  databaseURL: "https://team-assigner-9a2e2-default-rtdb.firebaseio.com",
-  projectId: "team-assigner-9a2e2",
-  storageBucket: "team-assigner-9a2e2.firebasestorage.app",
-  messagingSenderId: "844601603838",
-  appId: "1:844601603838:web:f230a81e218b8e631d57af"
+  apiKey: "AIzaSyCpKL-4eHrqFiUntViiUB2BPs60XumC1K4",
+  authDomain: "youteach-d9a79.firebaseapp.com",
+  databaseURL: "https://youteach-d9a79-default-rtdb.firebaseio.com",
+  projectId: "youteach-d9a79",
+  storageBucket: "youteach-d9a79.firebasestorage.app",
+  messagingSenderId: "302548732789",
+  appId: "1:302548732789:web:b230b7f74366488d45a13c"
 };
 
 const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-
-export { db };
+export const db = getDatabase(app);
