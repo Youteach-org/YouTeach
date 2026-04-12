@@ -1,7 +1,7 @@
 ﻿import { db } from "./firebase.js";
-import { ref, onValue, update, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
-import { migrateExistingStudents } from "./student-auth.js";
+import { migrateExistingStudentsForTeacher } from "./student-auth.js";
 
 requireTeacherAuth();
 
@@ -101,7 +101,11 @@ window.saveStudentRow = async function(studentKey) {
 searchStudentInput.addEventListener("input", renderStudents);
 
 (async () => {
-  await migrateExistingStudents();
+  try {
+    await migrateExistingStudentsForTeacher();
+  } catch (error) {
+    console.error("Migration failed:", error);
+  }
 })();
 
 onValue(ref(db, "students"), (snapshot) => {

@@ -36,7 +36,7 @@ studentLoginBtn.addEventListener("click", async () => {
     window.location.href = "student-buzzer.html";
   } catch (error) {
     console.error(error);
-    studentLoginMessage.textContent = "Login failed. Open browser console and tell me the exact error.";
+    studentLoginMessage.textContent = `Login failed: ${error.message || "unknown error"}`;
     studentLoginMessage.className = "status-text bad";
     studentLoginBtn.disabled = false;
   }

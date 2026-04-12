@@ -27,7 +27,7 @@ function todayKey() {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 }
 
-export async function migrateExistingStudents() {
+export async function migrateExistingStudentsForTeacher() {
   const groupsSnap = await get(ref(db, "groups"));
   const groups = groupsSnap.val() || {};
 
@@ -42,15 +42,12 @@ export async function migrateExistingStudents() {
 
   const studentsSnap = await get(ref(db, "students"));
   const students = studentsSnap.val() || {};
-
   const updates = {};
 
   for (const [key, student] of Object.entries(students)) {
     const fullName = student.fullName || student.name || "";
     const nickname = student.nickname || (fullName ? fullName.split(" ")[0] : "Student");
     const groupName = student.groupName || "GENERAL";
-    const password = "1234";
-    const activeNow = student.activeNow === false ? false : true;
     const blockPoints = {
       "Block 1": Number(student?.blockPoints?.["Block 1"] || 0),
       "Block 2": Number(student?.blockPoints?.["Block 2"] || 0),
@@ -61,8 +58,7 @@ export async function migrateExistingStudents() {
     updates[`students/${key}/name`] = fullName;
     updates[`students/${key}/nickname`] = nickname;
     updates[`students/${key}/groupName`] = groupName;
-    updates[`students/${key}/password`] = password;
-    updates[`students/${key}/activeNow`] = activeNow;
+    updates[`students/${key}/password`] = "1234";
     updates[`students/${key}/blockPoints`] = blockPoints;
   }
 
@@ -124,8 +120,6 @@ export async function setStudentLeave(studentKey, reason = "") {
 }
 
 export async function loginStudentByExternalIdAndPassword(externalId, password) {
-  await migrateExistingStudents();
-
   const snapshot = await get(ref(db, "students"));
   const students = snapshot.val() || {};
   const cleanId = externalId.trim();
@@ -135,7 +129,7 @@ export async function loginStudentByExternalIdAndPassword(externalId, password) 
     const savedInternalId = (student.id || "").trim();
 
     if (savedExternalId === cleanId || savedInternalId === cleanId) {
-      const validPassword = "1234";
+      const validPassword = student.password || "1234";
 
       if (password !== validPassword) {
         return { ok: false, message: "Incorrect password. Use 1234 for now." };
@@ -144,19 +138,11 @@ export async function loginStudentByExternalIdAndPassword(externalId, password) 
       const nickname = student.nickname || (student.fullName || student.name || "Student").split(" ")[0];
       const groupName = student.groupName || "GENERAL";
 
-      await update(ref(db, `students/${key}`), {
-        nickname,
-        groupName,
-        password: "1234",
-        activeNow: true
-      });
-
       const updatedStudent = {
         ...student,
         nickname,
         groupName,
-        password: "1234",
-        activeNow: true
+        password: validPassword
       };
 
       setStudentSession(key, cleanId);
