@@ -3,97 +3,108 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>YouTeach - Buzzer Page</title>
+  <title>YouTeach - Buzzer</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="buzzer-shell">
-    <header class="buzzer-topbar">
-      <div>
-        <h1>Buzzer Page</h1>
-        <p>Teacher-only live activity control</p>
+  <div class="menu-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <h1>YouTeach</h1>
+        <p>Teacher Menu</p>
       </div>
-      <div class="buzzer-top-actions">
-        <a class="action-link-btn" href="teacher.html">Teacher Panel</a>
+
+      <div class="sidebar-links">
+        <a class="sidebar-link" href="teacher.html">Teacher Home</a>
+        <a class="sidebar-link" href="teacher-students.html">Students</a>
+        <a class="sidebar-link" href="teacher-enrollment.html">Add / Import</a>
+        <a class="sidebar-link" href="teacher-points.html">Points / Export</a>
+        <a class="sidebar-link" href="teacher-history.html">History</a>
+        <a class="sidebar-link active-link" href="buzzer.html">Buzzer</a>
         <button id="logoutBtn" class="logout-btn">Logout</button>
       </div>
-    </header>
+    </aside>
 
-    <div class="section-grid summary-grid">
-      <div class="summary-card">
-        <span class="summary-label">Active Block</span>
-        <strong id="activeBlockLabel">Block 1</strong>
-      </div>
-      <div class="summary-card">
-        <span class="summary-label">Block Status</span>
-        <strong id="blockStatusLabel">OPEN</strong>
-      </div>
-      <div class="summary-card">
-        <span class="summary-label">Session Status</span>
-        <strong id="sessionStatusLabel">No active session</strong>
-      </div>
-      <div class="summary-card">
-        <span class="summary-label">Students</span>
-        <strong id="studentCountLabel">0</strong>
-      </div>
-    </div>
-
-    <div class="section-grid two-columns">
-      <div class="panel-card">
-        <div class="panel-card-header">
-          <h3>Team Generator</h3>
+    <main class="main-content">
+      <header class="topbar">
+        <div>
+          <h2>Buzzer</h2>
+          <p>Run live team rounds from this page only</p>
         </div>
+        <div class="topbar-right">
+          <span id="teacherIdentity" class="teacher-identity">Teacher</span>
+        </div>
+      </header>
 
-        <div class="stack-controls">
-          <input id="numTeams" type="number" min="2" placeholder="Number of teams">
-          <button id="createTeams">Generate Smart Teams</button>
-          <button id="resetSession">Reset Session</button>
-          <button id="closeSessionBtn">Close Session and Save History</button>
+      <div class="section-grid summary-grid">
+        <div class="summary-card">
+          <span class="summary-label">Active Block</span>
+          <strong id="activeBlockLabel">Block 1</strong>
+        </div>
+        <div class="summary-card">
+          <span class="summary-label">Block Status</span>
+          <strong id="blockStatusLabel">OPEN</strong>
+        </div>
+        <div class="summary-card">
+          <span class="summary-label">Session Status</span>
+          <strong id="sessionStatusLabel">No active session</strong>
+        </div>
+        <div class="summary-card">
+          <span class="summary-label">Students</span>
+          <strong id="studentCountLabel">0</strong>
         </div>
       </div>
 
-      <div class="panel-card">
-        <div class="panel-card-header">
-          <h3>Buzzer Control</h3>
+      <div class="section-grid two-columns">
+        <div class="panel-card">
+          <div class="panel-card-header">
+            <h3>Team Generator</h3>
+          </div>
+
+          <div class="stack-controls">
+            <input id="numTeams" type="number" min="2" placeholder="Number of teams">
+            <button id="createTeams">Generate Smart Teams</button>
+            <button id="resetSession">Reset Session</button>
+            <button id="closeSessionBtn">Close Session and Save History</button>
+          </div>
         </div>
 
-        <div class="stack-controls">
-          <button id="openRoundBtn">Open Round</button>
-          <button id="wrongAnswerBtn">Mark Wrong / Reopen</button>
-          <button id="closeRoundBtn">Close Round</button>
-          <button id="awardTeamPointBtn">+1 Team Live Point</button>
-          <button id="awardStudentPointBtn">+1 Student Live Point</button>
-          <button id="resetLivePointsBtn">Reset Live Points</button>
-          <button id="applyStudentPointsBtn">Apply Student Live Points</button>
-          <button id="applyTeamPointsBtn">Apply Team Live Points</button>
+        <div class="panel-card">
+          <div class="panel-card-header">
+            <h3>Buzzer Control</h3>
+          </div>
+
+          <div class="stack-controls">
+            <button id="openRoundBtn">Open Round</button>
+            <button id="wrongAnswerBtn">Mark Wrong / Reopen</button>
+            <button id="closeRoundBtn">Close Round</button>
+            <button id="awardTeamPointBtn">+1 Team Live Point</button>
+            <button id="awardStudentPointBtn">+1 Student Live Point</button>
+            <button id="resetLivePointsBtn">Reset Live Points</button>
+            <button id="applyStudentPointsBtn">Apply Student Live Points</button>
+            <button id="applyTeamPointsBtn">Apply Team Live Points</button>
+          </div>
+
+          <div id="buzzerStatus" class="preview-box">No active session.</div>
+        </div>
+      </div>
+
+      <div class="section-grid two-columns">
+        <div class="panel-card">
+          <div class="panel-card-header">
+            <h3>Current Teams</h3>
+          </div>
+          <div id="teamsList" class="card-list">No active session.</div>
         </div>
 
-        <div id="buzzerStatus" class="preview-box">No active session.</div>
-      </div>
-    </div>
-
-    <div class="section-grid two-columns">
-      <div class="panel-card">
-        <div class="panel-card-header">
-          <h3>Current Teams</h3>
+        <div class="panel-card">
+          <div class="panel-card-header">
+            <h3>Live Scores</h3>
+          </div>
+          <div id="liveScores" class="card-list">No active session.</div>
         </div>
-        <div id="teamsList" class="card-list">No active session.</div>
       </div>
-
-      <div class="panel-card">
-        <div class="panel-card-header">
-          <h3>Live Scores</h3>
-        </div>
-        <div id="liveScores" class="card-list">No active session.</div>
-      </div>
-    </div>
-
-    <div class="panel-card">
-      <div class="panel-card-header">
-        <h3>Past Sessions</h3>
-      </div>
-      <div id="sessionHistoryList" class="card-list">No past sessions yet.</div>
-    </div>
+    </main>
   </div>
 
   <script type="module" src="buzzer.js"></script>

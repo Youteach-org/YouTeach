@@ -1,0 +1,63 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YouTeach - Student Buzzer</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="menu-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <h1>YouTeach</h1>
+        <p>Student Menu</p>
+      </div>
+
+      <div class="sidebar-links">
+        <a class="sidebar-link" href="student.html">Login / Menu</a>
+        <a class="sidebar-link" href="student-summary.html">My Summary</a>
+        <a class="sidebar-link active-link" href="student-buzzer.html">Buzzer</a>
+        <a class="sidebar-link" href="student-settings.html">Settings</a>
+        <a class="sidebar-link" href="index.html">Home</a>
+        <button id="logoutBtn" class="logout-btn">Logout</button>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div>
+          <h2>Buzzer</h2>
+          <p>Use the buzzer without opening other student sections</p>
+        </div>
+        <div class="topbar-right">
+          <span id="studentIdentity" class="teacher-identity">Student</span>
+        </div>
+      </header>
+
+      <div class="section-grid two-columns">
+        <div class="panel-card">
+          <div class="panel-card-header">
+            <h3>Buzzer Action</h3>
+          </div>
+
+          <div class="stack-controls">
+            <button id="buzzBtn">Buzz!</button>
+            <div id="buzzerMessage" class="preview-box">Loading...</div>
+          </div>
+        </div>
+
+        <div class="panel-card">
+          <div class="panel-card-header">
+            <h3>My Status</h3>
+          </div>
+
+          <div class="preview-box" id="studentStatusBox">Loading...</div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module" src="student-buzzer.js"></script>
+</body>
+</html>

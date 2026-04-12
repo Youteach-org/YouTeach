@@ -3,28 +3,24 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>YouTeach - Teacher Panel</title>
+  <title>YouTeach - Teacher Menu</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="app-shell">
+  <div class="menu-shell">
     <aside class="sidebar">
       <div class="brand">
         <h1>YouTeach</h1>
-        <p>Teacher Panel</p>
+        <p>Teacher Menu</p>
       </div>
 
-      <nav class="sidebar-nav">
-        <button class="nav-btn active" data-section="dashboardSection">Dashboard</button>
-        <button class="nav-btn" data-section="studentsSection">Students</button>
-        <button class="nav-btn" data-section="enrollmentSection">Add / Import</button>
-        <button class="nav-btn" data-section="pointsSection">Points</button>
-        <button class="nav-btn" data-section="historySection">History</button>
-      </nav>
-
       <div class="sidebar-links">
-        <a class="sidebar-link" href="buzzer.html">Open Buzzer Page</a>
-        <a class="sidebar-link" href="student.html">Student View</a>
+        <a class="sidebar-link active-link" href="teacher.html">Teacher Home</a>
+        <a class="sidebar-link" href="teacher-students.html">Students</a>
+        <a class="sidebar-link" href="teacher-enrollment.html">Add / Import</a>
+        <a class="sidebar-link" href="teacher-points.html">Points / Export</a>
+        <a class="sidebar-link" href="teacher-history.html">History</a>
+        <a class="sidebar-link" href="buzzer.html">Buzzer</a>
         <a class="sidebar-link" href="index.html">Home</a>
         <button id="logoutBtn" class="logout-btn">Logout</button>
       </div>
@@ -33,225 +29,62 @@
     <main class="main-content">
       <header class="topbar">
         <div>
-          <h2 id="pageTitle">Dashboard</h2>
-          <p id="pageSubtitle">Overview of your class tools</p>
+          <h2>Teacher Home</h2>
+          <p>Main menu for teacher tools</p>
         </div>
         <div class="topbar-right">
           <span id="teacherIdentity" class="teacher-identity">Teacher</span>
         </div>
       </header>
 
-      <section id="dashboardSection" class="page-section active-section">
-        <div class="section-grid summary-grid">
-          <div class="summary-card">
-            <span class="summary-label">Active Block</span>
-            <strong id="dashboardActiveBlock">Block 1</strong>
-          </div>
-          <div class="summary-card">
-            <span class="summary-label">Block Status</span>
-            <strong id="dashboardBlockStatus">OPEN</strong>
-          </div>
-          <div class="summary-card">
-            <span class="summary-label">Students</span>
-            <strong id="dashboardStudentCount">0</strong>
-          </div>
-          <div class="summary-card">
-            <span class="summary-label">Active Session</span>
-            <strong id="dashboardSessionStatus">No</strong>
-          </div>
+      <div class="section-grid summary-grid">
+        <div class="summary-card">
+          <span class="summary-label">Active Block</span>
+          <strong id="activeBlockCard">Block 1</strong>
         </div>
-
-        <div class="section-grid two-columns">
-          <div class="panel-card">
-            <div class="panel-card-header">
-              <h3>Block Control</h3>
-            </div>
-
-            <div class="inline-controls">
-              <select id="activeBlockSelect">
-                <option value="Block 1">Block 1</option>
-                <option value="Block 2">Block 2</option>
-                <option value="Block 3">Block 3</option>
-              </select>
-              <button id="saveBlockBtn">Save Active Block</button>
-              <button id="closeBlockBtn">Close Block</button>
-              <button id="reopenBlockBtn">Reopen Block</button>
-            </div>
-
-            <p id="currentBlockLabel">Current active block: Block 1</p>
-            <p id="currentBlockStatusLabel">Current block status: OPEN</p>
-          </div>
-
-          <div class="panel-card">
-            <div class="panel-card-header">
-              <h3>Quick Links</h3>
-            </div>
-
-            <div class="stack-controls">
-              <a class="action-link-btn" href="buzzer.html">Go to Buzzer Page</a>
-              <a class="action-link-btn" href="student.html">Open Student Panel</a>
-            </div>
-          </div>
+        <div class="summary-card">
+          <span class="summary-label">Block Status</span>
+          <strong id="blockStatusCard">OPEN</strong>
         </div>
-      </section>
-
-      <section id="studentsSection" class="page-section">
-        <div class="panel-card">
-          <div class="panel-card-header">
-            <h3>Student List</h3>
-          </div>
-
-          <div class="toolbar-row">
-            <input id="searchStudent" placeholder="Search by name or student number">
-          </div>
-
-          <div class="table-wrap">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>Full Name</th>
-                  <th>Student Number</th>
-                  <th>Internal ID</th>
-                  <th>Block 1</th>
-                  <th>Block 2</th>
-                  <th>Block 3</th>
-                  <th>Active Block</th>
-                  <th>Edit Name</th>
-                  <th>Edit Number</th>
-                  <th>Save</th>
-                </tr>
-              </thead>
-              <tbody id="studentsTableBody">
-                <tr>
-                  <td colspan="10">No students found.</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+        <div class="summary-card">
+          <span class="summary-label">Students</span>
+          <strong id="studentCountCard">0</strong>
         </div>
-      </section>
-
-      <section id="enrollmentSection" class="page-section">
-        <div class="section-grid two-columns">
-          <div class="panel-card">
-            <div class="panel-card-header">
-              <h3>Add Student</h3>
-            </div>
-
-            <div class="stack-controls">
-              <input id="studentName" placeholder="Full name">
-              <input id="studentNumberManual" placeholder="Student number (optional)">
-              <button id="createStudent">Add Student</button>
-            </div>
-          </div>
-
-          <div class="panel-card">
-            <div class="panel-card-header">
-              <h3>Import CSV</h3>
-            </div>
-
-            <div class="stack-controls">
-              <input id="csvFile" type="file" accept=".csv">
-              <button id="importCsv">Import CSV</button>
-            </div>
-          </div>
+        <div class="summary-card">
+          <span class="summary-label">Active Session</span>
+          <strong id="sessionCard">No</strong>
         </div>
+      </div>
 
-        <div class="panel-card">
-          <div class="panel-card-header">
-            <h3>Paste Student List</h3>
-          </div>
+      <div class="landing-grid">
+        <a class="landing-link-card" href="teacher-students.html">
+          <h2>Students</h2>
+          <p>Open the full student table and edit records.</p>
+        </a>
 
-          <div class="stack-controls">
-            <textarea id="bulkText" rows="12" placeholder="25NC07776    ABURTO GONZALEZ KARLA PAULINA"></textarea>
-            <button id="importText">Import Pasted List</button>
-          </div>
-        </div>
-      </section>
+        <a class="landing-link-card" href="teacher-enrollment.html">
+          <h2>Add / Import</h2>
+          <p>Add students manually or import a full list.</p>
+        </a>
 
-      <section id="pointsSection" class="page-section">
-        <div class="section-grid two-columns">
-          <div class="panel-card">
-            <div class="panel-card-header">
-              <h3>Adjust Student Points</h3>
-            </div>
+        <a class="landing-link-card" href="teacher-points.html">
+          <h2>Points / Export</h2>
+          <p>Adjust points and export block results.</p>
+        </a>
 
-            <div class="stack-controls">
-              <input id="manualStudentSearch" placeholder="Find student by name, student number, or internal ID">
-              <select id="manualStudentSelect">
-                <option value="">Select a student</option>
-              </select>
-              <select id="manualBlockSelect">
-                <option value="Block 1">Block 1</option>
-                <option value="Block 2">Block 2</option>
-                <option value="Block 3">Block 3</option>
-              </select>
-              <input id="manualPointsInput" type="number" step="1" placeholder="Use positive or negative number">
-              <button id="applyManualPointsBtn">Update Points</button>
-            </div>
+        <a class="landing-link-card" href="teacher-history.html">
+          <h2>History</h2>
+          <p>See point history and past sessions in tables.</p>
+        </a>
 
-            <div id="manualStudentPreview" class="preview-box">No student selected.</div>
-          </div>
-
-          <div class="panel-card">
-            <div class="panel-card-header">
-              <h3>Export Points</h3>
-            </div>
-
-            <div class="stack-controls">
-              <select id="exportBlockSelect">
-                <option value="Block 1">Block 1</option>
-                <option value="Block 2">Block 2</option>
-                <option value="Block 3">Block 3</option>
-              </select>
-              <button id="exportBlockBtn">Download CSV</button>
-
-              <select id="pointsPageBlockMirror">
-                <option value="Block 1">Block 1</option>
-                <option value="Block 2">Block 2</option>
-                <option value="Block 3">Block 3</option>
-              </select>
-              <button id="pointsPageSetBlockBtn">Set As Active Block</button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section id="historySection" class="page-section">
-        <div class="panel-card">
-          <div class="panel-card-header">
-            <h3>Point History</h3>
-          </div>
-
-          <div class="toolbar-row multi">
-            <input id="pointHistorySearch" placeholder="Filter by student name">
-            <select id="pointHistoryBlockFilter">
-              <option value="">All Blocks</option>
-              <option value="Block 1">Block 1</option>
-              <option value="Block 2">Block 2</option>
-              <option value="Block 3">Block 3</option>
-            </select>
-            <select id="pointHistoryTypeFilter">
-              <option value="">All Types</option>
-              <option value="student">Student</option>
-              <option value="team">Team</option>
-            </select>
-          </div>
-
-          <div id="pointsHistoryList" class="card-list">No point history found.</div>
-        </div>
-
-        <div class="panel-card">
-          <div class="panel-card-header">
-            <h3>Past Sessions</h3>
-          </div>
-
-          <div id="sessionHistoryList" class="card-list">No past sessions yet.</div>
-        </div>
-      </section>
+        <a class="landing-link-card" href="buzzer.html">
+          <h2>Buzzer</h2>
+          <p>Run team rounds and live scoring from a separate page.</p>
+        </a>
+      </div>
     </main>
   </div>
 
-  <script type="module" src="teacher.js"></script>
+  <script type="module" src="teacher-home.js"></script>
 </body>
 </html>

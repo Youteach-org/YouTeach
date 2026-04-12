@@ -27,6 +27,5 @@ loginBtn.addEventListener("click", () => {
   sessionStorage.setItem("youteachTeacherAuth", "true");
   sessionStorage.setItem("youteachTeacherRole", user.role);
   sessionStorage.setItem("youteachTeacherName", user.displayName);
-
   window.location.href = "teacher.html";
 });

@@ -60,7 +60,7 @@ a {
   text-decoration: none;
 }
 
-.app-shell {
+.menu-shell {
   display: grid;
   grid-template-columns: 260px 1fr;
   min-height: 100vh;
@@ -85,28 +85,6 @@ a {
   color: #cbd5e1;
 }
 
-.sidebar-nav {
-  display: grid;
-  gap: 10px;
-  margin-top: 28px;
-}
-
-.nav-btn {
-  text-align: left;
-  background: #1e293b;
-  color: #e2e8f0;
-  padding: 12px 14px;
-}
-
-.nav-btn:hover {
-  background: #334155;
-}
-
-.nav-btn.active {
-  background: #2563eb;
-  color: #ffffff;
-}
-
 .sidebar-links {
   display: grid;
   gap: 10px;
@@ -128,6 +106,10 @@ a {
   background: #334155;
 }
 
+.active-link {
+  background: #2563eb;
+}
+
 .logout-btn {
   background: #dc2626;
 }
@@ -136,15 +118,11 @@ a {
   background: #b91c1c;
 }
 
-.main-content,
-.buzzer-shell,
-.student-shell {
+.main-content {
   padding: 26px;
 }
 
-.topbar,
-.buzzer-topbar,
-.student-topbar {
+.topbar {
   margin-bottom: 20px;
   display: flex;
   justify-content: space-between;
@@ -152,22 +130,16 @@ a {
   align-items: flex-start;
 }
 
-.topbar h2,
-.buzzer-topbar h1,
-.student-topbar h1 {
+.topbar h2 {
   margin: 0 0 6px 0;
 }
 
-.topbar p,
-.buzzer-topbar p,
-.student-topbar p {
+.topbar p {
   margin: 0;
   color: #64748b;
 }
 
-.topbar-right,
-.buzzer-top-actions,
-.student-top-links {
+.topbar-right {
   display: flex;
   gap: 10px;
   align-items: center;
@@ -180,15 +152,6 @@ a {
   background: #e2e8f0;
   border-radius: 10px;
   font-weight: 700;
-}
-
-.page-section {
-  display: none;
-  gap: 18px;
-}
-
-.active-section {
-  display: block;
 }
 
 .section-grid {
@@ -253,16 +216,6 @@ a {
   margin: 0;
 }
 
-.inline-controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.inline-controls > * {
-  flex: 1 1 180px;
-}
-
 .stack-controls {
   display: grid;
   gap: 12px;
@@ -298,7 +251,7 @@ a {
 .data-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 1200px;
+  min-width: 1100px;
 }
 
 .data-table th,
@@ -316,7 +269,7 @@ a {
 }
 
 .table-input {
-  min-width: 150px;
+  min-width: 140px;
 }
 
 .small-btn {
@@ -341,10 +294,6 @@ a {
   padding: 0;
 }
 
-.session-team-row {
-  margin-bottom: 10px;
-}
-
 .landing-shell,
 .auth-shell {
   min-height: 100vh;
@@ -355,7 +304,7 @@ a {
 
 .landing-card,
 .auth-card {
-  max-width: 980px;
+  max-width: 1000px;
   width: 100%;
   padding: 28px;
 }
@@ -370,6 +319,10 @@ a {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 18px;
   margin-top: 20px;
+}
+
+.simple-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .landing-link-card {
@@ -406,24 +359,15 @@ a {
   gap: 16px;
 }
 
-.buzzer-shell,
-.student-shell {
-  max-width: 1400px;
-  margin: 0 auto;
-}
-
 @media (max-width: 1100px) {
-  .app-shell {
+  .menu-shell {
     grid-template-columns: 1fr;
-  }
-
-  .sidebar {
-    padding-bottom: 14px;
   }
 
   .summary-grid,
   .two-columns,
   .landing-grid,
+  .simple-grid,
   .student-info-grid {
     grid-template-columns: 1fr;
   }
