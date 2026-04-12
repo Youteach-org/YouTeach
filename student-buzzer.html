@@ -1,66 +1,57 @@
-﻿<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html>
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>YouTeach - Student Buzzer</title>
-  <link rel="stylesheet" href="styles.css">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body {
+  background: black;
+  color: white;
+  text-align: center;
+  font-family: Arial;
+}
+
+#name {
+  font-size: 28px;
+  margin-top: 20px;
+}
+
+#team {
+  font-size: 20px;
+  margin-bottom: 20px;
+}
+
+#buzz {
+  width: 90vw;
+  height: 60vh;
+  border-radius: 50%;
+  background: red;
+  border: none;
+  font-size: 40px;
+  color: white;
+}
+</style>
 </head>
+
 <body>
-  <button id="menuToggle" class="hamburger-btn" aria-label="Open menu">
-    <span></span><span></span><span></span>
-  </button>
 
-  <div class="menu-shell">
-    <aside id="sidebar" class="sidebar collapsible-sidebar">
-      <div class="brand">
-        <h1>YouTeach</h1>
-        <p>Student Menu</p>
-      </div>
+<div id="name"></div>
+<div id="team"></div>
 
-      <div class="sidebar-links">
-        <a class="sidebar-link active-link" href="student-buzzer.html">Buzzer</a>
-        <a class="sidebar-link" href="student-summary.html">My Summary</a>
-        <a class="sidebar-link" href="student-settings.html">Settings</a>
-        <a class="sidebar-link" href="index.html">Home</a>
-        <button id="logoutBtn" class="logout-btn">Logout</button>
-      </div>
-    </aside>
+<button id="buzz">BUZZ</button>
 
-    <main class="main-content">
-      <header class="topbar">
-        <div>
-          <h2>Buzzer</h2>
-          <p>Student buzzer page</p>
-        </div>
-        <div class="topbar-right">
-          <span id="studentIdentity" class="teacher-identity">Student</span>
-        </div>
-      </header>
+<audio id="sound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
 
-      <div class="section-grid two-columns">
-        <div class="panel-card">
-          <div class="panel-card-header">
-            <h3>Buzzer Action</h3>
-          </div>
+<script type="module">
+import { requireStudentSession } from "./student-auth.js";
 
-          <div class="stack-controls">
-            <button id="buzzBtn">Buzz!</button>
-            <div id="buzzerMessage" class="preview-box">Loading...</div>
-          </div>
-        </div>
+const session = requireStudentSession();
 
-        <div class="panel-card">
-          <div class="panel-card-header">
-            <h3>My Status</h3>
-          </div>
+document.getElementById("name").textContent = session.externalId;
 
-          <div class="preview-box" id="studentStatusBox">Loading...</div>
-        </div>
-      </div>
-    </main>
-  </div>
+document.getElementById("buzz").onclick = () => {
+  document.getElementById("sound").play();
+};
+</script>
 
-  <script type="module" src="student-buzzer.js"></script>
 </body>
 </html>
