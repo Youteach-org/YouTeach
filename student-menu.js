@@ -12,7 +12,7 @@ studentLoginBtn.addEventListener("click", async () => {
   studentLoginMessage.textContent = "";
 
   if (!externalId || !password) {
-    studentLoginMessage.textContent = "Enter external ID and password.";
+    studentLoginMessage.textContent = "Enter external ID or internal ID, and password.";
     studentLoginMessage.className = "status-text bad";
     return;
   }
@@ -36,7 +36,7 @@ studentLoginBtn.addEventListener("click", async () => {
     window.location.href = "student-buzzer.html";
   } catch (error) {
     console.error(error);
-    studentLoginMessage.textContent = "Login failed. Check your connection or data.";
+    studentLoginMessage.textContent = "Login failed. Open browser console and tell me the exact error.";
     studentLoginMessage.className = "status-text bad";
     studentLoginBtn.disabled = false;
   }

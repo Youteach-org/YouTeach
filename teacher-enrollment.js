@@ -2,6 +2,7 @@
 import { ref, push, set, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { generateId } from "./app.js";
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
+import { migrateExistingStudents } from "./student-auth.js";
 
 requireTeacherAuth();
 
@@ -265,6 +266,10 @@ importTextBtn.addEventListener("click", async () => {
   bulkTextInput.value = "";
   alert(`${students.length} students imported successfully.`);
 });
+
+(async () => {
+  await migrateExistingStudents();
+})();
 
 onValue(ref(db, "groups"), (snapshot) => {
   groupsCache = snapshot.val() || {};
