@@ -17,8 +17,7 @@ body {
 button,
 input,
 select,
-textarea,
-a {
+textarea {
   font: inherit;
 }
 
@@ -56,11 +55,7 @@ textarea {
   min-height: 160px;
 }
 
-a {
-  text-decoration: none;
-}
-
-.menu-shell {
+.app-shell {
   display: grid;
   grid-template-columns: 260px 1fr;
   min-height: 100vh;
@@ -70,9 +65,6 @@ a {
   background: #0f172a;
   color: #ffffff;
   padding: 24px 18px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
 }
 
 .brand h1 {
@@ -85,37 +77,26 @@ a {
   color: #cbd5e1;
 }
 
-.sidebar-links {
+.sidebar-nav {
   display: grid;
   gap: 10px;
-  margin-top: 24px;
+  margin-top: 28px;
 }
 
-.sidebar-link,
-.action-link-btn {
-  display: inline-block;
-  border-radius: 10px;
-  padding: 10px 14px;
+.nav-btn {
+  text-align: left;
   background: #1e293b;
-  color: #ffffff;
-  text-align: center;
+  color: #e2e8f0;
+  padding: 12px 14px;
 }
 
-.sidebar-link:hover,
-.action-link-btn:hover {
+.nav-btn:hover {
   background: #334155;
 }
 
-.active-link {
+.nav-btn.active {
   background: #2563eb;
-}
-
-.logout-btn {
-  background: #dc2626;
-}
-
-.logout-btn:hover {
-  background: #b91c1c;
+  color: #ffffff;
 }
 
 .main-content {
@@ -124,10 +105,6 @@ a {
 
 .topbar {
   margin-bottom: 20px;
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  align-items: flex-start;
 }
 
 .topbar h2 {
@@ -139,19 +116,13 @@ a {
   color: #64748b;
 }
 
-.topbar-right {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  flex-wrap: wrap;
+.page-section {
+  display: none;
+  gap: 18px;
 }
 
-.teacher-identity {
-  display: inline-block;
-  padding: 10px 14px;
-  background: #e2e8f0;
-  border-radius: 10px;
-  font-weight: 700;
+.active-section {
+  display: block;
 }
 
 .section-grid {
@@ -170,9 +141,7 @@ a {
 
 .summary-card,
 .panel-card,
-.info-card,
-.landing-card,
-.auth-card {
+.info-card {
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 18px;
@@ -181,10 +150,6 @@ a {
 
 .summary-card {
   padding: 18px;
-}
-
-.summary-card.mini {
-  min-height: 120px;
 }
 
 .summary-label {
@@ -196,8 +161,6 @@ a {
 
 .summary-card strong {
   font-size: 24px;
-  display: block;
-  word-break: break-word;
 }
 
 .panel-card {
@@ -214,6 +177,16 @@ a {
 
 .panel-card-header h3 {
   margin: 0;
+}
+
+.inline-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.inline-controls > * {
+  flex: 1 1 180px;
 }
 
 .stack-controls {
@@ -235,8 +208,7 @@ a {
   flex: 1 1 180px;
 }
 
-.preview-box,
-.hint-box {
+.preview-box {
   margin-top: 14px;
   padding: 14px;
   border-radius: 12px;
@@ -251,7 +223,7 @@ a {
 .data-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 1100px;
+  min-width: 1200px;
 }
 
 .data-table th,
@@ -269,7 +241,7 @@ a {
 }
 
 .table-input {
-  min-width: 140px;
+  min-width: 150px;
 }
 
 .small-btn {
@@ -294,81 +266,21 @@ a {
   padding: 0;
 }
 
-.landing-shell,
-.auth-shell {
-  min-height: 100vh;
-  display: grid;
-  place-items: center;
-  padding: 24px;
-}
-
-.landing-card,
-.auth-card {
-  max-width: 1000px;
-  width: 100%;
-  padding: 28px;
-}
-
-.landing-subtitle,
-.muted {
-  color: #64748b;
-}
-
-.landing-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
-  margin-top: 20px;
-}
-
-.simple-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.landing-link-card {
-  display: block;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
-  border-radius: 18px;
-  padding: 20px;
-  color: #1f2937;
-}
-
-.landing-link-card h2 {
-  margin-top: 0;
-}
-
-.auth-links {
-  display: flex;
-  gap: 16px;
-  margin-top: 16px;
-  flex-wrap: wrap;
-}
-
-.status-text {
-  margin: 0;
-}
-
-.status-text.bad {
-  color: #b91c1c;
-}
-
-.student-info-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+.session-team-row {
+  margin-bottom: 10px;
 }
 
 @media (max-width: 1100px) {
-  .menu-shell {
+  .app-shell {
     grid-template-columns: 1fr;
   }
 
+  .sidebar {
+    padding-bottom: 14px;
+  }
+
   .summary-grid,
-  .two-columns,
-  .landing-grid,
-  .simple-grid,
-  .student-info-grid {
+  .two-columns {
     grid-template-columns: 1fr;
   }
 }
