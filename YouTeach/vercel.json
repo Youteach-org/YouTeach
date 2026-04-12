@@ -1,18 +1,6 @@
 ﻿{
+  "framework": null,
+  "outputDirectory": ".",
   "cleanUrls": false,
-  "trailingSlash": false,
-  "rewrites": [
-    { "source": "/", "destination": "/index.html" },
-    { "source": "/teacher", "destination": "/teacher.html" },
-    { "source": "/teacher-login", "destination": "/teacher-login.html" },
-    { "source": "/teacher-students", "destination": "/teacher-students.html" },
-    { "source": "/teacher-enrollment", "destination": "/teacher-enrollment.html" },
-    { "source": "/teacher-points", "destination": "/teacher-points.html" },
-    { "source": "/teacher-history", "destination": "/teacher-history.html" },
-    { "source": "/buzzer", "destination": "/buzzer.html" },
-    { "source": "/student", "destination": "/student.html" },
-    { "source": "/student-summary", "destination": "/student-summary.html" },
-    { "source": "/student-buzzer", "destination": "/student-buzzer.html" },
-    { "source": "/student-settings", "destination": "/student-settings.html" }
-  ]
+  "trailingSlash": false
 }
