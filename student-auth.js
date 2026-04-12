@@ -1,5 +1,5 @@
 ﻿import { db } from "./firebase.js";
-import { ref, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { ref, get, update, set } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 const SESSION_KEY = "youteachStudentKey";
 const SESSION_EXTERNAL_ID = "youteachStudentExternalId";
@@ -20,6 +20,103 @@ export function setStudentSession(studentKey, externalId) {
 export function clearStudentSession() {
   localStorage.removeItem(SESSION_KEY);
   localStorage.removeItem(SESSION_EXTERNAL_ID);
+}
+
+function todayKey() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+}
+
+export async function migrateExistingStudentsForTeacher() {
+  const groupsSnap = await get(ref(db, "groups"));
+  const groups = groupsSnap.val() || {};
+
+  if (!groups.GENERAL) {
+    await update(ref(db, "groups"), {
+      GENERAL: {
+        name: "GENERAL",
+        createdAt: Date.now()
+      }
+    });
+  }
+
+  const studentsSnap = await get(ref(db, "students"));
+  const students = studentsSnap.val() || {};
+  const updates = {};
+
+  for (const [key, student] of Object.entries(students)) {
+    const fullName = student.fullName || student.name || "";
+    const nickname = student.nickname || (fullName ? fullName.split(" ")[0] : "Student");
+    const groupName = student.groupName || "GENERAL";
+    const blockPoints = {
+      "Block 1": Number(student?.blockPoints?.["Block 1"] || 0),
+      "Block 2": Number(student?.blockPoints?.["Block 2"] || 0),
+      "Block 3": Number(student?.blockPoints?.["Block 3"] || 0)
+    };
+
+    updates[`students/${key}/fullName`] = fullName;
+    updates[`students/${key}/name`] = fullName;
+    updates[`students/${key}/nickname`] = nickname;
+    updates[`students/${key}/groupName`] = groupName;
+    updates[`students/${key}/password`] = student.password || "1234";
+    updates[`students/${key}/blockPoints`] = blockPoints;
+  }
+
+  if (Object.keys(updates).length) {
+    await update(ref(db), updates);
+  }
+}
+
+export async function markAttendanceOnLogin(studentKey, student) {
+  const dateKey = todayKey();
+  const attendancePath = `attendance/${dateKey}/${studentKey}`;
+  const attendanceSnap = await get(ref(db, attendancePath));
+
+  if (!attendanceSnap.exists()) {
+    await set(ref(db, attendancePath), {
+      studentKey,
+      studentName: student.nickname || student.fullName || student.name || "",
+      externalId: student.studentNumber || "",
+      groupName: student.groupName || "GENERAL",
+      loginAt: Date.now(),
+      leaveAt: null,
+      leaveReason: "",
+      activeNow: true
+    });
+  } else {
+    const current = attendanceSnap.val() || {};
+    await update(ref(db, attendancePath), {
+      activeNow: true,
+      studentName: student.nickname || student.fullName || student.name || current.studentName || "",
+      externalId: student.studentNumber || current.externalId || "",
+      groupName: student.groupName || current.groupName || "GENERAL"
+    });
+  }
+
+  await update(ref(db, `students/${studentKey}`), {
+    activeNow: true,
+    lastAttendanceDate: dateKey
+  });
+
+  return dateKey;
+}
+
+export async function setStudentLeave(studentKey, reason = "") {
+  const dateKey = todayKey();
+  const attendancePath = `attendance/${dateKey}/${studentKey}`;
+  const snap = await get(ref(db, attendancePath));
+
+  if (snap.exists()) {
+    await update(ref(db, attendancePath), {
+      activeNow: false,
+      leaveAt: Date.now(),
+      leaveReason: reason
+    });
+  }
+
+  await update(ref(db, `students/${studentKey}`), {
+    activeNow: false
+  });
 }
 
 export async function loginStudentByExternalIdAndPassword(externalId, password) {
