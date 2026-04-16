@@ -1,10 +1,55 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>YouTeach - Points / Export</title>
   <link rel="stylesheet" href="styles.css">
+  <style>
+    .points-action-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .points-action-row button {
+      flex: 0 0 auto;
+      min-width: 148px;
+      padding: 10px 12px;
+    }
+
+    .points-panel-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .points-subcard {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 14px;
+    }
+
+    .points-subcard h4 {
+      margin: 0 0 12px 0;
+    }
+
+    .hint-box {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 12px;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 1100px) {
+      .points-panel-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
 </head>
 <body>
   <button id="menuToggle" class="hamburger-btn" aria-label="Open menu">
@@ -34,7 +79,7 @@
       <header class="topbar">
         <div>
           <h2>Points / Export</h2>
-          <p>Adjust student points and export block results</p>
+          <p>Adjust exam points, import exam scores, and export block results</p>
         </div>
         <div class="topbar-right">
           <span id="teacherIdentity" class="teacher-identity">Teacher</span>
@@ -44,7 +89,7 @@
       <div class="section-grid two-columns">
         <div class="panel-card">
           <div class="panel-card-header">
-            <h3>Adjust Student Points</h3>
+            <h3>Manual Student Exam Update</h3>
           </div>
 
           <div class="stack-controls">
@@ -57,48 +102,100 @@
               <option value="Block 2">Block 2</option>
               <option value="Block 3">Block 3</option>
             </select>
-            <input id="manualPointsInput" type="number" step="1" placeholder="Use positive or negative number">
-            <button id="applyManualPointsBtn">Update Points</button>
           </div>
 
           <div id="manualStudentPreview" class="preview-box">No student selected.</div>
+
+          <div class="points-panel-grid" style="margin-top: 14px;">
+            <div class="points-subcard">
+              <h4>Exam Score</h4>
+              <div class="stack-controls">
+                <select id="manualExamTypeSelect">
+                  <option value="written">Written Exam</option>
+                  <option value="oral">Oral Exam</option>
+                  <option value="verbs">Verb Exam</option>
+                </select>
+                <input id="manualExamPointsInput" type="number" step="1" placeholder="Score value">
+              </div>
+              <div class="points-action-row">
+                <button id="saveExamExactBtn">Save Exact Score</button>
+                <button id="addExamDeltaBtn">Add Exam Points</button>
+              </div>
+            </div>
+
+            <div class="points-subcard">
+              <h4>Block Control / Export</h4>
+              <div class="stack-controls">
+                <select id="activeBlockSelect">
+                  <option value="Block 1">Block 1</option>
+                  <option value="Block 2">Block 2</option>
+                  <option value="Block 3">Block 3</option>
+                </select>
+
+                <div class="points-action-row">
+                  <button id="saveBlockBtn">Save Active Block</button>
+                  <button id="closeBlockBtn">Close Block</button>
+                  <button id="reopenBlockBtn">Reopen Block</button>
+                </div>
+
+                <select id="exportBlockSelect">
+                  <option value="Block 1">Block 1</option>
+                  <option value="Block 2">Block 2</option>
+                  <option value="Block 3">Block 3</option>
+                </select>
+                <select id="exportGroupSelect">
+                  <option value="">All groups</option>
+                </select>
+
+                <div class="points-action-row">
+                  <button id="exportBlockBtn">Download CSV</button>
+                </div>
+              </div>
+
+              <div class="preview-box" style="margin-top: 12px;">
+                <div id="currentBlockLabel">Current active block: Block 1</div>
+                <div id="currentBlockStatusLabel">Current block status: OPEN</div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="panel-card">
           <div class="panel-card-header">
-            <h3>Block Control / Export</h3>
+            <h3>Import Exam Scores (CSV / Excel)</h3>
           </div>
 
           <div class="stack-controls">
-            <select id="activeBlockSelect">
+            <input id="examImportFile" type="file" accept=".csv,.xlsx,.xls">
+            <select id="importBlockSelect">
               <option value="Block 1">Block 1</option>
               <option value="Block 2">Block 2</option>
               <option value="Block 3">Block 3</option>
             </select>
-            <button id="saveBlockBtn">Save Active Block</button>
-            <button id="closeBlockBtn">Close Block</button>
-            <button id="reopenBlockBtn">Reopen Block</button>
+            <select id="importModeSelect">
+              <option value="replace">Replace values</option>
+              <option value="add">Add values</option>
+            </select>
 
-            <select id="exportBlockSelect">
-              <option value="Block 1">Block 1</option>
-              <option value="Block 2">Block 2</option>
-              <option value="Block 3">Block 3</option>
-            </select>
-            <select id="exportGroupSelect">
-              <option value="">All groups</option>
-            </select>
-            <button id="exportBlockBtn">Download CSV</button>
+            <div class="points-action-row">
+              <button id="importExamScoresBtn">Import Exam Scores</button>
+            </div>
           </div>
 
-          <div class="preview-box">
-            <div id="currentBlockLabel">Current active block: Block 1</div>
-            <div id="currentBlockStatusLabel">Current block status: OPEN</div>
+          <div class="hint-box">
+            Accepted headers: <strong>externalId</strong> or <strong>studentNumber</strong>, and optionally
+            <strong>internalId</strong>, <strong>nickname</strong>, <strong>fullName</strong>, <strong>block</strong>,
+            <strong>written</strong>, <strong>oral</strong>, <strong>verbs</strong>.
+            If the file does not include <strong>block</strong>, the selected import block will be used.
           </div>
+
+          <div id="importResultBox" class="preview-box" style="margin-top: 14px;">No import executed yet.</div>
         </div>
       </div>
     </main>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script type="module" src="teacher-points.js"></script>
 </body>
 </html>

@@ -14,7 +14,9 @@ const studentIdentity = document.getElementById("studentIdentity");
 const displayNameCard = document.getElementById("displayNameCard");
 const groupCard = document.getElementById("groupCard");
 const activeBlockCard = document.getElementById("activeBlockCard");
+const totalBlockPointsCard = document.getElementById("totalBlockPointsCard");
 const officialPointsCard = document.getElementById("officialPointsCard");
+const extraPointsCard = document.getElementById("extraPointsCard");
 const liveTeamPointsCard = document.getElementById("liveTeamPointsCard");
 const liveStudentPointsCard = document.getElementById("liveStudentPointsCard");
 const writtenExamCard = document.getElementById("writtenExamCard");
@@ -31,16 +33,21 @@ let selectedBlock = "";
 
 menuToggle.addEventListener("click", () => sidebar.classList.toggle("sidebar-open"));
 
+function formatDate(timestamp) {
+  if (!timestamp) return "Unknown date";
+  return new Date(timestamp).toLocaleString();
+}
+
 function getDisplayName(student) {
   if (!student) return "Student";
   return (
     student.nickname ||
-    (student.fullName || student.name || "").split(" ")[0] ||
+    ((student.fullName || student.name || "").split(" ")[0]) ||
     "Student"
   );
 }
 
-function getBaseBlockPoints(student, blockName) {
+function getExtraPoints(student, blockName) {
   return Number(student?.blockPoints?.[blockName] || 0);
 }
 
@@ -54,14 +61,8 @@ function getExamPoints(student, blockName) {
 }
 
 function getOfficialPoints(student, blockName) {
-  const basePoints = getBaseBlockPoints(student, blockName);
   const examPoints = getExamPoints(student, blockName);
-  return basePoints + examPoints.written + examPoints.oral + examPoints.verbs;
-}
-
-function formatDate(timestamp) {
-  if (!timestamp) return "Unknown date";
-  return new Date(timestamp).toLocaleString();
+  return examPoints.written + examPoints.oral + examPoints.verbs;
 }
 
 function getAvailableBlocks() {
@@ -121,18 +122,24 @@ function renderAll() {
   ensureSelectedBlock();
 
   const displayName = getDisplayName(currentStudent);
-  const currentTeam = currentSession?.assignments?.[studentKey] || "No active team";
-  const liveTeamPoints = Number(currentSession?.liveTeamPoints?.[currentTeam] || 0);
-  const liveStudentPoints = Number(currentSession?.liveStudentPoints?.[studentKey] || 0);
+  const activeBlock = settingsCache.activeBlock || "Block 1";
+  const currentTeam = currentSession?.assignments?.[studentKey] || "";
+  const shouldUseLivePoints = selectedBlock === activeBlock;
+  const liveTeamPoints = shouldUseLivePoints ? Number(currentSession?.liveTeamPoints?.[currentTeam] || 0) : 0;
+  const liveStudentPoints = shouldUseLivePoints ? Number(currentSession?.liveStudentPoints?.[studentKey] || 0) : 0;
   const examPoints = getExamPoints(currentStudent, selectedBlock);
   const officialPoints = getOfficialPoints(currentStudent, selectedBlock);
+  const extraPoints = getExtraPoints(currentStudent, selectedBlock);
+  const totalBlockPoints = officialPoints + extraPoints;
   const isClosed = !!settingsCache?.closedBlocks?.[selectedBlock];
 
   studentIdentity.textContent = displayName;
   displayNameCard.textContent = displayName;
   groupCard.textContent = currentStudent.groupName || "";
   activeBlockCard.textContent = `${selectedBlock}${isClosed ? " (CLOSED)" : " (OPEN)"}`;
+  totalBlockPointsCard.textContent = String(totalBlockPoints);
   officialPointsCard.textContent = String(officialPoints);
+  extraPointsCard.textContent = String(extraPoints);
   liveTeamPointsCard.textContent = String(liveTeamPoints);
   liveStudentPointsCard.textContent = String(liveStudentPoints);
   writtenExamCard.textContent = String(examPoints.written);
