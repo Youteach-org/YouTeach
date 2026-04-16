@@ -1,4 +1,4 @@
-﻿import { db } from "./firebase.js";
+import { db } from "./firebase.js";
 import { ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
 import { migrateExistingStudentsForTeacher } from "./student-auth.js";
@@ -9,6 +9,9 @@ const menuToggle = document.getElementById("menuToggle");
 const sidebar = document.getElementById("sidebar");
 const teacherIdentity = document.getElementById("teacherIdentity");
 const logoutBtn = document.getElementById("logoutBtn");
+const groupFilter = document.getElementById("groupFilter");
+const selectedGroupCard = document.getElementById("selectedGroupCard");
+const studentsInGroupCard = document.getElementById("studentsInGroupCard");
 const searchStudentInput = document.getElementById("searchStudent");
 const studentsTableBody = document.getElementById("studentsTableBody");
 
@@ -18,6 +21,7 @@ menuToggle.addEventListener("click", () => sidebar.classList.toggle("sidebar-ope
 
 let studentsCache = {};
 let groupsCache = {};
+let selectedGroup = "";
 
 function normalizeText(text) {
   return String(text || "")
@@ -25,6 +29,20 @@ function normalizeText(text) {
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .trim();
+}
+
+function getAllGroupNames() {
+  const names = new Set();
+
+  Object.keys(groupsCache || {}).forEach((groupName) => {
+    if (groupName) names.add(groupName);
+  });
+
+  Object.values(studentsCache || {}).forEach((student) => {
+    if (student?.groupName) names.add(student.groupName);
+  });
+
+  return Array.from(names).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
 }
 
 function ensureBlockPointsObject(student) {
@@ -35,55 +53,109 @@ function ensureBlockPointsObject(student) {
   };
 }
 
-function groupOptions(selectedGroup) {
-  const groups = Object.keys(groupsCache || {}).sort();
-  return ['<option value="">No group</option>']
-    .concat(groups.map((group) => `<option value="${group}" ${group === selectedGroup ? "selected" : ""}>${group}</option>`))
+function ensureExamPointsObject(student) {
+  const makeBlock = (blockName) => ({
+    written: Number(student?.examPoints?.[blockName]?.written || 0),
+    oral: Number(student?.examPoints?.[blockName]?.oral || 0),
+    verbs: Number(student?.examPoints?.[blockName]?.verbs || 0)
+  });
+
+  return {
+    "Block 1": makeBlock("Block 1"),
+    "Block 2": makeBlock("Block 2"),
+    "Block 3": makeBlock("Block 3")
+  };
+}
+
+function getTotalPointsForBlock(student, blockName) {
+  const blockPoints = ensureBlockPointsObject(student);
+  const examPoints = ensureExamPointsObject(student);
+  const examTotal =
+    Number(examPoints[blockName]?.written || 0) +
+    Number(examPoints[blockName]?.oral || 0) +
+    Number(examPoints[blockName]?.verbs || 0);
+
+  return Number(blockPoints[blockName] || 0) + examTotal;
+}
+
+function getGroupOptionsHtml(selectedValue) {
+  const groups = getAllGroupNames();
+  if (!groups.length) {
+    return '<option value="">No groups available</option>';
+  }
+
+  return groups
+    .map((groupName) => `<option value="${groupName}" ${groupName === selectedValue ? "selected" : ""}>${groupName}</option>`)
     .join("");
 }
 
-function renderStudents() {
-  const query = normalizeText(searchStudentInput.value);
+function renderGroupFilter() {
+  const groups = getAllGroupNames();
 
-  const entries = Object.entries(studentsCache || {}).filter(([, student]) => {
-    const searchable = normalizeText([
-      student.nickname || (student.fullName || student.nickname || (student.fullName || student.name || "").split(" ")[0] || "").split(" ")[0] || student.nickname || (student.fullName || student.name || "").split(" ")[0] || "",
-      student.nickname || "",
-      student.studentNumber || "",
-      student.id || "",
-      student.groupName || ""
-    ].join(" "));
-    return !query || searchable.includes(query);
-  });
-
-  if (!entries.length) {
-    studentsTableBody.innerHTML = `<tr><td colspan="12">No students found.</td></tr>`;
+  if (!groups.length) {
+    selectedGroup = "";
+    groupFilter.innerHTML = '<option value="">No groups available</option>';
     return;
   }
 
-  studentsTableBody.innerHTML = entries.map(([key, student]) => {
-    const blockPoints = ensureBlockPointsObject(student);
-    return `
-      <tr>
-        <td>${student.nickname || (student.fullName || student.nickname || (student.fullName || student.name || "").split(" ")[0] || "").split(" ")[0] || student.nickname || (student.fullName || student.name || "").split(" ")[0] || ""}</td>
-        <td>${student.nickname || ""}</td>
-        <td>${student.studentNumber || ""}</td>
-        <td>${student.id || ""}</td>
-        <td>${student.groupName || ""}</td>
-        <td>${student.activeNow ? "YES" : "NO"}</td>
-        <td>${blockPoints["Block 1"]}</td>
-        <td>${blockPoints["Block 2"]}</td>
-        <td>${blockPoints["Block 3"]}</td>
-        <td><input class="table-input" id="nickname-${key}" value="${(student.nickname || "").replace(/"/g, "&quot;")}"></td>
-        <td>
-          <select class="table-input" id="groupName-${key}">
-            ${groupOptions(student.groupName || "")}
-          </select>
-        </td>
-        <td><button class="small-btn" onclick="window.saveStudentRow('${key}')">Save</button></td>
-      </tr>
-    `;
-  }).join("");
+  if (!selectedGroup || !groups.includes(selectedGroup)) {
+    selectedGroup = groups[0];
+  }
+
+  groupFilter.innerHTML = getGroupOptionsHtml(selectedGroup);
+  groupFilter.value = selectedGroup;
+}
+
+function getFilteredEntries() {
+  const query = normalizeText(searchStudentInput.value);
+
+  return Object.entries(studentsCache || {}).filter(([, student]) => {
+    const matchesGroup = !selectedGroup || (student.groupName || "") === selectedGroup;
+    if (!matchesGroup) return false;
+
+    const searchable = normalizeText([
+      student.fullName || student.name || "",
+      student.nickname || "",
+      student.studentNumber || "",
+      student.id || ""
+    ].join(" "));
+
+    return !query || searchable.includes(query);
+  });
+}
+
+function renderStudents() {
+  renderGroupFilter();
+
+  const entries = getFilteredEntries();
+
+  selectedGroupCard.textContent = selectedGroup || "No group selected";
+  studentsInGroupCard.textContent = String(entries.length);
+
+  if (!entries.length) {
+    studentsTableBody.innerHTML = `<tr><td colspan="11">No students found for this group.</td></tr>`;
+    return;
+  }
+
+  studentsTableBody.innerHTML = entries.map(([key, student]) => `
+    <tr>
+      <td>${student.fullName || student.name || student.nickname || ""}</td>
+      <td>${student.nickname || ""}</td>
+      <td>${student.studentNumber || ""}</td>
+      <td>${student.id || ""}</td>
+      <td>${student.activeNow ? "YES" : "NO"}</td>
+      <td>${getTotalPointsForBlock(student, "Block 1")}</td>
+      <td>${getTotalPointsForBlock(student, "Block 2")}</td>
+      <td>${getTotalPointsForBlock(student, "Block 3")}</td>
+      <td><input class="table-input" id="nickname-${key}" value="${(student.nickname || "").replace(/"/g, "&quot;")}"></td>
+      <td>
+        <select class="table-input" id="groupName-${key}">
+          ${getGroupOptionsHtml(student.groupName || selectedGroup || "")}
+        </select>
+      </td>
+      <td><button class="small-btn" onclick="window.saveStudentRow('${key}')">Save</button></td>
+    </tr>
+  `).join("");
 }
 
 window.saveStudentRow = async function(studentKey) {
@@ -97,6 +169,11 @@ window.saveStudentRow = async function(studentKey) {
 
   alert("Student updated.");
 };
+
+groupFilter.addEventListener("change", () => {
+  selectedGroup = groupFilter.value || "";
+  renderStudents();
+});
 
 searchStudentInput.addEventListener("input", renderStudents);
 
@@ -117,4 +194,3 @@ onValue(ref(db, "groups"), (snapshot) => {
   groupsCache = snapshot.val() || {};
   renderStudents();
 });
-

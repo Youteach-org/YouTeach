@@ -31,7 +31,7 @@
       <header class="topbar">
         <div>
           <h2>My Summary</h2>
-          <p>Official points, team points, student points and history by block</p>
+          <p>Official points, exam points, live points and history by block</p>
         </div>
         <div class="topbar-right">
           <span id="studentIdentity" class="teacher-identity">Student</span>
@@ -51,36 +51,36 @@
           <span class="summary-label">Viewing Block</span>
           <strong id="activeBlockCard">---</strong>
         </div>
-        <div class="summary-card">
-          <span class="summary-label">Official Points</span>
-          <strong id="officialPointsCard">---</strong>
-        </div>
-      </div>
-
-      <div class="panel-card">
-        <div class="panel-card-header">
-          <h3>Select Block</h3>
-        </div>
-
-        <div class="student-info-grid">
-          <div class="summary-card mini">
-            <span class="summary-label">Block</span>
-            <select id="blockSelector" class="input-like">
-              <option value="Block 1">Block 1</option>
-              <option value="Block 2">Block 2</option>
-              <option value="Block 3">Block 3</option>
-            </select>
-          </div>
-        </div>
       </div>
 
       <div class="section-grid two-columns">
         <div class="panel-card">
           <div class="panel-card-header">
-            <h3>Live Points</h3>
+            <h3>Select Block</h3>
           </div>
 
           <div class="student-info-grid">
+            <div class="summary-card mini">
+              <span class="summary-label">Block</span>
+              <select id="blockSelector" class="table-input">
+                <option value="Block 1">Block 1</option>
+                <option value="Block 2">Block 2</option>
+                <option value="Block 3">Block 3</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel-card">
+          <div class="panel-card-header">
+            <h3>Points Overview</h3>
+          </div>
+
+          <div class="student-info-grid">
+            <div class="summary-card mini">
+              <span class="summary-label">Official Points</span>
+              <strong id="officialPointsCard">---</strong>
+            </div>
             <div class="summary-card mini">
               <span class="summary-label">Team Points</span>
               <strong id="liveTeamPointsCard">---</strong>
@@ -88,6 +88,18 @@
             <div class="summary-card mini">
               <span class="summary-label">Student Points</span>
               <strong id="liveStudentPointsCard">---</strong>
+            </div>
+            <div class="summary-card mini">
+              <span class="summary-label">Written Exam</span>
+              <strong id="writtenExamCard">---</strong>
+            </div>
+            <div class="summary-card mini">
+              <span class="summary-label">Oral Exam</span>
+              <strong id="oralExamCard">---</strong>
+            </div>
+            <div class="summary-card mini">
+              <span class="summary-label">Verb Exam</span>
+              <strong id="verbsExamCard">---</strong>
             </div>
           </div>
         </div>

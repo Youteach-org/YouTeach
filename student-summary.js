@@ -17,6 +17,9 @@ const activeBlockCard = document.getElementById("activeBlockCard");
 const officialPointsCard = document.getElementById("officialPointsCard");
 const liveTeamPointsCard = document.getElementById("liveTeamPointsCard");
 const liveStudentPointsCard = document.getElementById("liveStudentPointsCard");
+const writtenExamCard = document.getElementById("writtenExamCard");
+const oralExamCard = document.getElementById("oralExamCard");
+const verbsExamCard = document.getElementById("verbsExamCard");
 const studentHistoryTableBody = document.getElementById("studentHistoryTableBody");
 const blockSelector = document.getElementById("blockSelector");
 
@@ -28,8 +31,32 @@ let selectedBlock = "";
 
 menuToggle.addEventListener("click", () => sidebar.classList.toggle("sidebar-open"));
 
-function getStudentBlockPoints(student, blockName) {
+function getDisplayName(student) {
+  if (!student) return "Student";
+  return (
+    student.nickname ||
+    (student.fullName || student.name || "").split(" ")[0] ||
+    "Student"
+  );
+}
+
+function getBaseBlockPoints(student, blockName) {
   return Number(student?.blockPoints?.[blockName] || 0);
+}
+
+function getExamPoints(student, blockName) {
+  const examBlock = student?.examPoints?.[blockName] || {};
+  return {
+    written: Number(examBlock.written || 0),
+    oral: Number(examBlock.oral || 0),
+    verbs: Number(examBlock.verbs || 0)
+  };
+}
+
+function getOfficialPoints(student, blockName) {
+  const basePoints = getBaseBlockPoints(student, blockName);
+  const examPoints = getExamPoints(student, blockName);
+  return basePoints + examPoints.written + examPoints.oral + examPoints.verbs;
 }
 
 function formatDate(timestamp) {
@@ -37,23 +64,12 @@ function formatDate(timestamp) {
   return new Date(timestamp).toLocaleString();
 }
 
-function getDisplayName(student) {
-  if (!student) return "Student";
-  return (
-    student.nickname ||
-    ((student.fullName || student.name || "").split(" ")[0]) ||
-    "Student"
-  );
-}
-
 function getAvailableBlocks() {
-  const blockSet = new Set();
+  const blockSet = new Set(["Block 1", "Block 2", "Block 3"]);
 
-  const defaultBlocks = ["Block 1", "Block 2", "Block 3"];
-  defaultBlocks.forEach((b) => blockSet.add(b));
-
-  Object.keys(currentStudent?.blockPoints || {}).forEach((b) => blockSet.add(b));
-  Object.keys(settingsCache?.closedBlocks || {}).forEach((b) => blockSet.add(b));
+  Object.keys(currentStudent?.blockPoints || {}).forEach((blockName) => blockSet.add(blockName));
+  Object.keys(currentStudent?.examPoints || {}).forEach((blockName) => blockSet.add(blockName));
+  Object.keys(settingsCache?.closedBlocks || {}).forEach((blockName) => blockSet.add(blockName));
 
   if (settingsCache?.activeBlock) {
     blockSet.add(settingsCache.activeBlock);
@@ -69,11 +85,10 @@ function ensureSelectedBlock() {
     selectedBlock = settingsCache.activeBlock || availableBlocks[0] || "Block 1";
   }
 
-  const optionsHtml = availableBlocks
+  blockSelector.innerHTML = availableBlocks
     .map((blockName) => `<option value="${blockName}">${blockName}</option>`)
     .join("");
 
-  blockSelector.innerHTML = optionsHtml;
   blockSelector.value = selectedBlock;
 }
 
@@ -109,7 +124,8 @@ function renderAll() {
   const currentTeam = currentSession?.assignments?.[studentKey] || "No active team";
   const liveTeamPoints = Number(currentSession?.liveTeamPoints?.[currentTeam] || 0);
   const liveStudentPoints = Number(currentSession?.liveStudentPoints?.[studentKey] || 0);
-  const officialPoints = getStudentBlockPoints(currentStudent, selectedBlock);
+  const examPoints = getExamPoints(currentStudent, selectedBlock);
+  const officialPoints = getOfficialPoints(currentStudent, selectedBlock);
   const isClosed = !!settingsCache?.closedBlocks?.[selectedBlock];
 
   studentIdentity.textContent = displayName;
@@ -119,6 +135,9 @@ function renderAll() {
   officialPointsCard.textContent = String(officialPoints);
   liveTeamPointsCard.textContent = String(liveTeamPoints);
   liveStudentPointsCard.textContent = String(liveStudentPoints);
+  writtenExamCard.textContent = String(examPoints.written);
+  oralExamCard.textContent = String(examPoints.oral);
+  verbsExamCard.textContent = String(examPoints.verbs);
 
   renderHistory(selectedBlock);
 }
