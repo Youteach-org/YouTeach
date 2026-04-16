@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -31,7 +31,7 @@
       <header class="topbar">
         <div>
           <h2>My Summary</h2>
-          <p>Points, team and history</p>
+          <p>Official points, team points, student points and history by block</p>
         </div>
         <div class="topbar-right">
           <span id="studentIdentity" class="teacher-identity">Student</span>
@@ -48,12 +48,29 @@
           <strong id="groupCard">---</strong>
         </div>
         <div class="summary-card">
-          <span class="summary-label">Current Block</span>
+          <span class="summary-label">Viewing Block</span>
           <strong id="activeBlockCard">---</strong>
         </div>
         <div class="summary-card">
           <span class="summary-label">Official Points</span>
           <strong id="officialPointsCard">---</strong>
+        </div>
+      </div>
+
+      <div class="panel-card">
+        <div class="panel-card-header">
+          <h3>Select Block</h3>
+        </div>
+
+        <div class="student-info-grid">
+          <div class="summary-card mini">
+            <span class="summary-label">Block</span>
+            <select id="blockSelector" class="input-like">
+              <option value="Block 1">Block 1</option>
+              <option value="Block 2">Block 2</option>
+              <option value="Block 3">Block 3</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -65,22 +82,14 @@
 
           <div class="student-info-grid">
             <div class="summary-card mini">
-              <span class="summary-label">Live Team Points</span>
+              <span class="summary-label">Team Points</span>
               <strong id="liveTeamPointsCard">---</strong>
             </div>
             <div class="summary-card mini">
-              <span class="summary-label">Pending Student Points</span>
+              <span class="summary-label">Student Points</span>
               <strong id="liveStudentPointsCard">---</strong>
             </div>
           </div>
-        </div>
-
-        <div class="panel-card">
-          <div class="panel-card-header">
-            <h3>Buzzer Status</h3>
-          </div>
-
-          <div id="buzzerStatusBox" class="preview-box">---</div>
         </div>
       </div>
 
