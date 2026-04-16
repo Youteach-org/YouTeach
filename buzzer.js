@@ -1,4 +1,4 @@
-﻿import { db } from "./firebase.js";
+import { db } from "./firebase.js";
 import {
   ref,
   push,
@@ -11,6 +11,8 @@ import {
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
 
 requireTeacherAuth();
+
+const WORKING_GROUP_KEY = "youteachWorkingGroup";
 
 const menuToggle = document.getElementById("menuToggle");
 const sidebar = document.getElementById("sidebar");
@@ -163,11 +165,41 @@ function activePresentStudentsForGroup(groupName) {
     .filter(([, student]) => Boolean(student));
 }
 
+function getStoredWorkingGroup() {
+  return sessionStorage.getItem(WORKING_GROUP_KEY) || "";
+}
+
+function setStoredWorkingGroup(groupName) {
+  if (groupName) {
+    sessionStorage.setItem(WORKING_GROUP_KEY, groupName);
+  } else {
+    sessionStorage.removeItem(WORKING_GROUP_KEY);
+  }
+}
+
+function getPreferredGroup(groups) {
+  if (sessionCache?.groupName && groups.includes(sessionCache.groupName)) {
+    return sessionCache.groupName;
+  }
+
+  const storedGroup = getStoredWorkingGroup();
+  if (storedGroup && groups.includes(storedGroup)) {
+    return storedGroup;
+  }
+
+  return groups[0] || "";
+}
+
 function renderGroupOptions() {
   const groups = Object.keys(groupsCache || {}).sort();
-  const selected = groupSelect.value;
+  const preferredGroup = getPreferredGroup(groups);
+
   groupSelect.innerHTML = '<option value="">Select group</option>' + groups.map((group) => `<option value="${group}">${group}</option>`).join("");
-  if (groups.includes(selected)) groupSelect.value = selected;
+
+  if (preferredGroup) {
+    groupSelect.value = preferredGroup;
+    setStoredWorkingGroup(preferredGroup);
+  }
 }
 
 function renderHeader() {
@@ -191,7 +223,7 @@ function renderResult() {
   const buzzer = sessionCache.buzzer || {};
   const currentBuzz = buzzer.currentBuzz || null;
 
-  resultGroup.textContent = sessionCache.groupName || "---";
+  resultGroup.textContent = sessionCache.groupName || groupSelect.value || "---";
   resultRound.textContent = buzzer.roundOpen ? "OPEN" : "CLOSED";
   resultBuzz.textContent = currentBuzz ? `${currentBuzz.name} (${currentBuzz.team})` : "None yet";
   resultLocked.textContent = String(Object.keys(buzzer.lockedOut || {}).length);
@@ -234,7 +266,11 @@ function renderLiveScores() {
   liveScores.innerHTML = teamCards.join("") || '<div class="empty-state">No live scores yet.</div>';
 }
 
-groupSelect.addEventListener("change", renderHeader);
+groupSelect.addEventListener("change", () => {
+  setStoredWorkingGroup(groupSelect.value || "");
+  renderHeader();
+  renderResult();
+});
 
 createTeamsBtn.addEventListener("click", async () => {
   const numTeams = parseInt(numTeamsInput.value, 10);
@@ -287,6 +323,7 @@ createTeamsBtn.addEventListener("click", async () => {
     }
   });
 
+  setStoredWorkingGroup(groupName);
   await savePairHistory(smartTeams);
   alert("Smart teams created.");
 });
@@ -512,6 +549,7 @@ onValue(ref(db, "students"), (snapshot) => {
 onValue(ref(db, "groups"), (snapshot) => {
   groupsCache = snapshot.val() || {};
   renderGroupOptions();
+  renderHeader();
 });
 
 onValue(ref(db, `attendance/${todayKey()}`), (snapshot) => {
@@ -531,6 +569,10 @@ onValue(ref(db, "settings"), (snapshot) => {
 
 onValue(ref(db, "session/current"), (snapshot) => {
   sessionCache = snapshot.val() || null;
+  if (sessionCache?.groupName) {
+    setStoredWorkingGroup(sessionCache.groupName);
+  }
+  renderGroupOptions();
   renderHeader();
   renderResult();
   renderLiveScores();

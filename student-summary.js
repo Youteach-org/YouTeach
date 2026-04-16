@@ -13,17 +13,19 @@ const sidebar = document.getElementById("sidebar");
 const studentIdentity = document.getElementById("studentIdentity");
 const displayNameCard = document.getElementById("displayNameCard");
 const groupCard = document.getElementById("groupCard");
-const activeBlockCard = document.getElementById("activeBlockCard");
+const classActiveBlockHero = document.getElementById("classActiveBlockHero");
+const classActiveBlockStatus = document.getElementById("classActiveBlockStatus");
 const totalBlockPointsCard = document.getElementById("totalBlockPointsCard");
-const officialPointsCard = document.getElementById("officialPointsCard");
+const examBaseCard = document.getElementById("examBaseCard");
 const extraPointsCard = document.getElementById("extraPointsCard");
 const liveTeamPointsCard = document.getElementById("liveTeamPointsCard");
 const liveStudentPointsCard = document.getElementById("liveStudentPointsCard");
 const writtenExamCard = document.getElementById("writtenExamCard");
 const oralExamCard = document.getElementById("oralExamCard");
 const verbsExamCard = document.getElementById("verbsExamCard");
-const studentHistoryTableBody = document.getElementById("studentHistoryTableBody");
 const blockSelector = document.getElementById("blockSelector");
+const viewingBlockStatus = document.getElementById("viewingBlockStatus");
+const studentHistoryTableBody = document.getElementById("studentHistoryTableBody");
 
 let currentStudent = null;
 let currentSession = null;
@@ -60,9 +62,9 @@ function getExamPoints(student, blockName) {
   };
 }
 
-function getOfficialPoints(student, blockName) {
-  const examPoints = getExamPoints(student, blockName);
-  return examPoints.written + examPoints.oral + examPoints.verbs;
+function getExamBase(student, blockName) {
+  const exam = getExamPoints(student, blockName);
+  return exam.written + exam.oral + exam.verbs;
 }
 
 function getAvailableBlocks() {
@@ -81,7 +83,6 @@ function getAvailableBlocks() {
 
 function ensureSelectedBlock() {
   const availableBlocks = getAvailableBlocks();
-
   if (!selectedBlock || !availableBlocks.includes(selectedBlock)) {
     selectedBlock = settingsCache.activeBlock || availableBlocks[0] || "Block 1";
   }
@@ -124,21 +125,25 @@ function renderAll() {
   const displayName = getDisplayName(currentStudent);
   const activeBlock = settingsCache.activeBlock || "Block 1";
   const currentTeam = currentSession?.assignments?.[studentKey] || "";
-  const shouldUseLivePoints = selectedBlock === activeBlock;
-  const liveTeamPoints = shouldUseLivePoints ? Number(currentSession?.liveTeamPoints?.[currentTeam] || 0) : 0;
-  const liveStudentPoints = shouldUseLivePoints ? Number(currentSession?.liveStudentPoints?.[studentKey] || 0) : 0;
+  const showLivePoints = selectedBlock === activeBlock;
+  const liveTeamPoints = showLivePoints ? Number(currentSession?.liveTeamPoints?.[currentTeam] || 0) : 0;
+  const liveStudentPoints = showLivePoints ? Number(currentSession?.liveStudentPoints?.[studentKey] || 0) : 0;
   const examPoints = getExamPoints(currentStudent, selectedBlock);
-  const officialPoints = getOfficialPoints(currentStudent, selectedBlock);
+  const examBase = getExamBase(currentStudent, selectedBlock);
   const extraPoints = getExtraPoints(currentStudent, selectedBlock);
-  const totalBlockPoints = officialPoints + extraPoints;
-  const isClosed = !!settingsCache?.closedBlocks?.[selectedBlock];
+  const totalBlockPoints = examBase + extraPoints + liveTeamPoints + liveStudentPoints;
+  const activeBlockClosed = !!settingsCache?.closedBlocks?.[activeBlock];
+  const selectedBlockClosed = !!settingsCache?.closedBlocks?.[selectedBlock];
 
   studentIdentity.textContent = displayName;
   displayNameCard.textContent = displayName;
   groupCard.textContent = currentStudent.groupName || "";
-  activeBlockCard.textContent = `${selectedBlock}${isClosed ? " (CLOSED)" : " (OPEN)"}`;
+  classActiveBlockHero.textContent = activeBlock;
+  classActiveBlockStatus.textContent = activeBlockClosed ? "Closed block" : "Open block";
+  viewingBlockStatus.textContent = selectedBlockClosed ? "Selected block is closed." : "Selected block is open.";
+
   totalBlockPointsCard.textContent = String(totalBlockPoints);
-  officialPointsCard.textContent = String(officialPoints);
+  examBaseCard.textContent = String(examBase);
   extraPointsCard.textContent = String(extraPoints);
   liveTeamPointsCard.textContent = String(liveTeamPoints);
   liveStudentPointsCard.textContent = String(liveStudentPoints);

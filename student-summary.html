@@ -6,14 +6,110 @@
   <title>YouTeach - My Summary</title>
   <link rel="stylesheet" href="styles.css">
   <style>
-    .summary-overview-grid {
+    .summary-top-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.3fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .summary-hero-card {
+      background: linear-gradient(135deg, #eff6ff, #dbeafe);
+      border: 1px solid #bfdbfe;
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+    }
+
+    .summary-hero-card .hero-label {
+      display: block;
+      font-size: 12px;
+      color: #475569;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .summary-hero-card .hero-value {
+      display: block;
+      font-size: 30px;
+      font-weight: 800;
+      color: #0f172a;
+      line-height: 1.1;
+    }
+
+    .summary-hero-card .hero-subtext {
+      margin-top: 8px;
+      font-size: 13px;
+      color: #475569;
+    }
+
+    .summary-meta-grid {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 14px;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .summary-detail-toggle {
+      margin-top: 14px;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      background: #f8fafc;
+      overflow: hidden;
+    }
+
+    .summary-detail-toggle summary {
+      cursor: pointer;
+      list-style: none;
+      padding: 12px 14px;
+      font-weight: 700;
+      background: #f8fafc;
+    }
+
+    .summary-detail-toggle summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .summary-detail-content {
+      padding: 14px;
+      border-top: 1px solid #e2e8f0;
+    }
+
+    .summary-detail-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .summary-detail-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 12px 14px;
+    }
+
+    .summary-detail-card span {
+      display: block;
+      font-size: 12px;
+      color: #64748b;
+      margin-bottom: 6px;
+    }
+
+    .summary-detail-card strong {
+      display: block;
+      font-size: 20px;
+      color: #0f172a;
+      line-height: 1.1;
     }
 
     @media (max-width: 1100px) {
-      .summary-overview-grid {
+      .summary-top-grid,
+      .summary-detail-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .summary-meta-grid {
         grid-template-columns: 1fr;
       }
     }
@@ -44,14 +140,64 @@
       <header class="topbar">
         <div>
           <h2>My Summary</h2>
-          <p>Official points, extra points and live points by block</p>
+          <p>Start with the class active block, then open details if needed</p>
         </div>
         <div class="topbar-right">
           <span id="studentIdentity" class="teacher-identity">Student</span>
         </div>
       </header>
 
-      <div class="section-grid summary-grid">
+      <div class="summary-top-grid">
+        <div class="summary-hero-card">
+          <span class="hero-label">Class Active Block</span>
+          <strong id="classActiveBlockHero" class="hero-value">Block 1</strong>
+          <div id="classActiveBlockStatus" class="hero-subtext">Open</div>
+        </div>
+
+        <div class="summary-hero-card">
+          <span class="hero-label">Total Block Points</span>
+          <strong id="totalBlockPointsCard" class="hero-value">0</strong>
+          <div class="hero-subtext">This total includes exam base, extra points, and current live points for the selected block.</div>
+
+          <details class="summary-detail-toggle">
+            <summary>Show score details</summary>
+            <div class="summary-detail-content">
+              <div class="summary-detail-grid">
+                <div class="summary-detail-card">
+                  <span>Exam Base</span>
+                  <strong id="examBaseCard">0</strong>
+                </div>
+                <div class="summary-detail-card">
+                  <span>Extra Points</span>
+                  <strong id="extraPointsCard">0</strong>
+                </div>
+                <div class="summary-detail-card">
+                  <span>Team Points</span>
+                  <strong id="liveTeamPointsCard">0</strong>
+                </div>
+                <div class="summary-detail-card">
+                  <span>Student Points</span>
+                  <strong id="liveStudentPointsCard">0</strong>
+                </div>
+                <div class="summary-detail-card">
+                  <span>Written Exam</span>
+                  <strong id="writtenExamCard">0</strong>
+                </div>
+                <div class="summary-detail-card">
+                  <span>Oral Exam</span>
+                  <strong id="oralExamCard">0</strong>
+                </div>
+                <div class="summary-detail-card">
+                  <span>Verb Exam</span>
+                  <strong id="verbsExamCard">0</strong>
+                </div>
+              </div>
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <div class="summary-meta-grid">
         <div class="summary-card">
           <span class="summary-label">Display Name</span>
           <strong id="displayNameCard">---</strong>
@@ -62,67 +208,14 @@
         </div>
         <div class="summary-card">
           <span class="summary-label">Viewing Block</span>
-          <strong id="activeBlockCard">---</strong>
-        </div>
-      </div>
-
-      <div class="section-grid two-columns">
-        <div class="panel-card">
-          <div class="panel-card-header">
-            <h3>Select Block</h3>
+          <div style="margin-top: 8px;">
+            <select id="blockSelector">
+              <option value="Block 1">Block 1</option>
+              <option value="Block 2">Block 2</option>
+              <option value="Block 3">Block 3</option>
+            </select>
           </div>
-
-          <div class="student-info-grid">
-            <div class="summary-card mini">
-              <span class="summary-label">Block</span>
-              <select id="blockSelector">
-                <option value="Block 1">Block 1</option>
-                <option value="Block 2">Block 2</option>
-                <option value="Block 3">Block 3</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <div class="panel-card">
-          <div class="panel-card-header">
-            <h3>Points Overview</h3>
-          </div>
-
-          <div class="summary-overview-grid">
-            <div class="summary-card mini">
-              <span class="summary-label">Total Block Points</span>
-              <strong id="totalBlockPointsCard">---</strong>
-            </div>
-            <div class="summary-card mini">
-              <span class="summary-label">Official Points</span>
-              <strong id="officialPointsCard">---</strong>
-            </div>
-            <div class="summary-card mini">
-              <span class="summary-label">Extra Points</span>
-              <strong id="extraPointsCard">---</strong>
-            </div>
-            <div class="summary-card mini">
-              <span class="summary-label">Team Points</span>
-              <strong id="liveTeamPointsCard">---</strong>
-            </div>
-            <div class="summary-card mini">
-              <span class="summary-label">Student Points</span>
-              <strong id="liveStudentPointsCard">---</strong>
-            </div>
-            <div class="summary-card mini">
-              <span class="summary-label">Written Exam</span>
-              <strong id="writtenExamCard">---</strong>
-            </div>
-            <div class="summary-card mini">
-              <span class="summary-label">Oral Exam</span>
-              <strong id="oralExamCard">---</strong>
-            </div>
-            <div class="summary-card mini">
-              <span class="summary-label">Verb Exam</span>
-              <strong id="verbsExamCard">---</strong>
-            </div>
-          </div>
+          <div id="viewingBlockStatus" style="margin-top: 8px; font-size: 12px; color: #64748b;">---</div>
         </div>
       </div>
 

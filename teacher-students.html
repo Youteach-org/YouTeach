@@ -8,40 +8,13 @@
   <style>
     .students-top-grid {
       display: grid;
-      grid-template-columns: 1.2fr 1fr;
-      gap: 16px;
-    }
-
-    .students-import-grid {
-      display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 16px;
+      margin-bottom: 16px;
     }
 
-    .students-action-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 10px;
-    }
-
-    .students-action-row button {
-      flex: 0 0 auto;
-      min-width: 150px;
-      padding: 10px 12px;
-    }
-
-    .hint-box {
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
-      border-radius: 12px;
-      padding: 12px;
-      line-height: 1.5;
-    }
-
-    @media (max-width: 1100px) {
-      .students-top-grid,
-      .students-import-grid {
+    @media (max-width: 1000px) {
+      .students-top-grid {
         grid-template-columns: 1fr;
       }
     }
@@ -75,7 +48,7 @@
       <header class="topbar">
         <div>
           <h2>Students</h2>
-          <p>Choose a group first, then search and update students in that group</p>
+          <p>Keep the active working group and search inside that group</p>
         </div>
         <div class="topbar-right">
           <span id="teacherIdentity" class="teacher-identity">Teacher</span>
@@ -85,81 +58,38 @@
       <div class="students-top-grid">
         <div class="panel-card">
           <div class="panel-card-header">
-            <h3>Group Filter</h3>
+            <h3>Working Group</h3>
           </div>
-
           <div class="stack-controls">
             <select id="groupFilter"></select>
-            <input id="searchStudent" placeholder="Search by name, nickname, external ID, or internal ID">
+          </div>
+          <div style="margin-top: 10px; font-size: 12px; color: #64748b;">
+            This selector preserves the current group you are working with.
           </div>
         </div>
 
         <div class="panel-card">
           <div class="panel-card-header">
-            <h3>Selected Group</h3>
+            <h3>Search Students</h3>
           </div>
-
-          <div class="student-info-grid">
-            <div class="summary-card mini">
-              <span class="summary-label">Group</span>
-              <strong id="selectedGroupCard">---</strong>
-            </div>
-            <div class="summary-card mini">
-              <span class="summary-label">Students in Group</span>
-              <strong id="studentsInGroupCard">0</strong>
-            </div>
+          <div class="stack-controls">
+            <input id="searchStudent" placeholder="Search by name, nickname, external ID, or internal ID">
           </div>
         </div>
       </div>
 
       <div class="panel-card">
-        <div class="panel-card-header">
-          <h3>Import Extra Points</h3>
-        </div>
-
-        <div class="students-import-grid">
-          <div>
-            <div class="stack-controls">
-              <input id="extraImportFile" type="file" accept=".csv,.xlsx,.xls">
-              <select id="extraImportMode">
-                <option value="replace">Replace extra points</option>
-                <option value="add">Add extra points</option>
-              </select>
-              <div class="students-action-row">
-                <button id="importExtraFileBtn">Import File</button>
-              </div>
-            </div>
-
-            <div class="hint-box" style="margin-top: 12px;">
-              File headers accepted:
-              <strong>externalId</strong> or <strong>studentNumber</strong>,
-              optionally <strong>internalId</strong>, <strong>nickname</strong>, <strong>fullName</strong>,
-              plus <strong>block1</strong>, <strong>block2</strong>, <strong>block3</strong>.
-              Missing block cells keep the current value.
-            </div>
+        <div class="student-info-grid" style="margin-bottom: 12px;">
+          <div class="summary-card mini">
+            <span class="summary-label">Selected Group</span>
+            <strong id="selectedGroupCard">---</strong>
           </div>
-
-          <div>
-            <div class="stack-controls">
-              <textarea id="extraImportTextarea" rows="8" placeholder="Paste CSV-like lines here. Example:
-externalId,block1,block2,block3
-25NC07776,10,8,9
-25NC06032,7,,10"></textarea>
-              <select id="extraPasteMode">
-                <option value="replace">Replace extra points</option>
-                <option value="add">Add extra points</option>
-              </select>
-              <div class="students-action-row">
-                <button id="importExtraTextBtn">Import Pasted List</button>
-              </div>
-            </div>
+          <div class="summary-card mini">
+            <span class="summary-label">Students in Group</span>
+            <strong id="studentsInGroupCard">0</strong>
           </div>
         </div>
 
-        <div id="studentsImportResultBox" class="preview-box" style="margin-top: 14px;">No import executed yet.</div>
-      </div>
-
-      <div class="panel-card">
         <div class="table-wrap">
           <table class="data-table">
             <thead>
@@ -188,7 +118,6 @@ externalId,block1,block2,block3
     </main>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script type="module" src="teacher-students.js"></script>
 </body>
 </html>
