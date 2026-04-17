@@ -42,7 +42,13 @@ function formatStudentLabel(student) {
 }
 
 logoutBtn.addEventListener("click", async () => {
-  const reason = prompt("Reason for leaving class (optional):", "") || "";
+  let reason = "";
+  const classEnded = settingsCache?.classEnded === true;
+
+  if (!classEnded) {
+    reason = prompt("Reason for leaving class early:", "") || "";
+  }
+
   await saveLeaveLog(studentKey, reason);
   clearStudentSession();
   window.location.href = "student.html";

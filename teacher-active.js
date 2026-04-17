@@ -1,4 +1,4 @@
-﻿import { db } from "./firebase.js";
+import { db } from "./firebase.js";
 import { ref, onValue, update, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
 
@@ -105,4 +105,80 @@ onValue(ref(db, `attendance/${todayKey()}`), (snapshot) => {
 onValue(ref(db, "groups"), (snapshot) => {
   groupsCache = snapshot.val() || {};
   renderGroupFilter();
+});
+
+const manualEarlyLeaveStudent = document.getElementById("manualEarlyLeaveStudent");
+const manualEarlyLeaveReason = document.getElementById("manualEarlyLeaveReason");
+const manualEarlyLeaveBtn = document.getElementById("manualEarlyLeaveBtn");
+const manualEarlyLeaveStatus = document.getElementById("manualEarlyLeaveStatus");
+
+function todayKey() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+}
+
+let attendanceTodayCache = {};
+let studentsActiveCache = {};
+
+function renderManualEarlyLeaveOptions() {
+  if (!manualEarlyLeaveStudent) return;
+
+  const options = Object.entries(attendanceTodayCache || {})
+    .filter(([, row]) => row.activeNow === true)
+    .map(([studentKey, row]) => {
+      const label = row.studentName || row.studentKey || studentKey;
+      const ext = row.studentNumber ? ` · ${row.studentNumber}` : "";
+      return `<option value="${studentKey}">${label}${ext}</option>`;
+    })
+    .join("");
+
+  manualEarlyLeaveStudent.innerHTML =
+    `<option value="">Select student detected today</option>` + options;
+}
+
+if (manualEarlyLeaveBtn) {
+  manualEarlyLeaveBtn.addEventListener("click", async () => {
+    const studentKey = manualEarlyLeaveStudent.value;
+    const reason = (manualEarlyLeaveReason.value || "").trim();
+
+    if (!studentKey) {
+      manualEarlyLeaveStatus.textContent = "Select a student first.";
+      manualEarlyLeaveStatus.className = "status-text bad";
+      return;
+    }
+
+    if (!reason) {
+      manualEarlyLeaveStatus.textContent = "Write a reason first.";
+      manualEarlyLeaveStatus.className = "status-text bad";
+      return;
+    }
+
+    try {
+      const leaveAt = Date.now();
+
+      await update(ref(db, `attendance/${todayKey()}/${studentKey}`), {
+        activeNow: false,
+        leftEarly: true,
+        leaveAt,
+        leaveReason: reason
+      });
+
+      await update(ref(db, `students/${studentKey}`), {
+        activeNow: false
+      });
+
+      manualEarlyLeaveReason.value = "";
+      manualEarlyLeaveStatus.textContent = "Early leave marked successfully.";
+      manualEarlyLeaveStatus.className = "status-text ok";
+    } catch (error) {
+      console.error(error);
+      manualEarlyLeaveStatus.textContent = "Could not mark early leave.";
+      manualEarlyLeaveStatus.className = "status-text bad";
+    }
+  });
+}
+
+onValue(ref(db, `attendance/${todayKey()}`), (snapshot) => {
+  attendanceTodayCache = snapshot.val() || {};
+  renderManualEarlyLeaveOptions();
 });
