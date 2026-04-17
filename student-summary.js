@@ -49,6 +49,16 @@ function getDisplayName(student) {
   );
 }
 
+function getExternalId(student) {
+  return student?.studentNumber || student?.externalId || "";
+}
+
+function formatStudentLabel(student) {
+  const name = getDisplayName(student);
+  const externalId = getExternalId(student);
+  return externalId ? `${name} · ${externalId}` : name;
+}
+
 function getExtraPoints(student, blockName) {
   return Number(student?.blockPoints?.[blockName] || 0);
 }
@@ -123,6 +133,7 @@ function renderAll() {
   ensureSelectedBlock();
 
   const displayName = getDisplayName(currentStudent);
+const studentLabel = formatStudentLabel(currentStudent);
   const activeBlock = settingsCache.activeBlock || "Block 1";
   const currentTeam = currentSession?.assignments?.[studentKey] || "";
   const showLivePoints = selectedBlock === activeBlock;
@@ -135,8 +146,8 @@ function renderAll() {
   const activeBlockClosed = !!settingsCache?.closedBlocks?.[activeBlock];
   const selectedBlockClosed = !!settingsCache?.closedBlocks?.[selectedBlock];
 
-  studentIdentity.textContent = displayName;
-  displayNameCard.textContent = displayName;
+  studentIdentity.textContent = studentLabel;
+displayNameCard.textContent = studentLabel;
   groupCard.textContent = currentStudent.groupName || "";
   classActiveBlockHero.textContent = activeBlock;
   classActiveBlockStatus.textContent = activeBlockClosed ? "Closed block" : "Open block";
@@ -155,6 +166,7 @@ function renderAll() {
 }
 
 blockSelector.addEventListener("change", () => {
+  blockSelector.dataset.userChanged = "1";
   selectedBlock = blockSelector.value || settingsCache.activeBlock || "Block 1";
   renderAll();
 });
@@ -183,6 +195,11 @@ onValue(ref(db, "session/current"), (snapshot) => {
 
 onValue(ref(db, "settings"), (snapshot) => {
   settingsCache = snapshot.val() || {};
+
+  if (blockSelector.dataset.userChanged !== "1") {
+    selectedBlock = settingsCache.activeBlock || selectedBlock || "Block 1";
+  }
+
   renderAll();
 });
 
