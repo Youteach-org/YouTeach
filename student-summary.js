@@ -16,8 +16,6 @@ const groupCard = document.getElementById("groupCard");
 const classActiveBlockHero = document.getElementById("classActiveBlockHero");
 const classActiveBlockStatus = document.getElementById("classActiveBlockStatus");
 const totalBlockPointsCard = document.getElementById("totalBlockPointsCard");
-const examBaseCard = document.getElementById("examBaseCard");
-const extraPointsCard = document.getElementById("extraPointsCard");
 const liveTeamPointsCard = document.getElementById("liveTeamPointsCard");
 const liveStudentPointsCard = document.getElementById("liveStudentPointsCard");
 const writtenExamCard = document.getElementById("writtenExamCard");
@@ -72,11 +70,6 @@ function getExamPoints(student, blockName) {
   };
 }
 
-function getExamBase(student, blockName) {
-  const exam = getExamPoints(student, blockName);
-  return exam.written + exam.oral + exam.verbs;
-}
-
 function getAvailableBlocks() {
   const blockSet = new Set(["Block 1", "Block 2", "Block 3"]);
 
@@ -93,6 +86,7 @@ function getAvailableBlocks() {
 
 function ensureSelectedBlock() {
   const availableBlocks = getAvailableBlocks();
+
   if (!selectedBlock || !availableBlocks.includes(selectedBlock)) {
     selectedBlock = settingsCache.activeBlock || availableBlocks[0] || "Block 1";
   }
@@ -133,29 +127,25 @@ function renderAll() {
   ensureSelectedBlock();
 
   const displayName = getDisplayName(currentStudent);
-const studentLabel = formatStudentLabel(currentStudent);
+  const studentLabel = formatStudentLabel(currentStudent);
   const activeBlock = settingsCache.activeBlock || "Block 1";
   const currentTeam = currentSession?.assignments?.[studentKey] || "";
   const showLivePoints = selectedBlock === activeBlock;
   const liveTeamPoints = showLivePoints ? Number(currentSession?.liveTeamPoints?.[currentTeam] || 0) : 0;
   const liveStudentPoints = showLivePoints ? Number(currentSession?.liveStudentPoints?.[studentKey] || 0) : 0;
   const examPoints = getExamPoints(currentStudent, selectedBlock);
-  const examBase = getExamBase(currentStudent, selectedBlock);
-  const extraPoints = getExtraPoints(currentStudent, selectedBlock);
-  const totalBlockPoints = examBase + extraPoints + liveTeamPoints + liveStudentPoints;
+  const totalBlockPoints = examPoints.written + examPoints.oral + examPoints.verbs + liveTeamPoints + liveStudentPoints;
   const activeBlockClosed = !!settingsCache?.closedBlocks?.[activeBlock];
   const selectedBlockClosed = !!settingsCache?.closedBlocks?.[selectedBlock];
 
   studentIdentity.textContent = studentLabel;
-displayNameCard.textContent = studentLabel;
+  displayNameCard.textContent = studentLabel;
   groupCard.textContent = currentStudent.groupName || "";
   classActiveBlockHero.textContent = activeBlock;
   classActiveBlockStatus.textContent = activeBlockClosed ? "Closed block" : "Open block";
   viewingBlockStatus.textContent = selectedBlockClosed ? "Selected block is closed." : "Selected block is open.";
 
   totalBlockPointsCard.textContent = String(totalBlockPoints);
-  examBaseCard.textContent = String(examBase);
-  extraPointsCard.textContent = String(extraPoints);
   liveTeamPointsCard.textContent = String(liveTeamPoints);
   liveStudentPointsCard.textContent = String(liveStudentPoints);
   writtenExamCard.textContent = String(examPoints.written);
@@ -166,7 +156,6 @@ displayNameCard.textContent = studentLabel;
 }
 
 blockSelector.addEventListener("change", () => {
-  blockSelector.dataset.userChanged = "1";
   selectedBlock = blockSelector.value || settingsCache.activeBlock || "Block 1";
   renderAll();
 });
@@ -195,11 +184,7 @@ onValue(ref(db, "session/current"), (snapshot) => {
 
 onValue(ref(db, "settings"), (snapshot) => {
   settingsCache = snapshot.val() || {};
-
-  if (blockSelector.dataset.userChanged !== "1") {
-    selectedBlock = settingsCache.activeBlock || selectedBlock || "Block 1";
-  }
-
+  selectedBlock = settingsCache.activeBlock || selectedBlock || "Block 1";
   renderAll();
 });
 

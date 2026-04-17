@@ -8,7 +8,7 @@
   <style>
     .summary-top-grid {
       display: grid;
-      grid-template-columns: 1fr 1.3fr;
+      grid-template-columns: 1fr 1.25fr;
       gap: 16px;
       margin-bottom: 16px;
     }
@@ -157,28 +157,12 @@
         <div class="summary-hero-card">
           <span class="hero-label">Total Block Points</span>
           <strong id="totalBlockPointsCard" class="hero-value">0</strong>
-          <div class="hero-subtext">This total includes exam base, extra points, and current live points for the selected block.</div>
+          <div class="hero-subtext">This total includes written, oral, verb, student, and team points for the selected block.</div>
 
           <details class="summary-detail-toggle">
             <summary>Show score details</summary>
             <div class="summary-detail-content">
               <div class="summary-detail-grid">
-                <div class="summary-detail-card">
-                  <span>Exam Base</span>
-                  <strong id="examBaseCard">0</strong>
-                </div>
-                <div class="summary-detail-card">
-                  <span>Extra Points</span>
-                  <strong id="extraPointsCard">0</strong>
-                </div>
-                <div class="summary-detail-card">
-                  <span>Team Points</span>
-                  <strong id="liveTeamPointsCard">0</strong>
-                </div>
-                <div class="summary-detail-card">
-                  <span>Student Points</span>
-                  <strong id="liveStudentPointsCard">0</strong>
-                </div>
                 <div class="summary-detail-card">
                   <span>Written Exam</span>
                   <strong id="writtenExamCard">0</strong>
@@ -190,6 +174,14 @@
                 <div class="summary-detail-card">
                   <span>Verb Exam</span>
                   <strong id="verbsExamCard">0</strong>
+                </div>
+                <div class="summary-detail-card">
+                  <span>Student Points</span>
+                  <strong id="liveStudentPointsCard">0</strong>
+                </div>
+                <div class="summary-detail-card">
+                  <span>Team Points</span>
+                  <strong id="liveTeamPointsCard">0</strong>
                 </div>
               </div>
             </div>
@@ -247,6 +239,6 @@
   </div>
 
   <script type="module" src="student-summary.js"></script>
-<script defer src="shared-ui-fixes.js"></script>
+  <script defer src="shared-ui-fixes.js"></script>
 </body>
 </html>
