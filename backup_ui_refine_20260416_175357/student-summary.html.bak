@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YouTeach - My Summary</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .summary-overview-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    @media (max-width: 1100px) {
+      .summary-overview-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <button id="menuToggle" class="hamburger-btn" aria-label="Open menu">
+    <span></span><span></span><span></span>
+  </button>
+
+  <div class="menu-shell">
+    <aside id="sidebar" class="sidebar collapsible-sidebar">
+      <div class="brand">
+        <h1>YouTeach</h1>
+        <p>Student Menu</p>
+      </div>
+
+      <div class="sidebar-links">
+        <a class="sidebar-link" href="student-buzzer.html">Buzzer</a>
+        <a class="sidebar-link active-link" href="student-summary.html">My Summary</a>
+        <a class="sidebar-link" href="student-settings.html">Settings</a>
+        <a class="sidebar-link" href="index.html">Home</a>
+        <button id="logoutBtn" class="logout-btn">Logout</button>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div>
+          <h2>My Summary</h2>
+          <p>Official points, extra points and live points by block</p>
+        </div>
+        <div class="topbar-right">
+          <span id="studentIdentity" class="teacher-identity">Student</span>
+        </div>
+      </header>
+
+      <div class="section-grid summary-grid">
+        <div class="summary-card">
+          <span class="summary-label">Display Name</span>
+          <strong id="displayNameCard">---</strong>
+        </div>
+        <div class="summary-card">
+          <span class="summary-label">Group</span>
+          <strong id="groupCard">---</strong>
+        </div>
+        <div class="summary-card">
+          <span class="summary-label">Viewing Block</span>
+          <strong id="activeBlockCard">---</strong>
+        </div>
+      </div>
+
+      <div class="section-grid two-columns">
+        <div class="panel-card">
+          <div class="panel-card-header">
+            <h3>Select Block</h3>
+          </div>
+
+          <div class="student-info-grid">
+            <div class="summary-card mini">
+              <span class="summary-label">Block</span>
+              <select id="blockSelector">
+                <option value="Block 1">Block 1</option>
+                <option value="Block 2">Block 2</option>
+                <option value="Block 3">Block 3</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel-card">
+          <div class="panel-card-header">
+            <h3>Points Overview</h3>
+          </div>
+
+          <div class="summary-overview-grid">
+            <div class="summary-card mini">
+              <span class="summary-label">Total Block Points</span>
+              <strong id="totalBlockPointsCard">---</strong>
+            </div>
+            <div class="summary-card mini">
+              <span class="summary-label">Official Points</span>
+              <strong id="officialPointsCard">---</strong>
+            </div>
+            <div class="summary-card mini">
+              <span class="summary-label">Extra Points</span>
+              <strong id="extraPointsCard">---</strong>
+            </div>
+            <div class="summary-card mini">
+              <span class="summary-label">Team Points</span>
+              <strong id="liveTeamPointsCard">---</strong>
+            </div>
+            <div class="summary-card mini">
+              <span class="summary-label">Student Points</span>
+              <strong id="liveStudentPointsCard">---</strong>
+            </div>
+            <div class="summary-card mini">
+              <span class="summary-label">Written Exam</span>
+              <strong id="writtenExamCard">---</strong>
+            </div>
+            <div class="summary-card mini">
+              <span class="summary-label">Oral Exam</span>
+              <strong id="oralExamCard">---</strong>
+            </div>
+            <div class="summary-card mini">
+              <span class="summary-label">Verb Exam</span>
+              <strong id="verbsExamCard">---</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-card">
+        <div class="panel-card-header">
+          <h3>My Point History</h3>
+        </div>
+
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th>Block</th>
+                <th>Added Points</th>
+                <th>Previous Points</th>
+                <th>New Points</th>
+                <th>Team</th>
+                <th>Applied</th>
+              </tr>
+            </thead>
+            <tbody id="studentHistoryTableBody">
+              <tr><td colspan="7">Login first.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module" src="student-summary.js"></script>
+</body>
+</html>

@@ -1,24 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>YouTeach - Students</title>
   <link rel="stylesheet" href="styles.css">
-  <style>
-    .students-top-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-      margin-bottom: 16px;
-    }
-
-    @media (max-width: 1000px) {
-      .students-top-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-  </style>
 </head>
 <body>
   <button id="menuToggle" class="hamburger-btn" aria-label="Open menu">
@@ -48,46 +34,16 @@
       <header class="topbar">
         <div>
           <h2>Students</h2>
-          <p>Keep the active working group and search inside that group</p>
+          <p>All registered students</p>
         </div>
         <div class="topbar-right">
           <span id="teacherIdentity" class="teacher-identity">Teacher</span>
         </div>
       </header>
 
-      <div class="students-top-grid">
-        <div class="panel-card">
-          <div class="panel-card-header">
-            <h3>Working Group</h3>
-          </div>
-          <div class="stack-controls">
-            <select id="groupFilter"></select>
-          </div>
-          <div style="margin-top: 10px; font-size: 12px; color: #64748b;">
-            This selector preserves the current group you are working with.
-          </div>
-        </div>
-
-        <div class="panel-card">
-          <div class="panel-card-header">
-            <h3>Search Students</h3>
-          </div>
-          <div class="stack-controls">
-            <input id="searchStudent" placeholder="Search by name, nickname, external ID, or internal ID">
-          </div>
-        </div>
-      </div>
-
       <div class="panel-card">
-        <div class="student-info-grid" style="margin-bottom: 12px;">
-          <div class="summary-card mini">
-            <span class="summary-label">Selected Group</span>
-            <strong id="selectedGroupCard">---</strong>
-          </div>
-          <div class="summary-card mini">
-            <span class="summary-label">Students in Group</span>
-            <strong id="studentsInGroupCard">0</strong>
-          </div>
+        <div class="toolbar-row">
+          <input id="searchStudent" placeholder="Search by name, nickname, external ID, internal ID, or group">
         </div>
 
         <div class="table-wrap">
@@ -98,6 +54,7 @@
                 <th>Nickname</th>
                 <th>External ID</th>
                 <th>Internal ID</th>
+                <th>Group</th>
                 <th>Today Active</th>
                 <th>Block 1</th>
                 <th>Block 2</th>
@@ -109,7 +66,7 @@
             </thead>
             <tbody id="studentsTableBody">
               <tr>
-                <td colspan="11">No students found.</td>
+                <td colspan="12">No students found.</td>
               </tr>
             </tbody>
           </table>
@@ -119,6 +76,5 @@
   </div>
 
   <script type="module" src="teacher-students.js"></script>
-<script defer src="shared-ui-fixes.js"></script>
 </body>
 </html>

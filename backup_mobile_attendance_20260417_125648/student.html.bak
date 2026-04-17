@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -22,7 +22,5 @@
   </div>
 
   <script type="module" src="student-menu.js"></script>
-<script defer src="shared-ui-fixes.js"></script>
-<script type="module" src="login-enhancements.js"></script>
 </body>
 </html>
