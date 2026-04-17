@@ -1,4 +1,4 @@
-﻿const USERS = [
+const USERS = [
   { username: "teacher", password: "teacher123", role: "teacher", displayName: "Teacher" },
   { username: "admin", password: "admin123", role: "admin", displayName: "Admin" }
 ];
@@ -9,10 +9,10 @@ const loginBtn = document.getElementById("loginBtn");
 const loginMessage = document.getElementById("loginMessage");
 
 if (sessionStorage.getItem("youteachTeacherAuth") === "true") {
-  window.location.href = "teacher.html";
+  window.location.href = "buzzer.html";
 }
 
-loginBtn.addEventListener("click", () => {
+function doTeacherLogin() {
   const username = usernameInput.value.trim();
   const password = passwordInput.value;
 
@@ -27,5 +27,16 @@ loginBtn.addEventListener("click", () => {
   sessionStorage.setItem("youteachTeacherAuth", "true");
   sessionStorage.setItem("youteachTeacherRole", user.role);
   sessionStorage.setItem("youteachTeacherName", user.displayName);
-  window.location.href = "teacher.html";
+  window.location.href = "buzzer.html";
+}
+
+loginBtn.addEventListener("click", doTeacherLogin);
+
+[usernameInput, passwordInput].forEach((input) => {
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      doTeacherLogin();
+    }
+  });
 });

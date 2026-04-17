@@ -1,11 +1,11 @@
-﻿import { loginStudentByExternalIdAndPassword } from "./student-auth.js";
+import { loginStudentByExternalIdAndPassword } from "./student-auth.js";
 
 const studentIdInput = document.getElementById("studentId");
 const studentPasswordInput = document.getElementById("studentPassword");
 const studentLoginBtn = document.getElementById("studentLoginBtn");
 const studentLoginMessage = document.getElementById("studentLoginMessage");
 
-studentLoginBtn.addEventListener("click", async () => {
+async function doStudentLogin() {
   const externalId = studentIdInput.value.trim();
   const password = studentPasswordInput.value;
 
@@ -40,4 +40,15 @@ studentLoginBtn.addEventListener("click", async () => {
     studentLoginMessage.className = "status-text bad";
     studentLoginBtn.disabled = false;
   }
+}
+
+studentLoginBtn.addEventListener("click", doStudentLogin);
+
+[studentIdInput, studentPasswordInput].forEach((input) => {
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      doStudentLogin();
+    }
+  });
 });
