@@ -18,7 +18,7 @@ function normalizeText(text) {
 
 function hasClassToday(groupName) {
   const normalized = normalizeText(groupName);
-  const dayIndex = new Date().getDay(); // 0 sun ... 6 sat
+  const dayIndex = new Date().getDay();
 
   const dayTokens = {
     0: ["sunday", "domingo"],
@@ -91,17 +91,28 @@ async function markPendingAttendance(studentKey) {
 
 function wireTeacherLoginRedirect() {
   const btn = getPrimaryLoginButton();
-  const runCheck = () => {
-    window.setTimeout(() => {
-      const raw = localStorage.getItem("youteachTeacherAuth") || sessionStorage.getItem("youteachTeacherAuth");
-      if (!raw) return;
 
-      localStorage.setItem("youteachTeacherAuth", raw);
-      sessionStorage.removeItem("youteachTeacherAuth");
-      if (!window.location.pathname.toLowerCase().includes("buzzer.html")) {
-        window.location.href = "buzzer.html";
+  const redirectIfTeacherSessionExists = () => {
+    const raw = localStorage.getItem("youteachTeacherAuth") || sessionStorage.getItem("youteachTeacherAuth");
+    if (!raw) return false;
+
+    localStorage.setItem("youteachTeacherAuth", raw);
+    sessionStorage.removeItem("youteachTeacherAuth");
+    window.location.href = "buzzer.html";
+    return true;
+  };
+
+  if (redirectIfTeacherSessionExists()) return;
+
+  const runCheck = () => {
+    let attempts = 0;
+    const maxAttempts = 12;
+    const timer = window.setInterval(() => {
+      attempts += 1;
+      if (redirectIfTeacherSessionExists() || attempts >= maxAttempts) {
+        clearInterval(timer);
       }
-    }, 280);
+    }, 200);
   };
 
   if (btn) btn.addEventListener("click", runCheck);
@@ -111,12 +122,20 @@ function wireTeacherLoginRedirect() {
 
 function wireStudentAttendanceCapture() {
   const btn = getPrimaryLoginButton();
+
   const runCheck = () => {
-    window.setTimeout(async () => {
+    let attempts = 0;
+    const maxAttempts = 12;
+    const timer = window.setInterval(async () => {
+      attempts += 1;
       const studentKey = localStorage.getItem("youteachStudentKey") || sessionStorage.getItem("youteachStudentKey");
-      if (!studentKey) return;
-      await markPendingAttendance(studentKey);
-    }, 280);
+      if (studentKey) {
+        clearInterval(timer);
+        await markPendingAttendance(studentKey);
+      } else if (attempts >= maxAttempts) {
+        clearInterval(timer);
+      }
+    }, 200);
   };
 
   if (btn) btn.addEventListener("click", runCheck);
