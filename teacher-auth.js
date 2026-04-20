@@ -14,5 +14,8 @@ export function logoutTeacher() {
   sessionStorage.removeItem("youteachTeacherAuth");
   sessionStorage.removeItem("youteachTeacherRole");
   sessionStorage.removeItem("youteachTeacherName");
+  localStorage.removeItem("youteachTeacherAuth");
+  localStorage.removeItem("youteachTeacherRole");
+  localStorage.removeItem("youteachTeacherName");
   window.location.href = "index.html";
 }
