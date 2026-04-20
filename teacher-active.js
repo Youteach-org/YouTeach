@@ -1,4 +1,4 @@
-﻿import { db } from "./firebase.js";
+import { db } from "./firebase.js";
 import { ref, onValue, update, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
 
@@ -12,14 +12,24 @@ const groupFilter = document.getElementById("groupFilter");
 const statusFilter = document.getElementById("statusFilter");
 const activeTableBody = document.getElementById("activeTableBody");
 
+const manualEarlyLeaveStudent = document.getElementById("manualEarlyLeaveStudent");
+const manualEarlyLeaveReason = document.getElementById("manualEarlyLeaveReason");
+const manualEarlyLeaveBtn = document.getElementById("manualEarlyLeaveBtn");
+const manualEarlyLeaveStatus = document.getElementById("manualEarlyLeaveStatus");
+
 teacherIdentity.textContent = getTeacherName();
 logoutBtn.addEventListener("click", logoutTeacher);
- sidebar.classList.toggle("sidebar-open"); });
+menuToggle.addEventListener("click", (e) => {
+  e.stopPropagation();
+  sidebar.classList.toggle("sidebar-open");
+});
 
 let attendanceCache = {};
 let groupsCache = {};
 
--${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+function todayKey() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 }
 
 function formatDate(timestamp) {
@@ -27,9 +37,19 @@ function formatDate(timestamp) {
   return new Date(timestamp).toLocaleString();
 }
 
+function getStudentExternalId(row) {
+  return row.studentNumber || row.externalId || "";
+}
+
+function getStudentLoginTime(row) {
+  return row.detectedAt || row.loginAt || "";
+}
+
 function renderGroupFilter() {
   const groups = Object.keys(groupsCache || {}).sort();
-  groupFilter.innerHTML = '<option value="">All groups</option>' + groups.map((group) => `<option value="${group}">${group}</option>`).join("");
+  groupFilter.innerHTML =
+    '<option value="">All groups</option>' +
+    groups.map((group) => `<option value="${group}">${group}</option>`).join("");
 }
 
 function renderTable() {
@@ -42,6 +62,7 @@ function renderTable() {
       !statusValue ||
       (statusValue === "active" && row.activeNow !== false) ||
       (statusValue === "left" && row.activeNow === false);
+
     return groupOk && statusOk;
   });
 
@@ -53,9 +74,9 @@ function renderTable() {
   activeTableBody.innerHTML = entries.map(([studentKey, row]) => `
     <tr>
       <td>${row.studentName || ""}</td>
-      <td>${row.externalId || ""}</td>
+      <td>${getStudentExternalId(row)}</td>
       <td>${row.groupName || ""}</td>
-      <td>${formatDate(row.loginAt)}</td>
+      <td>${formatDate(getStudentLoginTime(row))}</td>
       <td>${row.activeNow !== false ? "ACTIVE" : "LEFT"}</td>
       <td>${formatDate(row.leaveAt)}</td>
       <td>${row.leaveReason || ""}</td>
@@ -66,6 +87,22 @@ function renderTable() {
       </td>
     </tr>
   `).join("");
+}
+
+function renderManualEarlyLeaveOptions() {
+  if (!manualEarlyLeaveStudent) return;
+
+  const options = Object.entries(attendanceCache || {})
+    .filter(([, row]) => row.activeNow === true)
+    .map(([studentKey, row]) => {
+      const label = row.studentName || row.studentKey || studentKey;
+      const ext = getStudentExternalId(row) ? ` · ${getStudentExternalId(row)}` : "";
+      return `<option value="${studentKey}">${label}${ext}</option>`;
+    })
+    .join("");
+
+  manualEarlyLeaveStudent.innerHTML =
+    `<option value="">Select student detected today</option>` + options;
 }
 
 window.registerLeave = async function(studentKey) {
@@ -82,7 +119,8 @@ window.registerLeave = async function(studentKey) {
   await update(ref(db, path), {
     activeNow: false,
     leaveAt: Date.now(),
-    leaveReason: reason
+    leaveReason: reason,
+    leftEarly: true
   });
 
   await update(ref(db, `students/${studentKey}`), {
@@ -91,46 +129,6 @@ window.registerLeave = async function(studentKey) {
 
   alert("Leave registered.");
 };
-
-groupFilter.addEventListener("change", renderTable);
-statusFilter.addEventListener("change", renderTable);
-
-onValue(ref(db, `attendance/${todayKey()}`), (snapshot) => {
-  attendanceCache = snapshot.val() || {};
-  renderTable();
-});
-
-onValue(ref(db, "groups"), (snapshot) => {
-  groupsCache = snapshot.val() || {};
-  renderGroupFilter();
-});
-
-const manualEarlyLeaveStudent = document.getElementById("manualEarlyLeaveStudent");
-const manualEarlyLeaveReason = document.getElementById("manualEarlyLeaveReason");
-const manualEarlyLeaveBtn = document.getElementById("manualEarlyLeaveBtn");
-const manualEarlyLeaveStatus = document.getElementById("manualEarlyLeaveStatus");
-
--${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-}
-
-let attendanceTodayCache = {};
-let studentsActiveCache = {};
-
-function renderManualEarlyLeaveOptions() {
-  if (!manualEarlyLeaveStudent) return;
-
-  const options = Object.entries(attendanceTodayCache || {})
-    .filter(([, row]) => row.activeNow === true)
-    .map(([studentKey, row]) => {
-      const label = row.studentName || row.studentKey || studentKey;
-      const ext = row.studentNumber ? ` Â· ${row.studentNumber}` : "";
-      return `<option value="${studentKey}">${label}${ext}</option>`;
-    })
-    .join("");
-
-  manualEarlyLeaveStudent.innerHTML =
-    `<option value="">Select student detected today</option>` + options;
-}
 
 if (manualEarlyLeaveBtn) {
   manualEarlyLeaveBtn.addEventListener("click", async () => {
@@ -174,14 +172,16 @@ if (manualEarlyLeaveBtn) {
   });
 }
 
+groupFilter.addEventListener("change", renderTable);
+statusFilter.addEventListener("change", renderTable);
+
 onValue(ref(db, `attendance/${todayKey()}`), (snapshot) => {
-  attendanceTodayCache = snapshot.val() || {};
+  attendanceCache = snapshot.val() || {};
+  renderTable();
   renderManualEarlyLeaveOptions();
 });
-document.addEventListener("click", (e) => {
-  if (!sidebar.contains(e.target) && !menuToggle.contains(e.target)) {
-    sidebar.classList.remove("sidebar-open");
-  }
+
+onValue(ref(db, "groups"), (snapshot) => {
+  groupsCache = snapshot.val() || {};
+  renderGroupFilter();
 });
-
-
