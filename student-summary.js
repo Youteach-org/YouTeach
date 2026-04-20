@@ -24,6 +24,7 @@ const verbsExamCard = document.getElementById("verbsExamCard");
 const blockSelector = document.getElementById("blockSelector");
 const viewingBlockStatus = document.getElementById("viewingBlockStatus");
 const studentHistoryTableBody = document.getElementById("studentHistoryTableBody");
+const attendanceStatusText = document.getElementById("attendanceStatusText");
 
 let currentStudent = null;
 let currentSession = null;
@@ -32,6 +33,32 @@ let pointsLogCache = {};
 let selectedBlock = "";
 
 menuToggle.addEventListener("click", () => sidebar.classList.toggle("sidebar-open"));
+
+function todayKey() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+}
+
+function renderAttendanceStatus(row) {
+  if (!attendanceStatusText) return;
+
+  if (!row) {
+    attendanceStatusText.textContent = "Not registered yet";
+    return;
+  }
+
+  if (row.attendanceValidated === true || row.present === true) {
+    attendanceStatusText.textContent = "Validated";
+    return;
+  }
+
+  if (row.activeNow === true) {
+    attendanceStatusText.textContent = "Pending teacher validation";
+    return;
+  }
+
+  attendanceStatusText.textContent = "Not registered yet";
+}
 
 function formatDate(timestamp) {
   if (!timestamp) return "Unknown date";
@@ -197,4 +224,7 @@ onValue(ref(db, "settings"), (snapshot) => {
 onValue(ref(db, "pointsLog"), (snapshot) => {
   pointsLogCache = snapshot.val() || {};
   renderAll();
+});
+onValue(ref(db, `attendance/${todayKey()}/${studentKey}`), (snapshot) => {
+  renderAttendanceStatus(snapshot.val() || null);
 });

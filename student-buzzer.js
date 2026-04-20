@@ -1,3 +1,28 @@
+function todayKey() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+}
+
+function renderAttendanceStatus(row) {
+  if (!attendanceStatusText) return;
+
+  if (!row) {
+    attendanceStatusText.textContent = "Not registered yet";
+    return;
+  }
+
+  if (row.attendanceValidated === true || row.present === true) {
+    attendanceStatusText.textContent = "Validated";
+    return;
+  }
+
+  if (row.activeNow === true) {
+    attendanceStatusText.textContent = "Pending teacher validation";
+    return;
+  }
+
+  attendanceStatusText.textContent = "Not registered yet";
+}
 import { db } from "./firebase.js";
 import { ref, onValue, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireStudentSession, clearStudentSession, saveLeaveLog } from "./student-auth.js";
@@ -8,6 +33,7 @@ if (!session) throw new Error("Student session required.");
 const { studentKey } = session;
 
 const logoutBtn = document.getElementById("logoutBtn");
+const attendanceStatusText = document.getElementById("attendanceStatusText");
 const menuToggle = document.getElementById("menuToggle");
 const sidebar = document.getElementById("sidebar");
 const studentName = document.getElementById("studentName");
@@ -131,4 +157,8 @@ onValue(ref(db, `students/${studentKey}`), (snapshot) => {
 onValue(ref(db, "session/current"), (snapshot) => {
   currentSession = snapshot.val() || null;
   renderBuzzer();
+});
+
+onValue(ref(db, `attendance/${todayKey()}/${studentKey}`), (snapshot) => {
+  renderAttendanceStatus(snapshot.val() || null);
 });
