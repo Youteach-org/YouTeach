@@ -1,4 +1,4 @@
-import { db } from "./firebase.js";
+﻿import { db } from "./firebase.js";
 import { ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
 
@@ -36,7 +36,7 @@ const importResultBox = document.getElementById("importResultBox");
 
 teacherIdentity.textContent = getTeacherName();
 logoutBtn.addEventListener("click", logoutTeacher);
-menuToggle.addEventListener("click", () => sidebar.classList.toggle("sidebar-open"));
+
 
 let studentsCache = {};
 let settingsCache = {};

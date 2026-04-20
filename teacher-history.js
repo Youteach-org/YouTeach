@@ -17,7 +17,7 @@ const sessionHistoryTableBody = document.getElementById("sessionHistoryTableBody
 
 teacherIdentity.textContent = getTeacherName();
 logoutBtn.addEventListener("click", logoutTeacher);
-menuToggle.addEventListener("click", () => sidebar.classList.toggle("sidebar-open"));
+
 
 let pointsLogCache = {};
 let sessionHistoryCache = {};
@@ -139,3 +139,4 @@ onValue(ref(db, "sessionHistory"), (snapshot) => {
   sessionHistoryCache = snapshot.val() || {};
   renderSessionHistory();
 });
+

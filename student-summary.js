@@ -1,4 +1,4 @@
-import { db } from "./firebase.js";
+﻿import { db } from "./firebase.js";
 import { ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireStudentSession, clearStudentSession, saveLeaveLog } from "./student-auth.js";
 
@@ -32,7 +32,7 @@ let settingsCache = {};
 let pointsLogCache = {};
 let selectedBlock = "";
 
-menuToggle.addEventListener("click", () => sidebar.classList.toggle("sidebar-open"));
+
 
 function todayKey() {
   const now = new Date();
@@ -81,7 +81,7 @@ function getExternalId(student) {
 function formatStudentLabel(student) {
   const name = getDisplayName(student);
   const externalId = getExternalId(student);
-  return externalId ? `${name} · ${externalId}` : name;
+  return externalId ? `${name} Â· ${externalId}` : name;
 }
 
 function getExtraPoints(student, blockName) {

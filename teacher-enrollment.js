@@ -34,7 +34,7 @@ const groupsTableBody = document.getElementById("groupsTableBody");
 
 teacherIdentity.textContent = getTeacherName();
 logoutBtn.addEventListener("click", logoutTeacher);
-menuToggle.addEventListener("click", () => sidebar.classList.toggle("sidebar-open"));
+
 
 let groupsCache = {};
 let studentsCache = {};
@@ -285,3 +285,4 @@ onValue(ref(db, "students"), (snapshot) => {
   studentsCache = snapshot.val() || {};
   renderGroupsTable();
 });
+

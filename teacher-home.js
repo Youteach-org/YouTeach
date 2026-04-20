@@ -15,7 +15,7 @@ const presentCountCard = document.getElementById("presentCountCard");
 
 teacherIdentity.textContent = getTeacherName();
 logoutBtn.addEventListener("click", logoutTeacher);
-menuToggle.addEventListener("click", () => sidebar.classList.toggle("sidebar-open"));
+
 
 function todayKey() {
   const now = new Date();
@@ -43,3 +43,4 @@ onValue(ref(db, `attendance/${todayKey()}`), (snapshot) => {
   const present = Object.values(attendance).filter((row) => row.activeNow !== false).length;
   presentCountCard.textContent = String(present);
 });
+

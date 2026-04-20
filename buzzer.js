@@ -1,4 +1,4 @@
-import { db } from "./firebase.js";
+﻿import { db } from "./firebase.js";
 import {
   ref,
   push,
@@ -48,7 +48,7 @@ const liveScores = document.getElementById("liveScores");
 
 teacherIdentity.textContent = getTeacherName();
 logoutBtn.addEventListener("click", logoutTeacher);
-menuToggle.addEventListener("click", () => sidebar.classList.toggle("sidebar-open"));
+
 
 let studentsCache = {};
 let pairHistoryCache = {};

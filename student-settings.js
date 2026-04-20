@@ -1,4 +1,4 @@
-import { db } from "./firebase.js";
+﻿import { db } from "./firebase.js";
 import { ref, onValue, update, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireStudentSession, clearStudentSession, saveLeaveLog } from "./student-auth.js";
 
@@ -20,7 +20,7 @@ const settingsMessage = document.getElementById("settingsMessage");
 
 let currentStudent = null;
 
-menuToggle.addEventListener("click", () => sidebar.classList.toggle("sidebar-open"));
+
 
 function getDisplayName(student) {
   if (!student) return "Student";
@@ -38,7 +38,7 @@ function getExternalId(student) {
 function formatStudentLabel(student) {
   const name = getDisplayName(student);
   const externalId = getExternalId(student);
-  return externalId ? `${name} · ${externalId}` : name;
+  return externalId ? `${name} Â· ${externalId}` : name;
 }
 
 logoutBtn.addEventListener("click", async () => {
@@ -106,3 +106,4 @@ onValue(ref(db, `students/${studentKey}`), (snapshot) => {
   studentIdentity.textContent = formatStudentLabel(currentStudent);
   nicknameInput.value = currentStudent.nickname || "";
 });
+

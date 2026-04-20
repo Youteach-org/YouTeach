@@ -1,4 +1,4 @@
-function todayKey() {
+﻿function todayKey() {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 }
@@ -51,8 +51,7 @@ function getFirstName(student) {
   return full.split(/\s+/)[0];
 }
 
-menuToggle.addEventListener("click", () => {
-  sidebar.classList.toggle("sidebar-open");
+
 });
 
 function renderBuzzer() {
