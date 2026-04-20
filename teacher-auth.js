@@ -1,4 +1,4 @@
-﻿export function requireTeacherAuth() {
+export function requireTeacherAuth() {
   if (sessionStorage.getItem("youteachTeacherAuth") !== "true") {
     window.location.href = "teacher-login.html";
     return false;
@@ -14,5 +14,5 @@ export function logoutTeacher() {
   sessionStorage.removeItem("youteachTeacherAuth");
   sessionStorage.removeItem("youteachTeacherRole");
   sessionStorage.removeItem("youteachTeacherName");
-  window.location.href = "teacher-login.html";
+  window.location.href = "index.html";
 }

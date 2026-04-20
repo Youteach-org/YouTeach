@@ -71,8 +71,7 @@ export async function markAttendanceOnLogin(studentKey, student) {
   const dateKey = todayKey();
   const attendancePath = `attendance/${dateKey}/${studentKey}`;
   const attendanceSnap = await get(ref(db, attendancePath));
-
-  const loginTs = Date.now();
+  const nowTs = Date.now();
 
   if (!attendanceSnap.exists()) {
     await set(ref(db, attendancePath), {
@@ -81,8 +80,8 @@ export async function markAttendanceOnLogin(studentKey, student) {
       externalId: student.studentNumber || "",
       studentNumber: student.studentNumber || "",
       groupName: student.groupName || "GENERAL",
-      loginAt: loginTs,
-      detectedAt: loginTs,
+      loginAt: nowTs,
+      detectedAt: nowTs,
       leaveAt: null,
       leaveReason: "",
       activeNow: true,
@@ -99,15 +98,15 @@ export async function markAttendanceOnLogin(studentKey, student) {
       leftEarly: false,
       leaveAt: null,
       leaveReason: "",
-      detectedAt: loginTs,
-      loginAt: current.loginAt || loginTs
+      detectedAt: nowTs,
+      loginAt: current.loginAt || nowTs
     });
   }
 
   await update(ref(db, `students/${studentKey}`), {
     activeNow: true,
     lastAttendanceDate: dateKey,
-    lastSeenAt: loginTs
+    lastSeenAt: nowTs
   });
 
   return dateKey;

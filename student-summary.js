@@ -199,14 +199,14 @@ logoutBtn.addEventListener("click", async () => {
   const reason = prompt("Reason for leaving (optional):", "") || "";
   await saveLeaveLog(studentKey, reason);
   clearStudentSession();
-  window.location.href = "student.html";
+  window.location.href = "index.html";
 });
 
 onValue(ref(db, `students/${studentKey}`), (snapshot) => {
   currentStudent = snapshot.val();
   if (!currentStudent) {
     clearStudentSession();
-    window.location.href = "student.html";
+    window.location.href = "index.html";
     return;
   }
   renderAll();
