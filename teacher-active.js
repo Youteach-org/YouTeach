@@ -26,6 +26,7 @@ menuToggle.addEventListener("click", (e) => {
 
 let attendanceCache = {};
 let groupsCache = {};
+let studentsCache = {};
 
 function todayKey() {
   const now = new Date();
@@ -37,12 +38,24 @@ function formatDate(timestamp) {
   return new Date(timestamp).toLocaleString();
 }
 
-function getStudentExternalId(row) {
-  return row.studentNumber || row.externalId || "";
+function getStudentExternalId(studentKey, row) {
+  return row?.studentNumber || row?.externalId || studentsCache?.[studentKey]?.studentNumber || "";
+}
+
+function getStudentName(studentKey, row) {
+  return row?.studentName || studentsCache?.[studentKey]?.nickname || studentsCache?.[studentKey]?.fullName || studentsCache?.[studentKey]?.name || "";
+}
+
+function getStudentGroup(studentKey, row) {
+  return row?.groupName || studentsCache?.[studentKey]?.groupName || "";
 }
 
 function getStudentLoginTime(row) {
-  return row.detectedAt || row.loginAt || "";
+  return row?.detectedAt || row?.loginAt || "";
+}
+
+function isStudentOnline(studentKey) {
+  return studentsCache?.[studentKey]?.activeNow === true;
 }
 
 function renderGroupFilter() {
@@ -56,12 +69,15 @@ function renderTable() {
   const groupValue = groupFilter.value;
   const statusValue = statusFilter.value;
 
-  const entries = Object.entries(attendanceCache || {}).filter(([, row]) => {
-    const groupOk = !groupValue || (row.groupName || "") === groupValue;
+  const entries = Object.entries(attendanceCache || {}).filter(([studentKey, row]) => {
+    const studentGroup = getStudentGroup(studentKey, row);
+    const online = isStudentOnline(studentKey);
+
+    const groupOk = !groupValue || studentGroup === groupValue;
     const statusOk =
       !statusValue ||
-      (statusValue === "active" && row.activeNow !== false) ||
-      (statusValue === "left" && row.activeNow === false);
+      (statusValue === "active" && online) ||
+      (statusValue === "left" && !online);
 
     return groupOk && statusOk;
   });
@@ -71,33 +87,37 @@ function renderTable() {
     return;
   }
 
-  activeTableBody.innerHTML = entries.map(([studentKey, row]) => `
-    <tr>
-      <td>${row.studentName || ""}</td>
-      <td>${getStudentExternalId(row)}</td>
-      <td>${row.groupName || ""}</td>
-      <td>${formatDate(getStudentLoginTime(row))}</td>
-      <td>${row.activeNow !== false ? "ACTIVE" : "LEFT"}</td>
-      <td>${formatDate(row.leaveAt)}</td>
-      <td>${row.leaveReason || ""}</td>
-      <td>
-        ${row.activeNow !== false
-          ? `<button class="small-btn" onclick="window.registerLeave('${studentKey}')">Register Leave</button>`
-          : "Done"}
-      </td>
-    </tr>
-  `).join("");
+  activeTableBody.innerHTML = entries.map(([studentKey, row]) => {
+    const online = isStudentOnline(studentKey);
+
+    return `
+      <tr>
+        <td>${getStudentName(studentKey, row)}</td>
+        <td>${getStudentExternalId(studentKey, row)}</td>
+        <td>${getStudentGroup(studentKey, row)}</td>
+        <td>${formatDate(getStudentLoginTime(row))}</td>
+        <td>${online ? "ACTIVE" : "LEFT"}</td>
+        <td>${formatDate(row.leaveAt)}</td>
+        <td>${row.leaveReason || ""}</td>
+        <td>
+          ${online
+            ? `<button class="small-btn" onclick="window.registerLeave('${studentKey}')">Register Leave</button>`
+            : "Done"}
+        </td>
+      </tr>
+    `;
+  }).join("");
 }
 
 function renderManualEarlyLeaveOptions() {
   if (!manualEarlyLeaveStudent) return;
 
   const options = Object.entries(attendanceCache || {})
-    .filter(([, row]) => row.activeNow === true)
+    .filter(([studentKey]) => isStudentOnline(studentKey))
     .map(([studentKey, row]) => {
-      const label = row.studentName || row.studentKey || studentKey;
-      const ext = getStudentExternalId(row) ? ` · ${getStudentExternalId(row)}` : "";
-      return `<option value="${studentKey}">${label}${ext}</option>`;
+      const label = getStudentName(studentKey, row) || studentKey;
+      const ext = getStudentExternalId(studentKey, row);
+      return `<option value="${studentKey}">${label}${ext ? ` · ${ext}` : ""}</option>`;
     })
     .join("");
 
@@ -184,4 +204,10 @@ onValue(ref(db, `attendance/${todayKey()}`), (snapshot) => {
 onValue(ref(db, "groups"), (snapshot) => {
   groupsCache = snapshot.val() || {};
   renderGroupFilter();
+});
+
+onValue(ref(db, "students"), (snapshot) => {
+  studentsCache = snapshot.val() || {};
+  renderTable();
+  renderManualEarlyLeaveOptions();
 });

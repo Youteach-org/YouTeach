@@ -1,4 +1,4 @@
-﻿function todayKey() {
+function todayKey() {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 }
@@ -103,13 +103,7 @@ function renderBuzzer() {
 }
 
 logoutBtn.addEventListener("click", async () => {
-  let reason = "";
-  const classEnded = settingsCache?.classEnded === true;
-
-  if (!classEnded) {
-    reason = prompt("Reason for leaving class early:", "") || "";
-  }
-
+  const reason = prompt("Reason for leaving (optional):", "") || "";
   await saveLeaveLog(studentKey, reason);
   clearStudentSession();
   window.location.href = "student.html";

@@ -1,4 +1,4 @@
-﻿import { db } from "./firebase.js";
+import { db } from "./firebase.js";
 import { ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireStudentSession, clearStudentSession, saveLeaveLog } from "./student-auth.js";
 
@@ -42,10 +42,18 @@ function todayKey() {
 function renderAttendanceStatus(row) {
   if (!attendanceStatusText) return;
 
-  if (!row) {
-    attendanceStatusText.textContent = "Not registered yet";
+  if (currentStudent?.activeNow === true) {
+    attendanceStatusText.textContent = "Active now";
     return;
   }
+
+  if (row?.leaveAt) {
+    attendanceStatusText.textContent = "Logged out today";
+    return;
+  }
+
+  attendanceStatusText.textContent = "Not active yet";
+}
 
   if (row.attendanceValidated === true || row.present === true) {
     attendanceStatusText.textContent = "Validated";
@@ -188,13 +196,7 @@ blockSelector.addEventListener("change", () => {
 });
 
 logoutBtn.addEventListener("click", async () => {
-  let reason = "";
-  const classEnded = settingsCache?.classEnded === true;
-
-  if (!classEnded) {
-    reason = prompt("Reason for leaving class early:", "") || "";
-  }
-
+  const reason = prompt("Reason for leaving (optional):", "") || "";
   await saveLeaveLog(studentKey, reason);
   clearStudentSession();
   window.location.href = "student.html";

@@ -1,4 +1,4 @@
-﻿import { db } from "./firebase.js";
+import { db } from "./firebase.js";
 import { ref, get, update, set } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 const SESSION_KEY = "youteachStudentKey";
@@ -72,30 +72,42 @@ export async function markAttendanceOnLogin(studentKey, student) {
   const attendancePath = `attendance/${dateKey}/${studentKey}`;
   const attendanceSnap = await get(ref(db, attendancePath));
 
+  const loginTs = Date.now();
+
   if (!attendanceSnap.exists()) {
     await set(ref(db, attendancePath), {
       studentKey,
       studentName: student.nickname || student.fullName || student.name || "",
       externalId: student.studentNumber || "",
+      studentNumber: student.studentNumber || "",
       groupName: student.groupName || "GENERAL",
-      loginAt: Date.now(),
+      loginAt: loginTs,
+      detectedAt: loginTs,
       leaveAt: null,
       leaveReason: "",
-      activeNow: true
+      activeNow: true,
+      leftEarly: false
     });
   } else {
     const current = attendanceSnap.val() || {};
     await update(ref(db, attendancePath), {
-      activeNow: true,
       studentName: student.nickname || student.fullName || student.name || current.studentName || "",
       externalId: student.studentNumber || current.externalId || "",
-      groupName: student.groupName || current.groupName || "GENERAL"
+      studentNumber: student.studentNumber || current.studentNumber || "",
+      groupName: student.groupName || current.groupName || "GENERAL",
+      activeNow: true,
+      leftEarly: false,
+      leaveAt: null,
+      leaveReason: "",
+      detectedAt: loginTs,
+      loginAt: current.loginAt || loginTs
     });
   }
 
   await update(ref(db, `students/${studentKey}`), {
     activeNow: true,
-    lastAttendanceDate: dateKey
+    lastAttendanceDate: dateKey,
+    lastSeenAt: loginTs
   });
 
   return dateKey;
@@ -105,12 +117,22 @@ export async function setStudentLeave(studentKey, reason = "") {
   const dateKey = todayKey();
   const attendancePath = `attendance/${dateKey}/${studentKey}`;
   const snap = await get(ref(db, attendancePath));
+  const leaveTs = Date.now();
 
   if (snap.exists()) {
     await update(ref(db, attendancePath), {
       activeNow: false,
-      leaveAt: Date.now(),
-      leaveReason: reason
+      leaveAt: leaveTs,
+      leaveReason: reason,
+      leftEarly: true
+    });
+  } else {
+    await set(ref(db, attendancePath), {
+      studentKey,
+      activeNow: false,
+      leaveAt: leaveTs,
+      leaveReason: reason,
+      leftEarly: true
     });
   }
 
@@ -162,5 +184,6 @@ export function requireStudentSession() {
 }
 
 export async function saveLeaveLog(studentKey, reason = "") {
+  await setStudentLeave(studentKey, reason);
   return true;
 }

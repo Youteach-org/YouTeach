@@ -1,4 +1,4 @@
-﻿import { db } from "./firebase.js";
+import { db } from "./firebase.js";
 import { ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
 
@@ -16,12 +16,6 @@ const presentCountCard = document.getElementById("presentCountCard");
 teacherIdentity.textContent = getTeacherName();
 logoutBtn.addEventListener("click", logoutTeacher);
 
-
-function todayKey() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-}
-
 let activeBlock = "Block 1";
 let closedBlocks = {};
 
@@ -35,12 +29,9 @@ onValue(ref(db, "settings"), (snapshot) => {
 
 onValue(ref(db, "students"), (snapshot) => {
   const students = snapshot.val() || {};
-  studentCountCard.textContent = String(Object.keys(students).length);
-});
+  const allStudents = Object.values(students);
+  const onlineNow = allStudents.filter((student) => student?.activeNow === true).length;
 
-onValue(ref(db, `attendance/${todayKey()}`), (snapshot) => {
-  const attendance = snapshot.val() || {};
-  const present = Object.values(attendance).filter((row) => row.activeNow !== false).length;
-  presentCountCard.textContent = String(present);
+  studentCountCard.textContent = String(allStudents.length);
+  presentCountCard.textContent = String(onlineNow);
 });
-

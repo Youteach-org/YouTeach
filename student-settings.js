@@ -1,4 +1,4 @@
-﻿import { db } from "./firebase.js";
+import { db } from "./firebase.js";
 import { ref, onValue, update, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireStudentSession, clearStudentSession, saveLeaveLog } from "./student-auth.js";
 
@@ -42,13 +42,7 @@ function formatStudentLabel(student) {
 }
 
 logoutBtn.addEventListener("click", async () => {
-  let reason = "";
-  const classEnded = settingsCache?.classEnded === true;
-
-  if (!classEnded) {
-    reason = prompt("Reason for leaving class early:", "") || "";
-  }
-
+  const reason = prompt("Reason for leaving (optional):", "") || "";
   await saveLeaveLog(studentKey, reason);
   clearStudentSession();
   window.location.href = "student.html";

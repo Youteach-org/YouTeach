@@ -1,4 +1,4 @@
-﻿import { db } from "./firebase.js";
+import { db } from "./firebase.js";
 import {
   ref,
   push,
@@ -159,7 +159,10 @@ async function savePairHistory(teams) {
 }
 
 function activePresentStudentsForGroup(groupName) {
-  return Object.entries(attendanceCache || {})
+  return Object.entries(studentsCache || {})
+    .filter(([, student]) => student?.activeNow === true && (!groupName || (student.groupName || "") === groupName))
+    .map(([studentKey, student]) => [studentKey, student]);
+})
     .filter(([studentKey, row]) => row.activeNow !== false && (!groupName || (row.groupName || "") === groupName))
     .map(([studentKey]) => [studentKey, studentsCache[studentKey]])
     .filter(([, student]) => Boolean(student));
