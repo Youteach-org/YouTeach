@@ -1,4 +1,4 @@
-import { db } from "./firebase.js";
+﻿import { db } from "./firebase.js";
 import { ref, onValue, update, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
 
@@ -14,7 +14,7 @@ const activeTableBody = document.getElementById("activeTableBody");
 
 teacherIdentity.textContent = getTeacherName();
 logoutBtn.addEventListener("click", logoutTeacher);
-menuToggle.addEventListener("click", () => sidebar.classList.toggle("sidebar-open"));
+menuToggle.addEventListener("click", (e) => { e.stopPropagation(); sidebar.classList.toggle("sidebar-open"); });
 
 let attendanceCache = {};
 let groupsCache = {};
@@ -127,7 +127,7 @@ function renderManualEarlyLeaveOptions() {
     .filter(([, row]) => row.activeNow === true)
     .map(([studentKey, row]) => {
       const label = row.studentName || row.studentKey || studentKey;
-      const ext = row.studentNumber ? ` · ${row.studentNumber}` : "";
+      const ext = row.studentNumber ? ` Â· ${row.studentNumber}` : "";
       return `<option value="${studentKey}">${label}${ext}</option>`;
     })
     .join("");
@@ -181,4 +181,9 @@ if (manualEarlyLeaveBtn) {
 onValue(ref(db, `attendance/${todayKey()}`), (snapshot) => {
   attendanceTodayCache = snapshot.val() || {};
   renderManualEarlyLeaveOptions();
+});
+document.addEventListener("click", (e) => {
+  if (!sidebar.contains(e.target) && !menuToggle.contains(e.target)) {
+    sidebar.classList.remove("sidebar-open");
+  }
 });
