@@ -1,137 +1,91 @@
-(function () {
-  function ready(fn) {
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", fn);
-    } else {
-      fn();
+(function(){
+
+function ready(fn){
+  if(document.readyState==="loading"){
+    document.addEventListener("DOMContentLoaded",fn);
+  } else { fn(); }
+}
+
+function getName(){
+  const ids = ["studentIdentity","teacherIdentity","studentName"];
+  for(const id of ids){
+    const el = document.getElementById(id);
+    if(!el) continue;
+    const t = (el.textContent||"").trim();
+    if(t && t.toLowerCase()!=="student" && t.toLowerCase()!=="teacher"){
+      return t;
     }
   }
+  return "";
+}
 
-  ready(() => {
-    const sidebar = document.getElementById("sidebar");
-    const menuToggle = document.getElementById("menuToggle");
+function getMenuType(){
+  const brand = document.querySelector(".brand p");
+  return brand ? brand.textContent.trim() : "Menu";
+}
 
-    if (sidebar && menuToggle) {
-      menuToggle.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        sidebar.classList.toggle("sidebar-open");
-      });
+ready(()=>{
 
-      sidebar.addEventListener("click", (e) => {
-        e.stopPropagation();
-      });
+  const sidebar = document.getElementById("sidebar");
+  const btn = document.getElementById("menuToggle");
 
-      document.addEventListener("click", (e) => {
-        const clickedInsideSidebar = sidebar.contains(e.target);
-        const clickedMenuButton = menuToggle.contains(e.target);
+  if(!sidebar || !btn) return;
 
-        if (!clickedInsideSidebar && !clickedMenuButton) {
-          sidebar.classList.remove("sidebar-open");
-        }
-      });
+  let header = document.getElementById("menuHeaderFloating");
 
-      document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape") {
-          sidebar.classList.remove("sidebar-open");
-        }
-      });
-    }
+  if(!header){
+    header = document.createElement("div");
+    header.id = "menuHeaderFloating";
+    header.className = "menu-header-floating";
 
-    const passwordInputs = Array.from(document.querySelectorAll('input[type="password"]'));
-    passwordInputs.forEach((input) => {
-      if (input.dataset.toggleReady === "1") return;
-      input.dataset.toggleReady = "1";
+    header.innerHTML = 
+      <div class="menu-header-line1">☰ YouTeach</div>
+      <div class="menu-header-line2"></div>
+      <div class="menu-header-line3"></div>
+    ;
 
-      const wrapper = document.createElement("div");
-      wrapper.style.position = "relative";
-      wrapper.style.display = "block";
-      wrapper.style.width = "100%";
+    document.body.appendChild(header);
+  }
 
-      input.parentNode.insertBefore(wrapper, input);
-      wrapper.appendChild(input);
+  function updateHeader(){
+    header.querySelector(".menu-header-line2").textContent = getMenuType();
+    header.querySelector(".menu-header-line3").textContent = getName();
+  }
 
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.textContent = "Show";
-      btn.setAttribute("aria-label", "Show password");
-      btn.style.position = "absolute";
-      btn.style.right = "10px";
-      btn.style.top = "50%";
-      btn.style.transform = "translateY(-50%)";
-      btn.style.border = "1px solid #94a3b8";
-      btn.style.background = "#ffffff";
-      btn.style.color = "#0f172a";
-      btn.style.borderRadius = "10px";
-      btn.style.padding = "6px 10px";
-      btn.style.fontSize = "12px";
-      btn.style.fontWeight = "700";
-      btn.style.cursor = "pointer";
-      btn.style.zIndex = "5";
+  function openMenu(){
+    sidebar.classList.add("sidebar-open");
+    updateHeader();
+    header.classList.add("show");
+  }
 
-      btn.addEventListener("click", () => {
-        const showing = input.type === "text";
-        input.type = showing ? "password" : "text";
-        btn.textContent = showing ? "Show" : "Hide";
-      });
+  function closeMenu(){
+    sidebar.classList.remove("sidebar-open");
+    header.classList.remove("show");
+  }
 
-      wrapper.appendChild(btn);
-    });
+  btn.addEventListener("click",(e)=>{
+    e.preventDefault();
+    e.stopPropagation();
 
-    const sidebarIdentity = document.getElementById("sidebarIdentity");
-    if (sidebarIdentity) {
-      const sources = [
-        document.getElementById("studentIdentity"),
-        document.getElementById("teacherIdentity"),
-        document.getElementById("studentName")
-      ].filter(Boolean);
-
-      const syncSidebarIdentity = () => {
-        for (const source of sources) {
-          const text = (source.textContent || "").trim();
-          if (text && text.toLowerCase() !== "student" && text.toLowerCase() !== "teacher") {
-            sidebarIdentity.textContent = text;
-            return;
-          }
-        }
-      };
-
-      syncSidebarIdentity();
-
-      sources.forEach((source) => {
-        const observer = new MutationObserver(syncSidebarIdentity);
-        observer.observe(source, { childList: true, subtree: true, characterData: true });
-      });
-
-      setTimeout(syncSidebarIdentity, 300);
-      setTimeout(syncSidebarIdentity, 1000);
-      setTimeout(syncSidebarIdentity, 2000);
+    if(sidebar.classList.contains("sidebar-open")){
+      closeMenu();
+    } else {
+      openMenu();
     }
   });
-})();
 
-// ===== MENU IDENTITY AUTO =====
-(function(){
-  const sidebarIdentity = document.getElementById("sidebarIdentity");
-  if (!sidebarIdentity) return;
-
-  const sources = [
-    document.getElementById("studentIdentity"),
-    document.getElementById("teacherIdentity"),
-    document.getElementById("studentName")
-  ].filter(Boolean);
-
-  function updateName(){
-    for (const s of sources){
-      const t = (s.textContent || "").trim();
-      if (t && t !== "Student" && t !== "Teacher"){
-        sidebarIdentity.textContent = t;
-        return;
-      }
+  document.addEventListener("click",(e)=>{
+    if(!sidebar.contains(e.target) && !btn.contains(e.target)){
+      closeMenu();
     }
-  }
+  });
 
-  updateName();
-  setTimeout(updateName,500);
-  setTimeout(updateName,1500);
+  document.addEventListener("keydown",(e)=>{
+    if(e.key==="Escape"){
+      closeMenu();
+    }
+  });
+
+});
+
 })();

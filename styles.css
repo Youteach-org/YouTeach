@@ -582,103 +582,55 @@ body.sidebar-lock {
   }
 }
 
-/* OAI MENU LAYOUT FIXES START */
-.sidebar {
-  justify-content: flex-start;
-}
+/* ===== CLEAN MENU SYSTEM ===== */
 
-.sidebar-content {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-height: 100%;
-}
-
-.sidebar-identity {
-  display: block;
-  background: #1e293b;
-  color: #e2e8f0;
-  border: 1px solid #334155;
-  border-radius: 10px;
-  padding: 10px 12px;
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 1.3;
-  word-break: break-word;
-}
-
-.sidebar-links {
-  display: grid;
-  gap: 10px;
-  margin-top: 0;
-}
-
+/* ocultar brand interno en móvil */
 @media (max-width: 768px) {
-  .sidebar,
-  .collapsible-sidebar {
-    padding-top: 68px !important;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-    padding-bottom: 0 !important;
-    overflow: hidden !important;
-  }
-
-  .sidebar-content {
-    height: 100%;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    padding: 10px 16px 20px 16px;
-    gap: 12px;
-    justify-content: flex-start;
-  }
-
-  .sidebar .brand,
-  .collapsible-sidebar .brand {
-    margin: 0 !important;
-    padding: 0 !important;
-  }
-
-  .sidebar-links {
-    gap: 10px !important;
-    align-content: start;
-  }
-
-  .sidebar-link,
-  .logout-btn {
-    min-height: 44px !important;
-    padding: 12px 16px !important;
-    font-size: 14px !important;
+  .sidebar .brand {
+    display: none !important;
   }
 }
-/* OAI MENU LAYOUT FIXES END */
 
-
-/* ===== MENU FIX AUTO ===== */
-.sidebar {
-  justify-content: flex-start;
-}
-
-.sidebar-content {
-  display: flex;
+/* header flotante */
+.menu-header-floating {
+  position: fixed;
+  top: 14px;
+  left: 70px;
+  z-index: 1400;
+  background: rgba(15,23,42,0.96);
+  color: white;
+  border-radius: 12px;
+  padding: 10px 14px;
+  display: none;
   flex-direction: column;
-  gap: 12px;
-  height: 100%;
+  gap: 2px;
+  box-shadow: 0 10px 24px rgba(0,0,0,0.25);
+}
+
+.menu-header-floating.show {
+  display: flex;
+}
+
+.menu-header-line1 {
+  font-weight: 800;
+  font-size: 14px;
+}
+
+.menu-header-line2 {
+  font-size: 12px;
+  color: #cbd5e1;
+}
+
+.menu-header-line3 {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+/* scroll correcto */
+.sidebar-content {
   overflow-y: auto;
-  padding: 10px 16px 20px 16px;
+  height: 100%;
+  padding: 10px 16px 18px 16px;
 }
 
-.sidebar-identity {
-  background: #1e293b;
-  color: #e2e8f0;
-  border-radius: 10px;
-  padding: 10px;
-  font-weight: 700;
-  font-size: 14px;
-}
-
-@media (max-width: 768px) {
-  .sidebar {
-    padding-top: 65px !important;
-  }
-}
-/* ===== MENU FIX AUTO END ===== */
+/* ===== END CLEAN MENU ===== */
