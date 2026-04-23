@@ -14,8 +14,6 @@ requireTeacherAuth();
 
 const WORKING_GROUP_KEY = "youteachWorkingGroup";
 
-const menuToggle = document.getElementById("menuToggle");
-const sidebar = document.getElementById("sidebar");
 const teacherIdentity = document.getElementById("teacherIdentity");
 const logoutBtn = document.getElementById("logoutBtn");
 
@@ -48,7 +46,6 @@ const liveScores = document.getElementById("liveScores");
 
 teacherIdentity.textContent = getTeacherName();
 logoutBtn.addEventListener("click", logoutTeacher);
-
 
 let studentsCache = {};
 let pairHistoryCache = {};
@@ -160,12 +157,11 @@ async function savePairHistory(teams) {
 
 function activePresentStudentsForGroup(groupName) {
   return Object.entries(studentsCache || {})
-    .filter(([, student]) => student?.activeNow === true && (!groupName || (student.groupName || "") === groupName))
-    .map(([studentKey, student]) => [studentKey, student]);
-})
-    .filter(([studentKey, row]) => row.activeNow !== false && (!groupName || (row.groupName || "") === groupName))
-    .map(([studentKey]) => [studentKey, studentsCache[studentKey]])
-    .filter(([, student]) => Boolean(student));
+    .filter(([, student]) => {
+      const activeNow = student?.activeNow === true;
+      const groupOk = !groupName || (student?.groupName || "") === groupName;
+      return activeNow && groupOk;
+    });
 }
 
 function getStoredWorkingGroup() {
@@ -292,7 +288,7 @@ createTeamsBtn.addEventListener("click", async () => {
   const sourceEntries = activePresentStudentsForGroup(groupName);
 
   if (!sourceEntries.length) {
-    alert("There are no active students for this group today.");
+    alert("There are no active students for this group right now.");
     return;
   }
 
