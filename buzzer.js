@@ -214,10 +214,6 @@ function getLockedOutTeams() {
   return getBuzzerState().lockedOutTeams || {};
 }
 
-function getQueuedEntryForTeam(teamLabel) {
-  return getQueue().find((entry) => entry?.team === teamLabel) || null;
-}
-
 function getCurrentTeam() {
   return getBuzzerState().currentBuzz?.team || "";
 }
@@ -312,17 +308,19 @@ function renderResult() {
   }
 }
 
-function bindTeamPlusButtons() {
-  const plusButtons = Array.from(document.querySelectorAll(".team-plus-btn"));
-  plusButtons.forEach((btn) => {
+function bindTeamScoreButtons() {
+  const buttons = Array.from(document.querySelectorAll(".team-score-btn"));
+  buttons.forEach((btn) => {
     if (btn.dataset.bound === "1") return;
     btn.dataset.bound = "1";
     btn.addEventListener("click", async () => {
       const teamLabel = btn.dataset.teamLabel || "";
-      if (!teamLabel || !sessionCache?.active) return;
+      const delta = Number(btn.dataset.delta || 0);
+      if (!teamLabel || !sessionCache?.active || !delta) return;
 
       const currentScore = Number(sessionCache.activityScores?.[teamLabel] || 0);
-      await update(ref(db, "session/current/activityScores"), { [teamLabel]: currentScore + 1 });
+      const nextScore = Math.max(0, currentScore + delta);
+      await update(ref(db, "session/current/activityScores"), { [teamLabel]: nextScore });
     });
   });
 }
@@ -330,7 +328,7 @@ function bindTeamPlusButtons() {
 function renderTeamRoster() {
   if (!sessionCache?.active) {
     teamRosterList.innerHTML = '<div class="empty-state">No active session.</div>';
-    teamSelectionNote.textContent = 'Use +1 on the team card to add score quickly.';
+    teamSelectionNote.textContent = 'Use + / - on the team card to change score quickly.';
     return;
   }
 
@@ -342,7 +340,7 @@ function renderTeamRoster() {
 
   if (!orderedTeams.length) {
     teamRosterList.innerHTML = '<div class="empty-state">No teams yet.</div>';
-    teamSelectionNote.textContent = 'Use +1 on the team card to add score quickly.';
+    teamSelectionNote.textContent = 'Use + / - on the team card to change score quickly.';
     return;
   }
 
@@ -371,22 +369,25 @@ function renderTeamRoster() {
     return `
       <div class="team-roster-card${stateClass}">
         <div class="team-roster-top">
-          <strong>${teamLabel}</strong>
-          <span class="team-score-chip">${Number(activityScores[teamLabel] || 0)} pts</span>
-        </div>
-        <div class="team-meta-row">
-          ${stateChip}
+          <div class="team-roster-left">
+            <strong>${teamLabel}</strong>
+            ${stateChip}
+          </div>
+          <div class="team-roster-right">
+            <span class="team-score-chip">${Number(activityScores[teamLabel] || 0)} pts</span>
+            <div class="team-actions">
+              <button type="button" class="team-score-btn" data-team-label="${teamLabel}" data-delta="-1">-</button>
+              <button type="button" class="team-score-btn" data-team-label="${teamLabel}" data-delta="1">+</button>
+            </div>
+          </div>
         </div>
         <div class="team-members">${membersHtml}</div>
-        <div class="team-actions">
-          <button type="button" class="team-plus-btn" data-team-label="${teamLabel}">+1</button>
-        </div>
       </div>
     `;
   }).join("");
 
-  bindTeamPlusButtons();
-  teamSelectionNote.textContent = 'Use +1 on the team card to add score quickly.';
+  bindTeamScoreButtons();
+  teamSelectionNote.textContent = 'Use + / - on the team card to change score quickly.';
 }
 
 function renderLiveScores() {

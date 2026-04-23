@@ -199,10 +199,28 @@
       align-items: center;
       gap: 10px;
       margin-bottom: 10px;
+      flex-wrap: wrap;
     }
 
-    .team-roster-top strong {
+    .team-roster-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      min-width: 0;
+    }
+
+    .team-roster-left strong {
       font-size: 16px;
+    }
+
+    .team-roster-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      margin-left: auto;
     }
 
     .team-score-chip {
@@ -216,14 +234,6 @@
       white-space: nowrap;
     }
 
-    .team-meta-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      align-items: center;
-      margin-bottom: 10px;
-    }
-
     .team-state-chip {
       display: inline-flex;
       align-items: center;
@@ -234,6 +244,7 @@
       background: #ffffff;
       border: 1px solid #d1d5db;
       color: #475569;
+      white-space: nowrap;
     }
 
     .team-state-chip.current {
@@ -276,9 +287,9 @@
       flex-wrap: wrap;
     }
 
-    .team-plus-btn {
-      min-width: 56px;
-      padding: 8px 12px;
+    .team-score-btn {
+      min-width: 40px;
+      padding: 8px 10px;
       font-size: 13px;
       font-weight: 800;
     }
@@ -381,6 +392,15 @@
       .buzzer-generator-card {
         padding: 14px;
       }
+
+      .team-roster-top {
+        align-items: flex-start;
+      }
+
+      .team-roster-right {
+        justify-content: flex-start;
+        margin-left: 0;
+      }
     }
   </style>
 </head>
@@ -459,7 +479,7 @@
               <div id="teamRosterList" class="team-list">
                 <div class="empty-state">No active session.</div>
               </div>
-              <div id="teamSelectionNote" class="selection-note">Use +1 on the team card to add score quickly.</div>
+              <div id="teamSelectionNote" class="selection-note">Use + / - on the team card to change score quickly.</div>
             </div>
 
             <div class="score-panel-section">
