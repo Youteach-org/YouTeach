@@ -10,7 +10,7 @@
       min-height: 100vh;
       display: flex;
       flex-direction: column;
-      gap: 18px;
+      gap: 14px;
       align-items: center;
       justify-content: center;
       padding: 24px 18px 28px 18px;
@@ -37,6 +37,36 @@
       color: #475569;
       text-align: center;
       margin: 0;
+    }
+
+    .student-scoreboard-strip {
+      width: min(94vw, 760px);
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+      gap: 8px;
+    }
+
+    .student-score-card {
+      background: #ffffff;
+      border: 1px solid #dbeafe;
+      border-radius: 12px;
+      padding: 8px 10px;
+      text-align: center;
+      box-shadow: 0 4px 10px rgba(15,23,42,0.04);
+    }
+
+    .student-score-card span {
+      display: block;
+      font-size: 11px;
+      color: #64748b;
+      margin-bottom: 4px;
+    }
+
+    .student-score-card strong {
+      display: block;
+      font-size: 18px;
+      color: #1d4ed8;
+      line-height: 1.1;
     }
 
     .student-buzzer-button-wrap {
@@ -77,6 +107,10 @@
       .student-buzzer-button-wrap {
         width: 94vw;
       }
+
+      .student-scoreboard-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
     }
   </style>
 </head>
@@ -96,18 +130,26 @@
         <a class="sidebar-link active-link" href="student-buzzer.html">Buzzer</a>
         <a class="sidebar-link" href="student-summary.html">My Summary</a>
         <a class="sidebar-link" href="student-settings.html">Settings</a>
-<button id="logoutBtn" class="logout-btn">Logout</button>
+        <button id="logoutBtn" class="logout-btn">Logout</button>
       </div>
     </aside>
 
     <main class="main-content">
-<div id="attendanceStatusBar" class="panel-card" style="margin-bottom:16px;">
-  <strong>Current status today:</strong> <span id="attendanceStatusText">Checking...</span>
-</div>
+      <div id="attendanceStatusBar" class="panel-card" style="margin-bottom:16px;">
+        <strong>Current status today:</strong> <span id="attendanceStatusText">Checking...</span>
+      </div>
+
       <div class="student-buzzer-shell">
         <h1 id="studentName" class="student-buzzer-name">Student</h1>
         <p id="studentTeam" class="student-buzzer-team">No team</p>
         <p id="studentStatus" class="student-buzzer-status">Waiting...</p>
+
+        <div id="activityScoresStrip" class="student-scoreboard-strip">
+          <div class="student-score-card">
+            <span>No scores yet</span>
+            <strong>0</strong>
+          </div>
+        </div>
 
         <div class="student-buzzer-button-wrap">
           <button id="buzzBtn" class="student-buzz-btn">BUZZ</button>
@@ -121,7 +163,6 @@
   </audio>
 
   <script type="module" src="student-buzzer.js"></script>
-<script defer src="shared-ui-fixes.js"></script>
+  <script defer src="shared-ui-fixes.js"></script>
 </body>
 </html>
-

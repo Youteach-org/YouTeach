@@ -26,6 +26,8 @@ const closeSessionBtn = document.getElementById("closeSessionBtn");
 const openRoundBtn = document.getElementById("openRoundBtn");
 const wrongAnswerBtn = document.getElementById("wrongAnswerBtn");
 const closeRoundBtn = document.getElementById("closeRoundBtn");
+const awardActivityScoreBtn = document.getElementById("awardActivityScoreBtn");
+const resetActivityScoresBtn = document.getElementById("resetActivityScoresBtn");
 const awardTeamPointBtn = document.getElementById("awardTeamPointBtn");
 const awardStudentPointBtn = document.getElementById("awardStudentPointBtn");
 const resetLivePointsBtn = document.getElementById("resetLivePointsBtn");
@@ -53,12 +55,6 @@ let sessionCache = null;
 let settingsCache = {};
 let activeBlockCache = "Block 1";
 let groupsCache = {};
-let attendanceCache = {};
-
-function todayKey() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-}
 
 function getFirstName(student) {
   const full = (student?.fullName || student?.name || "").trim();
@@ -235,7 +231,7 @@ function renderLiveScores() {
     return;
   }
 
-  const liveTeamPoints = sessionCache.liveTeamPoints || {};
+  const activityScores = sessionCache.activityScores || {};
   const assignments = sessionCache.assignments || {};
   const teamsFromAssignments = {};
 
@@ -245,7 +241,9 @@ function renderLiveScores() {
     if (student) teamsFromAssignments[teamLabel].push(getFirstName(student));
   });
 
-  const teamCards = Object.keys(liveTeamPoints).sort().map((teamLabel) => {
+  const orderedTeams = Object.keys(activityScores).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
+  const teamCards = orderedTeams.map((teamLabel) => {
     const members = teamsFromAssignments[teamLabel] || [];
     const membersHtml = members.length
       ? members.map((name) => `<span class="team-member-chip">${name}</span>`).join("")
@@ -255,14 +253,14 @@ function renderLiveScores() {
       <div class="live-score-card">
         <div class="live-score-top">
           <strong>${teamLabel}</strong>
-          <span class="live-score-points">${Number(liveTeamPoints[teamLabel] || 0)} pts</span>
+          <span class="live-score-points">${Number(activityScores[teamLabel] || 0)} pts</span>
         </div>
         <div class="team-members">${membersHtml}</div>
       </div>
     `;
   });
 
-  liveScores.innerHTML = teamCards.join("") || '<div class="empty-state">No live scores yet.</div>';
+  liveScores.innerHTML = teamCards.join("") || '<div class="empty-state">No activity scores yet.</div>';
 }
 
 groupSelect.addEventListener("change", () => {
@@ -297,10 +295,12 @@ createTeamsBtn.addEventListener("click", async () => {
   const sessionTeams = {};
   const assignments = {};
   const liveTeamPoints = {};
+  const activityScores = {};
 
   for (const team of smartTeams) {
     sessionTeams[team.key] = team.memberNames;
     liveTeamPoints[team.label] = 0;
+    activityScores[team.label] = 0;
 
     for (const memberKey of team.memberKeys) {
       assignments[memberKey] = team.label;
@@ -315,6 +315,7 @@ createTeamsBtn.addEventListener("click", async () => {
     assignments,
     liveTeamPoints,
     liveStudentPoints: {},
+    activityScores,
     buzzer: {
       roundOpen: false,
       currentBuzz: null,
@@ -391,6 +392,32 @@ closeRoundBtn.addEventListener("click", async () => {
   }
 
   await update(ref(db, "session/current/buzzer"), { roundOpen: false });
+});
+
+awardActivityScoreBtn.addEventListener("click", async () => {
+  const currentBuzz = sessionCache?.buzzer?.currentBuzz;
+  if (!currentBuzz) {
+    alert("No current buzz.");
+    return;
+  }
+
+  const teamLabel = currentBuzz.team;
+  const currentScore = Number(sessionCache.activityScores?.[teamLabel] || 0);
+  await update(ref(db, "session/current/activityScores"), { [teamLabel]: currentScore + 1 });
+});
+
+resetActivityScoresBtn.addEventListener("click", async () => {
+  if (!sessionCache?.active) {
+    alert("No active session.");
+    return;
+  }
+
+  const resetScores = {};
+  Object.keys(sessionCache.activityScores || {}).forEach((teamLabel) => {
+    resetScores[teamLabel] = 0;
+  });
+
+  await set(ref(db, "session/current/activityScores"), resetScores);
 });
 
 awardTeamPointBtn.addEventListener("click", async () => {
@@ -548,11 +575,6 @@ onValue(ref(db, "students"), (snapshot) => {
 onValue(ref(db, "groups"), (snapshot) => {
   groupsCache = snapshot.val() || {};
   renderGroupOptions();
-  renderHeader();
-});
-
-onValue(ref(db, `attendance/${todayKey()}`), (snapshot) => {
-  attendanceCache = snapshot.val() || {};
   renderHeader();
 });
 

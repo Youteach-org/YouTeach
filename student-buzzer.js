@@ -14,6 +14,7 @@ const studentTeam = document.getElementById("studentTeam");
 const studentStatus = document.getElementById("studentStatus");
 const buzzBtn = document.getElementById("buzzBtn");
 const buzzSound = document.getElementById("buzzSound");
+const activityScoresStrip = document.getElementById("activityScoresStrip");
 
 let currentStudent = null;
 let currentSession = null;
@@ -44,6 +45,30 @@ function renderAttendanceStatus(row) {
   attendanceStatusText.textContent = "Not active yet";
 }
 
+function renderActivityScores() {
+  if (!activityScoresStrip) return;
+
+  const scores = currentSession?.activityScores || {};
+  const teamLabels = Object.keys(scores).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
+  if (!teamLabels.length) {
+    activityScoresStrip.innerHTML = `
+      <div class="student-score-card">
+        <span>No scores yet</span>
+        <strong>0</strong>
+      </div>
+    `;
+    return;
+  }
+
+  activityScoresStrip.innerHTML = teamLabels.map((teamLabel) => `
+    <div class="student-score-card">
+      <span>${teamLabel}</span>
+      <strong>${Number(scores[teamLabel] || 0)}</strong>
+    </div>
+  `).join("");
+}
+
 function renderBuzzer() {
   if (!currentStudent) return;
 
@@ -53,6 +78,7 @@ function renderBuzzer() {
     studentTeam.textContent = "No team assigned";
     studentStatus.textContent = "No active session.";
     buzzBtn.disabled = true;
+    renderActivityScores();
     return;
   }
 
@@ -62,6 +88,7 @@ function renderBuzzer() {
   const lockedOut = Boolean(buzzer.lockedOut?.[studentKey]);
 
   studentTeam.textContent = team;
+  renderActivityScores();
 
   if (currentBuzz?.studentKey === studentKey) {
     buzzBtn.disabled = true;
