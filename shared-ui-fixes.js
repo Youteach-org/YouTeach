@@ -38,11 +38,10 @@ ready(()=>{
     header.id = "menuHeaderFloating";
     header.className = "menu-header-floating";
 
-    header.innerHTML = 
-      <div class="menu-header-line1">☰ YouTeach</div>
-      <div class="menu-header-line2"></div>
-      <div class="menu-header-line3"></div>
-    ;
+    header.innerHTML = `
+  "<div class=""menu-header-line1"">☰ YouTeach</div>" +
+  "<div class=""menu-header-line2""></div>" +
+  "<div class=""menu-header-line3""></div>";
 
     document.body.appendChild(header);
   }
