@@ -45,6 +45,8 @@ const resultBuzz = document.getElementById("resultBuzz");
 const resultLocked = document.getElementById("resultLocked");
 const teacherStatusNote = document.getElementById("teacherStatusNote");
 const liveScores = document.getElementById("liveScores");
+const teamRosterList = document.getElementById("teamRosterList");
+const teamSelectionNote = document.getElementById("teamSelectionNote");
 
 teacherIdentity.textContent = getTeacherName();
 logoutBtn.addEventListener("click", logoutTeacher);
@@ -55,6 +57,11 @@ let sessionCache = null;
 let settingsCache = {};
 let activeBlockCache = "Block 1";
 let groupsCache = {};
+let selectedTeamLabel = "";
+
+function getDisplayName(student) {
+  return (student?.nickname || student?.fullName || student?.name || "Student").trim();
+}
 
 function getFirstName(student) {
   const full = (student?.fullName || student?.name || "").trim();
@@ -128,7 +135,7 @@ function buildSmartTeams(studentEntries, numTeams) {
     }
 
     teams[bestTeamIndex].memberKeys.push(studentKey);
-    teams[bestTeamIndex].memberNames.push(getFirstName(student));
+    teams[bestTeamIndex].memberNames.push(getDisplayName(student));
   }
 
   return teams;
@@ -222,7 +229,77 @@ function renderResult() {
   resultRound.textContent = buzzer.roundOpen ? "OPEN" : "CLOSED";
   resultBuzz.textContent = currentBuzz ? `${currentBuzz.name} (${currentBuzz.team})` : "None yet";
   resultLocked.textContent = String(Object.keys(buzzer.lockedOut || {}).length);
-  teacherStatusNote.textContent = currentBuzz ? "A student has buzzed." : "Waiting for buzz.";
+
+  if (selectedTeamLabel) {
+    teacherStatusNote.textContent = `Selected team for Activity Score: ${selectedTeamLabel}`;
+  } else if (currentBuzz) {
+    teacherStatusNote.textContent = `Current buzz team fallback: ${currentBuzz.team}`;
+  } else {
+    teacherStatusNote.textContent = "Waiting for buzz.";
+  }
+}
+
+function getTeamMembersByLabel(teamLabel) {
+  const assignments = sessionCache?.assignments || {};
+  return Object.entries(assignments)
+    .filter(([, assignedLabel]) => assignedLabel === teamLabel)
+    .map(([studentKey]) => getDisplayName(studentsCache[studentKey]))
+    .filter(Boolean);
+}
+
+function renderTeamRoster() {
+  if (!sessionCache?.active) {
+    teamRosterList.innerHTML = '<div class="empty-state">No active session.</div>';
+    teamSelectionNote.textContent = 'Select a team card to apply Activity Score there.';
+    return;
+  }
+
+  const activityScores = sessionCache.activityScores || {};
+  const orderedTeams = Object.keys(activityScores).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
+  if (!orderedTeams.length) {
+    teamRosterList.innerHTML = '<div class="empty-state">No teams yet.</div>';
+    teamSelectionNote.textContent = 'Select a team card to apply Activity Score there.';
+    return;
+  }
+
+  if (selectedTeamLabel && !orderedTeams.includes(selectedTeamLabel)) {
+    selectedTeamLabel = "";
+  }
+
+  teamRosterList.innerHTML = orderedTeams.map((teamLabel) => {
+    const members = getTeamMembersByLabel(teamLabel);
+    const membersHtml = members.length
+      ? members.map((name) => `<span class="team-member-chip">${name}</span>`).join("")
+      : '<span class="empty-state">No members</span>';
+
+    const selectedClass = selectedTeamLabel === teamLabel ? " selected" : "";
+
+    return `
+      <div class="team-roster-card${selectedClass}" data-team-label="${teamLabel}">
+        <div class="team-roster-top">
+          <strong>${teamLabel}</strong>
+          <span class="team-score-chip">${Number(activityScores[teamLabel] || 0)} pts</span>
+        </div>
+        <div class="team-members">${membersHtml}</div>
+      </div>
+    `;
+  }).join("");
+
+  const cards = Array.from(teamRosterList.querySelectorAll(".team-roster-card"));
+  cards.forEach((card) => {
+    card.addEventListener("click", () => {
+      selectedTeamLabel = card.dataset.teamLabel || "";
+      renderTeamRoster();
+      renderResult();
+    });
+  });
+
+  if (selectedTeamLabel) {
+    teamSelectionNote.textContent = `Activity Score will be applied to ${selectedTeamLabel}.`;
+  } else {
+    teamSelectionNote.textContent = 'Select a team card to apply Activity Score there.';
+  }
 }
 
 function renderLiveScores() {
@@ -232,30 +309,15 @@ function renderLiveScores() {
   }
 
   const activityScores = sessionCache.activityScores || {};
-  const assignments = sessionCache.assignments || {};
-  const teamsFromAssignments = {};
-
-  Object.entries(assignments).forEach(([studentKey, teamLabel]) => {
-    if (!teamsFromAssignments[teamLabel]) teamsFromAssignments[teamLabel] = [];
-    const student = studentsCache[studentKey];
-    if (student) teamsFromAssignments[teamLabel].push(getFirstName(student));
-  });
-
   const orderedTeams = Object.keys(activityScores).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 
   const teamCards = orderedTeams.map((teamLabel) => {
-    const members = teamsFromAssignments[teamLabel] || [];
-    const membersHtml = members.length
-      ? members.map((name) => `<span class="team-member-chip">${name}</span>`).join("")
-      : '<span class="empty-state">No members</span>';
-
     return `
       <div class="live-score-card">
         <div class="live-score-top">
           <strong>${teamLabel}</strong>
           <span class="live-score-points">${Number(activityScores[teamLabel] || 0)} pts</span>
         </div>
-        <div class="team-members">${membersHtml}</div>
       </div>
     `;
   });
@@ -307,6 +369,8 @@ createTeamsBtn.addEventListener("click", async () => {
     }
   }
 
+  selectedTeamLabel = "";
+
   await set(ref(db, "session/current"), {
     active: true,
     createdAt: Date.now(),
@@ -329,6 +393,7 @@ createTeamsBtn.addEventListener("click", async () => {
 });
 
 resetSessionBtn.addEventListener("click", async () => {
+  selectedTeamLabel = "";
   await remove(ref(db, "session/current"));
   alert("Session cleared.");
 });
@@ -350,6 +415,7 @@ closeSessionBtn.addEventListener("click", async () => {
     closedAt: Date.now()
   });
 
+  selectedTeamLabel = "";
   await remove(ref(db, "session/current"));
   alert("Session closed and saved.");
 });
@@ -395,13 +461,19 @@ closeRoundBtn.addEventListener("click", async () => {
 });
 
 awardActivityScoreBtn.addEventListener("click", async () => {
-  const currentBuzz = sessionCache?.buzzer?.currentBuzz;
-  if (!currentBuzz) {
-    alert("No current buzz.");
+  if (!sessionCache?.active) {
+    alert("No active session.");
     return;
   }
 
-  const teamLabel = currentBuzz.team;
+  const fallbackBuzzTeam = sessionCache?.buzzer?.currentBuzz?.team || "";
+  const teamLabel = selectedTeamLabel || fallbackBuzzTeam;
+
+  if (!teamLabel) {
+    alert("Select a team from the team list first, or wait for a buzz result.");
+    return;
+  }
+
   const currentScore = Number(sessionCache.activityScores?.[teamLabel] || 0);
   await update(ref(db, "session/current/activityScores"), { [teamLabel]: currentScore + 1 });
 });
@@ -569,6 +641,7 @@ applyTeamPointsBtn.addEventListener("click", async () => {
 onValue(ref(db, "students"), (snapshot) => {
   studentsCache = snapshot.val() || {};
   renderHeader();
+  renderTeamRoster();
   renderLiveScores();
 });
 
@@ -590,11 +663,16 @@ onValue(ref(db, "settings"), (snapshot) => {
 
 onValue(ref(db, "session/current"), (snapshot) => {
   sessionCache = snapshot.val() || null;
+
   if (sessionCache?.groupName) {
     setStoredWorkingGroup(sessionCache.groupName);
+  } else {
+    selectedTeamLabel = "";
   }
+
   renderGroupOptions();
   renderHeader();
   renderResult();
+  renderTeamRoster();
   renderLiveScores();
 });
