@@ -56,19 +56,24 @@ function formatDate(timestamp) {
   return new Date(timestamp).toLocaleString();
 }
 
-function getDisplayName(student) {
+function getNickname(student) {
   if (!student) return "Student";
   return student.nickname || ((student.fullName || student.name || "").split(" ")[0]) || "Student";
+}
+
+function getFullName(student) {
+  if (!student) return "Student";
+  return (student.fullName || student.name || student.nickname || "Student").trim();
 }
 
 function getExternalId(student) {
   return student?.studentNumber || student?.externalId || "";
 }
 
-function formatStudentLabel(student) {
-  const name = getDisplayName(student);
+function formatTopIdentity(student) {
+  const fullName = getFullName(student);
   const externalId = getExternalId(student);
-  return externalId ? `${name} · ${externalId}` : name;
+  return externalId ? `${fullName} · ${externalId}` : fullName;
 }
 
 function getExamPoints(student, blockName) {
@@ -136,7 +141,8 @@ function renderAll() {
 
   ensureSelectedBlock();
 
-  const studentLabel = formatStudentLabel(currentStudent);
+  const topIdentity = formatTopIdentity(currentStudent);
+  const nickname = getNickname(currentStudent);
   const activeBlock = settingsCache.activeBlock || "Block 1";
   const currentTeam = currentSession?.assignments?.[studentKey] || "";
   const showLivePoints = selectedBlock === activeBlock;
@@ -147,8 +153,8 @@ function renderAll() {
   const activeBlockClosed = !!settingsCache?.closedBlocks?.[activeBlock];
   const selectedBlockClosed = !!settingsCache?.closedBlocks?.[selectedBlock];
 
-  studentIdentity.textContent = studentLabel;
-  displayNameCard.textContent = studentLabel;
+  studentIdentity.textContent = topIdentity;
+  displayNameCard.textContent = nickname;
   groupCard.textContent = currentStudent.groupName || "";
   classActiveBlockHero.textContent = activeBlock;
   classActiveBlockStatus.textContent = activeBlockClosed ? "Closed block" : "Open block";
