@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
   function ready(fn) {
     if (document.readyState === "loading") {
       document.addEventListener("DOMContentLoaded", fn);
@@ -12,20 +12,28 @@
     const menuToggle = document.getElementById("menuToggle");
 
     if (sidebar && menuToggle) {
+      menuToggle.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        sidebar.classList.toggle("sidebar-open");
+      });
+
+      sidebar.addEventListener("click", (e) => {
+        e.stopPropagation();
+      });
+
       document.addEventListener("click", (e) => {
         const clickedInsideSidebar = sidebar.contains(e.target);
         const clickedMenuButton = menuToggle.contains(e.target);
 
         if (!clickedInsideSidebar && !clickedMenuButton) {
           sidebar.classList.remove("sidebar-open");
-          document.body.classList.remove("sidebar-lock");
         }
       });
 
       document.addEventListener("keydown", (e) => {
         if (e.key === "Escape") {
           sidebar.classList.remove("sidebar-open");
-          document.body.classList.remove("sidebar-lock");
         }
       });
     }
@@ -71,29 +79,3 @@
     });
   });
 })();
-document.addEventListener("DOMContentLoaded", () => {
-  const menuToggle = document.getElementById("menuToggle");
-  const sidebar = document.getElementById("sidebar");
-
-  if (!menuToggle || !sidebar) return;
-
-  menuToggle.addEventListener("click", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    sidebar.classList.toggle("sidebar-open");
-  });
-
-  sidebar.addEventListener("click", (e) => e.stopPropagation());
-
-  document.addEventListener("click", (e) => {
-    if (!sidebar.contains(e.target) && !menuToggle.contains(e.target)) {
-      sidebar.classList.remove("sidebar-open");
-    }
-  });
-
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") {
-      sidebar.classList.remove("sidebar-open");
-    }
-  });
-});

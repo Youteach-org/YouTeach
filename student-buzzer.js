@@ -1,28 +1,3 @@
-function todayKey() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-}
-
-function renderAttendanceStatus(row) {
-  if (!attendanceStatusText) return;
-
-  if (!row) {
-    attendanceStatusText.textContent = "Not registered yet";
-    return;
-  }
-
-  if (row.attendanceValidated === true || row.present === true) {
-    attendanceStatusText.textContent = "Validated";
-    return;
-  }
-
-  if (row.activeNow === true) {
-    attendanceStatusText.textContent = "Pending teacher validation";
-    return;
-  }
-
-  attendanceStatusText.textContent = "Not registered yet";
-}
 import { db } from "./firebase.js";
 import { ref, onValue, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireStudentSession, clearStudentSession, saveLeaveLog } from "./student-auth.js";
@@ -34,8 +9,6 @@ const { studentKey } = session;
 
 const logoutBtn = document.getElementById("logoutBtn");
 const attendanceStatusText = document.getElementById("attendanceStatusText");
-const menuToggle = document.getElementById("menuToggle");
-const sidebar = document.getElementById("sidebar");
 const studentName = document.getElementById("studentName");
 const studentTeam = document.getElementById("studentTeam");
 const studentStatus = document.getElementById("studentStatus");
@@ -45,20 +18,36 @@ const buzzSound = document.getElementById("buzzSound");
 let currentStudent = null;
 let currentSession = null;
 
-function getFirstName(student) {
-  const full = (student?.fullName || student?.name || "").trim();
-  if (!full) return student?.nickname || "Student";
-  return full.split(/\s+/)[0];
+function todayKey() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 }
 
+function getDisplayName(student) {
+  if (!student) return "Student";
+  return student.nickname || ((student.fullName || student.name || "").split(" ")[0]) || "Student";
+}
 
-});
+function renderAttendanceStatus(row) {
+  if (!attendanceStatusText) return;
+
+  if (currentStudent?.activeNow === true) {
+    attendanceStatusText.textContent = "Active now";
+    return;
+  }
+
+  if (row?.leaveAt) {
+    attendanceStatusText.textContent = "Logged out today";
+    return;
+  }
+
+  attendanceStatusText.textContent = "Not active yet";
+}
 
 function renderBuzzer() {
   if (!currentStudent) return;
 
-  const displayName = getFirstName(currentStudent);
-  studentName.textContent = displayName;
+  studentName.textContent = getDisplayName(currentStudent);
 
   if (!currentSession?.active) {
     studentTeam.textContent = "No team assigned";
@@ -128,7 +117,7 @@ buzzBtn.addEventListener("click", async () => {
     buzzer.currentBuzz = {
       studentKey,
       id: currentStudent.studentNumber || currentStudent.id,
-      name: getFirstName(currentStudent),
+      name: getDisplayName(currentStudent),
       team,
       timestamp: Date.now()
     };

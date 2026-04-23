@@ -4,8 +4,6 @@ import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-aut
 
 requireTeacherAuth();
 
-const menuToggle = document.getElementById("menuToggle");
-const sidebar = document.getElementById("sidebar");
 const teacherIdentity = document.getElementById("teacherIdentity");
 const logoutBtn = document.getElementById("logoutBtn");
 const groupFilter = document.getElementById("groupFilter");
@@ -19,10 +17,6 @@ const manualEarlyLeaveStatus = document.getElementById("manualEarlyLeaveStatus")
 
 teacherIdentity.textContent = getTeacherName();
 logoutBtn.addEventListener("click", logoutTeacher);
-menuToggle.addEventListener("click", (e) => {
-  e.stopPropagation();
-  sidebar.classList.toggle("sidebar-open");
-});
 
 let attendanceCache = {};
 let groupsCache = {};

@@ -8,8 +8,6 @@ if (!session) throw new Error("Student session required.");
 const { studentKey } = session;
 
 const logoutBtn = document.getElementById("logoutBtn");
-const menuToggle = document.getElementById("menuToggle");
-const sidebar = document.getElementById("sidebar");
 const studentIdentity = document.getElementById("studentIdentity");
 const displayNameCard = document.getElementById("displayNameCard");
 const groupCard = document.getElementById("groupCard");
@@ -32,8 +30,6 @@ let settingsCache = {};
 let pointsLogCache = {};
 let selectedBlock = "";
 
-
-
 function todayKey() {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
@@ -55,19 +51,6 @@ function renderAttendanceStatus(row) {
   attendanceStatusText.textContent = "Not active yet";
 }
 
-  if (row.attendanceValidated === true || row.present === true) {
-    attendanceStatusText.textContent = "Validated";
-    return;
-  }
-
-  if (row.activeNow === true) {
-    attendanceStatusText.textContent = "Pending teacher validation";
-    return;
-  }
-
-  attendanceStatusText.textContent = "Not registered yet";
-}
-
 function formatDate(timestamp) {
   if (!timestamp) return "Unknown date";
   return new Date(timestamp).toLocaleString();
@@ -75,11 +58,7 @@ function formatDate(timestamp) {
 
 function getDisplayName(student) {
   if (!student) return "Student";
-  return (
-    student.nickname ||
-    ((student.fullName || student.name || "").split(" ")[0]) ||
-    "Student"
-  );
+  return student.nickname || ((student.fullName || student.name || "").split(" ")[0]) || "Student";
 }
 
 function getExternalId(student) {
@@ -89,11 +68,7 @@ function getExternalId(student) {
 function formatStudentLabel(student) {
   const name = getDisplayName(student);
   const externalId = getExternalId(student);
-  return externalId ? `${name} Â· ${externalId}` : name;
-}
-
-function getExtraPoints(student, blockName) {
-  return Number(student?.blockPoints?.[blockName] || 0);
+  return externalId ? `${name} · ${externalId}` : name;
 }
 
 function getExamPoints(student, blockName) {
@@ -161,7 +136,6 @@ function renderAll() {
 
   ensureSelectedBlock();
 
-  const displayName = getDisplayName(currentStudent);
   const studentLabel = formatStudentLabel(currentStudent);
   const activeBlock = settingsCache.activeBlock || "Block 1";
   const currentTeam = currentSession?.assignments?.[studentKey] || "";
@@ -169,7 +143,7 @@ function renderAll() {
   const liveTeamPoints = showLivePoints ? Number(currentSession?.liveTeamPoints?.[currentTeam] || 0) : 0;
   const liveStudentPoints = showLivePoints ? Number(currentSession?.liveStudentPoints?.[studentKey] || 0) : 0;
   const examPoints = getExamPoints(currentStudent, selectedBlock);
-  const totalBlockPoints = examPoints.written + examPoints.oral + examPoints.verbs + liveTeamPoints + liveStudentPoints;
+  const totalBlockPoints = examPoints.written + examPoints.oral + examPoints.verbs + liveStudentPoints + liveTeamPoints;
   const activeBlockClosed = !!settingsCache?.closedBlocks?.[activeBlock];
   const selectedBlockClosed = !!settingsCache?.closedBlocks?.[selectedBlock];
 
@@ -227,6 +201,7 @@ onValue(ref(db, "pointsLog"), (snapshot) => {
   pointsLogCache = snapshot.val() || {};
   renderAll();
 });
+
 onValue(ref(db, `attendance/${todayKey()}/${studentKey}`), (snapshot) => {
   renderAttendanceStatus(snapshot.val() || null);
 });
