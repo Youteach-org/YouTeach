@@ -77,5 +77,61 @@
 
       wrapper.appendChild(btn);
     });
+
+    const sidebarIdentity = document.getElementById("sidebarIdentity");
+    if (sidebarIdentity) {
+      const sources = [
+        document.getElementById("studentIdentity"),
+        document.getElementById("teacherIdentity"),
+        document.getElementById("studentName")
+      ].filter(Boolean);
+
+      const syncSidebarIdentity = () => {
+        for (const source of sources) {
+          const text = (source.textContent || "").trim();
+          if (text && text.toLowerCase() !== "student" && text.toLowerCase() !== "teacher") {
+            sidebarIdentity.textContent = text;
+            return;
+          }
+        }
+      };
+
+      syncSidebarIdentity();
+
+      sources.forEach((source) => {
+        const observer = new MutationObserver(syncSidebarIdentity);
+        observer.observe(source, { childList: true, subtree: true, characterData: true });
+      });
+
+      setTimeout(syncSidebarIdentity, 300);
+      setTimeout(syncSidebarIdentity, 1000);
+      setTimeout(syncSidebarIdentity, 2000);
+    }
   });
+})();
+
+// ===== MENU IDENTITY AUTO =====
+(function(){
+  const sidebarIdentity = document.getElementById("sidebarIdentity");
+  if (!sidebarIdentity) return;
+
+  const sources = [
+    document.getElementById("studentIdentity"),
+    document.getElementById("teacherIdentity"),
+    document.getElementById("studentName")
+  ].filter(Boolean);
+
+  function updateName(){
+    for (const s of sources){
+      const t = (s.textContent || "").trim();
+      if (t && t !== "Student" && t !== "Teacher"){
+        sidebarIdentity.textContent = t;
+        return;
+      }
+    }
+  }
+
+  updateName();
+  setTimeout(updateName,500);
+  setTimeout(updateName,1500);
 })();
