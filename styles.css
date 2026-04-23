@@ -430,8 +430,6 @@ a {
   }
 }
 
-
-/* OAI MOBILE AND UX FIXES START */
 body.sidebar-lock {
   overflow: hidden;
 }
@@ -583,4 +581,3 @@ body.sidebar-lock {
     font-size: 12px !important;
   }
 }
-/* OAI MOBILE AND UX FIXES END */
