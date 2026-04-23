@@ -49,7 +49,9 @@
       box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
     }
 
-    .buzzer-generator-card {
+    .buzzer-generator-card,
+    .buzz-panel,
+    .score-panel {
       padding: 18px;
     }
 
@@ -104,11 +106,6 @@
       grid-template-columns: minmax(0, 1.12fr) minmax(320px, 0.88fr);
       gap: 18px;
       align-items: start;
-    }
-
-    .buzz-panel,
-    .score-panel {
-      padding: 18px;
     }
 
     .buzz-result-card {
@@ -177,19 +174,23 @@
       border: 1px solid #e2e8f0;
       border-radius: 14px;
       padding: 12px 14px;
-      cursor: pointer;
       transition: 0.2s ease;
     }
 
-    .team-roster-card:hover {
-      border-color: #93c5fd;
-      box-shadow: 0 6px 14px rgba(37, 99, 235, 0.08);
-    }
-
-    .team-roster-card.selected {
+    .team-roster-card.current {
       border-color: #2563eb;
       background: #eff6ff;
       box-shadow: 0 8px 18px rgba(37, 99, 235, 0.12);
+    }
+
+    .team-roster-card.queued {
+      border-color: #93c5fd;
+      background: #f8fbff;
+    }
+
+    .team-roster-card.locked {
+      opacity: 0.7;
+      border-style: dashed;
     }
 
     .team-roster-top {
@@ -215,10 +216,49 @@
       white-space: nowrap;
     }
 
+    .team-meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .team-state-chip {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      background: #ffffff;
+      border: 1px solid #d1d5db;
+      color: #475569;
+    }
+
+    .team-state-chip.current {
+      border-color: #2563eb;
+      color: #1d4ed8;
+      background: #dbeafe;
+    }
+
+    .team-state-chip.queued {
+      border-color: #93c5fd;
+      color: #1d4ed8;
+      background: #eff6ff;
+    }
+
+    .team-state-chip.locked {
+      border-color: #fca5a5;
+      color: #b91c1c;
+      background: #fef2f2;
+    }
+
     .team-members {
       display: flex;
       flex-wrap: wrap;
       gap: 6px;
+      margin-bottom: 10px;
     }
 
     .team-member-chip {
@@ -228,6 +268,19 @@
       padding: 5px 9px;
       font-size: 12px;
       line-height: 1.15;
+    }
+
+    .team-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .team-plus-btn {
+      min-width: 56px;
+      padding: 8px 12px;
+      font-size: 13px;
+      font-weight: 800;
     }
 
     .selection-note {
@@ -380,17 +433,16 @@
               <div class="buzz-result-mini">
                 <div><strong>Group:</strong> <span id="resultGroup">---</span></div>
                 <div><strong>Round:</strong> <span id="resultRound">CLOSED</span></div>
-                <div><strong>Current Buzz:</strong> <span id="resultBuzz">None yet</span></div>
+                <div><strong>Current Team:</strong> <span id="resultBuzz">None yet</span></div>
                 <div><strong>Locked Out:</strong> <span id="resultLocked">0</span></div>
               </div>
             </div>
 
             <div class="control-buttons-grid">
               <button id="openRoundBtn">Open Round</button>
-              <button id="wrongAnswerBtn">Mark Wrong / Reopen</button>
+              <button id="wrongAnswerBtn">Mark Wrong / Next</button>
               <button id="closeRoundBtn">Close Round</button>
-              <button id="awardActivityScoreBtn">+1 Activity Score</button>
-              <button id="resetActivityScoresBtn">Reset Activity Score</button>
+              <button id="resetActivityScoresBtn">Reset Score</button>
               <button id="awardTeamPointBtn">+1 Team Live Point</button>
               <button id="awardStudentPointBtn">+1 Student Live Point</button>
               <button id="resetLivePointsBtn">Reset Live Points</button>
@@ -407,7 +459,7 @@
               <div id="teamRosterList" class="team-list">
                 <div class="empty-state">No active session.</div>
               </div>
-              <div id="teamSelectionNote" class="selection-note">Select a team card to apply Activity Score there.</div>
+              <div id="teamSelectionNote" class="selection-note">Use +1 on the team card to add score quickly.</div>
             </div>
 
             <div class="score-panel-section">

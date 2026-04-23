@@ -29,6 +29,15 @@ function getDisplayName(student) {
   return student.nickname || ((student.fullName || student.name || "").split(" ")[0]) || "Student";
 }
 
+function getBuzzerState() {
+  return currentSession?.buzzer || {
+    roundOpen: false,
+    currentBuzz: null,
+    queue: [],
+    lockedOutTeams: {}
+  };
+}
+
 function renderAttendanceStatus(row) {
   if (!attendanceStatusText) return;
 
@@ -83,39 +92,42 @@ function renderBuzzer() {
   }
 
   const team = currentSession.assignments?.[studentKey] || "No team";
-  const buzzer = currentSession.buzzer || {};
+  const buzzer = getBuzzerState();
   const currentBuzz = buzzer.currentBuzz || null;
-  const lockedOut = Boolean(buzzer.lockedOut?.[studentKey]);
+  const queue = Array.isArray(buzzer.queue) ? buzzer.queue : [];
+  const lockedOutTeam = Boolean(buzzer.lockedOutTeams?.[team]);
+  const currentTeam = currentBuzz?.team || "";
+  const queueIndex = queue.findIndex((entry) => entry?.team === team);
 
   studentTeam.textContent = team;
   renderActivityScores();
 
-  if (currentBuzz?.studentKey === studentKey) {
+  if (lockedOutTeam) {
     buzzBtn.disabled = true;
-    studentStatus.textContent = "You buzzed first. Waiting for teacher decision.";
+    studentStatus.textContent = "Your team is locked for this round.";
     return;
   }
 
-  if (currentBuzz && currentBuzz.studentKey !== studentKey) {
+  if (!buzzer.roundOpen) {
     buzzBtn.disabled = true;
-    studentStatus.textContent = `Current buzz: ${currentBuzz.name}`;
+    studentStatus.textContent = "Round is closed.";
     return;
   }
 
-  if (lockedOut) {
+  if (currentTeam === team) {
     buzzBtn.disabled = true;
-    studentStatus.textContent = "You are locked out for this round.";
+    studentStatus.textContent = "Your team has priority now.";
     return;
   }
 
-  if (buzzer.roundOpen) {
-    buzzBtn.disabled = false;
-    studentStatus.textContent = "Round is open. Tap the buzzer.";
+  if (queueIndex >= 0) {
+    buzzBtn.disabled = true;
+    studentStatus.textContent = `Your team is queued (#${queueIndex + 1}).`;
     return;
   }
 
-  buzzBtn.disabled = true;
-  studentStatus.textContent = "Round is closed.";
+  buzzBtn.disabled = false;
+  studentStatus.textContent = "Round is open. Tap the buzzer.";
 }
 
 logoutBtn.addEventListener("click", async () => {
@@ -129,6 +141,7 @@ buzzBtn.addEventListener("click", async () => {
   if (!currentStudent || !currentSession?.active) return;
 
   const team = currentSession.assignments?.[studentKey] || "No team";
+  const studentNameText = getDisplayName(currentStudent);
 
   try {
     buzzSound.currentTime = 0;
@@ -138,17 +151,28 @@ buzzBtn.addEventListener("click", async () => {
   await runTransaction(ref(db, "session/current/buzzer"), (buzzer) => {
     if (!buzzer) return buzzer;
     if (!buzzer.roundOpen) return buzzer;
-    if (buzzer.currentBuzz) return buzzer;
-    if (buzzer.lockedOut?.[studentKey]) return buzzer;
 
-    buzzer.currentBuzz = {
+    buzzer.queue = Array.isArray(buzzer.queue) ? buzzer.queue : [];
+    buzzer.lockedOutTeams = buzzer.lockedOutTeams || {};
+
+    if (buzzer.lockedOutTeams[team]) return buzzer;
+    if (buzzer.currentBuzz?.team === team) return buzzer;
+    if (buzzer.queue.some((entry) => entry?.team === team)) return buzzer;
+
+    const entry = {
       studentKey,
       id: currentStudent.studentNumber || currentStudent.id,
-      name: getDisplayName(currentStudent),
+      name: studentNameText,
       team,
       timestamp: Date.now()
     };
-    buzzer.roundOpen = false;
+
+    if (!buzzer.currentBuzz) {
+      buzzer.currentBuzz = entry;
+    } else {
+      buzzer.queue.push(entry);
+    }
+
     return buzzer;
   });
 });

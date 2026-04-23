@@ -26,7 +26,6 @@ const closeSessionBtn = document.getElementById("closeSessionBtn");
 const openRoundBtn = document.getElementById("openRoundBtn");
 const wrongAnswerBtn = document.getElementById("wrongAnswerBtn");
 const closeRoundBtn = document.getElementById("closeRoundBtn");
-const awardActivityScoreBtn = document.getElementById("awardActivityScoreBtn");
 const resetActivityScoresBtn = document.getElementById("resetActivityScoresBtn");
 const awardTeamPointBtn = document.getElementById("awardTeamPointBtn");
 const awardStudentPointBtn = document.getElementById("awardStudentPointBtn");
@@ -58,7 +57,6 @@ let sessionCache = null;
 let settingsCache = {};
 let activeBlockCache = "Block 1";
 let groupsCache = {};
-let selectedTeamLabel = "";
 
 function getDisplayName(student) {
   return (student?.nickname || student?.fullName || student?.name || "Student").trim();
@@ -193,6 +191,74 @@ function getPreferredGroup(groups) {
   return groups[0] || "";
 }
 
+function getAllTeamLabels() {
+  const labels = Object.values(sessionCache?.assignments || {});
+  return Array.from(new Set(labels)).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+}
+
+function getBuzzerState() {
+  return sessionCache?.buzzer || {
+    roundOpen: false,
+    currentBuzz: null,
+    queue: [],
+    lockedOutTeams: {}
+  };
+}
+
+function getQueue() {
+  const queue = getBuzzerState().queue;
+  return Array.isArray(queue) ? queue : [];
+}
+
+function getLockedOutTeams() {
+  return getBuzzerState().lockedOutTeams || {};
+}
+
+function getQueuedEntryForTeam(teamLabel) {
+  return getQueue().find((entry) => entry?.team === teamLabel) || null;
+}
+
+function getCurrentTeam() {
+  return getBuzzerState().currentBuzz?.team || "";
+}
+
+function getTeamMembersByLabel(teamLabel) {
+  const assignments = sessionCache?.assignments || {};
+  return Object.entries(assignments)
+    .filter(([, assignedLabel]) => assignedLabel === teamLabel)
+    .map(([studentKey]) => getDisplayName(studentsCache[studentKey]))
+    .filter(Boolean);
+}
+
+function getOrderedTeamLabels() {
+  const allTeams = getAllTeamLabels();
+  const currentTeam = getCurrentTeam();
+  const queue = getQueue();
+  const lockedOutTeams = getLockedOutTeams();
+
+  const queuedTeams = queue
+    .map((entry) => entry?.team)
+    .filter((teamLabel) => teamLabel && teamLabel !== currentTeam && !lockedOutTeams[teamLabel]);
+
+  const remainingTeams = allTeams.filter((teamLabel) => {
+    return (
+      teamLabel !== currentTeam &&
+      !queuedTeams.includes(teamLabel) &&
+      !lockedOutTeams[teamLabel]
+    );
+  });
+
+  const lockedTeams = allTeams.filter((teamLabel) => lockedOutTeams[teamLabel]);
+
+  const ordered = [];
+  if (currentTeam) ordered.push(currentTeam);
+  ordered.push(...queuedTeams);
+  ordered.push(...remainingTeams);
+  ordered.push(...lockedTeams);
+
+  return ordered;
+}
+
 function renderGroupOptions() {
   const groups = Object.keys(groupsCache || {}).sort();
   const preferredGroup = getPreferredGroup(groups);
@@ -211,8 +277,8 @@ function renderHeader() {
   blockStatusLabel.textContent = isBlockClosed(activeBlockCache) ? "CLOSED" : "OPEN";
   sessionStatusLabel.textContent = sessionCache?.active ? "Active session" : "No active session";
   const presentCount = activePresentStudentsForGroup(selectedGroup).length;
-studentCountLabel.textContent = String(presentCount);
-if (presentTodayLabel) presentTodayLabel.textContent = String(presentCount);
+  studentCountLabel.textContent = String(presentCount);
+  if (presentTodayLabel) presentTodayLabel.textContent = String(presentCount);
 }
 
 function renderResult() {
@@ -225,49 +291,59 @@ function renderResult() {
     return;
   }
 
-  const buzzer = sessionCache.buzzer || {};
+  const buzzer = getBuzzerState();
   const currentBuzz = buzzer.currentBuzz || null;
+  const lockedCount = Object.keys(getLockedOutTeams()).length;
+  const queuedCount = getQueue().length;
 
   resultGroup.textContent = sessionCache.groupName || groupSelect.value || "---";
   resultRound.textContent = buzzer.roundOpen ? "OPEN" : "CLOSED";
-  resultBuzz.textContent = currentBuzz ? `${currentBuzz.name} (${currentBuzz.team})` : "None yet";
-  resultLocked.textContent = String(Object.keys(buzzer.lockedOut || {}).length);
+  resultBuzz.textContent = currentBuzz ? `${currentBuzz.team} - ${currentBuzz.name}` : "Waiting";
+  resultLocked.textContent = String(lockedCount);
 
-  if (selectedTeamLabel) {
-    teacherStatusNote.textContent = `Selected team for Activity Score: ${selectedTeamLabel}`;
+  if (!buzzer.roundOpen) {
+    teacherStatusNote.textContent = "Round is closed.";
   } else if (currentBuzz) {
-    teacherStatusNote.textContent = `Current buzz team fallback: ${currentBuzz.team}`;
+    teacherStatusNote.textContent = `Current turn: ${currentBuzz.team}. Queue size: ${queuedCount}.`;
+  } else if (lockedCount >= getAllTeamLabels().length && getAllTeamLabels().length > 0) {
+    teacherStatusNote.textContent = "All teams are locked for this round.";
   } else {
-    teacherStatusNote.textContent = "Waiting for buzz.";
+    teacherStatusNote.textContent = "Round open. Waiting for teams to buzz.";
   }
 }
 
-function getTeamMembersByLabel(teamLabel) {
-  const assignments = sessionCache?.assignments || {};
-  return Object.entries(assignments)
-    .filter(([, assignedLabel]) => assignedLabel === teamLabel)
-    .map(([studentKey]) => getDisplayName(studentsCache[studentKey]))
-    .filter(Boolean);
+function bindTeamPlusButtons() {
+  const plusButtons = Array.from(document.querySelectorAll(".team-plus-btn"));
+  plusButtons.forEach((btn) => {
+    if (btn.dataset.bound === "1") return;
+    btn.dataset.bound = "1";
+    btn.addEventListener("click", async () => {
+      const teamLabel = btn.dataset.teamLabel || "";
+      if (!teamLabel || !sessionCache?.active) return;
+
+      const currentScore = Number(sessionCache.activityScores?.[teamLabel] || 0);
+      await update(ref(db, "session/current/activityScores"), { [teamLabel]: currentScore + 1 });
+    });
+  });
 }
 
 function renderTeamRoster() {
   if (!sessionCache?.active) {
     teamRosterList.innerHTML = '<div class="empty-state">No active session.</div>';
-    teamSelectionNote.textContent = 'Select a team card to apply Activity Score there.';
+    teamSelectionNote.textContent = 'Use +1 on the team card to add score quickly.';
     return;
   }
 
   const activityScores = sessionCache.activityScores || {};
-  const orderedTeams = Object.keys(activityScores).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  const lockedOutTeams = getLockedOutTeams();
+  const queue = getQueue();
+  const currentTeam = getCurrentTeam();
+  const orderedTeams = getOrderedTeamLabels();
 
   if (!orderedTeams.length) {
     teamRosterList.innerHTML = '<div class="empty-state">No teams yet.</div>';
-    teamSelectionNote.textContent = 'Select a team card to apply Activity Score there.';
+    teamSelectionNote.textContent = 'Use +1 on the team card to add score quickly.';
     return;
-  }
-
-  if (selectedTeamLabel && !orderedTeams.includes(selectedTeamLabel)) {
-    selectedTeamLabel = "";
   }
 
   teamRosterList.innerHTML = orderedTeams.map((teamLabel) => {
@@ -276,33 +352,41 @@ function renderTeamRoster() {
       ? members.map((name) => `<span class="team-member-chip">${name}</span>`).join("")
       : '<span class="empty-state">No members</span>';
 
-    const selectedClass = selectedTeamLabel === teamLabel ? " selected" : "";
+    const queueIndex = queue.findIndex((entry) => entry?.team === teamLabel);
+    const isCurrent = currentTeam === teamLabel;
+    const isLocked = Boolean(lockedOutTeams[teamLabel]);
+    const isQueued = !isCurrent && queueIndex >= 0;
+
+    const stateClass = isCurrent ? " current" : (isQueued ? " queued" : (isLocked ? " locked" : ""));
+    let stateChip = '<span class="team-state-chip">Ready</span>';
+
+    if (isCurrent) {
+      stateChip = '<span class="team-state-chip current">Current</span>';
+    } else if (isQueued) {
+      stateChip = `<span class="team-state-chip queued">Queued #${queueIndex + 1}</span>`;
+    } else if (isLocked) {
+      stateChip = '<span class="team-state-chip locked">Locked this round</span>';
+    }
 
     return `
-      <div class="team-roster-card${selectedClass}" data-team-label="${teamLabel}">
+      <div class="team-roster-card${stateClass}">
         <div class="team-roster-top">
           <strong>${teamLabel}</strong>
           <span class="team-score-chip">${Number(activityScores[teamLabel] || 0)} pts</span>
         </div>
+        <div class="team-meta-row">
+          ${stateChip}
+        </div>
         <div class="team-members">${membersHtml}</div>
+        <div class="team-actions">
+          <button type="button" class="team-plus-btn" data-team-label="${teamLabel}">+1</button>
+        </div>
       </div>
     `;
   }).join("");
 
-  const cards = Array.from(teamRosterList.querySelectorAll(".team-roster-card"));
-  cards.forEach((card) => {
-    card.addEventListener("click", () => {
-      selectedTeamLabel = card.dataset.teamLabel || "";
-      renderTeamRoster();
-      renderResult();
-    });
-  });
-
-  if (selectedTeamLabel) {
-    teamSelectionNote.textContent = `Activity Score will be applied to ${selectedTeamLabel}.`;
-  } else {
-    teamSelectionNote.textContent = 'Select a team card to apply Activity Score there.';
-  }
+  bindTeamPlusButtons();
+  teamSelectionNote.textContent = 'Use +1 on the team card to add score quickly.';
 }
 
 function renderLiveScores() {
@@ -372,8 +456,6 @@ createTeamsBtn.addEventListener("click", async () => {
     }
   }
 
-  selectedTeamLabel = "";
-
   await set(ref(db, "session/current"), {
     active: true,
     createdAt: Date.now(),
@@ -386,7 +468,8 @@ createTeamsBtn.addEventListener("click", async () => {
     buzzer: {
       roundOpen: false,
       currentBuzz: null,
-      lockedOut: {}
+      queue: [],
+      lockedOutTeams: {}
     }
   });
 
@@ -396,7 +479,6 @@ createTeamsBtn.addEventListener("click", async () => {
 });
 
 resetSessionBtn.addEventListener("click", async () => {
-  selectedTeamLabel = "";
   await remove(ref(db, "session/current"));
   alert("Session cleared.");
 });
@@ -418,7 +500,6 @@ closeSessionBtn.addEventListener("click", async () => {
     closedAt: Date.now()
   });
 
-  selectedTeamLabel = "";
   await remove(ref(db, "session/current"));
   alert("Session closed and saved.");
 });
@@ -432,25 +513,38 @@ openRoundBtn.addEventListener("click", async () => {
   await update(ref(db, "session/current/buzzer"), {
     roundOpen: true,
     currentBuzz: null,
-    lockedOut: {}
+    queue: [],
+    lockedOutTeams: {}
   });
 });
 
 wrongAnswerBtn.addEventListener("click", async () => {
-  const currentBuzz = sessionCache?.buzzer?.currentBuzz;
-
-  if (!currentBuzz) {
-    alert("No current buzz.");
+  if (!sessionCache?.active) {
+    alert("No active session.");
     return;
   }
 
-  const lockedOut = sessionCache.buzzer.lockedOut || {};
-  lockedOut[currentBuzz.studentKey] = true;
+  const buzzer = getBuzzerState();
+  const currentBuzz = buzzer.currentBuzz;
+
+  if (!currentBuzz) {
+    alert("No current team.");
+    return;
+  }
+
+  const lockedOutTeams = { ...(buzzer.lockedOutTeams || {}) };
+  lockedOutTeams[currentBuzz.team] = true;
+
+  const queue = getQueue().filter((entry) => entry?.team !== currentBuzz.team);
+  const nextEntry = queue[0] || null;
+  const allTeams = getAllTeamLabels();
+  const allLocked = allTeams.length > 0 && allTeams.every((teamLabel) => lockedOutTeams[teamLabel]);
 
   await update(ref(db, "session/current/buzzer"), {
-    roundOpen: true,
-    currentBuzz: null,
-    lockedOut
+    lockedOutTeams,
+    queue,
+    currentBuzz: nextEntry,
+    roundOpen: allLocked ? false : true
   });
 });
 
@@ -460,25 +554,12 @@ closeRoundBtn.addEventListener("click", async () => {
     return;
   }
 
-  await update(ref(db, "session/current/buzzer"), { roundOpen: false });
-});
-
-awardActivityScoreBtn.addEventListener("click", async () => {
-  if (!sessionCache?.active) {
-    alert("No active session.");
-    return;
-  }
-
-  const fallbackBuzzTeam = sessionCache?.buzzer?.currentBuzz?.team || "";
-  const teamLabel = selectedTeamLabel || fallbackBuzzTeam;
-
-  if (!teamLabel) {
-    alert("Select a team from the team list first, or wait for a buzz result.");
-    return;
-  }
-
-  const currentScore = Number(sessionCache.activityScores?.[teamLabel] || 0);
-  await update(ref(db, "session/current/activityScores"), { [teamLabel]: currentScore + 1 });
+  await update(ref(db, "session/current/buzzer"), {
+    roundOpen: false,
+    currentBuzz: null,
+    queue: [],
+    lockedOutTeams: {}
+  });
 });
 
 resetActivityScoresBtn.addEventListener("click", async () => {
@@ -496,9 +577,9 @@ resetActivityScoresBtn.addEventListener("click", async () => {
 });
 
 awardTeamPointBtn.addEventListener("click", async () => {
-  const currentBuzz = sessionCache?.buzzer?.currentBuzz;
+  const currentBuzz = getBuzzerState().currentBuzz;
   if (!currentBuzz) {
-    alert("No current buzz.");
+    alert("No current team.");
     return;
   }
 
@@ -508,9 +589,9 @@ awardTeamPointBtn.addEventListener("click", async () => {
 });
 
 awardStudentPointBtn.addEventListener("click", async () => {
-  const currentBuzz = sessionCache?.buzzer?.currentBuzz;
+  const currentBuzz = getBuzzerState().currentBuzz;
   if (!currentBuzz) {
-    alert("No current buzz.");
+    alert("No current team.");
     return;
   }
 
@@ -666,19 +747,16 @@ onValue(ref(db, "settings"), (snapshot) => {
 
 onValue(ref(db, "session/current"), (snapshot) => {
   sessionCache = snapshot.val() || null;
-
   if (sessionCache?.groupName) {
     setStoredWorkingGroup(sessionCache.groupName);
-  } else {
-    selectedTeamLabel = "";
   }
-
   renderGroupOptions();
   renderHeader();
   renderResult();
   renderTeamRoster();
   renderLiveScores();
 });
+
 numTeamsInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
     e.preventDefault();
