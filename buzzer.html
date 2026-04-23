@@ -363,8 +363,7 @@
       <header class="topbar">
         <div>
           <h2>Buzzer</h2>
-<p style="font-weight:600;">Present today: <span id="presentTodayLabel">0</span></p>
-          <p>Compact live control</p>
+          <p style="font-weight:600;">Present today: <span id="presentTodayLabel">0</span></p>
         </div>
         <div class="topbar-right">
           <span id="teacherIdentity" class="teacher-identity">Teacher</span>
@@ -372,27 +371,6 @@
       </header>
 
       <div class="buzzer-page">
-        <section class="buzzer-summary-grid">
-          <div class="buzzer-summary-card">
-            <span class="label">Active Block</span>
-            <strong id="activeBlockLabel">Block 1</strong>
-          </div>
-          <div class="buzzer-summary-card">
-            <span class="label">Block Status</span>
-            <strong id="blockStatusLabel">OPEN</strong>
-          </div>
-          <div class="buzzer-summary-card">
-            <span class="label">Session Status</span>
-            <strong id="sessionStatusLabel">No active session</strong>
-          </div>
-          <div class="buzzer-summary-card">
-            <span class="label">Present in Group</span>
-            <strong id="studentCountLabel">0</strong>
-          </div>
-        </section>
-
-        
-
         <section class="buzzer-main-grid">
           <div class="buzz-panel">
             <h3>Buzzer Control</h3>
@@ -439,7 +417,50 @@
               </div>
             </div>
           </div>
-        
+        </section>
+
+        <section class="buzzer-generator-card">
+          <h3>Team Generator</h3>
+
+          <div class="generator-grid">
+            <div class="generator-section">
+              <h4>Working Group</h4>
+              <select id="groupSelect">
+                <option value="">Select group</option>
+              </select>
+              <div class="generator-mini-note">This selector preserves the last group you were working with.</div>
+            </div>
+
+            <div class="generator-section">
+              <h4>Number of Teams</h4>
+              <input id="numTeams" type="number" min="1" placeholder="Number of teams">
+              <div class="generator-actions">
+                <button id="createTeams">Generate Smart Teams</button>
+                <button id="resetSession">Reset Session</button>
+                <button id="closeSessionBtn">Close Session and Save History</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="buzzer-summary-grid">
+          <div class="buzzer-summary-card">
+            <span class="label">Active Block</span>
+            <strong id="activeBlockLabel">Block 1</strong>
+          </div>
+          <div class="buzzer-summary-card">
+            <span class="label">Block Status</span>
+            <strong id="blockStatusLabel">OPEN</strong>
+          </div>
+          <div class="buzzer-summary-card">
+            <span class="label">Session Status</span>
+            <strong id="sessionStatusLabel">No active session</strong>
+          </div>
+          <div class="buzzer-summary-card">
+            <span class="label">Present in Group</span>
+            <strong id="studentCountLabel">0</strong>
+          </div>
+        </section>
       </div>
     </main>
   </div>
