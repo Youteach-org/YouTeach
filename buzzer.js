@@ -38,6 +38,7 @@ const activeBlockLabel = document.getElementById("activeBlockLabel");
 const blockStatusLabel = document.getElementById("blockStatusLabel");
 const sessionStatusLabel = document.getElementById("sessionStatusLabel");
 const studentCountLabel = document.getElementById("studentCountLabel");
+const presentTodayLabel = document.getElementById("presentTodayLabel");
 
 const resultGroup = document.getElementById("resultGroup");
 const resultRound = document.getElementById("resultRound");
@@ -209,7 +210,9 @@ function renderHeader() {
   activeBlockLabel.textContent = activeBlockCache;
   blockStatusLabel.textContent = isBlockClosed(activeBlockCache) ? "CLOSED" : "OPEN";
   sessionStatusLabel.textContent = sessionCache?.active ? "Active session" : "No active session";
-  studentCountLabel.textContent = String(activePresentStudentsForGroup(selectedGroup).length);
+  const presentCount = activePresentStudentsForGroup(selectedGroup).length;
+studentCountLabel.textContent = String(presentCount);
+if (presentTodayLabel) presentTodayLabel.textContent = String(presentCount);
 }
 
 function renderResult() {
@@ -340,7 +343,7 @@ createTeamsBtn.addEventListener("click", async () => {
     return;
   }
 
-  if (!numTeams || numTeams < 2) {
+  if (!numTeams || numTeams < 1) {
     alert("Please enter a valid number of teams.");
     return;
   }
@@ -675,4 +678,10 @@ onValue(ref(db, "session/current"), (snapshot) => {
   renderResult();
   renderTeamRoster();
   renderLiveScores();
+});
+numTeamsInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    createTeamsBtn.click();
+  }
 });
