@@ -31,6 +31,7 @@ ready(()=>{
 
   if(!sidebar || !btn) return;
 
+  // ===== HEADER FLOTANTE =====
   let header = document.getElementById("menuHeaderFloating");
 
   if(!header){
@@ -38,10 +39,10 @@ ready(()=>{
     header.id = "menuHeaderFloating";
     header.className = "menu-header-floating";
 
-    header.innerHTML = `
-  "<div class=""menu-header-line1"">☰ YouTeach</div>" +
-  "<div class=""menu-header-line2""></div>" +
-  "<div class=""menu-header-line3""></div>";
+    header.innerHTML =
+      "<div class=""menu-header-line1"">☰ YouTeach</div>" +
+      "<div class=""menu-header-line2""></div>" +
+      "<div class=""menu-header-line3""></div>";
 
     document.body.appendChild(header);
   }
@@ -55,22 +56,32 @@ ready(()=>{
     sidebar.classList.add("sidebar-open");
     updateHeader();
     header.classList.add("show");
+    document.body.classList.add("sidebar-lock");
   }
 
   function closeMenu(){
     sidebar.classList.remove("sidebar-open");
     header.classList.remove("show");
+    document.body.classList.remove("sidebar-lock");
   }
 
-  btn.addEventListener("click",(e)=>{
-    e.preventDefault();
-    e.stopPropagation();
-
+  function toggleMenu(){
     if(sidebar.classList.contains("sidebar-open")){
       closeMenu();
     } else {
       openMenu();
     }
+  }
+
+  // ===== EVENTOS =====
+  btn.addEventListener("click",(e)=>{
+    e.preventDefault();
+    e.stopPropagation();
+    toggleMenu();
+  });
+
+  sidebar.addEventListener("click",(e)=>{
+    e.stopPropagation();
   });
 
   document.addEventListener("click",(e)=>{
