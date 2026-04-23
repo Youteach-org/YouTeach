@@ -30,17 +30,17 @@ if (!ALLOWED_PAGES.has(page)) {
       0: ["sunday", "domingo"],
       1: ["monday", "lunes"],
       2: ["tuesday", "martes"],
-      3: ["wednesday", "miercoles", "miércoles"],
+      3: ["wednesday", "miercoles", "miÃ©rcoles"],
       4: ["thursday", "jueves"],
       5: ["friday", "viernes"],
-      6: ["saturday", "sabado", "sábado"]
+      6: ["saturday", "sabado", "sÃ¡bado"]
     };
 
     const tokens = dayTokens[dayIndex] || [];
     if (!normalized) return true;
 
     const containsAnyToken = tokens.some((token) => normalized.includes(token));
-    const mentionsKnownDay = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday","lunes","martes","miercoles","miércoles","jueves","viernes","sabado","sábado","domingo"]
+    const mentionsKnownDay = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday","lunes","martes","miercoles","miÃ©rcoles","jueves","viernes","sabado","sÃ¡bado","domingo"]
       .some((token) => normalized.includes(token));
 
     if (mentionsKnownDay) {
@@ -73,7 +73,7 @@ if (!ALLOWED_PAGES.has(page)) {
       </div>
     `;
 
-    topbar.insertAdjacentElement("afterend", panel);
+    const main = document.querySelector(".main-content"); if(main) main.appendChild(panel);
     return panel;
   }
 
