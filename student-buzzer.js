@@ -114,20 +114,21 @@ function renderBuzzer() {
     return;
   }
 
-  if (currentTeam === team) {
+    if (currentTeam === team) {
     buzzBtn.disabled = true;
-    studentStatus.textContent = "Your team has priority now.";
+    studentStatus.textContent = `${team} answered. Waiting for teacher decision.`;
     return;
+  }
   }
 
   if (queueIndex >= 0) {
     buzzBtn.disabled = true;
-    studentStatus.textContent = `Your team is queued (#${queueIndex + 1}).`;
+    studentStatus.textContent = `${team} is queued (#${queueIndex + 1}).`;
     return;
   }
 
   buzzBtn.disabled = false;
-  studentStatus.textContent = "Round is open. Tap the buzzer.";
+  studentStatus.textContent = "Round is open. Your team can buzz.";
 }
 
 logoutBtn.addEventListener("click", async () => {
@@ -144,7 +145,7 @@ buzzBtn.addEventListener("click", async () => {
   const studentNameText = getDisplayName(currentStudent);
 
   try {
-    buzzSound.currentTime = 0;
+    buzzSound.currentTime = 0; buzzSound.volume = 1;
     await buzzSound.play();
   } catch (error) {}
 

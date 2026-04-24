@@ -12,8 +12,8 @@
       flex-direction: column;
       gap: 14px;
       align-items: center;
-      justify-content: center;
-      padding: 24px 18px 28px 18px;
+      justify-content: flex-start;
+      padding: 12px 16px 20px 16px;
     }
 
     .student-buzzer-name {
@@ -74,7 +74,7 @@
       aspect-ratio: 1 / 1;
       display: flex;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
     }
 
     .student-buzz-btn {
@@ -110,6 +110,29 @@
 
       .student-scoreboard-strip {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+      .student-buzzer-shell {
+      justify-content: flex-start !important;
+      padding-top: 20px !important;
+      gap: 10px !important;
+    }
+
+    .student-buzzer-name {
+      margin-top: 8px !important;
+    }
+
+    .student-buzzer-button-wrap {
+      margin-top: 10px !important;
+    }
+
+    .student-scoreboard-strip {
+      margin-top: 10px !important;
+    }
+
+    @media (max-width: 600px) {
+      .student-buzzer-shell {
+        padding-top: 70px !important;
       }
     }
   </style>
@@ -148,22 +171,20 @@
         <p id="studentTeam" class="student-buzzer-team">No team</p>
         <p id="studentStatus" class="student-buzzer-status">Waiting...</p>
 
-        <div id="activityScoresStrip" class="student-scoreboard-strip">
+        <div class="student-buzzer-button-wrap">
+          <button id="buzzBtn" class="student-buzz-btn">BUZZ</button>
+        </div>`r`n        <div id="activityScoresStrip" class="student-scoreboard-strip">
           <div class="student-score-card">
             <span>No scores yet</span>
             <strong>0</strong>
           </div>
-        </div>
-
-        <div class="student-buzzer-button-wrap">
-          <button id="buzzBtn" class="student-buzz-btn">BUZZ</button>
         </div>
       </div>
     </main>
   </div>
 
   <audio id="buzzSound" preload="auto">
-    <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
+    <source src="https://actions.google.com/sounds/v1/alarms/https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg" type="audio/ogg">
   </audio>
 
   <script type="module" src="student-buzzer.js"></script>
