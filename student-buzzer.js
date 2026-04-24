@@ -114,10 +114,11 @@ function renderBuzzer() {
     return;
   }
 
-    if (currentTeam === team) {
+      if (currentTeam === team) {
     buzzBtn.disabled = true;
     studentStatus.textContent = `${team} answered. Waiting for teacher decision.`;
     return;
+  }
   }
   }
 
@@ -145,7 +146,7 @@ buzzBtn.addEventListener("click", async () => {
   const studentNameText = getDisplayName(currentStudent);
 
   try {
-    buzzSound.currentTime = 0; buzzSound.volume = 1;
+    buzzSound.currentTime = 0; buzzSound.volume = 1; buzzSound.volume = 1;
     await buzzSound.play();
   } catch (error) {}
 
