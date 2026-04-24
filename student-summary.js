@@ -1,5 +1,5 @@
 import { db } from "./firebase.js";
-import { ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireStudentSession, clearStudentSession, saveLeaveLog } from "./student-auth.js";
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
 
@@ -12,24 +12,19 @@ let studentKey = "";
 if (isTeacherView) {
   requireTeacherAuth();
   studentKey = teacherViewStudentKey;
+  sessionStorage.setItem("teacherViewStudentKey", studentKey);
 } else {
   const session = requireStudentSession();
   if (!session) throw new Error("Student session required.");
   studentKey = session.studentKey;
 }
 
-const logoutBtn = document.getElementById("logoutBtn");
 const studentIdentity = document.getElementById("studentIdentity");
 const displayNameCard = document.getElementById("displayNameCard");
 const groupCard = document.getElementById("groupCard");
 const classActiveBlockHero = document.getElementById("classActiveBlockHero");
 const classActiveBlockStatus = document.getElementById("classActiveBlockStatus");
 const totalBlockPointsCard = document.getElementById("totalBlockPointsCard");
-const liveTeamPointsCard = document.getElementById("liveTeamPointsCard");
-const liveStudentPointsCard = document.getElementById("liveStudentPointsCard");
-const writtenExamCard = document.getElementById("writtenExamCard");
-const oralExamCard = document.getElementById("oralExamCard");
-const verbsExamCard = document.getElementById("verbsExamCard");
 const blockSelector = document.getElementById("blockSelector");
 const viewingBlockStatus = document.getElementById("viewingBlockStatus");
 const studentHistoryTableBody = document.getElementById("studentHistoryTableBody");
@@ -43,6 +38,13 @@ let currentSession = null;
 let settingsCache = {};
 let pointsLogCache = {};
 let selectedBlock = "";
+
+function cleanText(value) {
+  return String(value || "")
+    .replace(/Ã‚Â·|Ã‚Â|Â·|·|Ã‚|Â/g, "-")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
 function setupTeacherViewShell() {
   if (!isTeacherView) return;
@@ -74,9 +76,7 @@ function setupTeacherViewShell() {
   }
 
   const freshLogoutBtn = document.getElementById("logoutBtn");
-  if (freshLogoutBtn) {
-    freshLogoutBtn.addEventListener("click", logoutTeacher);
-  }
+  if (freshLogoutBtn) freshLogoutBtn.addEventListener("click", logoutTeacher);
 }
 
 function todayKey() {
@@ -107,23 +107,22 @@ function formatDate(timestamp) {
 
 function getNickname(student) {
   if (!student) return "Student";
-  return student.nickname || ((student.fullName || student.name || "").split(" ")[0]) || "Student";
+  return cleanText(student.nickname || ((student.fullName || student.name || "").split(" ")[0]) || "Student");
 }
 
 function getFullName(student) {
   if (!student) return "Student";
-  return (student.fullName || student.name || student.nickname || "Student").trim();
+  return cleanText(student.fullName || student.name || student.nickname || "Student");
 }
 
 function getExternalId(student) {
-  return student?.studentNumber || student?.externalId || "";
+  return cleanText(student?.studentNumber || student?.externalId || "");
 }
 
 function formatTopIdentity(student) {
-  const fullName = getFullName(student).replace(/Ã‚Â·|Ã‚Â|Â·|·/g, "-").replace(/\s+/g, " ").trim();
+  const fullName = getFullName(student);
   const externalId = getExternalId(student);
   return externalId ? `${fullName} - ${externalId}` : fullName;
-} Ãƒâ€šÃ‚Â· ${externalId}` : fullName;
 }
 
 function getExamPoints(student, blockName) {
@@ -139,8 +138,8 @@ function getExtraBlockPoints(student, blockName) {
   return Number(student?.blockPoints?.[blockName] || 0);
 }
 
-function getAttendancePoints() {
-  return Number(currentStudent?.attendancePoints?.[selectedBlock] || 0);
+function getAttendancePoints(student, blockName) {
+  return Number(student?.attendancePoints?.[blockName] || 0);
 }
 
 function getAvailableBlocks() {
@@ -148,11 +147,10 @@ function getAvailableBlocks() {
 
   Object.keys(currentStudent?.blockPoints || {}).forEach((blockName) => blockSet.add(blockName));
   Object.keys(currentStudent?.examPoints || {}).forEach((blockName) => blockSet.add(blockName));
+  Object.keys(currentStudent?.attendancePoints || {}).forEach((blockName) => blockSet.add(blockName));
   Object.keys(settingsCache?.closedBlocks || {}).forEach((blockName) => blockSet.add(blockName));
 
-  if (settingsCache?.activeBlock) {
-    blockSet.add(settingsCache.activeBlock);
-  }
+  if (settingsCache?.activeBlock) blockSet.add(settingsCache.activeBlock);
 
   return Array.from(blockSet).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 }
@@ -164,14 +162,15 @@ function ensureSelectedBlock() {
     selectedBlock = settingsCache.activeBlock || availableBlocks[0] || "Block 1";
   }
 
-  blockSelector.innerHTML = availableBlocks
-    .map((blockName) => `<option value="${blockName}">${blockName}</option>`)
-    .join("");
-
-  blockSelector.value = selectedBlock;
+  if (blockSelector) {
+    blockSelector.innerHTML = availableBlocks.map((blockName) => `<option value="${blockName}">${blockName}</option>`).join("");
+    blockSelector.value = selectedBlock;
+  }
 }
 
 function renderHistory(blockName) {
+  if (!studentHistoryTableBody) return;
+
   const historyEntries = Object.entries(pointsLogCache || {})
     .filter(([, entry]) => entry.studentKey === studentKey && (entry.block || "") === blockName)
     .sort((a, b) => Number(b[1]?.appliedAt || 0) - Number(a[1]?.appliedAt || 0));
@@ -225,29 +224,19 @@ function renderAll() {
   const examPoints = getExamPoints(currentStudent, selectedBlock);
   const storedPoints = getExtraBlockPoints(currentStudent, selectedBlock);
   const pointTotal = storedPoints + liveStudentPoints + liveTeamPoints;
-  const attendancePoints = getAttendancePoints();
+  const attendancePoints = getAttendancePoints(currentStudent, selectedBlock);
   const totalBlockPoints = examPoints.written + examPoints.oral + examPoints.verbs + pointTotal + attendancePoints;
 
   const activeBlockClosed = !!settingsCache?.closedBlocks?.[activeBlock];
   const selectedBlockClosed = !!settingsCache?.closedBlocks?.[selectedBlock];
 
-  if (studentIdentity) {
-    studentIdentity.textContent = isTeacherView ? getTeacherName() : topIdentity;
-  }
-
-  displayNameCard.textContent = isTeacherView ? topIdentity : nickname;
-  groupCard.textContent = currentStudent.groupName || "";
-  classActiveBlockHero.textContent = activeBlock;
-  classActiveBlockStatus.textContent = activeBlockClosed ? "Closed block" : "Open block";
-  viewingBlockStatus.textContent = selectedBlockClosed ? "Selected block is closed." : "Selected block is open.";
-
-  totalBlockPointsCard.textContent = String(totalBlockPoints);
-
-  if (liveTeamPointsCard) liveTeamPointsCard.textContent = String(liveTeamPoints);
-  if (liveStudentPointsCard) liveStudentPointsCard.textContent = String(liveStudentPoints);
-  if (writtenExamCard) writtenExamCard.textContent = String(examPoints.written);
-  if (oralExamCard) oralExamCard.textContent = String(examPoints.oral);
-  if (verbsExamCard) verbsExamCard.textContent = String(examPoints.verbs);
+  if (studentIdentity) studentIdentity.textContent = isTeacherView ? getTeacherName() : topIdentity;
+  if (displayNameCard) displayNameCard.textContent = isTeacherView ? topIdentity : nickname;
+  if (groupCard) groupCard.textContent = currentStudent.groupName || "";
+  if (classActiveBlockHero) classActiveBlockHero.textContent = activeBlock;
+  if (classActiveBlockStatus) classActiveBlockStatus.textContent = activeBlockClosed ? "Closed block" : "Open block";
+  if (viewingBlockStatus) viewingBlockStatus.textContent = selectedBlockClosed ? "Selected block is closed." : "Selected block is open.";
+  if (totalBlockPointsCard) totalBlockPointsCard.textContent = String(totalBlockPoints);
 
   renderBlockScoreTable(examPoints, pointTotal, attendancePoints, totalBlockPoints);
   renderHistory(selectedBlock);
@@ -255,32 +244,39 @@ function renderAll() {
 
 setupTeacherViewShell();
 
-blockSelector.addEventListener("change", () => {
-  selectedBlock = blockSelector.value || settingsCache.activeBlock || "Block 1";
-  renderAll();
-});
-
-if (!isTeacherView && logoutBtn) {
-  logoutBtn.addEventListener("click", async () => {
-    const reason = prompt("Reason for leaving (optional):", "") || "";
-    await saveLeaveLog(studentKey, reason);
-    clearStudentSession();
-    window.location.href = "index.html";
+if (blockSelector) {
+  blockSelector.addEventListener("change", () => {
+    selectedBlock = blockSelector.value || settingsCache.activeBlock || "Block 1";
+    renderAll();
   });
+}
+
+if (!isTeacherView) {
+  const studentLogoutBtn = document.getElementById("logoutBtn");
+  if (studentLogoutBtn) {
+    studentLogoutBtn.addEventListener("click", async () => {
+      const reason = prompt("Reason for leaving (optional):", "") || "";
+      await saveLeaveLog(studentKey, reason);
+      clearStudentSession();
+      window.location.href = "index.html";
+    });
+  }
 }
 
 onValue(ref(db, `students/${studentKey}`), (snapshot) => {
   currentStudent = snapshot.val();
+
   if (!currentStudent) {
-    if (!isTeacherView) {
-      clearStudentSession();
-      window.location.href = "index.html";
-    } else {
+    if (isTeacherView) {
       alert("Student not found.");
       window.location.href = "teacher-students.html";
+    } else {
+      clearStudentSession();
+      window.location.href = "index.html";
     }
     return;
   }
+
   renderAll();
 });
 
@@ -291,7 +287,7 @@ onValue(ref(db, "session/current"), (snapshot) => {
 
 onValue(ref(db, "settings"), (snapshot) => {
   settingsCache = snapshot.val() || {};
-  selectedBlock = settingsCache.activeBlock || selectedBlock || "Block 1";
+  selectedBlock = selectedBlock || settingsCache.activeBlock || "Block 1";
   renderAll();
 });
 
