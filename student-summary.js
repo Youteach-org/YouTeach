@@ -36,6 +36,7 @@ const studentHistoryTableBody = document.getElementById("studentHistoryTableBody
 const attendanceStatusText = document.getElementById("attendanceStatusText");
 const summaryPageTitle = document.getElementById("summaryPageTitle");
 const summaryPageSubtitle = document.getElementById("summaryPageSubtitle");
+const blockScoreTableBody = document.getElementById("blockScoreTableBody");
 
 let currentStudent = null;
 let currentSession = null;
@@ -54,10 +55,7 @@ function setupTeacherViewShell() {
   if (brandTitle) brandTitle.textContent = "YouTeach";
   if (brandSubtitle) brandSubtitle.textContent = "Teacher Menu";
   if (sidebarIdentity) sidebarIdentity.textContent = getTeacherName();
-
-  if (studentIdentity) {
-    studentIdentity.textContent = getTeacherName();
-  }
+  if (studentIdentity) studentIdentity.textContent = getTeacherName();
 
   if (summaryPageTitle) summaryPageTitle.textContent = "Student Summary";
   if (summaryPageSubtitle) summaryPageSubtitle.textContent = "Teacher view with teacher permissions.";
@@ -136,6 +134,14 @@ function getExamPoints(student, blockName) {
   };
 }
 
+function getExtraBlockPoints(student, blockName) {
+  return Number(student?.blockPoints?.[blockName] || 0);
+}
+
+function getAttendancePoints() {
+  return currentStudent?.activeNow ? 1 : 0;
+}
+
 function getAvailableBlocks() {
   const blockSet = new Set(["Block 1", "Block 2", "Block 3"]);
 
@@ -187,6 +193,21 @@ function renderHistory(blockName) {
   `).join("");
 }
 
+function renderBlockScoreTable(examPoints, pointTotal, attendancePoints, totalBlockPoints) {
+  if (!blockScoreTableBody) return;
+
+  blockScoreTableBody.innerHTML = `
+    <tr>
+      <td>${examPoints.written}</td>
+      <td>${examPoints.oral}</td>
+      <td>${examPoints.verbs}</td>
+      <td>${pointTotal}</td>
+      <td>${attendancePoints}</td>
+      <td><strong>${totalBlockPoints}</strong></td>
+    </tr>
+  `;
+}
+
 function renderAll() {
   if (!currentStudent) return;
 
@@ -197,10 +218,15 @@ function renderAll() {
   const activeBlock = settingsCache.activeBlock || "Block 1";
   const currentTeam = currentSession?.assignments?.[studentKey] || "";
   const showLivePoints = selectedBlock === activeBlock;
+
   const liveTeamPoints = showLivePoints ? Number(currentSession?.liveTeamPoints?.[currentTeam] || 0) : 0;
   const liveStudentPoints = showLivePoints ? Number(currentSession?.liveStudentPoints?.[studentKey] || 0) : 0;
   const examPoints = getExamPoints(currentStudent, selectedBlock);
-  const totalBlockPoints = examPoints.written + examPoints.oral + examPoints.verbs + liveStudentPoints + liveTeamPoints;
+  const storedPoints = getExtraBlockPoints(currentStudent, selectedBlock);
+  const pointTotal = storedPoints + liveStudentPoints + liveTeamPoints;
+  const attendancePoints = getAttendancePoints();
+  const totalBlockPoints = examPoints.written + examPoints.oral + examPoints.verbs + pointTotal + attendancePoints;
+
   const activeBlockClosed = !!settingsCache?.closedBlocks?.[activeBlock];
   const selectedBlockClosed = !!settingsCache?.closedBlocks?.[selectedBlock];
 
@@ -215,12 +241,14 @@ function renderAll() {
   viewingBlockStatus.textContent = selectedBlockClosed ? "Selected block is closed." : "Selected block is open.";
 
   totalBlockPointsCard.textContent = String(totalBlockPoints);
-  liveTeamPointsCard.textContent = String(liveTeamPoints);
-  liveStudentPointsCard.textContent = String(liveStudentPoints);
-  writtenExamCard.textContent = String(examPoints.written);
-  oralExamCard.textContent = String(examPoints.oral);
-  verbsExamCard.textContent = String(examPoints.verbs);
 
+  if (liveTeamPointsCard) liveTeamPointsCard.textContent = String(liveTeamPoints);
+  if (liveStudentPointsCard) liveStudentPointsCard.textContent = String(liveStudentPoints);
+  if (writtenExamCard) writtenExamCard.textContent = String(examPoints.written);
+  if (oralExamCard) oralExamCard.textContent = String(examPoints.oral);
+  if (verbsExamCard) verbsExamCard.textContent = String(examPoints.verbs);
+
+  renderBlockScoreTable(examPoints, pointTotal, attendancePoints, totalBlockPoints);
   renderHistory(selectedBlock);
 }
 

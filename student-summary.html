@@ -165,33 +165,29 @@
           <strong id="totalBlockPointsCard" class="hero-value">0</strong>
           <div class="hero-subtext">This total includes written, oral, verb, student, and team points for the selected block.</div>
 
-          <details class="summary-detail-toggle">
-            <summary>Show score details</summary>
-            <div class="summary-detail-content">
-              <div class="summary-detail-grid">
-                <div class="summary-detail-card">
-                  <span>Written Exam</span>
-                  <strong id="writtenExamCard">0</strong>
-                </div>
-                <div class="summary-detail-card">
-                  <span>Oral Exam</span>
-                  <strong id="oralExamCard">0</strong>
-                </div>
-                <div class="summary-detail-card">
-                  <span>Verb Exam</span>
-                  <strong id="verbsExamCard">0</strong>
-                </div>
-                <div class="summary-detail-card">
-                  <span>Student Points</span>
-                  <strong id="liveStudentPointsCard">0</strong>
-                </div>
-                <div class="summary-detail-card">
-                  <span>Team Points</span>
-                  <strong id="liveTeamPointsCard">0</strong>
-                </div>
-              </div>
-            </div>
-          </details>
+          <div class="panel-card" style="margin-top:12px;">
+  <div class="panel-card-header">
+    <h3>Block Score Breakdown</h3>
+  </div>
+
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>E</th>
+          <th>E.O</th>
+          <th>E.V</th>
+          <th>P</th>
+          <th>A</th>
+          <th>T</th>
+        </tr>
+      </thead>
+      <tbody id="blockScoreTableBody">
+        <tr><td colspan="6">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
         </div>
       </div>
 
