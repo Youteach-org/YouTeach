@@ -697,3 +697,57 @@ body.sidebar-lock {
   }
 }
 /* ===== CENTRAL MENU SYSTEM END ===== */
+
+/* ===== STUDENT MENU VISUAL FIX START ===== */
+@media (max-width: 768px) {
+  .sidebar.sidebar-open .brand,
+  .collapsible-sidebar.sidebar-open .brand {
+    display: block !important;
+    padding-left: 72px !important;
+    min-height: 54px !important;
+  }
+
+  .sidebar.sidebar-open .brand h1,
+  .collapsible-sidebar.sidebar-open .brand h1 {
+    font-size: 24px !important;
+    line-height: 1.1 !important;
+    margin: 0 0 4px 0 !important;
+  }
+
+  .sidebar.sidebar-open .brand p,
+  .collapsible-sidebar.sidebar-open .brand p {
+    font-size: 16px !important;
+    margin: 0 !important;
+    color: #cbd5e1 !important;
+  }
+
+  .sidebar.sidebar-open .sidebar-link,
+  .collapsible-sidebar.sidebar-open .sidebar-link {
+    display: block !important;
+    background: #1e293b !important;
+    color: #ffffff !important;
+    border-radius: 10px !important;
+    padding: 12px 16px !important;
+    text-align: center !important;
+    font-weight: 600 !important;
+  }
+
+  .sidebar.sidebar-open .sidebar-link.active-link,
+  .collapsible-sidebar.sidebar-open .sidebar-link.active-link {
+    background: #2563eb !important;
+    color: #ffffff !important;
+  }
+
+  .sidebar.sidebar-open .logout-btn,
+  .collapsible-sidebar.sidebar-open .logout-btn {
+    display: block !important;
+    width: 100% !important;
+    background: #dc2626 !important;
+    color: #ffffff !important;
+    border-radius: 10px !important;
+    padding: 12px 16px !important;
+    text-align: center !important;
+    font-weight: 700 !important;
+  }
+}
+/* ===== STUDENT MENU VISUAL FIX END ===== */
