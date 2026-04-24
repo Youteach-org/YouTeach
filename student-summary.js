@@ -1,5 +1,5 @@
 import { db } from "./firebase.js";
-import { ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireStudentSession, clearStudentSession, saveLeaveLog } from "./student-auth.js";
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
 
@@ -122,7 +122,7 @@ function getExternalId(student) {
 function formatTopIdentity(student) {
   const fullName = getFullName(student);
   const externalId = getExternalId(student);
-  return externalId ? `${fullName} · ${externalId}` : fullName;
+  return externalId ? `${fullName} Â· ${externalId}` : fullName;
 }
 
 function getExamPoints(student, blockName) {
@@ -139,7 +139,7 @@ function getExtraBlockPoints(student, blockName) {
 }
 
 function getAttendancePoints() {
-  return currentStudent?.activeNow ? 1 : 0;
+  return Number(currentStudent?.attendancePoints?.[selectedBlock] || 0);
 }
 
 function getAvailableBlocks() {
@@ -196,16 +196,35 @@ function renderHistory(blockName) {
 function renderBlockScoreTable(examPoints, pointTotal, attendancePoints, totalBlockPoints) {
   if (!blockScoreTableBody) return;
 
+  const attendanceCell = isTeacherView
+    ? `<input id="attendancePointInput" type="number" class="table-input" style="max-width:90px;" value="${attendancePoints}">
+       <button id="saveAttendancePointBtn" class="small-btn" style="margin-left:8px;">Save A</button>`
+    : `${attendancePoints}`;
+
   blockScoreTableBody.innerHTML = `
     <tr>
       <td>${examPoints.written}</td>
       <td>${examPoints.oral}</td>
       <td>${examPoints.verbs}</td>
       <td>${pointTotal}</td>
-      <td>${attendancePoints}</td>
+      <td>${attendanceCell}</td>
       <td><strong>${totalBlockPoints}</strong></td>
     </tr>
   `;
+
+  const saveBtn = document.getElementById("saveAttendancePointBtn");
+  if (saveBtn) {
+    saveBtn.addEventListener("click", async () => {
+      const input = document.getElementById("attendancePointInput");
+      const value = Number(input?.value || 0);
+
+      await update(ref(db, `students/${studentKey}/attendancePoints`), {
+        [selectedBlock]: value
+      });
+
+      alert("Attendance score saved.");
+    });
+  }
 }
 
 function renderAll() {
