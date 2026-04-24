@@ -119,8 +119,6 @@ function renderBuzzer() {
     studentStatus.textContent = `${team} answered. Waiting for teacher decision.`;
     return;
   }
-  }
-  }
 
   if (queueIndex >= 0) {
     buzzBtn.disabled = true;
