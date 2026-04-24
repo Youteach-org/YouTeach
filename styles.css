@@ -813,3 +813,34 @@ body.sidebar-lock {
   }
 }
 /* ===== SIDEBAR BRAND HARD FIX END ===== */
+
+/* ===== HAMBURGER OPEN POSITION FIX START ===== */
+@media (max-width: 768px) {
+  body:has(.sidebar.sidebar-open) .hamburger-btn,
+  body:has(.collapsible-sidebar.sidebar-open) .hamburger-btn {
+    left: 270px !important;
+    top: 16px !important;
+    z-index: 2100 !important;
+  }
+
+  .sidebar.sidebar-open .brand,
+  .collapsible-sidebar.sidebar-open .brand {
+    display: block !important;
+    margin-left: 0 !important;
+    padding-left: 0 !important;
+  }
+
+  .sidebar.sidebar-open .brand h1,
+  .collapsible-sidebar.sidebar-open .brand h1 {
+    display: block !important;
+    margin-left: 0 !important;
+  }
+}
+
+@media (max-width: 420px) {
+  body:has(.sidebar.sidebar-open) .hamburger-btn,
+  body:has(.collapsible-sidebar.sidebar-open) .hamburger-btn {
+    left: calc(min(84vw, 320px) + 10px) !important;
+  }
+}
+/* ===== HAMBURGER OPEN POSITION FIX END ===== */
