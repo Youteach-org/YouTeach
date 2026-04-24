@@ -751,3 +751,31 @@ body.sidebar-lock {
   }
 }
 /* ===== STUDENT MENU VISUAL FIX END ===== */
+
+/* ===== SIDEBAR BRAND OVERLAP FIX START ===== */
+@media (max-width: 768px) {
+  .sidebar.sidebar-open .brand,
+  .collapsible-sidebar.sidebar-open .brand {
+    display: block !important;
+    padding-left: 96px !important;
+    padding-top: 4px !important;
+    min-height: 62px !important;
+  }
+
+  .sidebar.sidebar-open .brand h1,
+  .collapsible-sidebar.sidebar-open .brand h1 {
+    font-size: 24px !important;
+    line-height: 1.1 !important;
+    margin: 0 0 4px 0 !important;
+    white-space: nowrap !important;
+  }
+
+  .sidebar.sidebar-open .brand p,
+  .collapsible-sidebar.sidebar-open .brand p {
+    font-size: 16px !important;
+    line-height: 1.1 !important;
+    margin: 0 !important;
+    white-space: nowrap !important;
+  }
+}
+/* ===== SIDEBAR BRAND OVERLAP FIX END ===== */
