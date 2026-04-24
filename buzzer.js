@@ -285,15 +285,27 @@ function renderResult() {
   const currentBuzz = buzzer.currentBuzz || null;
   const lockedCount = Object.keys(getLockedOutTeams()).length;
   const queuedCount = getQueue().length;
-  const isRoundOpen = Boolean(sessionCache?.active && buzzer.roundOpen);
+
+  const isRoundClosed = !sessionCache?.active || !buzzer.roundOpen;
+  const isWaiting = Boolean(sessionCache?.active && buzzer.roundOpen && currentBuzz);
+  const isOpen = Boolean(sessionCache?.active && buzzer.roundOpen && !currentBuzz);
 
   if (contextGroupLabel) {
     contextGroupLabel.textContent = groupText;
   }
 
   if (roundStatusChip) {
-    roundStatusChip.textContent = isRoundOpen ? "OPEN" : "CLOSED";
-    roundStatusChip.classList.toggle("open", isRoundOpen);
+    roundStatusChip.classList.remove("open", "waiting");
+
+    if (isWaiting) {
+      roundStatusChip.textContent = "WAITING";
+      roundStatusChip.classList.add("waiting");
+    } else if (isOpen) {
+      roundStatusChip.textContent = "OPEN";
+      roundStatusChip.classList.add("open");
+    } else {
+      roundStatusChip.textContent = "CLOSED";
+    }
   }
 
   if (!sessionCache?.active) {
@@ -301,10 +313,10 @@ function renderResult() {
     return;
   }
 
-  if (!buzzer.roundOpen) {
+  if (isRoundClosed) {
     teacherStatusNote.textContent = "Round is closed.";
-  } else if (currentBuzz) {
-    teacherStatusNote.textContent = `Current turn: ${currentBuzz.team}. Queue size: ${queuedCount}.`;
+  } else if (isWaiting) {
+    teacherStatusNote.textContent = `Waiting for teacher decision: ${currentBuzz.team}. Queue size: ${queuedCount}.`;
   } else if (lockedCount >= getAllTeamLabels().length && getAllTeamLabels().length > 0) {
     teacherStatusNote.textContent = "All teams are locked for this round.";
   } else {
