@@ -122,7 +122,7 @@ function getExternalId(student) {
 function formatTopIdentity(student) {
   const fullName = getFullName(student);
   const externalId = getExternalId(student);
-  return externalId ? `${fullName} Â· ${externalId}` : fullName;
+  return externalId ? `${fullName} Ã‚Â· ${externalId}` : fullName;
 }
 
 function getExamPoints(student, blockName) {
@@ -196,35 +196,16 @@ function renderHistory(blockName) {
 function renderBlockScoreTable(examPoints, pointTotal, attendancePoints, totalBlockPoints) {
   if (!blockScoreTableBody) return;
 
-  const attendanceCell = isTeacherView
-    ? `<input id="attendancePointInput" type="number" class="table-input" style="max-width:90px;" value="${attendancePoints}">
-       <button id="saveAttendancePointBtn" class="small-btn" style="margin-left:8px;">Save A</button>`
-    : `${attendancePoints}`;
-
   blockScoreTableBody.innerHTML = `
     <tr>
       <td>${examPoints.written}</td>
       <td>${examPoints.oral}</td>
       <td>${examPoints.verbs}</td>
       <td>${pointTotal}</td>
-      <td>${attendanceCell}</td>
+      <td>${attendancePoints}</td>
       <td><strong>${totalBlockPoints}</strong></td>
     </tr>
   `;
-
-  const saveBtn = document.getElementById("saveAttendancePointBtn");
-  if (saveBtn) {
-    saveBtn.addEventListener("click", async () => {
-      const input = document.getElementById("attendancePointInput");
-      const value = Number(input?.value || 0);
-
-      await update(ref(db, `students/${studentKey}/attendancePoints`), {
-        [selectedBlock]: value
-      });
-
-      alert("Attendance score saved.");
-    });
-  }
 }
 
 function renderAll() {
