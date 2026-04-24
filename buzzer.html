@@ -103,7 +103,7 @@
 
     .buzzer-main-grid {
       display: grid;
-      grid-template-columns: minmax(0, 1.12fr) minmax(320px, 0.88fr);
+      grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
       gap: 18px;
       align-items: start;
     }
@@ -402,6 +402,91 @@
         margin-left: 0;
       }
     }
+      .buzzer-topbar {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .topbar-left {
+      justify-self: start;
+    }
+
+    .topbar-middle {
+      justify-self: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .buzzer-topbar .topbar-right {
+      justify-self: end;
+    }
+
+    .teacher-context-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 14px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      font-weight: 700;
+      color: #0f172a;
+      white-space: nowrap;
+    }
+
+    .teams-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .round-status-chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid #d1d5db;
+      background: #ffffff;
+      color: #0f172a;
+      border-radius: 999px;
+      padding: 5px 12px;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+    }
+
+    .round-status-chip.open {
+      background: #dcfce7 !important;
+      border-color: #22c55e !important;
+      color: #166534 !important;
+    }
+
+    @media (max-width: 820px) {
+      .buzzer-topbar {
+        grid-template-columns: 1fr;
+        justify-items: start;
+      }
+
+      .topbar-middle {
+        justify-self: start;
+        justify-content: flex-start;
+      }
+
+      .buzzer-topbar .topbar-right {
+        justify-self: start;
+      }
+
+      .buzzer-main-grid {
+        grid-template-columns: 1fr !important;
+      }
+    }
   </style>
 </head>
 <body>
@@ -433,19 +518,33 @@
     </aside>
 
     <main class="main-content">
-      <header class="topbar">
-        <div>
+      <header class="topbar buzzer-topbar">
+        <div class="topbar-left">
           <h2>Buzzer</h2>
-          <p style="font-weight:600;">Present today: <span id="presentTodayLabel">0</span></p>
         </div>
-        <div class="topbar-right">
+
+        <div class="topbar-middle">
           <span class="teacher-context-chip">Group: <strong id="contextGroupLabel">---</strong></span>
+          <span class="teacher-context-chip">Present today: <strong id="presentTodayLabel">0</strong></span>
+        </div>
+
+        <div class="topbar-right">
           <span id="teacherIdentity" class="teacher-identity">Teacher</span>
         </div>
       </header>
 
       <div class="buzzer-page">
         <section class="buzzer-main-grid">
+          <div class="score-panel">
+            <div class="score-panel-section">
+              <h3 class="teams-title-row">Teams and Members <span id="roundStatusChip" class="round-status-chip">CLOSED</span></h3>
+              <div id="teamRosterList" class="team-list">
+                <div class="empty-state">No active session.</div>
+              </div>
+              <div id="teamSelectionNote" class="selection-note">Use + / - on the team card to change score quickly.</div>
+            </div>
+</div>
+
           <div class="buzz-panel">
             <h3>Buzzer Control</h3>
 <div class="control-buttons-grid">
@@ -462,16 +561,6 @@
 
             <p id="teacherStatusNote" class="teacher-note">Ready.</p>
           </div>
-
-          <div class="score-panel">
-            <div class="score-panel-section">
-              <h3 class="teams-title-row">Teams and Members <span id="roundStatusChip" class="round-status-chip">CLOSED</span></h3>
-              <div id="teamRosterList" class="team-list">
-                <div class="empty-state">No active session.</div>
-              </div>
-              <div id="teamSelectionNote" class="selection-note">Use + / - on the team card to change score quickly.</div>
-            </div>
-</div>
         </section>
 
         <section class="buzzer-generator-card">

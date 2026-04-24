@@ -296,11 +296,6 @@ function renderResult() {
     roundStatusChip.classList.toggle("open", isRoundOpen);
   }
 
-  if (resultGroup) resultGroup.textContent = groupText;
-  if (resultRound) resultRound.textContent = isRoundOpen ? "OPEN" : "CLOSED";
-  if (resultBuzz) resultBuzz.textContent = currentBuzz ? `${currentBuzz.team} - ${currentBuzz.name}` : "Waiting";
-  if (resultLocked) resultLocked.textContent = String(lockedCount);
-
   if (!sessionCache?.active) {
     teacherStatusNote.textContent = "No active session.";
     return;
