@@ -77,7 +77,7 @@
 
     .generator-section h4 {
       margin: 0 0 10px 0;
-      font-size: 14px;
+      font-size: 12px;
     }
 
     .generator-mini-note {
@@ -131,23 +131,23 @@
       border: 1px solid #dbeafe;
       border-radius: 12px;
       padding: 10px 12px;
-      font-size: 14px;
+      font-size: 12px;
       line-height: 1.35;
       min-height: 64px;
     }
 
     .control-buttons-grid {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(120px, 1fr));
       gap: 10px;
       margin-bottom: 14px;
     }
 
     .control-buttons-grid button {
       width: 100%;
-      min-height: 48px;
+      min-height: 40px;
       padding: 10px 12px;
-      font-size: 14px;
+      font-size: 12px;
       line-height: 1.2;
     }
 
@@ -224,7 +224,7 @@
     }
 
     .team-score-chip {
-      font-size: 14px;
+      font-size: 12px;
       font-weight: 800;
       color: #1d4ed8;
       background: #ffffff;
@@ -439,6 +439,7 @@
           <p style="font-weight:600;">Present today: <span id="presentTodayLabel">0</span></p>
         </div>
         <div class="topbar-right">
+          <span class="teacher-context-chip">Group: <strong id="contextGroupLabel">---</strong></span>
           <span id="teacherIdentity" class="teacher-identity">Teacher</span>
         </div>
       </header>
@@ -447,18 +448,7 @@
         <section class="buzzer-main-grid">
           <div class="buzz-panel">
             <h3>Buzzer Control</h3>
-
-            <div class="buzz-result-card">
-              <h3>Current Buzz Result</h3>
-              <div class="buzz-result-mini">
-                <div><strong>Group:</strong> <span id="resultGroup">---</span></div>
-                <div><strong>Round:</strong> <span id="resultRound">CLOSED</span></div>
-                <div><strong>Current Team:</strong> <span id="resultBuzz">None yet</span></div>
-                <div><strong>Locked Out:</strong> <span id="resultLocked">0</span></div>
-              </div>
-            </div>
-
-            <div class="control-buttons-grid">
+<div class="control-buttons-grid">
               <button id="openRoundBtn">Open Round</button>
               <button id="wrongAnswerBtn">Mark Wrong / Next</button>
               <button id="closeRoundBtn">Close Round</button>
@@ -475,20 +465,13 @@
 
           <div class="score-panel">
             <div class="score-panel-section">
-              <h3>Teams and Members</h3>
+              <h3 class="teams-title-row">Teams and Members <span id="roundStatusChip" class="round-status-chip">CLOSED</span></h3>
               <div id="teamRosterList" class="team-list">
                 <div class="empty-state">No active session.</div>
               </div>
               <div id="teamSelectionNote" class="selection-note">Use + / - on the team card to change score quickly.</div>
             </div>
-
-            <div class="score-panel-section">
-              <h3>Activity Scoreboard</h3>
-              <div id="liveScores" class="live-score-list">
-                <div class="empty-state">No active session.</div>
-              </div>
-            </div>
-          </div>
+</div>
         </section>
 
         <section class="buzzer-generator-card">

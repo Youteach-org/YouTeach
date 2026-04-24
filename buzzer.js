@@ -39,6 +39,8 @@ const sessionStatusLabel = document.getElementById("sessionStatusLabel");
 const studentCountLabel = document.getElementById("studentCountLabel");
 const presentTodayLabel = document.getElementById("presentTodayLabel");
 
+const contextGroupLabel = document.getElementById("contextGroupLabel");
+const roundStatusChip = document.getElementById("roundStatusChip");
 const resultGroup = document.getElementById("resultGroup");
 const resultRound = document.getElementById("resultRound");
 const resultBuzz = document.getElementById("resultBuzz");
@@ -278,24 +280,31 @@ function renderHeader() {
 }
 
 function renderResult() {
-  if (!sessionCache?.active) {
-    resultGroup.textContent = groupSelect.value || "---";
-    resultRound.textContent = "CLOSED";
-    resultBuzz.textContent = "None yet";
-    resultLocked.textContent = "0";
-    teacherStatusNote.textContent = "No active session.";
-    return;
-  }
-
+  const groupText = sessionCache?.groupName || groupSelect.value || "---";
   const buzzer = getBuzzerState();
   const currentBuzz = buzzer.currentBuzz || null;
   const lockedCount = Object.keys(getLockedOutTeams()).length;
   const queuedCount = getQueue().length;
+  const isRoundOpen = Boolean(sessionCache?.active && buzzer.roundOpen);
 
-  resultGroup.textContent = sessionCache.groupName || groupSelect.value || "---";
-  resultRound.textContent = buzzer.roundOpen ? "OPEN" : "CLOSED";
-  resultBuzz.textContent = currentBuzz ? `${currentBuzz.team} - ${currentBuzz.name}` : "Waiting";
-  resultLocked.textContent = String(lockedCount);
+  if (contextGroupLabel) {
+    contextGroupLabel.textContent = groupText;
+  }
+
+  if (roundStatusChip) {
+    roundStatusChip.textContent = isRoundOpen ? "OPEN" : "CLOSED";
+    roundStatusChip.classList.toggle("open", isRoundOpen);
+  }
+
+  if (resultGroup) resultGroup.textContent = groupText;
+  if (resultRound) resultRound.textContent = isRoundOpen ? "OPEN" : "CLOSED";
+  if (resultBuzz) resultBuzz.textContent = currentBuzz ? `${currentBuzz.team} - ${currentBuzz.name}` : "Waiting";
+  if (resultLocked) resultLocked.textContent = String(lockedCount);
+
+  if (!sessionCache?.active) {
+    teacherStatusNote.textContent = "No active session.";
+    return;
+  }
 
   if (!buzzer.roundOpen) {
     teacherStatusNote.textContent = "Round is closed.";
@@ -391,6 +400,7 @@ function renderTeamRoster() {
 }
 
 function renderLiveScores() {
+  if (!liveScores) return;
   if (!sessionCache?.active) {
     liveScores.innerHTML = '<div class="empty-state">No active session.</div>';
     return;
