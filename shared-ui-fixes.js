@@ -76,12 +76,21 @@
       document.body.classList.add("sidebar-lock");
       syncHeaderText();
       floatingHeader.classList.add("show");
+
+      const sidebarWidth = sidebar.getBoundingClientRect().width || 320;
+      menuToggle.style.left = `${sidebarWidth + 12}px`;
+      menuToggle.style.top = "16px";
+      menuToggle.style.zIndex = "2400";
     }
 
     function closeMenu() {
       sidebar.classList.remove("sidebar-open");
       document.body.classList.remove("sidebar-lock");
       floatingHeader.classList.remove("show");
+
+      menuToggle.style.left = "";
+      menuToggle.style.top = "";
+      menuToggle.style.zIndex = "";
     }
 
     function toggleMenu() {

@@ -711,210 +711,59 @@ body.sidebar-lock {
 }
 /* ===== CENTRAL MENU SYSTEM END ===== */
 
-/* ===== STUDENT MENU VISUAL FIX START ===== */
-@media (max-width: 768px) {
-  .sidebar.sidebar-open .brand,
-  .collapsible-sidebar.sidebar-open .brand {
-    display: block !important;
-    padding-left: 72px !important;
-    min-height: 54px !important;
-  }
-
-  .sidebar.sidebar-open .brand h1,
-  .collapsible-sidebar.sidebar-open .brand h1 {
-    font-size: 24px !important;
-    line-height: 1.1 !important;
-    margin: 0 0 4px 0 !important;
-  }
-
-  .sidebar.sidebar-open .brand p,
-  .collapsible-sidebar.sidebar-open .brand p {
-    font-size: 16px !important;
-    margin: 0 !important;
-    color: #cbd5e1 !important;
-  }
-
-  .sidebar.sidebar-open .sidebar-link,
-  .collapsible-sidebar.sidebar-open .sidebar-link {
-    display: block !important;
-    background: #1e293b !important;
-    color: #ffffff !important;
-    border-radius: 10px !important;
-    padding: 12px 16px !important;
-    text-align: center !important;
-    font-weight: 600 !important;
-  }
-
-  .sidebar.sidebar-open .sidebar-link.active-link,
-  .collapsible-sidebar.sidebar-open .sidebar-link.active-link {
-    background: #2563eb !important;
-    color: #ffffff !important;
-  }
-
-  .sidebar.sidebar-open .logout-btn,
-  .collapsible-sidebar.sidebar-open .logout-btn {
-    display: block !important;
-    width: 100% !important;
-    background: #dc2626 !important;
-    color: #ffffff !important;
-    border-radius: 10px !important;
-    padding: 12px 16px !important;
-    text-align: center !important;
-    font-weight: 700 !important;
-  }
-}
-/* ===== STUDENT MENU VISUAL FIX END ===== */
-
-/* ===== SIDEBAR BRAND OVERLAP FIX START ===== */
-@media (max-width: 768px) {
-  .sidebar.sidebar-open .brand,
-  .collapsible-sidebar.sidebar-open .brand {
-    display: block !important;
-    padding-left: 96px !important;
-    padding-top: 4px !important;
-    min-height: 62px !important;
-  }
-
-  .sidebar.sidebar-open .brand h1,
-  .collapsible-sidebar.sidebar-open .brand h1 {
-    font-size: 24px !important;
-    line-height: 1.1 !important;
-    margin: 0 0 4px 0 !important;
-    white-space: nowrap !important;
-  }
-
-  .sidebar.sidebar-open .brand p,
-  .collapsible-sidebar.sidebar-open .brand p {
-    font-size: 16px !important;
-    line-height: 1.1 !important;
-    margin: 0 !important;
-    white-space: nowrap !important;
-  }
-}
-/* ===== SIDEBAR BRAND OVERLAP FIX END ===== */
-
-/* ===== SIDEBAR BRAND HARD FIX START ===== */
-@media (max-width: 768px) {
-  body.sidebar-lock .sidebar .brand,
-  body.sidebar-lock .collapsible-sidebar .brand {
-    display: block !important;
-    position: relative !important;
-    margin-left: 92px !important;
-    padding-left: 0 !important;
-    padding-top: 2px !important;
-    min-height: 58px !important;
-    width: calc(100% - 104px) !important;
-  }
-
-  body.sidebar-lock .sidebar .brand h1,
-  body.sidebar-lock .collapsible-sidebar .brand h1 {
-    display: block !important;
-    font-size: 24px !important;
-    line-height: 1.1 !important;
-    margin: 0 0 4px 0 !important;
-    white-space: nowrap !important;
-  }
-
-  body.sidebar-lock .sidebar .brand p,
-  body.sidebar-lock .collapsible-sidebar .brand p {
-    display: block !important;
-    font-size: 16px !important;
-    line-height: 1.1 !important;
-    margin: 0 !important;
-    white-space: nowrap !important;
-    color: #cbd5e1 !important;
-  }
-}
-/* ===== SIDEBAR BRAND HARD FIX END ===== */
-
-/* ===== HAMBURGER OPEN POSITION FIX START ===== */
-@media (max-width: 768px) {
-  body:has(.sidebar.sidebar-open) .hamburger-btn,
-  body:has(.collapsible-sidebar.sidebar-open) .hamburger-btn {
-    left: 270px !important;
-    top: 16px !important;
-    z-index: 2100 !important;
-  }
-
-  .sidebar.sidebar-open .brand,
-  .collapsible-sidebar.sidebar-open .brand {
-    display: block !important;
-    margin-left: 0 !important;
-    padding-left: 0 !important;
-  }
-
-  .sidebar.sidebar-open .brand h1,
-  .collapsible-sidebar.sidebar-open .brand h1 {
-    display: block !important;
-    margin-left: 0 !important;
-  }
-}
-
-@media (max-width: 420px) {
-  body:has(.sidebar.sidebar-open) .hamburger-btn,
-  body:has(.collapsible-sidebar.sidebar-open) .hamburger-btn {
-    left: calc(min(84vw, 320px) + 10px) !important;
-  }
-}
-/* ===== HAMBURGER OPEN POSITION FIX END ===== */
-
-/* ===== MENU TITLE FINAL FIX START ===== */
+/* ===== SIDEBAR CLEAN FINAL START ===== */
 @media (max-width: 768px) {
   .sidebar .brand,
-  .collapsible-sidebar .brand,
-  .sidebar.sidebar-open .brand,
-  .collapsible-sidebar.sidebar-open .brand,
-  body.sidebar-lock .sidebar .brand,
-  body.sidebar-lock .collapsible-sidebar .brand {
-    display: none !important;
+  .collapsible-sidebar .brand {
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    min-height: auto !important;
   }
 
-  .menu-header-floating {
-    position: fixed !important;
-    top: 16px !important;
-    left: 76px !important;
-    z-index: 2200 !important;
-    display: none !important;
-    flex-direction: column !important;
-    gap: 2px !important;
-    max-width: calc(100vw - 92px) !important;
-    padding: 8px 12px !important;
-    border-radius: 12px !important;
-    background: rgba(15, 23, 42, 0.98) !important;
-    color: #ffffff !important;
-    box-shadow: none !important;
-    pointer-events: none !important;
-  }
-
-  .menu-header-floating.show {
-    display: flex !important;
-  }
-
-  .menu-header-line1 {
-    font-size: 20px !important;
-    font-weight: 900 !important;
-    line-height: 1.05 !important;
+  .sidebar .brand h1,
+  .collapsible-sidebar .brand h1 {
+    margin: 0 0 4px 0 !important;
+    font-size: 24px !important;
+    line-height: 1.1 !important;
     white-space: nowrap !important;
   }
 
-  .menu-header-line2 {
-    font-size: 14px !important;
-    font-weight: 700 !important;
+  .sidebar .brand p,
+  .collapsible-sidebar .brand p {
+    margin: 0 !important;
+    font-size: 16px !important;
+    line-height: 1.1 !important;
     color: #cbd5e1 !important;
-    line-height: 1.05 !important;
-    white-space: nowrap !important;
-  }
-
-  .menu-header-line3 {
-    font-size: 14px !important;
-    font-weight: 700 !important;
-    color: #ffffff !important;
-    line-height: 1.05 !important;
     white-space: nowrap !important;
   }
 
   .sidebar-content {
-    padding-top: 78px !important;
+    padding: 20px 20px 18px 20px !important;
+    gap: 20px !important;
+  }
+
+  .sidebar-link,
+  .logout-btn {
+    display: block !important;
+    width: 100% !important;
+    border-radius: 14px !important;
+    padding: 14px 16px !important;
+    text-align: center !important;
+    font-weight: 700 !important;
+    color: #ffffff !important;
+  }
+
+  .sidebar-link {
+    background: #1e293b !important;
+  }
+
+  .sidebar-link.active-link {
+    background: #2563eb !important;
+  }
+
+  .logout-btn {
+    background: #dc2626 !important;
   }
 }
-/* ===== MENU TITLE FINAL FIX END ===== */
+/* ===== SIDEBAR CLEAN FINAL END ===== */
