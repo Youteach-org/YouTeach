@@ -1,4 +1,4 @@
-﻿import { db } from "./firebase.js";
+import { db } from "./firebase.js";
 import { ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
 
@@ -77,6 +77,14 @@ function getExtraPoints(student, blockName) {
   return Number(student?.blockPoints?.[blockName] || 0);
 }
 
+function getAttendancePoints(student, blockName) {
+  return Number(student?.attendancePoints?.[blockName] || 0);
+}
+
+function getOfficialPointsForBlock(student, blockName) {
+  return Number(student?.blockPoints?.[blockName] || 0);
+}
+
 function getOfficialPointsForBlock(student, blockName) {
   const examPoints = ensureExamPointsObject(student);
   return Number(examPoints[blockName]?.written || 0)
@@ -85,7 +93,9 @@ function getOfficialPointsForBlock(student, blockName) {
 }
 
 function getTotalPointsForBlock(student, blockName) {
-  return getOfficialPointsForBlock(student, blockName) + getExtraPoints(student, blockName);
+  return getOfficialPointsForBlock(student, blockName)
+    + getExtraPoints(student, blockName)
+    + getAttendancePoints(student, blockName);
 }
 
 function isBlockClosed(blockName) {
@@ -175,19 +185,18 @@ function renderManualPreview() {
   const totalPoints = getTotalPointsForBlock(student, selectedBlock);
 
   manualStudentPreview.innerHTML = `
-    <strong>${getDisplayName(student)}</strong><br>
-    Nickname: ${student.nickname || ""}<br>
-    External ID: ${student.studentNumber || ""}<br>
-    Internal ID: ${student.id || ""}<br>
-    Group: ${student.groupName || ""}<br>
-    Written Exam: ${examPoints[selectedBlock].written}<br>
-    Oral Exam: ${examPoints[selectedBlock].oral}<br>
-    Verb Exam: ${examPoints[selectedBlock].verbs}<br>
-    Official Points in ${selectedBlock}: ${officialPoints}<br>
-    Extra Points in ${selectedBlock}: ${extraPoints}<br>
-    Total Block Points in ${selectedBlock}: ${totalPoints}<br>
-    Block Status: ${isBlockClosed(selectedBlock) ? "CLOSED" : "OPEN"}
-  `;
+  <strong>${getDisplayName(student)}</strong><br>
+  Nickname: ${student.nickname || ""}<br>
+  External ID: ${student.studentNumber || ""}<br>
+  Group: ${student.groupName || ""}<br>
+  E (Written): ${examPoints[selectedBlock].written}<br>
+  E.O (Oral): ${examPoints[selectedBlock].oral}<br>
+  E.V (Verbs): ${examPoints[selectedBlock].verbs}<br>
+  P (Extra): ${extraPoints}<br>
+  A (Attendance): ${getAttendancePoints(student, selectedBlock)}<br>
+  T (Total): ${totalPoints}<br>
+  Block Status: ${isBlockClosed(selectedBlock) ? "CLOSED" : "OPEN"}
+`;
 }
 
 function renderBlockInfo() {
