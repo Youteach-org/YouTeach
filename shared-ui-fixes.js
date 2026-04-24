@@ -23,49 +23,15 @@
     return "";
   }
 
-  function getMenuType(sidebar) {
-    const label = sidebar?.querySelector(".brand p");
-    return (label?.textContent || "Menu").trim();
-  }
-
-  function ensureFloatingHeader() {
-    let header = document.getElementById("menuHeaderFloating");
-
-    if (!header) {
-      header = document.createElement("div");
-      header.id = "menuHeaderFloating";
-      header.className = "menu-header-floating";
-      header.innerHTML =
-        '<div class="menu-header-line1">☰ YouTeach</div>' +
-        '<div class="menu-header-line2"></div>' +
-        '<div class="menu-header-line3"></div>';
-      document.body.appendChild(header);
-    }
-
-    return header;
-  }
-
   ready(() => {
     const sidebar = document.getElementById("sidebar");
     const menuToggle = document.getElementById("menuToggle");
     const sidebarIdentity = document.getElementById("sidebarIdentity");
 
-    if (!sidebar || !menuToggle) {
-      return;
-    }
+    if (!sidebar || !menuToggle) return;
 
-    const floatingHeader = ensureFloatingHeader();
-
-    function syncHeaderText() {
-      const menuType = getMenuType(sidebar);
+    function syncIdentity() {
       const identityText = getBestIdentityText();
-
-      const line2 = floatingHeader.querySelector(".menu-header-line2");
-      const line3 = floatingHeader.querySelector(".menu-header-line3");
-
-      if (line2) line2.textContent = menuType;
-      if (line3) line3.textContent = identityText;
-
       if (sidebarIdentity && identityText) {
         sidebarIdentity.textContent = identityText;
       }
@@ -74,11 +40,10 @@
     function openMenu() {
       sidebar.classList.add("sidebar-open");
       document.body.classList.add("sidebar-lock");
-      syncHeaderText();
-      floatingHeader.classList.add("show");
+      syncIdentity();
 
-      const sidebarWidth = sidebar.getBoundingClientRect().width || 320;
-      menuToggle.style.left = `${sidebarWidth + 12}px`;
+      const width = sidebar.getBoundingClientRect().width || 320;
+      menuToggle.style.left = Math.max(14, width - 66) + "px";
       menuToggle.style.top = "16px";
       menuToggle.style.zIndex = "2400";
     }
@@ -86,25 +51,21 @@
     function closeMenu() {
       sidebar.classList.remove("sidebar-open");
       document.body.classList.remove("sidebar-lock");
-      floatingHeader.classList.remove("show");
 
       menuToggle.style.left = "";
       menuToggle.style.top = "";
       menuToggle.style.zIndex = "";
     }
 
-    function toggleMenu() {
+    menuToggle.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
       if (sidebar.classList.contains("sidebar-open")) {
         closeMenu();
       } else {
         openMenu();
       }
-    }
-
-    menuToggle.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      toggleMenu();
     });
 
     sidebar.addEventListener("click", (e) => {
@@ -112,18 +73,13 @@
     });
 
     document.addEventListener("click", (e) => {
-      const clickedInsideSidebar = sidebar.contains(e.target);
-      const clickedMenuButton = menuToggle.contains(e.target);
-
-      if (!clickedInsideSidebar && !clickedMenuButton) {
+      if (!sidebar.contains(e.target) && !menuToggle.contains(e.target)) {
         closeMenu();
       }
     });
 
     document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") {
-        closeMenu();
-      }
+      if (e.key === "Escape") closeMenu();
     });
 
     const passwordInputs = Array.from(document.querySelectorAll('input[type="password"]'));
@@ -142,7 +98,6 @@
       const btn = document.createElement("button");
       btn.type = "button";
       btn.textContent = "Show";
-      btn.setAttribute("aria-label", "Show password");
       btn.style.position = "absolute";
       btn.style.right = "10px";
       btn.style.top = "50%";
@@ -166,7 +121,7 @@
       wrapper.appendChild(btn);
     });
 
-    syncHeaderText();
+    syncIdentity();
 
     const identitySources = [
       document.getElementById("studentIdentity"),
@@ -175,14 +130,12 @@
     ].filter(Boolean);
 
     identitySources.forEach((source) => {
-      const observer = new MutationObserver(() => {
-        syncHeaderText();
-      });
+      const observer = new MutationObserver(syncIdentity);
       observer.observe(source, { childList: true, subtree: true, characterData: true });
     });
 
-    setTimeout(syncHeaderText, 300);
-    setTimeout(syncHeaderText, 1000);
-    setTimeout(syncHeaderText, 2000);
+    setTimeout(syncIdentity, 300);
+    setTimeout(syncIdentity, 1000);
+    setTimeout(syncIdentity, 2000);
   });
 })();
