@@ -120,9 +120,10 @@ function getExternalId(student) {
 }
 
 function formatTopIdentity(student) {
-  const fullName = getFullName(student);
+  const fullName = getFullName(student).replace(/Ã‚Â·|Ã‚Â|Â·|·/g, "-").replace(/\s+/g, " ").trim();
   const externalId = getExternalId(student);
-  return externalId ? `${fullName} Ã‚Â· ${externalId}` : fullName;
+  return externalId ? `${fullName} - ${externalId}` : fullName;
+} Ãƒâ€šÃ‚Â· ${externalId}` : fullName;
 }
 
 function getExamPoints(student, blockName) {
