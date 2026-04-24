@@ -11,6 +11,15 @@
     .editable-row{cursor:pointer}
     .editable-row:hover{background:#f8fafc}
     @media(max-width:1000px){.students-top-grid{grid-template-columns:1fr}}
+      .name-column-input {
+      min-width: 320px !important;
+      width: 100% !important;
+    }
+
+    .external-id-cell {
+      font-weight: 700;
+      white-space: nowrap;
+    }
   </style>
 </head>
 <body>
@@ -86,19 +95,17 @@
           <table class="data-table">
             <thead>
               <tr>
-                <th>Full Name</th>
-                <th>Nickname</th>
-                <th>External ID</th>
-                <th>Internal ID</th>
+                <th style="min-width:140px;">External ID</th>
+                <th style="min-width:320px;">Full Name</th>
+                <th style="min-width:180px;">Nickname</th>
                 <th>Today Active</th>
                 <th>Block 1</th>
                 <th>Block 2</th>
                 <th>Block 3</th>
-                <th>Group</th>
               </tr>
             </thead>
             <tbody id="studentsTableBody">
-              <tr><td colspan="9">No students found.</td></tr>
+              <tr><td colspan="7">No students found.</td></tr>
             </tbody>
           </table>
         </div>

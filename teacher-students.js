@@ -136,25 +136,19 @@ function renderStudents(){
   studentsInGroupCard.textContent = String(entries.length);
 
   if(!entries.length){
-    studentsTableBody.innerHTML = `<tr><td colspan="9">No students found for this group.</td></tr>`;
+    studentsTableBody.innerHTML = `<tr><td colspan="7">No students found for this group.</td></tr>`;
     return;
   }
 
   studentsTableBody.innerHTML = entries.map(([key, student]) => `
     <tr class="editable-row" data-student-key="${escapeHtml(key)}">
-      <td><input class="table-input student-name-input" data-student-key="${escapeHtml(key)}" value="${escapeHtml(getDisplayName(student))}"></td>
+      <td class="external-id-cell">${escapeHtml(student.studentNumber || "")}</td>
+      <td><input class="table-input student-name-input name-column-input" data-student-key="${escapeHtml(key)}" value="${escapeHtml(getDisplayName(student))}"></td>
       <td><input class="table-input student-nickname-input" data-student-key="${escapeHtml(key)}" value="${escapeHtml(student.nickname || "")}"></td>
-      <td>${escapeHtml(student.studentNumber || "")}</td>
-      <td>${escapeHtml(student.id || "")}</td>
       <td>${student.activeNow ? "YES" : "NO"}</td>
       <td>${getTotalPointsForBlock(student, "Block 1")}</td>
       <td>${getTotalPointsForBlock(student, "Block 2")}</td>
       <td>${getTotalPointsForBlock(student, "Block 3")}</td>
-      <td>
-        <select class="table-input student-group-input" data-student-key="${escapeHtml(key)}">
-          ${groupOptions(student.groupName || selectedGroup || "")}
-        </select>
-      </td>
     </tr>
   `).join("");
 
@@ -175,18 +169,15 @@ saveAllStudentsBtn.addEventListener("click", async () => {
     const key = row.dataset.studentKey;
     const nameInput = row.querySelector(".student-name-input");
     const nicknameInput = row.querySelector(".student-nickname-input");
-    const groupInput = row.querySelector(".student-group-input");
 
-    if(!key || !nameInput || !nicknameInput || !groupInput) return;
+    if(!key || !nameInput || !nicknameInput) return;
 
     const fullName = nameInput.value.trim();
     const nickname = nicknameInput.value.trim();
-    const groupName = groupInput.value;
 
     updates[`students/${key}/fullName`] = fullName;
     updates[`students/${key}/name`] = fullName;
     updates[`students/${key}/nickname`] = nickname;
-    updates[`students/${key}/groupName`] = groupName;
   });
 
   if(!Object.keys(updates).length){
