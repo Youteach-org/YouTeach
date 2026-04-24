@@ -72,8 +72,8 @@ function renderActivityScores() {
 
   activityScoresStrip.innerHTML = teamLabels.map((teamLabel) => `
     <div class="student-score-card">
-      <span>${teamLabel}</span>
-      <strong>${Number(scores[teamLabel] || 0)}</strong>
+      <span class="score-team-label">${teamLabel}:</span>
+      <strong class="score-number">${Number(scores[teamLabel] || 0)}</strong>
     </div>
   `).join("");
 }
