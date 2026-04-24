@@ -1,11 +1,22 @@
 import { db } from "./firebase.js";
 import { ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireStudentSession, clearStudentSession, saveLeaveLog } from "./student-auth.js";
+import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
 
-const session = requireStudentSession();
-if (!session) throw new Error("Student session required.");
+const params = new URLSearchParams(window.location.search);
+const teacherViewStudentKey = params.get("teacherViewStudentKey") || sessionStorage.getItem("teacherViewStudentKey") || "";
+const isTeacherView = Boolean(teacherViewStudentKey);
 
-const { studentKey } = session;
+let studentKey = "";
+
+if (isTeacherView) {
+  requireTeacherAuth();
+  studentKey = teacherViewStudentKey;
+} else {
+  const session = requireStudentSession();
+  if (!session) throw new Error("Student session required.");
+  studentKey = session.studentKey;
+}
 
 const logoutBtn = document.getElementById("logoutBtn");
 const studentIdentity = document.getElementById("studentIdentity");
@@ -23,12 +34,52 @@ const blockSelector = document.getElementById("blockSelector");
 const viewingBlockStatus = document.getElementById("viewingBlockStatus");
 const studentHistoryTableBody = document.getElementById("studentHistoryTableBody");
 const attendanceStatusText = document.getElementById("attendanceStatusText");
+const summaryPageTitle = document.getElementById("summaryPageTitle");
+const summaryPageSubtitle = document.getElementById("summaryPageSubtitle");
 
 let currentStudent = null;
 let currentSession = null;
 let settingsCache = {};
 let pointsLogCache = {};
 let selectedBlock = "";
+
+function setupTeacherViewShell() {
+  if (!isTeacherView) return;
+
+  const brandTitle = document.querySelector(".brand h1");
+  const brandSubtitle = document.querySelector(".brand p");
+  const sidebarIdentity = document.getElementById("sidebarIdentity");
+  const sidebarLinks = document.querySelector(".sidebar-links");
+
+  if (brandTitle) brandTitle.textContent = "YouTeach";
+  if (brandSubtitle) brandSubtitle.textContent = "Teacher Menu";
+  if (sidebarIdentity) sidebarIdentity.textContent = getTeacherName();
+
+  if (studentIdentity) {
+    studentIdentity.textContent = getTeacherName();
+  }
+
+  if (summaryPageTitle) summaryPageTitle.textContent = "Student Summary";
+  if (summaryPageSubtitle) summaryPageSubtitle.textContent = "Teacher view with teacher permissions.";
+
+  if (sidebarLinks) {
+    sidebarLinks.innerHTML = `
+      <a class="sidebar-link" href="buzzer.html">Buzzer</a>
+      <a class="sidebar-link" href="teacher.html">Teacher Home</a>
+      <a class="sidebar-link active-link" href="teacher-students.html">Students</a>
+      <a class="sidebar-link" href="teacher-enrollment.html">Groups / Import</a>
+      <a class="sidebar-link" href="teacher-active.html">Active Today</a>
+      <a class="sidebar-link" href="teacher-points.html">Points / Export</a>
+      <a class="sidebar-link" href="teacher-history.html">History</a>
+      <button id="logoutBtn" class="logout-btn">Logout</button>
+    `;
+  }
+
+  const freshLogoutBtn = document.getElementById("logoutBtn");
+  if (freshLogoutBtn) {
+    freshLogoutBtn.addEventListener("click", logoutTeacher);
+  }
+}
 
 function todayKey() {
   const now = new Date();
@@ -153,8 +204,11 @@ function renderAll() {
   const activeBlockClosed = !!settingsCache?.closedBlocks?.[activeBlock];
   const selectedBlockClosed = !!settingsCache?.closedBlocks?.[selectedBlock];
 
-  studentIdentity.textContent = topIdentity;
-  displayNameCard.textContent = nickname;
+  if (studentIdentity) {
+    studentIdentity.textContent = isTeacherView ? getTeacherName() : topIdentity;
+  }
+
+  displayNameCard.textContent = isTeacherView ? topIdentity : nickname;
   groupCard.textContent = currentStudent.groupName || "";
   classActiveBlockHero.textContent = activeBlock;
   classActiveBlockStatus.textContent = activeBlockClosed ? "Closed block" : "Open block";
@@ -170,23 +224,32 @@ function renderAll() {
   renderHistory(selectedBlock);
 }
 
+setupTeacherViewShell();
+
 blockSelector.addEventListener("change", () => {
   selectedBlock = blockSelector.value || settingsCache.activeBlock || "Block 1";
   renderAll();
 });
 
-logoutBtn.addEventListener("click", async () => {
-  const reason = prompt("Reason for leaving (optional):", "") || "";
-  await saveLeaveLog(studentKey, reason);
-  clearStudentSession();
-  window.location.href = "index.html";
-});
+if (!isTeacherView && logoutBtn) {
+  logoutBtn.addEventListener("click", async () => {
+    const reason = prompt("Reason for leaving (optional):", "") || "";
+    await saveLeaveLog(studentKey, reason);
+    clearStudentSession();
+    window.location.href = "index.html";
+  });
+}
 
 onValue(ref(db, `students/${studentKey}`), (snapshot) => {
   currentStudent = snapshot.val();
   if (!currentStudent) {
-    clearStudentSession();
-    window.location.href = "index.html";
+    if (!isTeacherView) {
+      clearStudentSession();
+      window.location.href = "index.html";
+    } else {
+      alert("Student not found.");
+      window.location.href = "teacher-students.html";
+    }
     return;
   }
   renderAll();
