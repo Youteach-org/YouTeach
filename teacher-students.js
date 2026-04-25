@@ -45,8 +45,21 @@ function getDisplayName(student){
   return student.fullName || student.name || student.nickname || "";
 }
 
+function formatGradeNumber(value) {
+  const number = Number(value || 0);
+  return Number(number.toFixed(1)).toString();
+}
+
 function getExtraPoints(student, blockName){
   return Number(student?.blockPoints?.[blockName] || 0);
+}
+
+function getAttendancePoints(student, blockName) {
+  return Number(student?.attendancePoints?.[blockName] || 0);
+}
+
+function getTaskPoints(student, blockName) {
+  return Number(student?.taskPoints?.[blockName] || 0);
 }
 
 function getOfficialPoints(student, blockName){
@@ -146,9 +159,9 @@ function renderStudents(){
       <td><input class="table-input student-name-input name-column-input" data-student-key="${escapeHtml(key)}" value="${escapeHtml(getDisplayName(student))}"></td>
       <td><input class="table-input student-nickname-input" data-student-key="${escapeHtml(key)}" value="${escapeHtml(student.nickname || "")}"></td>
       <td>${student.activeNow ? "YES" : "NO"}</td>
-      <td>${getTotalPointsForBlock(student, "Block 1")}</td>
-      <td>${getTotalPointsForBlock(student, "Block 2")}</td>
-      <td>${getTotalPointsForBlock(student, "Block 3")}</td>
+      <td>${formatGradeNumber(getTotalPointsForBlock(student, "Block 1"))}</td>
+      <td>${formatGradeNumber(getTotalPointsForBlock(student, "Block 2"))}</td>
+      <td>${formatGradeNumber(getTotalPointsForBlock(student, "Block 3"))}</td>
     </tr>
   `).join("");
 
