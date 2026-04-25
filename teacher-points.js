@@ -4,102 +4,64 @@ import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-aut
 
 requireTeacherAuth();
 
-const menuToggle = document.getElementById("menuToggle");
-const sidebar = document.getElementById("sidebar");
 const teacherIdentity = document.getElementById("teacherIdentity");
 const logoutBtn = document.getElementById("logoutBtn");
-
-const manualStudentSearch = document.getElementById("manualStudentSearch");
-const manualStudentSelect = document.getElementById("manualStudentSelect");
-const manualBlockSelect = document.getElementById("manualBlockSelect");
-const manualStudentPreview = document.getElementById("manualStudentPreview");
-const manualExamTypeSelect = document.getElementById("manualExamTypeSelect");
-const manualExamPointsInput = document.getElementById("manualExamPointsInput");
-const saveExamExactBtn = document.getElementById("saveExamExactBtn");
-const addExamDeltaBtn = document.getElementById("addExamDeltaBtn");
-
-const activeBlockSelect = document.getElementById("activeBlockSelect");
-const saveBlockBtn = document.getElementById("saveBlockBtn");
-const closeBlockBtn = document.getElementById("closeBlockBtn");
-const reopenBlockBtn = document.getElementById("reopenBlockBtn");
+const gradeBlockSelect = document.getElementById("gradeBlockSelect");
+const gradesPasteBox = document.getElementById("gradesPasteBox");
+const previewGradesBtn = document.getElementById("previewGradesBtn");
+const saveGradesBtn = document.getElementById("saveGradesBtn");
+const clearGradesBtn = document.getElementById("clearGradesBtn");
+const gradesFileInput = document.getElementById("gradesFileInput");
+const loadFileGradesBtn = document.getElementById("loadFileGradesBtn");
+const uploadStatusBox = document.getElementById("uploadStatusBox");
+const gradesSummaryBox = document.getElementById("gradesSummaryBox");
+const gradesPreviewBody = document.getElementById("gradesPreviewBody");
 const exportBlockSelect = document.getElementById("exportBlockSelect");
 const exportGroupSelect = document.getElementById("exportGroupSelect");
-const exportBlockBtn = document.getElementById("exportBlockBtn");
-const currentBlockLabel = document.getElementById("currentBlockLabel");
-const currentBlockStatusLabel = document.getElementById("currentBlockStatusLabel");
-
-const examImportFile = document.getElementById("examImportFile");
-const importBlockSelect = document.getElementById("importBlockSelect");
-const importModeSelect = document.getElementById("importModeSelect");
-const importExamScoresBtn = document.getElementById("importExamScoresBtn");
-const importResultBox = document.getElementById("importResultBox");
+const exportGradesBtn = document.getElementById("exportGradesBtn");
 
 teacherIdentity.textContent = getTeacherName();
 logoutBtn.addEventListener("click", logoutTeacher);
 
-
 let studentsCache = {};
-let settingsCache = {};
-let activeBlockCache = "Block 1";
 let groupsCache = {};
+let settingsCache = {};
+let parsedRowsCache = [];
 
-function normalizeText(text) {
-  return String(text || "")
+function normalizeText(value) {
+  return String(value || "")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .trim();
 }
 
-function normalizeHeader(text) {
-  return normalizeText(text).replace(/[^a-z0-9]/g, "");
+function cleanCell(value) {
+  return String(value ?? "").trim();
+}
+
+function parseNumber(value) {
+  const cleaned = String(value ?? "").replace(/,/g, "").trim();
+  if (cleaned === "") return 0;
+  const number = Number(cleaned);
+  return Number.isFinite(number) ? number : NaN;
 }
 
 function getDisplayName(student) {
-  return student.fullName || student.name || student.nickname || "";
+  return student?.fullName || student?.name || student?.nickname || "";
 }
 
-function ensureExamPointsObject(student) {
-  const makeBlock = (blockName) => ({
-    written: Number(student?.examPoints?.[blockName]?.written || 0),
-    oral: Number(student?.examPoints?.[blockName]?.oral || 0),
-    verbs: Number(student?.examPoints?.[blockName]?.verbs || 0)
-  });
-
-  return {
-    "Block 1": makeBlock("Block 1"),
-    "Block 2": makeBlock("Block 2"),
-    "Block 3": makeBlock("Block 3")
-  };
+function getStudentExternalId(student) {
+  return student?.studentNumber || student?.externalId || "";
 }
 
-function getExtraPoints(student, blockName) {
-  return Number(student?.blockPoints?.[blockName] || 0);
-}
-
-function getAttendancePoints(student, blockName) {
-  return Number(student?.attendancePoints?.[blockName] || 0);
-}
-
-function getOfficialPointsForBlock(student, blockName) {
-  return Number(student?.blockPoints?.[blockName] || 0);
-}
-
-function getOfficialPointsForBlock(student, blockName) {
-  const examPoints = ensureExamPointsObject(student);
-  return Number(examPoints[blockName]?.written || 0)
-    + Number(examPoints[blockName]?.oral || 0)
-    + Number(examPoints[blockName]?.verbs || 0);
-}
-
-function getTotalPointsForBlock(student, blockName) {
-  return getOfficialPointsForBlock(student, blockName)
-    + getExtraPoints(student, blockName)
-    + getAttendancePoints(student, blockName);
-}
-
-function isBlockClosed(blockName) {
-  return Boolean(settingsCache?.closedBlocks?.[blockName]);
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 
 function escapeCsv(value) {
@@ -110,8 +72,8 @@ function escapeCsv(value) {
   return text;
 }
 
-function downloadTextFile(filename, content, mimeType = "text/plain;charset=utf-8") {
-  const blob = new Blob([content], { type: mimeType });
+function downloadTextFile(filename, content) {
+  const blob = new Blob([content], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -140,75 +102,250 @@ function renderExportGroups() {
   const groups = getAllGroupNames();
   exportGroupSelect.innerHTML =
     '<option value="">All groups</option>' +
-    groups.map((groupName) => `<option value="${groupName}">${groupName}</option>`).join("");
+    groups.map((groupName) => `<option value="${escapeHtml(groupName)}">${escapeHtml(groupName)}</option>`).join("");
 }
 
-function renderManualOptions() {
-  const query = normalizeText(manualStudentSearch.value);
+function findStudent(id, fullName) {
+  const cleanId = normalizeText(id);
+  const cleanName = normalizeText(fullName);
 
-  const entries = Object.entries(studentsCache || {}).filter(([, student]) => {
-    const searchable = normalizeText([
-      getDisplayName(student),
-      student.nickname || "",
-      student.studentNumber || "",
-      student.id || "",
-      student.groupName || ""
-    ].join(" "));
+  for (const [studentKey, student] of Object.entries(studentsCache || {})) {
+    const studentId = normalizeText(getStudentExternalId(student));
+    const studentName = normalizeText(getDisplayName(student));
 
-    return !query || searchable.includes(query);
+    if (cleanId && studentId === cleanId) {
+      return { studentKey, student };
+    }
+
+    if (cleanName && studentName === cleanName) {
+      return { studentKey, student };
+    }
+  }
+
+  return { studentKey: "", student: null };
+}
+
+function rowLooksLikeHeader(cells) {
+  const normalized = cells.map((cell) => normalizeText(cell).replace(/[^a-z0-9]/g, ""));
+  return normalized.includes("e") ||
+    normalized.includes("eo") ||
+    normalized.includes("ev") ||
+    normalized.includes("total") ||
+    normalized.includes("nombre") ||
+    normalized.includes("name");
+}
+
+function normalizePastedText(text) {
+  return String(text || "")
+    .split(/\r?\n/)
+    .map((line) => line.trimEnd())
+    .filter((line) => line.trim() !== "")
+    .map((line) => line.includes("\t") ? line.split("\t") : line.split(","));
+}
+
+function rowsFromWorksheetRows(rows) {
+  return rows.map((row) => [
+    row[0] ?? "",
+    row[1] ?? "",
+    row[2] ?? "",
+    row[3] ?? "",
+    row[4] ?? "",
+    row[5] ?? "",
+    row[6] ?? "",
+    row[7] ?? "",
+    row[8] ?? ""
+  ]);
+}
+
+function parseGradeRows(rawRows) {
+  const rows = rawRows.length && rowLooksLikeHeader(rawRows[0]) ? rawRows.slice(1) : rawRows;
+  const blockName = gradeBlockSelect.value || settingsCache.activeBlock || "Block 1";
+
+  return rows.map((row, index) => {
+    const id = cleanCell(row[0]);
+    const fullName = cleanCell(row[1]);
+    const written = parseNumber(row[2]);
+    const oral = parseNumber(row[3]);
+    const verbs = parseNumber(row[4]);
+    const points = parseNumber(row[5]);
+    const attendance = parseNumber(row[6]);
+    const task = parseNumber(row[7]);
+    const uploadedTotal = parseNumber(row[8]);
+
+    const match = findStudent(id, fullName);
+    const student = match.student;
+    const hasExisting = Boolean(
+      student &&
+      (
+        student?.examPoints?.[blockName] ||
+        student?.blockPoints?.[blockName] !== undefined ||
+        student?.attendancePoints?.[blockName] !== undefined ||
+        student?.taskPoints?.[blockName] !== undefined
+      )
+    );
+
+    const calculatedTotal =
+      (Number.isFinite(written) ? written : 0) +
+      (Number.isFinite(oral) ? oral : 0) +
+      (Number.isFinite(verbs) ? verbs : 0) +
+      (Number.isFinite(points) ? points : 0) +
+      (Number.isFinite(attendance) ? attendance : 0) +
+      (Number.isFinite(task) ? task : 0);
+
+    const hasBadNumber = [written, oral, verbs, points, attendance, task, uploadedTotal].some((value) => !Number.isFinite(value));
+
+    return {
+      rowNumber: index + 1,
+      id,
+      fullName,
+      written,
+      oral,
+      verbs,
+      points,
+      attendance,
+      task,
+      uploadedTotal,
+      calculatedTotal,
+      studentKey: match.studentKey,
+      matchedName: student ? getDisplayName(student) : "",
+      hasExisting,
+      hasBadNumber
+    };
   });
-
-  manualStudentSelect.innerHTML =
-    `<option value="">Select a student</option>` +
-    entries.map(([key, student]) => `
-      <option value="${key}">
-        ${(student.nickname || getDisplayName(student) || "")} | ${student.studentNumber || "No ID"} | ${student.groupName || "No group"}
-      </option>
-    `).join("");
-
-  renderManualPreview();
 }
 
-function renderManualPreview() {
-  const studentKey = manualStudentSelect.value;
+function renderPreview(rows) {
+  parsedRowsCache = rows;
 
-  if (!studentKey || !studentsCache[studentKey]) {
-    manualStudentPreview.innerHTML = "No student selected.";
+  if (!rows.length) {
+    gradesPreviewBody.innerHTML = '<tr><td colspan="11">No rows found.</td></tr>';
+    gradesSummaryBox.textContent = "No rows found.";
     return;
   }
 
-  const student = studentsCache[studentKey];
-  const selectedBlock = manualBlockSelect.value;
-  const examPoints = ensureExamPointsObject(student);
-  const officialPoints = getOfficialPointsForBlock(student, selectedBlock);
-  const extraPoints = getExtraPoints(student, selectedBlock);
-  const totalPoints = getTotalPointsForBlock(student, selectedBlock);
+  const successRows = rows.filter((row) => row.studentKey && !row.hasBadNumber);
+  const existingRows = successRows.filter((row) => row.hasExisting);
+  const errorRows = rows.filter((row) => !row.studentKey || row.hasBadNumber);
 
-  manualStudentPreview.innerHTML = `
-  <strong>${getDisplayName(student)}</strong><br>
-  Nickname: ${student.nickname || ""}<br>
-  External ID: ${student.studentNumber || ""}<br>
-  Group: ${student.groupName || ""}<br>
-  E (Written): ${examPoints[selectedBlock].written}<br>
-  E.O (Oral): ${examPoints[selectedBlock].oral}<br>
-  E.V (Verbs): ${examPoints[selectedBlock].verbs}<br>
-  P (Extra): ${extraPoints}<br>
-  A (Attendance): ${getAttendancePoints(student, selectedBlock)}<br>
-  T (Total): ${totalPoints}<br>
-  Block Status: ${isBlockClosed(selectedBlock) ? "CLOSED" : "OPEN"}
-`;
+  gradesSummaryBox.innerHTML = `
+    Rows: ${rows.length}<br>
+    Ready to save: ${successRows.length}<br>
+    Existing grades detected: ${existingRows.length}<br>
+    Errors: ${errorRows.length}
+  `;
+
+  gradesPreviewBody.innerHTML = rows.map((row) => {
+    let status = '<span class="status-pill status-new">NEW</span>';
+
+    if (row.hasBadNumber || !row.studentKey) {
+      status = '<span class="status-pill status-error">ERROR</span>';
+    } else if (row.hasExisting) {
+      status = '<span class="status-pill status-existing">EXISTS</span>';
+    }
+
+    return `
+      <tr>
+        <td>${status}</td>
+        <td>${escapeHtml(row.id)}</td>
+        <td>${escapeHtml(row.fullName)}</td>
+        <td>${Number.isFinite(row.written) ? row.written : "ERROR"}</td>
+        <td>${Number.isFinite(row.oral) ? row.oral : "ERROR"}</td>
+        <td>${Number.isFinite(row.verbs) ? row.verbs : "ERROR"}</td>
+        <td>${Number.isFinite(row.points) ? row.points : "ERROR"}</td>
+        <td>${Number.isFinite(row.attendance) ? row.attendance : "ERROR"}</td>
+        <td>${Number.isFinite(row.task) ? row.task : "ERROR"}</td>
+        <td>${Number.isFinite(row.uploadedTotal) ? row.uploadedTotal : ""}</td>
+        <td>${row.studentKey ? escapeHtml(row.matchedName) : "Student not found"}</td>
+      </tr>
+    `;
+  }).join("");
 }
 
-function renderBlockInfo() {
-  currentBlockLabel.textContent = `Current active block: ${activeBlockCache}`;
-  currentBlockStatusLabel.textContent = `Current block status: ${isBlockClosed(activeBlockCache) ? "CLOSED" : "OPEN"}`;
-  activeBlockSelect.value = activeBlockCache;
-  exportBlockSelect.value = activeBlockCache;
-  manualBlockSelect.value = activeBlockCache;
-  importBlockSelect.value = activeBlockCache;
+function previewPastedGrades() {
+  const rawRows = normalizePastedText(gradesPasteBox.value);
+  const parsedRows = parseGradeRows(rawRows);
+  renderPreview(parsedRows);
 }
 
-function exportBlock(selectedBlock, selectedGroup) {
+async function loadFileGrades() {
+  const file = gradesFileInput.files?.[0];
+
+  if (!file) {
+    alert("Choose a file first.");
+    return;
+  }
+
+  if (!window.XLSX) {
+    alert("Excel library not loaded. Reload and try again.");
+    return;
+  }
+
+  const buffer = await file.arrayBuffer();
+  const workbook = window.XLSX.read(buffer, { type: "array" });
+  const sheetName = workbook.SheetNames[0];
+
+  if (!sheetName) {
+    alert("The file does not contain sheets.");
+    return;
+  }
+
+  const worksheet = workbook.Sheets[sheetName];
+  const rows = window.XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
+  const parsedRows = parseGradeRows(rowsFromWorksheetRows(rows));
+
+  renderPreview(parsedRows);
+  uploadStatusBox.textContent = `Loaded ${parsedRows.length} rows from ${file.name}.`;
+}
+
+async function saveGrades() {
+  if (!parsedRowsCache.length) {
+    previewPastedGrades();
+  }
+
+  const validRows = parsedRowsCache.filter((row) => row.studentKey && !row.hasBadNumber);
+  const existingRows = validRows.filter((row) => row.hasExisting);
+  const blockName = gradeBlockSelect.value || settingsCache.activeBlock || "Block 1";
+
+  if (!validRows.length) {
+    alert("There are no valid rows to save.");
+    return;
+  }
+
+  if (existingRows.length) {
+    const replace = confirm(`${existingRows.length} students already have grades for ${blockName}. Replace them with the new values?`);
+    if (!replace) return;
+  }
+
+  const updates = {};
+
+  validRows.forEach((row) => {
+    updates[`students/${row.studentKey}/examPoints/${blockName}/written`] = row.written;
+    updates[`students/${row.studentKey}/examPoints/${blockName}/oral`] = row.oral;
+    updates[`students/${row.studentKey}/examPoints/${blockName}/verbs`] = row.verbs;
+    updates[`students/${row.studentKey}/blockPoints/${blockName}`] = row.points;
+    updates[`students/${row.studentKey}/attendancePoints/${blockName}`] = row.attendance;
+    updates[`students/${row.studentKey}/taskPoints/${blockName}`] = row.task;
+  });
+
+  await update(ref(db), updates);
+
+  alert(`Grades saved for ${validRows.length} students.`);
+  renderPreview(parseGradeRows(normalizePastedText(gradesPasteBox.value)));
+}
+
+function clearGrades() {
+  gradesPasteBox.value = "";
+  gradesFileInput.value = "";
+  parsedRowsCache = [];
+  gradesSummaryBox.textContent = "Paste grades or upload a file, then preview.";
+  uploadStatusBox.textContent = "No grades loaded yet.";
+  gradesPreviewBody.innerHTML = '<tr><td colspan="11">No preview yet.</td></tr>';
+}
+
+function exportGrades() {
+  const blockName = exportBlockSelect.value || settingsCache.activeBlock || "Block 1";
+  const selectedGroup = exportGroupSelect.value || "";
+
   const students = Object.entries(studentsCache || {})
     .filter(([, student]) => !selectedGroup || (student.groupName || "") === selectedGroup)
     .sort((a, b) => getDisplayName(a[1]).localeCompare(getDisplayName(b[1])));
@@ -218,276 +355,48 @@ function exportBlock(selectedBlock, selectedGroup) {
     return;
   }
 
-  const lines = [[
-    "internalId",
-    "externalId",
-    "nickname",
-    "fullName",
-    "group",
-    "block",
-    "written",
-    "oral",
-    "verbs",
-    "officialPoints",
-    "extraPoints",
-    "totalBlockPoints"
-  ].join(",")];
+  const lines = [["externalId", "fullName", "E", "E.O", "E.V", "P", "A", "T", "TOTAL"].join(",")];
 
-  for (const [, student] of students) {
-    const examPoints = ensureExamPointsObject(student);
-    const officialPoints = getOfficialPointsForBlock(student, selectedBlock);
-    const extraPoints = getExtraPoints(student, selectedBlock);
-    const totalBlockPoints = officialPoints + extraPoints;
+  students.forEach(([, student]) => {
+    const exam = student?.examPoints?.[blockName] || {};
+    const written = Number(exam.written || 0);
+    const oral = Number(exam.oral || 0);
+    const verbs = Number(exam.verbs || 0);
+    const points = Number(student?.blockPoints?.[blockName] || 0);
+    const attendance = Number(student?.attendancePoints?.[blockName] || 0);
+    const task = Number(student?.taskPoints?.[blockName] || 0);
+    const total = written + oral + verbs + points + attendance + task;
 
     lines.push([
-      escapeCsv(student.id || ""),
-      escapeCsv(student.studentNumber || ""),
-      escapeCsv(student.nickname || ""),
+      escapeCsv(getStudentExternalId(student)),
       escapeCsv(getDisplayName(student)),
-      escapeCsv(student.groupName || ""),
-      escapeCsv(selectedBlock),
-      escapeCsv(examPoints[selectedBlock].written || 0),
-      escapeCsv(examPoints[selectedBlock].oral || 0),
-      escapeCsv(examPoints[selectedBlock].verbs || 0),
-      escapeCsv(officialPoints || 0),
-      escapeCsv(extraPoints || 0),
-      escapeCsv(totalBlockPoints || 0)
+      escapeCsv(written),
+      escapeCsv(oral),
+      escapeCsv(verbs),
+      escapeCsv(points),
+      escapeCsv(attendance),
+      escapeCsv(task),
+      escapeCsv(total)
     ].join(","));
-  }
-
-  const groupSuffix = selectedGroup ? `_${selectedGroup.replace(/\s+/g, "_")}` : "_all_groups";
-  downloadTextFile(`${selectedBlock.replace(/\s+/g, "_").toLowerCase()}${groupSuffix}.csv`, lines.join("\n"), "text/csv;charset=utf-8");
-}
-
-async function updateExamPointsForStudent(studentKey, blockName, examType, value, mode) {
-  if (!studentKey || !studentsCache[studentKey]) {
-    alert("Select a student first.");
-    return false;
-  }
-
-  if (!["written", "oral", "verbs"].includes(examType)) {
-    alert("Invalid exam type.");
-    return false;
-  }
-
-  if (!Number.isFinite(value)) {
-    alert("Enter a valid number.");
-    return false;
-  }
-
-  const student = studentsCache[studentKey];
-  const examPoints = ensureExamPointsObject(student);
-  const currentValue = Number(examPoints[blockName][examType] || 0);
-  examPoints[blockName][examType] = mode === "add" ? currentValue + value : value;
-
-  await update(ref(db, `students/${studentKey}`), { examPoints });
-  manualExamPointsInput.value = "";
-  alert("Exam score updated.");
-  return true;
-}
-
-function normalizeRecord(row) {
-  const normalized = {};
-  Object.entries(row || {}).forEach(([key, value]) => {
-    normalized[normalizeHeader(key)] = value;
   });
-  return normalized;
+
+  const groupSuffix = selectedGroup ? selectedGroup.replace(/\s+/g, "_") : "all_groups";
+  downloadTextFile(`${blockName.replace(/\s+/g, "_").toLowerCase()}_${groupSuffix}_grades.csv`, lines.join("\n"));
 }
 
-function getRecordValue(record, candidates) {
-  for (const candidate of candidates) {
-    const value = record[normalizeHeader(candidate)];
-    if (value !== undefined && value !== null && String(value).trim() !== "") {
-      return value;
-    }
-  }
-  return "";
-}
-
-function hasRecordField(record, candidates) {
-  return candidates.some((candidate) => Object.prototype.hasOwnProperty.call(record, normalizeHeader(candidate)));
-}
-
-function findStudentKeyFromRecord(record) {
-  const externalId = normalizeText(getRecordValue(record, ["externalId", "studentNumber", "external", "matricula"]));
-  const internalId = normalizeText(getRecordValue(record, ["internalId", "id", "internal"]));
-  const nickname = normalizeText(getRecordValue(record, ["nickname", "nick"]));
-  const fullName = normalizeText(getRecordValue(record, ["fullName", "fullname", "full name", "name"]));
-
-  for (const [studentKey, student] of Object.entries(studentsCache || {})) {
-    if (externalId && normalizeText(student.studentNumber) === externalId) return studentKey;
-    if (internalId && normalizeText(student.id) === internalId) return studentKey;
-    if (nickname && normalizeText(student.nickname) === nickname) return studentKey;
-    if (fullName && normalizeText(getDisplayName(student)) === fullName) return studentKey;
-  }
-
-  return "";
-}
-
-async function importExamScores() {
-  const file = examImportFile.files?.[0];
-  if (!file) {
-    alert("Choose a CSV or Excel file first.");
-    return;
-  }
-
-  if (!window.XLSX) {
-    alert("Excel library not loaded. Reload the page and try again.");
-    return;
-  }
-
-  const buffer = await file.arrayBuffer();
-  const workbook = window.XLSX.read(buffer, { type: "array" });
-  const firstSheetName = workbook.SheetNames[0];
-
-  if (!firstSheetName) {
-    alert("The file does not contain sheets.");
-    return;
-  }
-
-  const worksheet = workbook.Sheets[firstSheetName];
-  const rows = window.XLSX.utils.sheet_to_json(worksheet, { defval: "" });
-
-  if (!rows.length) {
-    alert("No rows found in the selected file.");
-    return;
-  }
-
-  let successCount = 0;
-  let failCount = 0;
-  const failures = [];
-  const seenStudents = new Set();
-  const mode = importModeSelect.value || "replace";
-  const fallbackBlock = importBlockSelect.value || "Block 1";
-
-  for (let index = 0; index < rows.length; index += 1) {
-    const rawRow = rows[index];
-    const record = normalizeRecord(rawRow);
-    const studentKey = findStudentKeyFromRecord(record);
-
-    if (!studentKey || !studentsCache[studentKey]) {
-      failCount += 1;
-      failures.push(`Row ${index + 2}: student not found`);
-      continue;
-    }
-
-    const dedupeKey = `${studentKey}::${String(getRecordValue(record, ["block"]) || fallbackBlock).trim() || fallbackBlock}`;
-    if (seenStudents.has(dedupeKey)) {
-      failCount += 1;
-      failures.push(`Row ${index + 2}: duplicate student/block in same import`);
-      continue;
-    }
-    seenStudents.add(dedupeKey);
-
-    const student = studentsCache[studentKey];
-    const blockName = String(getRecordValue(record, ["block"]) || fallbackBlock).trim() || fallbackBlock;
-    const examPoints = ensureExamPointsObject(student);
-
-    const hasWritten = hasRecordField(record, ["written", "writtenExam", "escrito"]);
-    const hasOral = hasRecordField(record, ["oral", "oralExam"]);
-    const hasVerbs = hasRecordField(record, ["verbs", "verbsExam", "verbexam", "verbos"]);
-
-    if (!hasWritten && !hasOral && !hasVerbs) {
-      failCount += 1;
-      failures.push(`Row ${index + 2}: no exam columns found`);
-      continue;
-    }
-
-    const writtenValue = Number(getRecordValue(record, ["written", "writtenExam", "escrito"]) || 0);
-    const oralValue = Number(getRecordValue(record, ["oral", "oralExam"]) || 0);
-    const verbsValue = Number(getRecordValue(record, ["verbs", "verbsExam", "verbexam", "verbos"]) || 0);
-
-    if ((hasWritten && !Number.isFinite(writtenValue)) || (hasOral && !Number.isFinite(oralValue)) || (hasVerbs && !Number.isFinite(verbsValue))) {
-      failCount += 1;
-      failures.push(`Row ${index + 2}: invalid numeric value`);
-      continue;
-    }
-
-    if (!examPoints[blockName]) {
-      examPoints[blockName] = { written: 0, oral: 0, verbs: 0 };
-    }
-
-    if (hasWritten) {
-      examPoints[blockName].written = mode === "add"
-        ? Number(examPoints[blockName].written || 0) + writtenValue
-        : writtenValue;
-    }
-
-    if (hasOral) {
-      examPoints[blockName].oral = mode === "add"
-        ? Number(examPoints[blockName].oral || 0) + oralValue
-        : oralValue;
-    }
-
-    if (hasVerbs) {
-      examPoints[blockName].verbs = mode === "add"
-        ? Number(examPoints[blockName].verbs || 0) + verbsValue
-        : verbsValue;
-    }
-
-    await update(ref(db, `students/${studentKey}`), { examPoints });
-    successCount += 1;
-  }
-
-  importResultBox.innerHTML = `
-    <strong>Import finished.</strong><br>
-    Success: ${successCount}<br>
-    Failed: ${failCount}
-    ${failures.length ? `<br><br>${failures.slice(0, 10).join("<br>")}` : ""}
-  `;
-
-  if (failCount) {
-    alert(`Import finished. Success: ${successCount}. Failed: ${failCount}.`);
-  } else {
-    alert(`Import finished successfully. Rows updated: ${successCount}.`);
-  }
-
-  examImportFile.value = "";
-}
-
-saveExamExactBtn.addEventListener("click", async () => {
-  const studentKey = manualStudentSelect.value;
-  const blockName = manualBlockSelect.value;
-  const examType = manualExamTypeSelect.value;
-  const value = Number(manualExamPointsInput.value);
-  await updateExamPointsForStudent(studentKey, blockName, examType, value, "replace");
-});
-
-addExamDeltaBtn.addEventListener("click", async () => {
-  const studentKey = manualStudentSelect.value;
-  const blockName = manualBlockSelect.value;
-  const examType = manualExamTypeSelect.value;
-  const value = Number(manualExamPointsInput.value);
-  await updateExamPointsForStudent(studentKey, blockName, examType, value, "add");
-});
-
-saveBlockBtn.addEventListener("click", async () => {
-  await update(ref(db, "settings"), { activeBlock: activeBlockSelect.value });
-  alert("Active block updated.");
-});
-
-closeBlockBtn.addEventListener("click", async () => {
-  await update(ref(db, "settings/closedBlocks"), { [activeBlockCache]: true });
-  alert("Block closed.");
-});
-
-reopenBlockBtn.addEventListener("click", async () => {
-  await update(ref(db, "settings/closedBlocks"), { [activeBlockCache]: false });
-  alert("Block reopened.");
-});
-
-exportBlockBtn.addEventListener("click", () => {
-  exportBlock(exportBlockSelect.value, exportGroupSelect.value);
-});
-
-importExamScoresBtn.addEventListener("click", importExamScores);
-manualStudentSearch.addEventListener("input", renderManualOptions);
-manualStudentSelect.addEventListener("change", renderManualPreview);
-manualBlockSelect.addEventListener("change", renderManualPreview);
+previewGradesBtn.addEventListener("click", previewPastedGrades);
+saveGradesBtn.addEventListener("click", saveGrades);
+clearGradesBtn.addEventListener("click", clearGrades);
+loadFileGradesBtn.addEventListener("click", loadFileGrades);
+exportGradesBtn.addEventListener("click", exportGrades);
 
 onValue(ref(db, "students"), (snapshot) => {
   studentsCache = snapshot.val() || {};
-  renderManualOptions();
+  renderExportGroups();
+
+  if (parsedRowsCache.length) {
+    renderPreview(parsedRowsCache);
+  }
 });
 
 onValue(ref(db, "groups"), (snapshot) => {
@@ -497,7 +406,7 @@ onValue(ref(db, "groups"), (snapshot) => {
 
 onValue(ref(db, "settings"), (snapshot) => {
   settingsCache = snapshot.val() || {};
-  activeBlockCache = settingsCache.activeBlock || "Block 1";
-  renderBlockInfo();
-  renderManualPreview();
+  const activeBlock = settingsCache.activeBlock || "Block 1";
+  gradeBlockSelect.value = activeBlock;
+  exportBlockSelect.value = activeBlock;
 });
