@@ -46,69 +46,13 @@
 
     .summary-meta-grid {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 12px;
       margin-bottom: 16px;
     }
 
-    .summary-detail-toggle {
-      margin-top: 14px;
-      border: 1px solid #e2e8f0;
-      border-radius: 14px;
-      background: #f8fafc;
-      overflow: hidden;
-    }
-
-    .summary-detail-toggle summary {
-      cursor: pointer;
-      list-style: none;
-      padding: 12px 14px;
-      font-weight: 700;
-      background: #f8fafc;
-    }
-
-    .summary-detail-toggle summary::-webkit-details-marker {
-      display: none;
-    }
-
-    .summary-detail-content {
-      padding: 14px;
-      border-top: 1px solid #e2e8f0;
-    }
-
-    .summary-detail-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 12px;
-    }
-
-    .summary-detail-card {
-      background: #ffffff;
-      border: 1px solid #e2e8f0;
-      border-radius: 12px;
-      padding: 12px 14px;
-    }
-
-    .summary-detail-card span {
-      display: block;
-      font-size: 12px;
-      color: #64748b;
-      margin-bottom: 6px;
-    }
-
-    .summary-detail-card strong {
-      display: block;
-      font-size: 20px;
-      color: #0f172a;
-      line-height: 1.1;
-    }
-
     @media (max-width: 1100px) {
       .summary-top-grid,
-      .summary-detail-grid {
-        grid-template-columns: 1fr;
-      }
-
       .summary-meta-grid {
         grid-template-columns: 1fr;
       }
@@ -122,38 +66,39 @@
 
   <div class="menu-shell">
     <aside id="sidebar" class="sidebar collapsible-sidebar">
-  <div class="sidebar-content">
-    <div class="brand">
-      <h1>YouTeach</h1>
-      <p>Student Menu</p>
-    </div>
+      <div class="sidebar-content">
+        <div class="brand">
+          <h1>YouTeach</h1>
+          <p>Student Menu</p>
+        </div>
 
-    <div id="sidebarIdentity" class="sidebar-identity">Student</div>
+        <div id="sidebarIdentity" class="sidebar-identity">Student</div>
 
-    <div class="sidebar-links">
-        <a class="sidebar-link" href="student-buzzer.html">Buzzer</a>
-        <a class="sidebar-link active-link" href="student-summary.html">My Summary</a>
-        <a class="sidebar-link" href="student-settings.html">Settings</a>
-<button id="logoutBtn" class="logout-btn">Logout</button>
-          </div>
-  </div>
-</aside>
+        <div class="sidebar-links">
+          <a class="sidebar-link" href="student-buzzer.html">Buzzer</a>
+          <a class="sidebar-link active-link" href="student-summary.html">My Summary</a>
+          <a class="sidebar-link" href="student-settings.html">Settings</a>
+          <button id="logoutBtn" class="logout-btn">Logout</button>
+        </div>
+      </div>
+    </aside>
 
     <main class="main-content">
       <header class="topbar">
         <div>
           <h2 id="summaryPageTitle">My Summary</h2>
-          <p id="summaryPageSubtitle">Start with the class active block, then open details if needed</p>
+          <p id="summaryPageSubtitle">Start with the class active block, then review all blocks.</p>
         </div>
         <div class="topbar-right">
           <span id="studentIdentity" class="teacher-identity">Student</span>
         </div>
       </header>
 
-            <div id="attendanceStatusBar" class="panel-card" style="margin-bottom:16px;">
+      <div id="attendanceStatusBar" class="panel-card" style="margin-bottom:16px;">
         <strong>Current status today:</strong> <span id="attendanceStatusText">Checking...</span>
       </div>
-<div class="summary-top-grid">
+
+      <div class="summary-top-grid">
         <div class="summary-hero-card">
           <span class="hero-label">Class Active Block</span>
           <strong id="classActiveBlockHero" class="hero-value">Block 1</strong>
@@ -161,11 +106,9 @@
         </div>
 
         <div class="summary-hero-card">
-          <span class="hero-label">Total Block Points</span>
-          <strong id="totalBlockPointsCard" class="hero-value">0</strong>
-          <div class="hero-subtext">This total includes E, E.O, E.V, P, A, and T for the selected block.</div>
-
-          
+          <span class="hero-label">Active Block Total</span>
+          <strong id="totalBlockPointsCard" class="hero-value">NY</strong>
+          <div class="hero-subtext">This total includes E, E.O, E.V, P, A, and T for the active block.</div>
         </div>
       </div>
 
@@ -178,34 +121,33 @@
           <span class="summary-label">Group</span>
           <strong id="groupCard">---</strong>
         </div>
-        </div>
       </div>
 
       <div class="panel-card" style="margin-top:12px;">
-  <div class="panel-card-header">
-    <h3>Block Score Breakdown</h3>
-  </div>
+        <div class="panel-card-header">
+          <h3>Block Score Breakdown</h3>
+        </div>
 
-  <div class="table-wrap">
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>Block</th>
-          <th>E</th>
-          <th>E.O</th>
-          <th>E.V</th>
-          <th>P</th>
-          <th>A</th>
-          <th>T</th>
-          <th>TOTAL</th>
-        </tr>
-      </thead>
-      <tbody id="blockScoreTableBody">
-        <tr><td colspan="8">Loading...</td></tr>
-      </tbody>
-    </table>
-  </div>
-</div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Block</th>
+                <th>E</th>
+                <th>E.O</th>
+                <th>E.V</th>
+                <th>P</th>
+                <th>A</th>
+                <th>T</th>
+                <th>TOTAL</th>
+              </tr>
+            </thead>
+            <tbody id="blockScoreTableBody">
+              <tr><td colspan="8">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       <div class="panel-card">
         <div class="panel-card-header">
@@ -226,7 +168,7 @@
               </tr>
             </thead>
             <tbody id="studentHistoryTableBody">
-              <tr><td colspan="7">Login first.</td></tr>
+              <tr><td colspan="7">Loading...</td></tr>
             </tbody>
           </table>
         </div>
@@ -234,7 +176,7 @@
     </main>
   </div>
 
-  <script type="module" src="student-summary.js?v=summary-three-blocks-20260424231558"></script>
+  <script type="module" src="student-summary.js?v=summary-all-blocks-final-20260424232509"></script>
   <script defer src="shared-ui-fixes.js?v=menu-final-20260424091909"></script>
 </body>
 </html>

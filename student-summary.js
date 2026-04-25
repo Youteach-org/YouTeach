@@ -25,7 +25,6 @@ const groupCard = document.getElementById("groupCard");
 const classActiveBlockHero = document.getElementById("classActiveBlockHero");
 const classActiveBlockStatus = document.getElementById("classActiveBlockStatus");
 const totalBlockPointsCard = document.getElementById("totalBlockPointsCard");
-
 const studentHistoryTableBody = document.getElementById("studentHistoryTableBody");
 const attendanceStatusText = document.getElementById("attendanceStatusText");
 const summaryPageTitle = document.getElementById("summaryPageTitle");
@@ -36,11 +35,17 @@ let currentStudent = null;
 let currentSession = null;
 let settingsCache = {};
 let pointsLogCache = {};
+
 function cleanText(value) {
   return String(value || "")
-    .replace(/ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â·|ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡|ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â·|ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â·|ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡|ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡/g, "-")
+    .replace(/Ã|Â|·/g, "-")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function formatGradeNumber(value) {
+  const number = Number(value || 0);
+  return Number(number.toFixed(1)).toString();
 }
 
 function setupTeacherViewShell() {
@@ -131,12 +136,76 @@ function getExamPoints(student, blockName) {
   };
 }
 
-function getExtraBlockPoints(student, blockName) {
+function getP(student, blockName) {
   return Number(student?.blockPoints?.[blockName] || 0);
 }
 
-function getAttendancePoints(student, blockName) {
+function getA(student, blockName) {
   return Number(student?.attendancePoints?.[blockName] || 0);
+}
+
+function getT(student, blockName) {
+  return Number(student?.taskPoints?.[blockName] || 0);
+}
+
+function blockHasGrades(blockName) {
+  const exam = currentStudent?.examPoints?.[blockName] || {};
+  return Boolean(
+    exam.written !== undefined ||
+    exam.oral !== undefined ||
+    exam.verbs !== undefined ||
+    currentStudent?.blockPoints?.[blockName] !== undefined ||
+    currentStudent?.attendancePoints?.[blockName] !== undefined ||
+    currentStudent?.taskPoints?.[blockName] !== undefined
+  );
+}
+
+function getBlockGradeData(blockName) {
+  const exam = getExamPoints(currentStudent, blockName);
+  const p = getP(currentStudent, blockName);
+  const a = getA(currentStudent, blockName);
+  const t = getT(currentStudent, blockName);
+  const total = exam.written + exam.oral + exam.verbs + p + a + t;
+
+  return { exam, p, a, t, total };
+}
+
+function renderBlockScoreTable() {
+  if (!blockScoreTableBody) return;
+
+  const blocks = ["Block 1", "Block 2", "Block 3"];
+
+  blockScoreTableBody.innerHTML = blocks.map((blockName) => {
+    if (!blockHasGrades(blockName)) {
+      return `
+        <tr>
+          <td>${blockName}</td>
+          <td>NY</td>
+          <td>NY</td>
+          <td>NY</td>
+          <td>NY</td>
+          <td>NY</td>
+          <td>NY</td>
+          <td><strong>NY</strong></td>
+        </tr>
+      `;
+    }
+
+    const data = getBlockGradeData(blockName);
+
+    return `
+      <tr>
+        <td>${blockName}</td>
+        <td>${formatGradeNumber(data.exam.written)}</td>
+        <td>${formatGradeNumber(data.exam.oral)}</td>
+        <td>${formatGradeNumber(data.exam.verbs)}</td>
+        <td>${formatGradeNumber(data.p)}</td>
+        <td>${formatGradeNumber(data.a)}</td>
+        <td>${formatGradeNumber(data.t)}</td>
+        <td><strong>${formatGradeNumber(data.total)}</strong></td>
+      </tr>
+    `;
+  }).join("");
 }
 
 function renderHistory() {
@@ -178,85 +247,14 @@ function renderHistory() {
   studentHistoryTableBody.innerHTML = rows.join("");
 }
 
-function formatGradeNumber(value) {
-  const number = Number(value || 0);
-  return Number(number.toFixed(1)).toString();
-}
-
-function blockHasGrades(blockName) {
-  const exam = currentStudent?.examPoints?.[blockName] || {};
-  return Boolean(
-    exam.written !== undefined ||
-    exam.oral !== undefined ||
-    exam.verbs !== undefined ||
-    currentStudent?.blockPoints?.[blockName] !== undefined ||
-    currentStudent?.attendancePoints?.[blockName] !== undefined ||
-    currentStudent?.taskPoints?.[blockName] !== undefined
-  );
-}
-
-function getBlockGradeData(blockName) {
-  const examPoints = getExamPoints(currentStudent, blockName);
-  const pointTotal = getExtraBlockPoints(currentStudent, blockName);
-  const attendancePoints = getAttendancePoints(currentStudent, blockName);
-  const taskPoints = Number(currentStudent?.taskPoints?.[blockName] || 0);
-  const totalBlockPoints = examPoints.written + examPoints.oral + examPoints.verbs + pointTotal + attendancePoints + taskPoints;
-
-  return {
-    examPoints,
-    pointTotal,
-    attendancePoints,
-    taskPoints,
-    totalBlockPoints
-  };
-}
-
-function renderBlockScoreTable() {
-  if (!blockScoreTableBody) return;
-
-  const blocks = ["Block 1", "Block 2", "Block 3"];
-
-  blockScoreTableBody.innerHTML = blocks.map((blockName) => {
-    if (!blockHasGrades(blockName)) {
-      return `
-        <tr>
-          <td>${blockName}</td>
-          <td>NY</td>
-          <td>NY</td>
-          <td>NY</td>
-          <td>NY</td>
-          <td>NY</td>
-          <td>NY</td>
-          <td><strong>NY</strong></td>
-        </tr>
-      `;
-    }
-
-    const data = getBlockGradeData(blockName);
-
-    return `
-      <tr>
-        <td>${blockName}</td>
-        <td>${formatGradeNumber(data.examPoints.written)}</td>
-        <td>${formatGradeNumber(data.examPoints.oral)}</td>
-        <td>${formatGradeNumber(data.examPoints.verbs)}</td>
-        <td>${formatGradeNumber(data.pointTotal)}</td>
-        <td>${formatGradeNumber(data.attendancePoints)}</td>
-        <td>${formatGradeNumber(data.taskPoints)}</td>
-        <td><strong>${formatGradeNumber(data.totalBlockPoints)}</strong></td>
-      </tr>
-    `;
-  }).join("");
-}
-
 function renderAll() {
   if (!currentStudent) return;
 
   const topIdentity = formatTopIdentity(currentStudent);
   const nickname = getNickname(currentStudent);
   const activeBlock = settingsCache.activeBlock || "Block 1";
-  const activeBlockData = getBlockGradeData(activeBlock);
   const activeBlockClosed = !!settingsCache?.closedBlocks?.[activeBlock];
+  const activeBlockData = getBlockGradeData(activeBlock);
 
   if (studentIdentity) studentIdentity.textContent = isTeacherView ? getTeacherName() : topIdentity;
   if (displayNameCard) displayNameCard.textContent = isTeacherView ? topIdentity : nickname;
@@ -265,7 +263,7 @@ function renderAll() {
   if (classActiveBlockStatus) classActiveBlockStatus.textContent = activeBlockClosed ? "Closed block" : "Open block";
 
   if (totalBlockPointsCard) {
-    totalBlockPointsCard.textContent = blockHasGrades(activeBlock) ? formatGradeNumber(activeBlockData.totalBlockPoints) : "NY";
+    totalBlockPointsCard.textContent = blockHasGrades(activeBlock) ? formatGradeNumber(activeBlockData.total) : "NY";
   }
 
   renderBlockScoreTable();
@@ -273,9 +271,6 @@ function renderAll() {
 }
 
 setupTeacherViewShell();
-
-);
-}
 
 if (!isTeacherView) {
   const studentLogoutBtn = document.getElementById("logoutBtn");
