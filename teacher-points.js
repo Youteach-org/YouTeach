@@ -11,9 +11,7 @@ const gradesPasteBox = document.getElementById("gradesPasteBox");
 const previewGradesBtn = document.getElementById("previewGradesBtn");
 const saveGradesBtn = document.getElementById("saveGradesBtn");
 const clearGradesBtn = document.getElementById("clearGradesBtn");
-const gradesFileInput = document.getElementById("gradesFileInput");
-const loadFileGradesBtn = document.getElementById("loadFileGradesBtn");
-const uploadStatusBox = document.getElementById("uploadStatusBox");
+
 const gradesSummaryBox = document.getElementById("gradesSummaryBox");
 const gradesPreviewBody = document.getElementById("gradesPreviewBody");
 const exportBlockSelect = document.getElementById("exportBlockSelect");
@@ -267,36 +265,6 @@ function previewPastedGrades() {
   renderPreview(parsedRows);
 }
 
-async function loadFileGrades() {
-  const file = gradesFileInput.files?.[0];
-
-  if (!file) {
-    alert("Choose a file first.");
-    return;
-  }
-
-  if (!window.XLSX) {
-    alert("Excel library not loaded. Reload and try again.");
-    return;
-  }
-
-  const buffer = await file.arrayBuffer();
-  const workbook = window.XLSX.read(buffer, { type: "array" });
-  const sheetName = workbook.SheetNames[0];
-
-  if (!sheetName) {
-    alert("The file does not contain sheets.");
-    return;
-  }
-
-  const worksheet = workbook.Sheets[sheetName];
-  const rows = window.XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
-  const parsedRows = parseGradeRows(rowsFromWorksheetRows(rows));
-
-  renderPreview(parsedRows);
-  uploadStatusBox.textContent = `Loaded ${parsedRows.length} rows from ${file.name}.`;
-}
-
 async function saveGrades() {
   if (!parsedRowsCache.length) {
     previewPastedGrades();
@@ -335,10 +303,8 @@ async function saveGrades() {
 
 function clearGrades() {
   gradesPasteBox.value = "";
-  gradesFileInput.value = "";
   parsedRowsCache = [];
   gradesSummaryBox.textContent = "Paste grades or upload a file, then preview.";
-  uploadStatusBox.textContent = "No grades loaded yet.";
   gradesPreviewBody.innerHTML = '<tr><td colspan="11">No preview yet.</td></tr>';
 }
 
@@ -387,7 +353,6 @@ function exportGrades() {
 previewGradesBtn.addEventListener("click", previewPastedGrades);
 saveGradesBtn.addEventListener("click", saveGrades);
 clearGradesBtn.addEventListener("click", clearGrades);
-loadFileGradesBtn.addEventListener("click", loadFileGrades);
 exportGradesBtn.addEventListener("click", exportGrades);
 
 onValue(ref(db, "students"), (snapshot) => {

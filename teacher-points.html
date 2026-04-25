@@ -13,7 +13,7 @@
 
     .grades-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr;
       gap: 16px;
     }
 
@@ -97,7 +97,7 @@
       <header class="topbar">
         <div>
           <h2>Grades Upload</h2>
-          <p>Paste or upload grades in the format: ID, Name, E, E.O, E.V, P, A, T, TOTAL.</p>
+          <p>Paste grades in the format: ID, Name, E, E.O, E.V, P, A, T, TOTAL.</p>
         </div>
         <div class="topbar-right">
           <span id="teacherIdentity" class="teacher-identity">Teacher</span>
@@ -129,41 +129,11 @@
           </div>
 
           <div class="panel-card">
-            <div class="panel-card-header">
-              <h3>Upload Excel / CSV File</h3>
-            </div>
-
-            <div class="stack-controls">
-              <input id="gradesFileInput" type="file" accept=".csv,.xlsx,.xls">
-              <div class="hint-box">
-                Accepted columns:
-                <strong>ID</strong>,
-                <strong>Name</strong>,
-                <strong>E</strong>,
-                <strong>E.O</strong>,
-                <strong>E.V</strong>,
-                <strong>P</strong>,
-                <strong>A</strong>,
-                <strong>T</strong>,
-                <strong>TOTAL</strong>.
-                The first row may be headers.
-              </div>
-            </div>
-
-            <div class="grades-actions">
-              <button id="loadFileGradesBtn">Load File</button>
-            </div>
-
-            <div id="uploadStatusBox" class="preview-box">No grades loaded yet.</div>
-          </div>
-        </div>
-
-        <div class="panel-card">
           <div class="panel-card-header">
             <h3>Preview</h3>
           </div>
 
-          <div id="gradesSummaryBox" class="preview-box">Paste grades or upload a file, then preview.</div>
+          <div id="gradesSummaryBox" class="preview-box">Paste grades, then preview.</div>
 
           <div class="table-wrap" style="margin-top:14px;">
             <table class="data-table">
@@ -214,7 +184,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script type="module" src="teacher-points.js?v=grades-uploader-1"></script>
+  <script type="module" src="teacher-points.js?v=paste-only-grades-20260424212734"></script>
   <script defer src="shared-ui-fixes.js?v=menu-final-20260424091909"></script>
 </body>
 </html>
