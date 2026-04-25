@@ -41,7 +41,7 @@ let selectedBlock = "";
 
 function cleanText(value) {
   return String(value || "")
-    .replace(/Ã‚Â·|Ã‚Â|Â·|·|Ã‚|Â/g, "-")
+    .replace(/Ãƒâ€šÃ‚Â·|Ãƒâ€šÃ‚|Ã‚Â·|Â·|Ãƒâ€š|Ã‚/g, "-")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -193,7 +193,7 @@ function renderHistory(blockName) {
   `).join("");
 }
 
-function renderBlockScoreTable(examPoints, pointTotal, attendancePoints, totalBlockPoints) {
+function renderBlockScoreTable(examPoints, pointTotal, attendancePoints, taskPoints, totalBlockPoints) {
   if (!blockScoreTableBody) return;
 
   blockScoreTableBody.innerHTML = `
@@ -203,7 +203,8 @@ function renderBlockScoreTable(examPoints, pointTotal, attendancePoints, totalBl
       <td>${examPoints.verbs}</td>
       <td>${pointTotal}</td>
       <td>${attendancePoints}</td>
-      <td><strong>${totalBlockPoints}</strong></td>
+      <td>${taskPoints}</td>
+      <td><strong>${Number(totalBlockPoints.toFixed(2))}</strong></td>
     </tr>
   `;
 }
@@ -225,7 +226,8 @@ function renderAll() {
   const storedPoints = getExtraBlockPoints(currentStudent, selectedBlock);
   const pointTotal = storedPoints + liveStudentPoints + liveTeamPoints;
   const attendancePoints = getAttendancePoints(currentStudent, selectedBlock);
-  const totalBlockPoints = examPoints.written + examPoints.oral + examPoints.verbs + pointTotal + attendancePoints;
+    const taskPoints = Number(currentStudent?.taskPoints?.[selectedBlock] || 0);
+  const totalBlockPoints = examPoints.written + examPoints.oral + examPoints.verbs + pointTotal + attendancePoints + taskPoints;
 
   const activeBlockClosed = !!settingsCache?.closedBlocks?.[activeBlock];
   const selectedBlockClosed = !!settingsCache?.closedBlocks?.[selectedBlock];
@@ -238,7 +240,7 @@ function renderAll() {
   if (viewingBlockStatus) viewingBlockStatus.textContent = selectedBlockClosed ? "Selected block is closed." : "Selected block is open.";
   if (totalBlockPointsCard) totalBlockPointsCard.textContent = String(totalBlockPoints);
 
-  renderBlockScoreTable(examPoints, pointTotal, attendancePoints, totalBlockPoints);
+  renderBlockScoreTable(examPoints, pointTotal, attendancePoints, taskPoints, totalBlockPoints);
   renderHistory(selectedBlock);
 }
 
