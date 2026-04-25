@@ -17,6 +17,10 @@ const gradesPreviewBody = document.getElementById("gradesPreviewBody");
 const exportBlockSelect = document.getElementById("exportBlockSelect");
 const exportGroupSelect = document.getElementById("exportGroupSelect");
 const exportGradesBtn = document.getElementById("exportGradesBtn");
+const deleteBlockSelect = document.getElementById("deleteBlockSelect");
+const deleteGroupSelect = document.getElementById("deleteGroupSelect");
+const deleteGradesBtn = document.getElementById("deleteGradesBtn");
+const deleteGradesResultBox = document.getElementById("deleteGradesResultBox");
 
 teacherIdentity.textContent = getTeacherName();
 logoutBtn.addEventListener("click", logoutTeacher);
@@ -98,9 +102,15 @@ function getAllGroupNames() {
 
 function renderExportGroups() {
   const groups = getAllGroupNames();
-  exportGroupSelect.innerHTML =
+  const options =
     '<option value="">All groups</option>' +
     groups.map((groupName) => `<option value="${escapeHtml(groupName)}">${escapeHtml(groupName)}</option>`).join("");
+
+  exportGroupSelect.innerHTML = options;
+
+  if (deleteGroupSelect) {
+    deleteGroupSelect.innerHTML = options;
+  }
 }
 
 function findStudent(id, fullName) {
@@ -308,6 +318,54 @@ function clearGrades() {
   gradesPreviewBody.innerHTML = '<tr><td colspan="11">No preview yet.</td></tr>';
 }
 
+
+async function deleteGradesByBlock() {
+  const blockName = deleteBlockSelect?.value || "Block 1";
+  const selectedGroup = deleteGroupSelect?.value || "";
+
+  const targetStudents = Object.entries(studentsCache || {})
+    .filter(([, student]) => !selectedGroup || (student.groupName || "") === selectedGroup);
+
+  if (!targetStudents.length) {
+    alert("No students found for that selection.");
+    return;
+  }
+
+  const confirmMessage = selectedGroup
+    ? `Delete grades for ${blockName} in group ${selectedGroup}? This removes E, E.O, E.V, P, A, and T.`
+    : `Delete grades for ${blockName} in ALL groups? This removes E, E.O, E.V, P, A, and T.`;
+
+  if (!confirm(confirmMessage)) return;
+
+  const secondConfirm = prompt('Type DELETE to confirm:');
+  if (secondConfirm !== "DELETE") {
+    alert("Deletion cancelled.");
+    return;
+  }
+
+  const updates = {};
+
+  targetStudents.forEach(([studentKey]) => {
+    updates[`students/${studentKey}/examPoints/${blockName}`] = null;
+    updates[`students/${studentKey}/blockPoints/${blockName}`] = null;
+    updates[`students/${studentKey}/attendancePoints/${blockName}`] = null;
+    updates[`students/${studentKey}/taskPoints/${blockName}`] = null;
+  });
+
+  await update(ref(db), updates);
+
+  if (deleteGradesResultBox) {
+    deleteGradesResultBox.innerHTML = `
+      <strong>Deleted grades.</strong><br>
+      Block: ${blockName}<br>
+      Group: ${selectedGroup || "All groups"}<br>
+      Students affected: ${targetStudents.length}
+    `;
+  }
+
+  alert(`Deleted ${blockName} grades for ${targetStudents.length} students.`);
+}
+
 function exportGrades() {
   const blockName = exportBlockSelect.value || settingsCache.activeBlock || "Block 1";
   const selectedGroup = exportGroupSelect.value || "";
@@ -354,6 +412,7 @@ previewGradesBtn.addEventListener("click", previewPastedGrades);
 saveGradesBtn.addEventListener("click", saveGrades);
 clearGradesBtn.addEventListener("click", clearGrades);
 exportGradesBtn.addEventListener("click", exportGrades);
+if (deleteGradesBtn) deleteGradesBtn.addEventListener("click", deleteGradesByBlock);
 
 onValue(ref(db, "students"), (snapshot) => {
   studentsCache = snapshot.val() || {};

@@ -179,12 +179,40 @@
             <button id="exportGradesBtn">Download CSV</button>
           </div>
         </div>
+        <div class="panel-card">
+          <div class="panel-card-header">
+            <h3>Delete Grades by Block</h3>
+          </div>
+
+          <div class="stack-controls">
+            <select id="deleteBlockSelect">
+              <option value="Block 1">Block 1</option>
+              <option value="Block 2">Block 2</option>
+              <option value="Block 3">Block 3</option>
+            </select>
+
+            <select id="deleteGroupSelect">
+              <option value="">All groups</option>
+            </select>
+
+            <div class="hint-box">
+              This deletes E, E.O, E.V, P, A, and T from the selected block only.
+            </div>
+          </div>
+
+          <div class="grades-actions">
+            <button id="deleteGradesBtn" style="background:#dc2626;">Delete Selected Block Grades</button>
+          </div>
+
+          <div id="deleteGradesResultBox" class="preview-box">No deletion executed yet.</div>
+        </div>
+
       </div>
     </main>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script type="module" src="teacher-points.js?v=paste-only-grades-20260424212734"></script>
+  <script type="module" src="teacher-points.js?v=delete-grades-20260424225951"></script>
   <script defer src="shared-ui-fixes.js?v=menu-final-20260424091909"></script>
 </body>
 </html>
