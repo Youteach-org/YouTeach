@@ -41,7 +41,7 @@ let selectedBlock = "";
 
 function cleanText(value) {
   return String(value || "")
-    .replace(/Ãƒâ€šÃ‚Â·|Ãƒâ€šÃ‚|Ã‚Â·|Â·|Ãƒâ€š|Ã‚/g, "-")
+    .replace(/ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â·|ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€š|Ãƒâ€šÃ‚Â·|Ã‚Â·|ÃƒÆ’Ã¢â‚¬Å¡|Ãƒâ€š/g, "-")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -193,6 +193,11 @@ function renderHistory(blockName) {
   `).join("");
 }
 
+function formatGradeNumber(value) {
+  const number = Number(value || 0);
+  return Number(number.toFixed(1)).toString();
+}
+
 function renderBlockScoreTable(examPoints, pointTotal, attendancePoints, taskPoints, totalBlockPoints) {
   if (!blockScoreTableBody) return;
 
@@ -204,7 +209,7 @@ function renderBlockScoreTable(examPoints, pointTotal, attendancePoints, taskPoi
       <td>${pointTotal}</td>
       <td>${attendancePoints}</td>
       <td>${taskPoints}</td>
-      <td><strong>${Number(totalBlockPoints.toFixed(2))}</strong></td>
+      <td><strong>${formatGradeNumber(totalBlockPoints)}</strong></td>
     </tr>
   `;
 }
@@ -238,7 +243,7 @@ function renderAll() {
   if (classActiveBlockHero) classActiveBlockHero.textContent = activeBlock;
   if (classActiveBlockStatus) classActiveBlockStatus.textContent = activeBlockClosed ? "Closed block" : "Open block";
   if (viewingBlockStatus) viewingBlockStatus.textContent = selectedBlockClosed ? "Selected block is closed." : "Selected block is open.";
-  if (totalBlockPointsCard) totalBlockPointsCard.textContent = String(totalBlockPoints);
+  if (totalBlockPointsCard) totalBlockPointsCard.textContent = formatGradeNumber(totalBlockPoints);
 
   renderBlockScoreTable(examPoints, pointTotal, attendancePoints, taskPoints, totalBlockPoints);
   renderHistory(selectedBlock);
