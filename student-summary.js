@@ -41,7 +41,7 @@ let selectedBlock = "";
 
 function cleanText(value) {
   return String(value || "")
-    .replace(/ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â·|ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€š|Ãƒâ€šÃ‚Â·|Ã‚Â·|ÃƒÆ’Ã¢â‚¬Å¡|Ãƒâ€š/g, "-")
+    .replace(/ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â·|ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡|ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â·|Ãƒâ€šÃ‚Â·|ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡|ÃƒÆ’Ã¢â‚¬Å¡/g, "-")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -203,12 +203,12 @@ function renderBlockScoreTable(examPoints, pointTotal, attendancePoints, taskPoi
 
   blockScoreTableBody.innerHTML = `
     <tr>
-      <td>${examPoints.written}</td>
-      <td>${examPoints.oral}</td>
-      <td>${examPoints.verbs}</td>
-      <td>${pointTotal}</td>
-      <td>${attendancePoints}</td>
-      <td>${taskPoints}</td>
+      <td>${formatGradeNumber(examPoints.written)}</td>
+      <td>${formatGradeNumber(examPoints.oral)}</td>
+      <td>${formatGradeNumber(examPoints.verbs)}</td>
+      <td>${formatGradeNumber(pointTotal)}</td>
+      <td>${formatGradeNumber(attendancePoints)}</td>
+      <td>${formatGradeNumber(taskPoints)}</td>
       <td><strong>${formatGradeNumber(totalBlockPoints)}</strong></td>
     </tr>
   `;
