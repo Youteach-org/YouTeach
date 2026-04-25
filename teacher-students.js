@@ -68,7 +68,14 @@ function getOfficialPoints(student, blockName){
 }
 
 function getTotalPointsForBlock(student, blockName){
-  return getOfficialPoints(student, blockName) + getExtraPoints(student, blockName);
+  const exam = student?.examPoints?.[blockName] || {};
+  const E = Number(exam.written || 0);
+  const EO = Number(exam.oral || 0);
+  const EV = Number(exam.verbs || 0);
+  const P = Number(student?.blockPoints?.[blockName] || 0);
+  const A = Number(student?.attendancePoints?.[blockName] || 0);
+  const T = Number(student?.taskPoints?.[blockName] || 0);
+  return E + EO + EV + P + A + T;
 }
 
 function getStoredWorkingGroup(){
