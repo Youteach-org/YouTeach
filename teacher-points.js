@@ -157,7 +157,7 @@ function rowsFromWorksheetRows(rows) {
 
 function parseGradeRows(rawRows) {
   const rows = rawRows.length && rowLooksLikeHeader(rawRows[0]) ? rawRows.slice(1) : rawRows;
-  const blockName = gradeBlockSelect.value || settingsCache.activeBlock || "Block 1";
+  const blockName = gradeBlockSelect.value || "Block 1";
 
   return rows.map((row, index) => {
     const id = cleanCell(row[0]);
@@ -272,7 +272,7 @@ async function saveGrades() {
 
   const validRows = parsedRowsCache.filter((row) => row.studentKey && !row.hasBadNumber);
   const existingRows = validRows.filter((row) => row.hasExisting);
-  const blockName = gradeBlockSelect.value || settingsCache.activeBlock || "Block 1";
+  const blockName = gradeBlockSelect.value || "Block 1";
 
   if (!validRows.length) {
     alert("There are no valid rows to save.");
@@ -372,6 +372,6 @@ onValue(ref(db, "groups"), (snapshot) => {
 onValue(ref(db, "settings"), (snapshot) => {
   settingsCache = snapshot.val() || {};
   const activeBlock = settingsCache.activeBlock || "Block 1";
-  gradeBlockSelect.value = activeBlock;
+  
   exportBlockSelect.value = activeBlock;
 });
