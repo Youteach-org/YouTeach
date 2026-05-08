@@ -17,5 +17,9 @@ export function logoutTeacher() {
   localStorage.removeItem("youteachTeacherAuth");
   localStorage.removeItem("youteachTeacherRole");
   localStorage.removeItem("youteachTeacherName");
-  window.location.href = "index.html";
+  sessionStorage.clear();
+localStorage.removeItem("youteachTeacherAuth");
+localStorage.removeItem("youteachTeacherRole");
+localStorage.removeItem("youteachTeacherName");
+window.location.href = "index.html";
 }

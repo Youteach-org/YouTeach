@@ -1,4 +1,4 @@
-﻿import { db } from "./firebase.js";
+import { db } from "./firebase.js";
 import {
   ref,
   get,
@@ -196,7 +196,7 @@ buzzBtn.onclick = async () => {
       timestamp: Date.now()
     };
 
-    buzzer.roundOpen = false;
+    // keep round open while waiting for teacher decision
     return buzzer;
   });
 };

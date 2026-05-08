@@ -1,3 +1,4 @@
+sessionStorage.removeItem("firebase:authUser");
 const USERS = [
   { username: "teacher", password: "teacher123", role: "teacher", displayName: "Teacher" },
   { username: "admin", password: "admin123", role: "admin", displayName: "Admin" }

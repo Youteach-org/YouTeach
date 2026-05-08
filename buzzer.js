@@ -162,10 +162,25 @@ async function savePairHistory(teams) {
 function activePresentStudentsForGroup(groupName) {
   return Object.entries(studentsCache || {})
     .filter(([, student]) => {
-      const activeNow = student?.activeNow === true;
-      const groupOk = !groupName || (student?.groupName || "") === groupName;
-      return activeNow && groupOk;
+      const attendanceActive =
+        student?.activeNow === true ||
+        (
+          student?.lastAttendanceDate &&
+          student.lastAttendanceDate === todayKey()
+        );
+
+      const groupOk =
+        !groupName ||
+        (student?.groupName || "") === groupName;
+
+      return attendanceActive && groupOk;
     });
+}
+
+function todayKey() {
+  const now = new Date();
+
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
 }
 
 function getStoredWorkingGroup() {
