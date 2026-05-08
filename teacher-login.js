@@ -9,7 +9,13 @@ const passwordInput = document.getElementById("password");
 const loginBtn = document.getElementById("loginBtn");
 const loginMessage = document.getElementById("loginMessage");
 
-if (sessionStorage.getItem("youteachTeacherAuth") === "true") {
+// prevent redirect loops on mobile browsers
+const teacherAuth = sessionStorage.getItem("youteachTeacherAuth");
+
+if (
+  teacherAuth === "true" &&
+  window.location.pathname.toLowerCase().includes("teacher-login") === false
+) {
   window.location.href = "buzzer.html";
 }
 
