@@ -582,7 +582,13 @@
             </div>
 
             <div class="generator-section">
-              <h4>Number of Teams</h4>
+              <h4>Team Source</h4>
+<select id="teamSourceSelect">
+  <option value="present">Present students only</option>
+  <option value="all">All students in group</option>
+</select>
+
+<h4>Number of Teams</h4>
               <input id="numTeams" type="number" min="1" placeholder="Number of teams">
               <div class="generator-actions">
                 <button id="createTeams">Generate Smart Teams</button><button id="printTeamsBtn" type="button">Print Teams PDF</button>
@@ -615,7 +621,7 @@
     </main>
   </div>
 
-  <script type="module" src="buzzer.js?v=teams-print-all-20260508122409"></script>
+  <script type="module" src="buzzer.js?v=team-source-select-20260508124152"></script>
   <script defer src="shared-ui-fixes.js?v=force-clean-20260508121228"></script>
   <script type="module" src="attendance-validation.js"></script>
 </body>

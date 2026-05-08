@@ -19,6 +19,7 @@ const logoutBtn = document.getElementById("logoutBtn");
 
 const groupSelect = document.getElementById("groupSelect");
 const numTeamsInput = document.getElementById("numTeams");
+const teamSourceSelect = document.getElementById("teamSourceSelect");
 const createTeamsBtn = document.getElementById("createTeams");
 const printTeamsBtn = document.getElementById("printTeamsBtn");
 const resetSessionBtn = document.getElementById("resetSession");
@@ -178,18 +179,18 @@ function allStudentsForGroup(groupName) {
 }
 
 function studentsForTeams(groupName) {
-  const presentStudents = activePresentStudentsForGroup(groupName);
+  const mode = teamSourceSelect?.value || "present";
 
-  if (presentStudents.length > 0) {
+  if (mode === "all") {
     return {
-      entries: presentStudents,
-      mode: "present"
+      entries: allStudentsForGroup(groupName),
+      mode: "all"
     };
   }
 
   return {
-    entries: allStudentsForGroup(groupName),
-    mode: "all"
+    entries: activePresentStudentsForGroup(groupName),
+    mode: "present"
   };
 }
 
@@ -629,18 +630,29 @@ createTeamsBtn.addEventListener("click", async () => {
   }
 
     const teamSource = studentsForTeams(groupName);
-  const sourceEntries = teamSource.entries;
+    let sourceEntries = teamSource.entries;
 
-  if (!sourceEntries.length) {
+  if (!sourceEntries.length && teamSource.mode !== "present") {
     alert("There are no students in this group.");
     return;
   }
 
   if (teamSource.mode === "all") {
-    const proceed = confirm("No students are currently marked as present. Generate teams using ALL students in this group?");
+    const presentCount = activePresentStudentsForGroup(groupName).length;
+    const totalCount = sourceEntries.length;
+    const proceed = confirm(`Generate teams using ALL students in this group? Present now: ${presentCount}. Total in group: ${totalCount}.`);
     if (!proceed) return;
   }
 
+  if (teamSource.mode === "present" && !sourceEntries.length) {
+    const totalCount = allStudentsForGroup(groupName).length;
+    const useAll = confirm(`No students are marked present. Use ALL students in this group instead? Total: ${totalCount}.`);
+    if (!useAll) return;
+    teamSource.entries = allStudentsForGroup(groupName);
+    teamSource.mode = "all";
+  }
+
+  sourceEntries = teamSource.entries;
   const smartTeams = buildSmartTeams(sourceEntries, numTeams);
 
   const sessionTeams = {};
