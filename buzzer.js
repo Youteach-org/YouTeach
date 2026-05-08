@@ -20,6 +20,7 @@ const logoutBtn = document.getElementById("logoutBtn");
 const groupSelect = document.getElementById("groupSelect");
 const numTeamsInput = document.getElementById("numTeams");
 const createTeamsBtn = document.getElementById("createTeams");
+const printTeamsBtn = document.getElementById("printTeamsBtn");
 const resetSessionBtn = document.getElementById("resetSession");
 const closeSessionBtn = document.getElementById("closeSessionBtn");
 
@@ -162,19 +163,34 @@ async function savePairHistory(teams) {
 function activePresentStudentsForGroup(groupName) {
   return Object.entries(studentsCache || {})
     .filter(([, student]) => {
-      const attendanceActive =
-        student?.activeNow === true ||
-        (
-          student?.lastAttendanceDate &&
-          student.lastAttendanceDate === todayKey()
-        );
-
-      const groupOk =
-        !groupName ||
-        (student?.groupName || "") === groupName;
-
-      return attendanceActive && groupOk;
+      const activeNow = student?.activeNow === true;
+      const groupOk = !groupName || (student?.groupName || "") === groupName;
+      return activeNow && groupOk;
     });
+}
+
+function allStudentsForGroup(groupName) {
+  return Object.entries(studentsCache || {})
+    .filter(([, student]) => {
+      const groupOk = !groupName || (student?.groupName || "") === groupName;
+      return groupOk;
+    });
+}
+
+function studentsForTeams(groupName) {
+  const presentStudents = activePresentStudentsForGroup(groupName);
+
+  if (presentStudents.length > 0) {
+    return {
+      entries: presentStudents,
+      mode: "present"
+    };
+  }
+
+  return {
+    entries: allStudentsForGroup(groupName),
+    mode: "all"
+  };
 }
 
 function todayKey() {
@@ -445,6 +461,153 @@ function renderLiveScores() {
   liveScores.innerHTML = teamCards.join("") || '<div class="empty-state">No activity scores yet.</div>';
 }
 
+
+function printTeamsPdf() {
+  if (!sessionCache?.active) {
+    alert("No active session with teams to print.");
+    return;
+  }
+
+  const groupName = sessionCache.groupName || groupSelect.value || "";
+  const sourceMode = sessionCache.teamSourceMode === "all" ? "All students" : "Present students";
+  const teams = sessionCache.teams || {};
+  const assignments = sessionCache.assignments || {};
+  const nowText = new Date().toLocaleString();
+
+  const teamLabels = Object.keys(teams)
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
+  const rowsHtml = teamLabels.map((teamKey) => {
+    const label = teamKey.replace(/^team/i, "Team ");
+    const studentKeys = Object.entries(assignments)
+      .filter(([, teamLabel]) => teamLabel === label)
+      .map(([studentKey]) => studentKey);
+
+    const fallbackNames = Array.isArray(teams[teamKey]) ? teams[teamKey] : [];
+
+    const members = studentKeys.length
+      ? studentKeys.map((studentKey) => {
+          const student = studentsCache[studentKey] || {};
+          const nickname = student.nickname || "";
+          const fullName = student.fullName || student.name || "";
+          const externalId = student.studentNumber || student.id || "";
+          return `${nickname || fullName || "Student"}${externalId ? ` (${externalId})` : ""}`;
+        })
+      : fallbackNames;
+
+    return `
+      <section class="team-card">
+        <h2>${label}</h2>
+        <ol>
+          ${members.map((name) => `<li>${name}</li>`).join("")}
+        </ol>
+      </section>
+    `;
+  }).join("");
+
+  const printWindow = window.open("", "_blank");
+
+  if (!printWindow) {
+    alert("Popup blocked. Allow popups for this site and try again.");
+    return;
+  }
+
+  printWindow.document.open();
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>YouTeach Teams</title>
+      <style>
+        body {
+          font-family: Arial, sans-serif;
+          color: #0f172a;
+          padding: 24px;
+        }
+
+        .header {
+          border-bottom: 2px solid #0f172a;
+          padding-bottom: 12px;
+          margin-bottom: 18px;
+        }
+
+        h1 {
+          margin: 0 0 6px 0;
+          font-size: 28px;
+        }
+
+        .meta {
+          font-size: 13px;
+          color: #475569;
+          line-height: 1.5;
+        }
+
+        .teams {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 14px;
+        }
+
+        .team-card {
+          border: 1px solid #cbd5e1;
+          border-radius: 12px;
+          padding: 12px 16px;
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+
+        .team-card h2 {
+          margin: 0 0 8px 0;
+          font-size: 18px;
+        }
+
+        ol {
+          margin: 0;
+          padding-left: 22px;
+        }
+
+        li {
+          margin: 5px 0;
+          font-size: 14px;
+        }
+
+        @media print {
+          body {
+            padding: 0;
+          }
+
+          .teams {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h1>YouTeach Teams</h1>
+        <div class="meta">
+          Group: ${groupName || "---"}<br>
+          Source: ${sourceMode}<br>
+          Generated: ${nowText}
+        </div>
+      </div>
+
+      <div class="teams">
+        ${rowsHtml}
+      </div>
+
+      <script>
+        window.onload = function() {
+          window.print();
+        };
+      <\/script>
+    </body>
+    </html>
+  `);
+  printWindow.document.close();
+}
+
 groupSelect.addEventListener("change", () => {
   setStoredWorkingGroup(groupSelect.value || "");
   renderHeader();
@@ -465,11 +628,17 @@ createTeamsBtn.addEventListener("click", async () => {
     return;
   }
 
-  const sourceEntries = activePresentStudentsForGroup(groupName);
+    const teamSource = studentsForTeams(groupName);
+  const sourceEntries = teamSource.entries;
 
   if (!sourceEntries.length) {
-    alert("There are no active students for this group right now.");
+    alert("There are no students in this group.");
     return;
+  }
+
+  if (teamSource.mode === "all") {
+    const proceed = confirm("No students are currently marked as present. Generate teams using ALL students in this group?");
+    if (!proceed) return;
   }
 
   const smartTeams = buildSmartTeams(sourceEntries, numTeams);
@@ -489,10 +658,11 @@ createTeamsBtn.addEventListener("click", async () => {
     }
   }
 
-  await set(ref(db, "session/current"), {
+    await set(ref(db, "session/current"), {
     active: true,
     createdAt: Date.now(),
     groupName,
+    teamSourceMode: teamSource.mode,
     teams: sessionTeams,
     assignments,
     liveTeamPoints,
@@ -789,6 +959,8 @@ onValue(ref(db, "session/current"), (snapshot) => {
   renderTeamRoster();
   renderLiveScores();
 });
+
+if (printTeamsBtn) printTeamsBtn.addEventListener("click", printTeamsPdf);
 
 numTeamsInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
