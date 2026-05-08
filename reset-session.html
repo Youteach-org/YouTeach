@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>YouTeach Reset</title>
+</head>
+<body>
+  <h2>Cleaning YouTeach session...</h2>
+
+  <script>
+    localStorage.clear();
+    sessionStorage.clear();
+
+    if ("caches" in window) {
+      caches.keys().then(function(names) {
+        return Promise.all(names.map(function(name) {
+          return caches.delete(name);
+        }));
+      }).finally(function() {
+        window.location.href = "index.html?clean=" + Date.now();
+      });
+    } else {
+      window.location.href = "index.html?clean=" + Date.now();
+    }
+  </script>
+</body>
+</html>
