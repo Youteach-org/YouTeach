@@ -591,7 +591,12 @@
 <h4>Number of Teams</h4>
               <input id="numTeams" type="number" min="1" placeholder="Number of teams">
               <div class="generator-actions">
-                <button id="createTeams">Generate Smart Teams</button><button id="printTeamsBtn" type="button">Print Teams PDF</button>
+                <button id="createTeams">Generate Smart Teams</button>
+<select id="printNameModeSelect">
+  <option value="nickname">Print nicknames</option>
+  <option value="fullName">Print full names</option>
+</select>
+<button id="printTeamsBtn" type="button">Print Teams PDF</button>
                 <button id="resetSession">Reset Session</button>
                 <button id="closeSessionBtn">Close Session and Save History</button>
               </div>
@@ -621,7 +626,7 @@
     </main>
   </div>
 
-  <script type="module" src="buzzer.js?v=team-source-select-20260508124152"></script>
+  <script type="module" src="buzzer.js?v=print-name-mode-20260508131833"></script>
   <script defer src="shared-ui-fixes.js?v=force-clean-20260508121228"></script>
   <script type="module" src="attendance-validation.js"></script>
 </body>

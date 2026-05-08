@@ -22,6 +22,7 @@ const numTeamsInput = document.getElementById("numTeams");
 const teamSourceSelect = document.getElementById("teamSourceSelect");
 const createTeamsBtn = document.getElementById("createTeams");
 const printTeamsBtn = document.getElementById("printTeamsBtn");
+const printNameModeSelect = document.getElementById("printNameModeSelect");
 const resetSessionBtn = document.getElementById("resetSession");
 const closeSessionBtn = document.getElementById("closeSessionBtn");
 
@@ -463,6 +464,18 @@ function renderLiveScores() {
 }
 
 
+function getPrintableStudentName(student) {
+  const mode = printNameModeSelect?.value || "nickname";
+  const nickname = (student?.nickname || "").trim();
+  const fullName = (student?.fullName || student?.name || "").trim();
+
+  if (mode === "fullName") {
+    return fullName || nickname || "Student";
+  }
+
+  return nickname || fullName || "Student";
+}
+
 function printTeamsPdf() {
   if (!sessionCache?.active) {
     alert("No active session with teams to print.");
@@ -489,10 +502,9 @@ function printTeamsPdf() {
     const members = studentKeys.length
       ? studentKeys.map((studentKey) => {
           const student = studentsCache[studentKey] || {};
-          const nickname = student.nickname || "";
-          const fullName = student.fullName || student.name || "";
-          const externalId = student.studentNumber || student.id || "";
-          return `${nickname || fullName || "Student"}${externalId ? ` (${externalId})` : ""}`;
+                    const externalId = student.studentNumber || student.id || "";
+          const printableName = getPrintableStudentName(student);
+          return `${printableName}${externalId ? ` (${externalId})` : ""}`;
         })
       : fallbackNames;
 
