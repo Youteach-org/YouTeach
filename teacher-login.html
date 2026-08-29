@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>YouTeach - Teacher Login</title>
   <link rel="stylesheet" href="styles.css">
+  <style>
+    .working-group-step[hidden], .credentials-step[hidden] { display: none; }
+    .working-group-actions { display: grid; gap: 10px; margin-top: 12px; }
+    .working-group-step select { width: 100%; min-height: 46px; }
+    .working-group-note { color: #64748b; line-height: 1.4; font-size: 13px; }
+  </style>
 </head>
 <body>
   <div class="auth-shell">
@@ -12,23 +18,38 @@
       <h1>YouTeach</h1>
       <h2>Teacher Login</h2>
 
-      <div class="stack-controls">
-        <input id="username" placeholder="Username">
-        <input id="password" type="password" placeholder="Password">
-        <button id="loginBtn">Login</button>
-        <p id="loginMessage" class="status-text"></p>
+      <div id="credentialsStep" class="credentials-step">
+        <div class="stack-controls">
+          <input id="username" placeholder="Username">
+          <input id="password" type="password" placeholder="Password">
+          <button id="loginBtn">Continue</button>
+          <p id="loginMessage" class="status-text"></p>
+        </div>
+
+        <div class="hint-box">
+          <strong>Default users</strong><br>
+          teacher / teacher123<br>
+          admin / admin123
+        </div>
       </div>
 
-      <div class="hint-box">
-        <strong>Default users</strong><br>
-        teacher / teacher123<br>
-        admin / admin123
+      <div id="workingGroupStep" class="working-group-step" hidden>
+        <h3>Select Working Group</h3>
+        <p class="working-group-note">This group will open already selected in Buzzer and other teacher tools.</p>
+        <select id="workingGroupSelect">
+          <option value="">Loading groups...</option>
+        </select>
+        <div class="working-group-actions">
+          <button id="continueWithGroupBtn" type="button">Continue with Group</button>
+          <button id="skipWorkingGroupBtn" type="button" class="secondary-btn">Skip for now</button>
+        </div>
+        <p id="workingGroupMessage" class="status-text"></p>
       </div>
     </div>
   </div>
 
-  <script type="module" src="teacher-login.js?v=force-clean-20260508121228"></script>
-<script defer src="shared-ui-fixes.js?v=force-clean-20260508121228"></script>
-<script type="module" src="login-enhancements.js"></script>
+  <script type="module" src="teacher-login.js?v=working-group-20260829"></script>
+  <script defer src="shared-ui-fixes.js?v=force-clean-20260508121228"></script>
+  <script type="module" src="login-enhancements.js"></script>
 </body>
 </html>
