@@ -13,7 +13,7 @@ const studentName = document.getElementById("studentName");
 const studentTeam = document.getElementById("studentTeam");
 const studentStatus = document.getElementById("studentStatus");
 const buzzBtn = document.getElementById("buzzBtn");
-const buzzSound = document.getElementById("buzzSound");
+
 const activityScoresStrip = document.getElementById("activityScoresStrip");
 
 let currentStudent = null;
@@ -36,6 +36,30 @@ function getBuzzerState() {
     queue: [],
     lockedOutTeams: {}
   };
+}
+
+function playContestBuzz() {
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return;
+
+  const audioContext = new AudioContextClass();
+  const now = audioContext.currentTime;
+  const gain = audioContext.createGain();
+  gain.connect(audioContext.destination);
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(0.32, now + 0.015);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.42);
+
+  [659.25, 783.99, 987.77].forEach((frequency, index) => {
+    const oscillator = audioContext.createOscillator();
+    oscillator.type = "triangle";
+    oscillator.frequency.value = frequency;
+    oscillator.connect(gain);
+    oscillator.start(now + index * 0.08);
+    oscillator.stop(now + 0.22 + index * 0.08);
+  });
+
+  window.setTimeout(() => audioContext.close().catch(() => {}), 700);
 }
 
 function renderAttendanceStatus(row) {
@@ -94,10 +118,8 @@ function renderBuzzer() {
   const team = currentSession.assignments?.[studentKey] || "No team";
   const buzzer = getBuzzerState();
   const currentBuzz = buzzer.currentBuzz || null;
-  const queue = Array.isArray(buzzer.queue) ? buzzer.queue : [];
   const lockedOutTeam = Boolean(buzzer.lockedOutTeams?.[team]);
   const currentTeam = currentBuzz?.team || "";
-  const queueIndex = queue.findIndex((entry) => entry?.team === team);
 
   studentTeam.textContent = team;
   renderActivityScores();
@@ -114,15 +136,11 @@ function renderBuzzer() {
     return;
   }
 
-      if (currentTeam === team) {
+  if (currentBuzz) {
     buzzBtn.disabled = true;
-    studentStatus.textContent = `${team} answered. Waiting for teacher decision.`;
-    return;
-  }
-
-  if (queueIndex >= 0) {
-    buzzBtn.disabled = true;
-    studentStatus.textContent = `${team} is queued (#${queueIndex + 1}).`;
+    studentStatus.textContent = currentTeam === team
+      ? `${team} answered. Waiting for teacher decision.`
+      : "Another team buzzed first. Waiting for teacher decision.";
     return;
   }
 
@@ -143,21 +161,17 @@ buzzBtn.addEventListener("click", async () => {
   const team = currentSession.assignments?.[studentKey] || "No team";
   const studentNameText = getDisplayName(currentStudent);
 
-  try {
-    buzzSound.currentTime = 0; buzzSound.volume = 1; buzzSound.volume = 1;
-    await buzzSound.play();
-  } catch (error) {}
+  playContestBuzz();
 
   await runTransaction(ref(db, "session/current/buzzer"), (buzzer) => {
     if (!buzzer) return buzzer;
     if (!buzzer.roundOpen) return buzzer;
 
-    buzzer.queue = Array.isArray(buzzer.queue) ? buzzer.queue : [];
+    buzzer.queue = [];
     buzzer.lockedOutTeams = buzzer.lockedOutTeams || {};
 
     if (buzzer.lockedOutTeams[team]) return buzzer;
-    if (buzzer.currentBuzz?.team === team) return buzzer;
-    if (buzzer.queue.some((entry) => entry?.team === team)) return buzzer;
+    if (buzzer.currentBuzz) return buzzer;
 
     const entry = {
       studentKey,
@@ -167,12 +181,7 @@ buzzBtn.addEventListener("click", async () => {
       timestamp: Date.now()
     };
 
-    if (!buzzer.currentBuzz) {
-      buzzer.currentBuzz = entry;
-    } else {
-      buzzer.queue.push(entry);
-    }
-
+    buzzer.currentBuzz = entry;
     return buzzer;
   });
 });
