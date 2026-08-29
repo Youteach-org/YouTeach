@@ -30,11 +30,8 @@ const openRoundBtn = document.getElementById("openRoundBtn");
 const wrongAnswerBtn = document.getElementById("wrongAnswerBtn");
 const closeRoundBtn = document.getElementById("closeRoundBtn");
 const resetActivityScoresBtn = document.getElementById("resetActivityScoresBtn");
-const awardTeamPointBtn = document.getElementById("awardTeamPointBtn");
-const awardStudentPointBtn = document.getElementById("awardStudentPointBtn");
-const resetLivePointsBtn = document.getElementById("resetLivePointsBtn");
-const applyStudentPointsBtn = document.getElementById("applyStudentPointsBtn");
-const applyTeamPointsBtn = document.getElementById("applyTeamPointsBtn");
+const markCorrectBtn = document.getElementById("markCorrectBtn");
+const finishActivityBtn = document.getElementById("finishActivityBtn");
 
 const activeBlockLabel = document.getElementById("activeBlockLabel");
 const blockStatusLabel = document.getElementById("blockStatusLabel");
@@ -48,6 +45,7 @@ const resultGroup = document.getElementById("resultGroup");
 const resultRound = document.getElementById("resultRound");
 const resultBuzz = document.getElementById("resultBuzz");
 const resultLocked = document.getElementById("resultLocked");
+const resultPosition = document.getElementById("resultPosition");
 const teacherStatusNote = document.getElementById("teacherStatusNote");
 const liveScores = document.getElementById("liveScores");
 const teamRosterList = document.getElementById("teamRosterList");
@@ -341,6 +339,12 @@ function renderResult() {
     }
   }
 
+  if (resultBuzz) resultBuzz.textContent = currentBuzz?.name || "Waiting for a student";
+  if (resultGroup) resultGroup.textContent = currentBuzz?.team || "---";
+  if (resultRound) resultRound.textContent = isWaiting ? "DECISION REQUIRED" : (isOpen ? "OPEN" : "CLOSED");
+  if (resultPosition) resultPosition.textContent = currentBuzz ? "1st" : "---";
+  if (resultLocked) resultLocked.textContent = String(lockedCount);
+
   if (!sessionCache?.active) {
     teacherStatusNote.textContent = "No active session.";
     return;
@@ -349,11 +353,11 @@ function renderResult() {
   if (isRoundClosed) {
     teacherStatusNote.textContent = "Round is closed.";
   } else if (isWaiting) {
-    teacherStatusNote.textContent = `Waiting for teacher decision: ${currentBuzz.team}. Queue size: ${queuedCount}.`;
+    teacherStatusNote.textContent = `Waiting for decision: ${currentBuzz.name} · ${currentBuzz.team}.`;
   } else if (lockedCount >= getAllTeamLabels().length && getAllTeamLabels().length > 0) {
     teacherStatusNote.textContent = "All teams are locked for this round.";
   } else {
-    teacherStatusNote.textContent = "Round open. Waiting for teams to buzz.";
+    teacherStatusNote.textContent = "Round open. Waiting for the first team to buzz.";
   }
 }
 
@@ -762,16 +766,14 @@ wrongAnswerBtn.addEventListener("click", async () => {
   const lockedOutTeams = { ...(buzzer.lockedOutTeams || {}) };
   lockedOutTeams[currentBuzz.team] = true;
 
-  const queue = getQueue().filter((entry) => entry?.team !== currentBuzz.team);
-  const nextEntry = queue[0] || null;
   const allTeams = getAllTeamLabels();
   const allLocked = allTeams.length > 0 && allTeams.every((teamLabel) => lockedOutTeams[teamLabel]);
 
   await update(ref(db, "session/current/buzzer"), {
     lockedOutTeams,
-    queue,
-    currentBuzz: nextEntry,
-    roundOpen: allLocked ? false : true
+    queue: [],
+    currentBuzz: null,
+    roundOpen: !allLocked
   });
 });
 
@@ -803,48 +805,29 @@ resetActivityScoresBtn.addEventListener("click", async () => {
   await set(ref(db, "session/current/activityScores"), resetScores);
 });
 
-awardTeamPointBtn.addEventListener("click", async () => {
-  const currentBuzz = getBuzzerState().currentBuzz;
-  if (!currentBuzz) {
-    alert("No current team.");
-    return;
-  }
-
-  const teamLabel = currentBuzz.team;
-  const currentPoints = Number(sessionCache.liveTeamPoints?.[teamLabel] || 0);
-  await update(ref(db, "session/current/liveTeamPoints"), { [teamLabel]: currentPoints + 1 });
-});
-
-awardStudentPointBtn.addEventListener("click", async () => {
-  const currentBuzz = getBuzzerState().currentBuzz;
-  if (!currentBuzz) {
-    alert("No current team.");
-    return;
-  }
-
-  const studentKey = currentBuzz.studentKey;
-  const currentPoints = Number(sessionCache.liveStudentPoints?.[studentKey] || 0);
-  await update(ref(db, "session/current/liveStudentPoints"), { [studentKey]: currentPoints + 1 });
-});
-
-resetLivePointsBtn.addEventListener("click", async () => {
+markCorrectBtn.addEventListener("click", async () => {
   if (!sessionCache?.active) {
     alert("No active session.");
     return;
   }
 
-  const teamPoints = {};
-  Object.keys(sessionCache.liveTeamPoints || {}).forEach((teamLabel) => {
-    teamPoints[teamLabel] = 0;
-  });
+  const currentBuzz = getBuzzerState().currentBuzz;
+  if (!currentBuzz?.team) {
+    alert("No team has buzzed.");
+    return;
+  }
 
+  const currentScore = Number(sessionCache.activityScores?.[currentBuzz.team] || 0);
   await update(ref(db, "session/current"), {
-    liveTeamPoints: teamPoints,
-    liveStudentPoints: {}
+    [`activityScores/${currentBuzz.team}`]: currentScore + 1,
+    "buzzer/roundOpen": false,
+    "buzzer/currentBuzz": null,
+    "buzzer/queue": [],
+    "buzzer/lockedOutTeams": {}
   });
 });
 
-applyStudentPointsBtn.addEventListener("click", async () => {
+finishActivityBtn.addEventListener("click", async () => {
   if (!assertBlockOpen()) return;
 
   const sessionSnapshot = await get(ref(db, "session/current"));
@@ -855,98 +838,69 @@ applyStudentPointsBtn.addEventListener("click", async () => {
     return;
   }
 
-  const pendingEntries = Object.entries(session.liveStudentPoints || {});
-  if (!pendingEntries.length) {
-    alert("There are no pending student points.");
+  const scoreEntries = Object.entries(session.activityScores || {});
+  const topScore = Math.max(0, ...scoreEntries.map(([, score]) => Number(score || 0)));
+
+  if (topScore <= 0) {
+    alert("No activity points have been awarded yet.");
     return;
   }
 
-  for (const [studentKey, pointsToAdd] of pendingEntries) {
+  const winningTeams = scoreEntries
+    .filter(([, score]) => Number(score || 0) === topScore)
+    .map(([teamLabel]) => teamLabel);
+
+  const winnerEntries = Object.entries(session.assignments || {})
+    .filter(([, teamLabel]) => winningTeams.includes(teamLabel));
+
+  if (!winnerEntries.length) {
+    alert("The winning teams have no assigned students.");
+    return;
+  }
+
+  const winnerNames = [];
+
+  for (const [studentKey, teamLabel] of winnerEntries) {
     const studentSnapshot = await get(ref(db, `students/${studentKey}`));
     const student = studentSnapshot.val();
     if (!student) continue;
 
     const blockPoints = ensureBlockPointsObject(student);
     const previousPoints = Number(blockPoints[activeBlockCache] || 0);
-    const addValue = Number(pointsToAdd || 0);
-    blockPoints[activeBlockCache] = previousPoints + addValue;
+    blockPoints[activeBlockCache] = previousPoints + 1;
+    winnerNames.push(getDisplayName(student));
 
     await update(ref(db, `students/${studentKey}`), { blockPoints });
 
     const logRef = push(ref(db, "pointsLog"));
     await set(logRef, {
-      type: "student",
-      block: activeBlockCache,
-      studentKey,
-      studentName: getFirstName(student),
-      addedPoints: addValue,
-      previousPoints,
-      newPoints: blockPoints[activeBlockCache],
-      groupName: session.groupName || "",
-      appliedAt: Date.now()
-    });
-  }
-
-  await set(ref(db, "session/current/liveStudentPoints"), {});
-  alert("Student live points applied.");
-});
-
-applyTeamPointsBtn.addEventListener("click", async () => {
-  if (!assertBlockOpen()) return;
-
-  const sessionSnapshot = await get(ref(db, "session/current"));
-  const session = sessionSnapshot.val();
-
-  if (!session?.active) {
-    alert("No active session.");
-    return;
-  }
-
-  const teamPoints = session.liveTeamPoints || {};
-  const assignments = session.assignments || {};
-  const hasAnyTeamPoints = Object.values(teamPoints).some((value) => Number(value) > 0);
-
-  if (!hasAnyTeamPoints) {
-    alert("There are no live team points.");
-    return;
-  }
-
-  for (const [studentKey, teamLabel] of Object.entries(assignments)) {
-    const teamValue = Number(teamPoints[teamLabel] || 0);
-    if (teamValue <= 0) continue;
-
-    const studentSnapshot = await get(ref(db, `students/${studentKey}`));
-    const student = studentSnapshot.val();
-    if (!student) continue;
-
-    const blockPoints = ensureBlockPointsObject(student);
-    const previousPoints = Number(blockPoints[activeBlockCache] || 0);
-    blockPoints[activeBlockCache] = previousPoints + teamValue;
-
-    await update(ref(db, `students/${studentKey}`), { blockPoints });
-
-    const logRef = push(ref(db, "pointsLog"));
-    await set(logRef, {
-      type: "team",
+      type: "activity-winner",
       block: activeBlockCache,
       teamLabel,
       studentKey,
-      studentName: getFirstName(student),
-      addedPoints: teamValue,
+      studentName: getDisplayName(student),
+      addedPoints: 1,
       previousPoints,
       newPoints: blockPoints[activeBlockCache],
       groupName: session.groupName || "",
-      appliedAt: Date.now()
+      activityScore: topScore,
+      awardedAt: Date.now()
     });
   }
 
-  const resetTeamPoints = {};
-  Object.keys(teamPoints).forEach((teamLabel) => {
-    resetTeamPoints[teamLabel] = 0;
+  const historyRef = push(ref(db, "sessionHistory"));
+  await set(historyRef, {
+    ...session,
+    block: activeBlockCache,
+    status: "completed",
+    winningTeams,
+    winnerNames,
+    topActivityScore: topScore,
+    closedAt: Date.now()
   });
 
-  await set(ref(db, "session/current/liveTeamPoints"), resetTeamPoints);
-  alert("Team live points applied.");
+  await remove(ref(db, "session/current"));
+  alert(`Activity finished. Winner${winningTeams.length > 1 ? "s" : ""}: ${winningTeams.join(", ")}. One grade point awarded to each winning member.`);
 });
 
 onValue(ref(db, "students"), (snapshot) => {
