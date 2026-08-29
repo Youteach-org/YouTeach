@@ -214,13 +214,13 @@ function setStoredWorkingGroup(groupName) {
 }
 
 function getPreferredGroup(groups) {
-  if (sessionCache?.groupName && groups.includes(sessionCache.groupName)) {
-    return sessionCache.groupName;
-  }
-
   const storedGroup = getStoredWorkingGroup();
   if (storedGroup && groups.includes(storedGroup)) {
     return storedGroup;
+  }
+
+  if (sessionCache?.groupName && groups.includes(sessionCache.groupName)) {
+    return sessionCache.groupName;
   }
 
   return groups[0] || "";
@@ -974,7 +974,7 @@ onValue(ref(db, "settings"), (snapshot) => {
 
 onValue(ref(db, "session/current"), (snapshot) => {
   sessionCache = snapshot.val() || null;
-  if (sessionCache?.groupName) {
+  if (sessionCache?.groupName && !getStoredWorkingGroup()) {
     setStoredWorkingGroup(sessionCache.groupName);
   }
   renderGroupOptions();
