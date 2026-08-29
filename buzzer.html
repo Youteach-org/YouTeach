@@ -553,16 +553,24 @@
 
           <div class="buzz-panel">
             <h3>Buzzer Control</h3>
-<div class="control-buttons-grid">
+
+            <div class="buzz-result-card">
+              <h3 id="resultBuzz">Waiting for a student</h3>
+              <div class="buzz-result-mini">
+                <div><strong>Team</strong><br><span id="resultGroup">---</span></div>
+                <div><strong>Round</strong><br><span id="resultRound">CLOSED</span></div>
+                <div><strong>First buzz</strong><br><span id="resultPosition">---</span></div>
+                <div><strong>Locked teams</strong><br><span id="resultLocked">0</span></div>
+              </div>
+            </div>
+
+            <div class="control-buttons-grid">
               <button id="openRoundBtn">Open Round</button>
+              <button id="markCorrectBtn">Mark Correct</button>
               <button id="wrongAnswerBtn">Mark Wrong / Next</button>
               <button id="closeRoundBtn">Close Round</button>
-              <button id="resetActivityScoresBtn">Reset Score</button>
-              <button id="awardTeamPointBtn">+1 Team Live Point</button>
-              <button id="awardStudentPointBtn">+1 Student Live Point</button>
-              <button id="resetLivePointsBtn">Reset Live Points</button>
-              <button id="applyStudentPointsBtn">Apply Student Live Points</button>
-              <button id="applyTeamPointsBtn">Apply Team Live Points</button>
+              <button id="resetActivityScoresBtn">Reset Activity Scores</button>
+              <button id="finishActivityBtn">Finish Activity & Award Winner</button>
             </div>
 
             <p id="teacherStatusNote" class="teacher-note">Ready.</p>
@@ -626,7 +634,7 @@
     </main>
   </div>
 
-  <script type="module" src="buzzer.js?v=print-name-mode-20260508131833"></script>
+  <script type="module" src="buzzer.js?v=contest-flow-20260829"></script>
   <script defer src="shared-ui-fixes.js?v=force-clean-20260508121228"></script>
   <script type="module" src="attendance-validation.js"></script>
 </body>
