@@ -37,6 +37,35 @@
       margin: 0;
     }
 
+    .contest-turn-card {
+      width: min(94vw, 760px);
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 15px;
+      border: 2px solid #f4b942;
+      border-radius: 14px;
+      color: #10233f;
+      background: #fff7df;
+    }
+
+    .contest-turn-card[hidden] { display: none; }
+    .contest-turn-card .turn-position {
+      min-width: 54px;
+      min-height: 54px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      color: white;
+      background: #123a74;
+      font-size: 25px;
+      font-weight: 900;
+    }
+    .contest-turn-card strong { display: block; font-size: 18px; }
+    .contest-turn-card span { font-size: 13px; }
+    .contest-turn-card .turn-state { font-weight: 900; color: #166534; text-align: right; }
+
     .student-buzzer-button-wrap {
       width: min(92vw, 520px);
       aspect-ratio: 1;
@@ -146,6 +175,15 @@
 <p id="studentTeam" class="student-buzzer-team">No team</p>
 <p id="studentStatus" class="student-buzzer-status">Waiting...</p>
 
+<div id="contestTurnCard" class="contest-turn-card" hidden>
+  <div id="contestPosition" class="turn-position">1</div>
+  <div>
+    <strong id="contestTitle">100 Students Said</strong>
+    <span id="contestInstruction">Wait for your assigned turn.</span>
+  </div>
+  <div id="contestEligibility" class="turn-state">WAIT</div>
+</div>
+
 <div class="student-buzzer-button-wrap">
 <button id="buzzBtn" class="student-buzz-btn">BUZZ</button>
 </div>
@@ -162,7 +200,7 @@
 </div>
 
 
-<script type="module" src="student-buzzer.js?v=contest-flow-20260829"></script>
+<script type="module" src="student-buzzer.js?v=hundred-students-core-20260831"></script>
 <script defer src="shared-ui-fixes.js?v=force-clean-20260508121228"></script>
 
 </body>
