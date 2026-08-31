@@ -81,6 +81,9 @@ function contestConfigFromBuzzer(buzzerSession) {
     strikeLimit: Number(elements.strikeLimit.value || 2),
     roundDurationMs: Number(elements.roundMinutes.value || 5) * 60_000,
     responseDurationMs: Number(elements.responseSeconds.value || 10) * 1_000,
+    studentNames: Object.fromEntries(
+      Object.keys(assignments).map((studentKey) => [studentKey, studentName(studentKey)])
+    ),
     teams,
     rounds: reportedSpeechContest.rounds.map((round) => ({
       multiplier: round.multiplier,
