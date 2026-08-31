@@ -1,3 +1,5 @@
+import { startTimer, pauseTimer, resumeTimer, adjustTimer, resetTimer } from "./contest-timers.js";
+
 const VALID_STRIKE_LIMITS = new Set([1, 2, 3]);
 
 function clone(value) {
@@ -176,6 +178,10 @@ const COMMAND_HANDLERS = {
     state.buzzWinner = null;
     state.attemptedStudentKeys = [];
     state.roundTimeExpired = false;
+    const roundDurationMs = Number(command.roundDurationMs ?? state.config.roundDurationMs ?? 300000);
+    const responseDurationMs = Number(command.responseDurationMs ?? state.config.responseDurationMs ?? 10000);
+    state.timers.round = startTimer(roundDurationMs, command.at ?? Date.now());
+    state.timers.response = resetTimer(responseDurationMs);
     for (const team of state.config.teams) state.strikes[team.id] = 0;
     state.activeLeaders = Object.fromEntries(
       state.config.teams.map((team) => [team.id, nextLeader(state, team.id)])
@@ -274,6 +280,10 @@ const COMMAND_HANDLERS = {
       throw new Error("Assigned student is not on the active team.");
     }
     state.activeStudentKey = requested;
+    state.timers.response = startTimer(
+      Number(command.responseDurationMs ?? state.config.responseDurationMs ?? 10000),
+      command.at ?? Date.now()
+    );
     state.phase = state.phase === "steal_ready" ? "steal" : "control";
     state.eligibleStudentKeys = [requested];
     appendEvent(state, "ACTIVITY_OPENED", {
@@ -317,6 +327,38 @@ const COMMAND_HANDLERS = {
     state.roundTimeExpired = false;
     state.eligibleStudentKeys = getEligibleStudents(state);
     appendEvent(state, "ROUND_TIME_ADDED", { deltaMs: Number(command.deltaMs || 0), at: command.at });
+    return state;
+  },
+
+  PAUSE_ROUND_TIMER(state, command) {
+    state.timers.round = pauseTimer(state.timers.round, command.at ?? Date.now());
+    appendEvent(state, "ROUND_TIMER_PAUSED", { at: command.at });
+    return state;
+  },
+
+  RESUME_ROUND_TIMER(state, command) {
+    state.timers.round = resumeTimer(state.timers.round, command.at ?? Date.now());
+    appendEvent(state, "ROUND_TIMER_RESUMED", { at: command.at });
+    return state;
+  },
+
+  ADJUST_ROUND_TIMER(state, command) {
+    state.timers.round = adjustTimer(
+      state.timers.round,
+      Number(command.deltaMs || 0),
+      command.at ?? Date.now()
+    );
+    if (Number(command.deltaMs || 0) > 0) state.roundTimeExpired = false;
+    appendEvent(state, "ROUND_TIMER_ADJUSTED", { deltaMs: Number(command.deltaMs || 0), at: command.at });
+    return state;
+  },
+
+  RESET_RESPONSE_TIMER(state, command) {
+    state.timers.response = startTimer(
+      Number(command.durationMs ?? state.config.responseDurationMs ?? 10000),
+      command.at ?? Date.now()
+    );
+    appendEvent(state, "RESPONSE_TIMER_RESET", { at: command.at });
     return state;
   },
 
