@@ -1,0 +1,51 @@
+{
+  "_reviewStatus": "PROPOSAL_ONLY_DO_NOT_DEPLOY",
+  "_requiredBeforeDeployment": [
+    "Replace sessionStorage-only teacher login with Firebase Authentication or custom claims.",
+    "Issue each student an authenticated identity whose studentKey claim matches the enrollment key.",
+    "Merge this fragment into the existing production rules and test with the Firebase Emulator."
+  ],
+  "rules": {
+    "contests": {
+      "definitions": {
+        "$contestId": {
+          ".read": "auth != null && (auth.token.role == 'teacher' || auth.token.role == 'admin')",
+          ".write": "auth != null && (auth.token.role == 'teacher' || auth.token.role == 'admin')"
+        }
+      },
+      "sessions": {
+        "$sessionId": {
+          "private": {
+            ".read": "auth != null && (auth.token.role == 'teacher' || auth.token.role == 'admin')",
+            ".write": "auth != null && (auth.token.role == 'teacher' || auth.token.role == 'admin')"
+          },
+          "public": {
+            ".read": true,
+            ".write": "auth != null && (auth.token.role == 'teacher' || auth.token.role == 'admin')"
+          },
+          "meta": {
+            ".read": true,
+            ".write": "auth != null && (auth.token.role == 'teacher' || auth.token.role == 'admin')"
+          },
+          "students": {
+            "$studentKey": {
+              ".read": "auth != null && (auth.token.role == 'teacher' || auth.token.role == 'admin' || auth.token.studentKey == $studentKey)",
+              ".write": "auth != null && (auth.token.role == 'teacher' || auth.token.role == 'admin')"
+            }
+          },
+          "buzzLock": {
+            ".read": true,
+            ".write": "auth != null && (auth.token.role == 'teacher' || auth.token.role == 'admin' || (auth.token.studentKey != null && root.child('contests/sessions').child($sessionId).child('students').child(auth.token.studentKey).child('eligible').val() == true))",
+            ".validate": "!newData.exists() || (newData.hasChildren(['studentKey','teamId','at','phase']) && newData.child('studentKey').val() == auth.token.studentKey)"
+          }
+        }
+      },
+      "pairing": {
+        "$code": {
+          ".read": true,
+          ".write": "auth != null && (auth.token.role == 'teacher' || auth.token.role == 'admin')"
+        }
+      }
+    }
+  }
+}
