@@ -212,8 +212,11 @@ const COMMAND_HANDLERS = {
       state.controlTeamId = teamId;
       state.roundBank += activityPoints(state, command);
       appendEvent(state, "CONTROL_WON", { teamId, studentKey: state.buzzWinner.studentKey, at: command.at });
-      advanceActivity(state);
-      if (state.phase !== "round_complete") state.phase = "control_ready";
+      if (advanceActivity(state)) {
+        state.phase = "control_ready";
+      } else {
+        settleRound(state, teamId, "ROUND_COMPLETED", command);
+      }
       return state;
     }
     assertPhase(state, ["control"], command.type);
@@ -224,8 +227,11 @@ const COMMAND_HANDLERS = {
       at: command.at
     });
     rotateQueue(state, state.controlTeamId, state.activeStudentKey);
-    advanceActivity(state);
-    if (state.phase !== "round_complete") state.phase = "control_ready";
+    if (advanceActivity(state)) {
+      state.phase = "control_ready";
+    } else {
+      settleRound(state, state.controlTeamId, "ROUND_COMPLETED", command);
+    }
     return state;
   },
 
@@ -266,8 +272,11 @@ const COMMAND_HANDLERS = {
       state.activeStudentKey = null;
       state.stealTeamId = stealTeamId;
     } else {
-      advanceActivity(state);
-      if (state.phase !== "round_complete") state.phase = "control_ready";
+      if (advanceActivity(state)) {
+        state.phase = "control_ready";
+      } else {
+        settleRound(state, teamId, "ROUND_COMPLETED", command);
+      }
     }
     return state;
   },
