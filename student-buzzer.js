@@ -1,6 +1,11 @@
 import { db } from "./firebase.js";
 import { ref, onValue, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireStudentSession, clearStudentSession, saveLeaveLog } from "./student-auth.js";
+import {
+  contestPaths,
+  subscribeStudentContest,
+  submitContestBuzz
+} from "./contest-firebase.js";
 
 const session = requireStudentSession();
 if (!session) throw new Error("Student session required.");
@@ -15,9 +20,18 @@ const studentStatus = document.getElementById("studentStatus");
 const buzzBtn = document.getElementById("buzzBtn");
 
 const activityScoresStrip = document.getElementById("activityScoresStrip");
+const contestTurnCard = document.getElementById("contestTurnCard");
+const contestPosition = document.getElementById("contestPosition");
+const contestTitle = document.getElementById("contestTitle");
+const contestInstruction = document.getElementById("contestInstruction");
+const contestEligibility = document.getElementById("contestEligibility");
 
 let currentStudent = null;
 let currentSession = null;
+let activeContestId = "";
+let contestState = null;
+let unsubscribeActiveContest = null;
+let unsubscribeContestState = null;
 
 function todayKey() {
   const now = new Date();
@@ -102,10 +116,81 @@ function renderActivityScores() {
   `).join("");
 }
 
+function renderContestMode() {
+  const eligibility = contestState?.eligibility;
+  const publicState = contestState?.public;
+  const contestActive = Boolean(activeContestId && eligibility && publicState);
+
+  contestTurnCard.hidden = !contestActive;
+  if (!contestActive) return false;
+
+  contestTitle.textContent = publicState.title || "100 Students Said";
+  contestPosition.textContent = String(eligibility.position || "—");
+  const phase = String(publicState.phase || "").replaceAll("_", " ");
+  const isEligible = eligibility.eligible === true && !publicState.roundTimeExpired;
+
+  contestEligibility.textContent = isEligible ? "YOUR TURN" : "WAIT";
+  contestEligibility.style.color = isEligible ? "#166534" : "#92400e";
+
+  if (isEligible) {
+    contestInstruction.textContent = publicState.phase === "faceoff"
+      ? "You are a team leader. Buzz when you are ready to answer."
+      : "This activity is assigned to you. Buzz when you are ready.";
+    studentStatus.textContent = publicState.phase === "faceoff"
+      ? "Face-off open: you may buzz."
+      : "Your assigned turn is active.";
+  } else {
+    contestInstruction.textContent = `Position ${eligibility.position || "—"} · ${phase || "waiting"}`;
+    studentStatus.textContent = publicState.roundTimeExpired
+      ? "Round time has ended."
+      : "Wait for your assigned turn.";
+  }
+
+  buzzBtn.disabled = !isEligible;
+  return true;
+}
+
+function connectContestForGroup(groupName) {
+  if (unsubscribeActiveContest) unsubscribeActiveContest();
+  if (unsubscribeContestState) unsubscribeContestState();
+  activeContestId = "";
+  contestState = null;
+  if (!groupName) return;
+
+  unsubscribeActiveContest = onValue(
+    ref(db, contestPaths.activeGroup(groupName)),
+    (snapshot) => {
+      const active = snapshot.val();
+      const nextSessionId = active?.status === "active" ? active.sessionId : "";
+      if (nextSessionId === activeContestId) return;
+      if (unsubscribeContestState) unsubscribeContestState();
+      activeContestId = nextSessionId;
+      contestState = null;
+      if (!activeContestId) {
+        renderBuzzer();
+        return;
+      }
+      unsubscribeContestState = subscribeStudentContest(
+        activeContestId,
+        studentKey,
+        (value) => {
+          contestState = value;
+          renderBuzzer();
+        }
+      );
+    }
+  );
+}
+
 function renderBuzzer() {
   if (!currentStudent) return;
 
   studentName.textContent = getDisplayName(currentStudent);
+
+  if (renderContestMode()) {
+    renderActivityScores();
+    return;
+  }
 
   if (!currentSession?.active) {
     studentTeam.textContent = "No team assigned";
@@ -156,7 +241,23 @@ logoutBtn.addEventListener("click", async () => {
 });
 
 buzzBtn.addEventListener("click", async () => {
-  if (!currentStudent || !currentSession?.active) return;
+  if (!currentStudent) return;
+
+  if (activeContestId && contestState?.eligibility?.eligible) {
+    buzzBtn.disabled = true;
+    playContestBuzz();
+    const result = await submitContestBuzz(activeContestId, {
+      studentKey,
+      teamId: contestState.eligibility.teamId,
+      studentName: getDisplayName(currentStudent)
+    });
+    studentStatus.textContent = result.accepted
+      ? "Buzz accepted. Give your answer."
+      : "Another eligible student buzzed first.";
+    return;
+  }
+
+  if (!currentSession?.active) return;
 
   const team = currentSession.assignments?.[studentKey] || "No team";
   const studentNameText = getDisplayName(currentStudent);
@@ -193,6 +294,7 @@ onValue(ref(db, `students/${studentKey}`), (snapshot) => {
     window.location.href = "index.html";
     return;
   }
+  connectContestForGroup(currentStudent.groupName || "GENERAL");
   renderBuzzer();
 });
 
