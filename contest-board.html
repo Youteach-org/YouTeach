@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>100 Students Said — Public Answer Board</title>
+  <link rel="stylesheet" href="contest-board.css">
+</head>
+<body>
+  <main class="contest-board">
+    <header class="board-header">
+      <div class="show-title">
+        <span>YouTeach presents</span>
+        <h1 id="contestTitle">100 Students Said</h1>
+      </div>
+
+      <section class="round-clock" aria-label="Round timer">
+        <span id="roundLabel">ROUND</span>
+        <strong id="roundTimer">05:00</strong>
+      </section>
+
+      <div class="round-meta">
+        <strong id="roundNumber">Waiting</strong>
+        <span id="activityProgress">0 / 0</span>
+      </div>
+    </header>
+
+    <section class="score-row">
+      <article id="teamCard0" class="team-card">
+        <span id="teamName0">Team 1</span>
+        <strong id="teamScore0">0</strong>
+        <div id="teamStrikes0" class="strike-row"></div>
+      </article>
+
+      <article class="bank-card">
+        <span>ROUND BANK</span>
+        <strong id="roundBank">0</strong>
+      </article>
+
+      <article id="teamCard1" class="team-card">
+        <span id="teamName1">Team 2</span>
+        <strong id="teamScore1">0</strong>
+        <div id="teamStrikes1" class="strike-row"></div>
+      </article>
+    </section>
+
+    <section class="answer-stage">
+      <div class="turn-banner">
+        <span id="phaseText">WAITING FOR THE GAME</span>
+        <strong id="activeStudent">—</strong>
+      </div>
+
+      <article class="prompt-board">
+        <p id="promptText">The activity will appear here.</p>
+        <div id="revealedAnswer" class="revealed-answer" hidden></div>
+      </article>
+
+      <div class="response-clock">
+        <span>ANSWER TIME</span>
+        <strong id="responseTimer">00:10</strong>
+      </div>
+
+      <div id="feedbackBanner" class="feedback-banner" hidden></div>
+    </section>
+  </main>
+
+  <div id="pairingOverlay" class="pairing-overlay">
+    <div class="pairing-card">
+      <h2>Connect Public Board</h2>
+      <p>Enter the code shown on Teacher Game Control.</p>
+      <input id="pairingInput" maxlength="5" autocomplete="off" placeholder="ABCDE">
+      <button id="pairBoardBtn" type="button">Connect</button>
+      <p id="pairingMessage"></p>
+    </div>
+  </div>
+
+  <script type="module" src="contest-board.js"></script>
+</body>
+</html>
