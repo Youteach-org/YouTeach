@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YouTeach — 100 Students Said Control</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="contest-control.css">
+</head>
+<body>
+  <header class="contest-control-header">
+    <div>
+      <a href="teacher.html" class="back-link">← Teacher Home</a>
+      <h1>100 Students Said — Game Control</h1>
+    </div>
+    <div class="session-chip">
+      <span>Board code</span>
+      <strong id="pairingCode">—</strong>
+      <button id="openBoardBtn" type="button">Open Public Board</button>
+    </div>
+  </header>
+
+  <main class="control-layout">
+    <aside class="control-rail left-rail">
+      <section class="control-card">
+        <h2>Session</h2>
+        <label>Round time
+          <input id="roundMinutes" type="number" min="1" max="60" value="5">
+        </label>
+        <label>Response time
+          <input id="responseSeconds" type="number" min="3" max="120" value="10">
+        </label>
+        <label>Allowed strikes
+          <select id="strikeLimit">
+            <option value="1">1</option>
+            <option value="2" selected>2</option>
+            <option value="3">3</option>
+          </select>
+        </label>
+        <button id="createContestBtn" class="primary-action">Create / Reset Game</button>
+        <button id="startRoundBtn">Start Next Round</button>
+      </section>
+
+      <section class="control-card">
+        <h2>Answer</h2>
+        <button id="markCorrectBtn" class="correct-action">Correct</button>
+        <button id="markWrongBtn" class="wrong-action">Wrong</button>
+        <button id="openActivityBtn">Assign Next Turn</button>
+        <button id="revealModelBtn">Reveal Model Answer</button>
+        <button id="stealCorrectBtn">Steal Correct</button>
+        <button id="stealWrongBtn">Steal Wrong</button>
+        <button id="endRoundBtn">End Round</button>
+      </section>
+    </aside>
+
+    <section class="preview-column">
+      <div class="preview-heading">
+        <div>
+          <h2>Public Answer Board Preview</h2>
+          <p>This is the same view shown on the classroom screen.</p>
+        </div>
+        <span id="connectionStatus" class="status-pill">Not connected</span>
+      </div>
+
+      <div class="board-preview-frame">
+        <iframe id="boardPreview" title="Public Answer Board preview"></iframe>
+      </div>
+
+      <section class="teacher-guide-card">
+        <div class="guide-topline">
+          <div>
+            <span class="guide-label">Current activity</span>
+            <strong id="teacherPrompt">Create a game to begin.</strong>
+          </div>
+          <span id="phaseChip" class="phase-chip">LOBBY</span>
+        </div>
+        <div class="guide-grid">
+          <div>
+            <span class="guide-label">Model answer</span>
+            <p id="modelAnswer">—</p>
+          </div>
+          <div>
+            <span class="guide-label">Accepted alternatives</span>
+            <p id="alternatives">—</p>
+          </div>
+          <div>
+            <span class="guide-label">Explanation</span>
+            <p id="explanation">—</p>
+          </div>
+          <div>
+            <span class="guide-label">Study reference</span>
+            <p id="studyReference">—</p>
+          </div>
+        </div>
+      </section>
+    </section>
+
+    <aside class="control-rail right-rail">
+      <section class="control-card timer-card">
+        <h2>Round Timer</h2>
+        <strong id="roundTimerReadout" class="timer-readout">05:00</strong>
+        <div class="timer-buttons">
+          <button id="pauseRoundBtn">Pause</button>
+          <button id="resumeRoundBtn">Resume</button>
+          <button id="minusRoundBtn">− 30 s</button>
+          <button id="plusRoundBtn">+ 30 s</button>
+        </div>
+      </section>
+
+      <section class="control-card">
+        <h2>Current turn</h2>
+        <dl class="live-details">
+          <div><dt>Team in control</dt><dd id="controlTeam">—</dd></div>
+          <div><dt>Student</dt><dd id="activeStudent">—</dd></div>
+          <div><dt>Buzz winner</dt><dd id="buzzWinner">—</dd></div>
+          <div><dt>Round bank</dt><dd id="roundBank">0</dd></div>
+        </dl>
+      </section>
+
+      <section class="control-card">
+        <h2>Status</h2>
+        <p id="teacherMessage" class="teacher-message">Ready to create the game.</p>
+      </section>
+    </aside>
+  </main>
+
+  <script type="module" src="contest-control.js"></script>
+</body>
+</html>
