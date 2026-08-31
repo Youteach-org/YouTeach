@@ -78,6 +78,7 @@ function contestConfigFromBuzzer(buzzerSession) {
   }
   return {
     contestId: reportedSpeechContest.id,
+    groupName: buzzerSession.groupName || sessionStorage.getItem("youteachWorkingGroup") || "",
     strikeLimit: Number(elements.strikeLimit.value || 2),
     roundDurationMs: Number(elements.roundMinutes.value || 5) * 60_000,
     responseDurationMs: Number(elements.responseSeconds.value || 10) * 1_000,
