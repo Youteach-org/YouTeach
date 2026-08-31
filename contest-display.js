@@ -19,7 +19,8 @@ function timerProjection(timer, nowMs) {
   return {
     status: timer.status,
     durationMs: Number(timer.durationMs || 0),
-    remainingMs: remainingMs(timer, nowMs)
+    remainingMs: remainingMs(timer, nowMs),
+    projectedAt: Number(nowMs)
   };
 }
 
@@ -86,11 +87,13 @@ export function buildPublicDisplay(session, contest, nowMs = Date.now()) {
       ? { id: session.controlTeamId, name: teamName(session, session.controlTeamId) }
       : null,
     activeStudentKey: session.activeStudentKey,
+    activeStudentName: session.config?.studentNames?.[session.activeStudentKey] || "",
     activeLeaderKeys: Object.values(session.activeLeaders || {}).filter(Boolean),
     buzzWinner: session.buzzWinner ? {
       studentKey: session.buzzWinner.studentKey,
       teamId: session.buzzWinner.teamId
     } : null,
+    buzzWinnerName: session.config?.studentNames?.[session.buzzWinner?.studentKey] || "",
     bank: Number(session.roundBank || 0),
     strikeLimit: Number(session.config?.strikeLimit || 2),
     feedback: safeFeedback.feedback,
