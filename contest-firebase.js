@@ -19,7 +19,8 @@ export const contestPaths = {
   publicState: (sessionId) => `${ROOT}/sessions/${sessionId}/public`,
   student: (sessionId, studentKey) => `${ROOT}/sessions/${sessionId}/students/${studentKey}`,
   buzzLock: (sessionId) => `${ROOT}/sessions/${sessionId}/buzzLock`,
-  pairing: (code) => `${ROOT}/pairing/${code}`
+  pairing: (code) => `${ROOT}/pairing/${code}`,
+  activeGroup: (groupName) => `${ROOT}/activeGroups/${encodeURIComponent(groupName)}`
 };
 
 function studentEligibilityRecords(state) {
@@ -63,6 +64,14 @@ export async function createLiveContest({
     },
     [contestPaths.buzzLock(sessionId)]: null
   };
+  if (config.groupName) {
+    updates[contestPaths.activeGroup(config.groupName)] = {
+      sessionId,
+      contestId: contest.id,
+      status: "active",
+      updatedAt: nowMs
+    };
+  }
   if (pairingCode) {
     updates[contestPaths.pairing(String(pairingCode).toUpperCase())] = {
       sessionId,
