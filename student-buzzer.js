@@ -128,6 +128,7 @@ function renderContestMode() {
   contestPosition.textContent = String(eligibility.position || "—");
   const phase = String(publicState.phase || "").replaceAll("_", " ");
   const isEligible = eligibility.eligible === true && !publicState.roundTimeExpired;
+  const canBuzz = isEligible && publicState.phase === "faceoff";
 
   contestEligibility.textContent = isEligible ? "YOUR TURN" : "WAIT";
   contestEligibility.style.color = isEligible ? "#166534" : "#92400e";
@@ -146,7 +147,8 @@ function renderContestMode() {
       : "Wait for your assigned turn.";
   }
 
-  buzzBtn.disabled = !isEligible;
+  buzzBtn.disabled = !canBuzz;
+  buzzBtn.textContent = canBuzz ? "BUZZ" : (isEligible ? "ANSWER" : "WAIT");
   return true;
 }
 
@@ -243,7 +245,11 @@ logoutBtn.addEventListener("click", async () => {
 buzzBtn.addEventListener("click", async () => {
   if (!currentStudent) return;
 
-  if (activeContestId && contestState?.eligibility?.eligible) {
+  if (
+    activeContestId &&
+    contestState?.eligibility?.eligible &&
+    contestState?.public?.phase === "faceoff"
+  ) {
     buzzBtn.disabled = true;
     playContestBuzz();
     const result = await submitContestBuzz(activeContestId, {
