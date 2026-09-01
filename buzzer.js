@@ -946,3 +946,36 @@ numTeamsInput.addEventListener("keydown", (e) => {
     createTeamsBtn.click();
   }
 });
+
+// Classroom Online Games remains a separate application; this is only its YouTeach bridge.
+const openCogTeacherBtn = document.getElementById("openCogTeacherBtn");
+if (openCogTeacherBtn) {
+  openCogTeacherBtn.addEventListener("click", async () => {
+    if (!sessionCache?.active) {
+      alert("Create an active Buzzer session first.");
+      return;
+    }
+    const teamLabels = getAllTeamLabels();
+    if (teamLabels.length !== 2) {
+      alert("100 Students Said requires exactly 2 teams. Generate them first.");
+      return;
+    }
+    await update(ref(db), {
+      "session/current/connectedGame": {
+        id: "100-students-said",
+        status: "ready",
+        openedAt: Date.now(),
+        groupName: sessionCache.groupName || groupSelect.value || "",
+        teamLabels
+      },
+      "classroomGames/hundredStudentsSaid/current/integration": {
+        source: "youteach-buzzer",
+        active: true,
+        groupName: sessionCache.groupName || groupSelect.value || "",
+        teamLabels,
+        updatedAt: Date.now()
+      }
+    });
+    window.open("https://classroom-online-games.vercel.app/teacher/", "_blank", "noopener");
+  });
+}
