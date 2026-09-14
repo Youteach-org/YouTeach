@@ -137,6 +137,8 @@ function normalizeEvaluationCriteria(value) {
     .filter(Boolean)
     .map((criterion, index) => ({
       id: String(criterion.id || `criterion-${index + 1}`),
+      type: criterion.type === "preset" ? "preset" : "custom",
+      presetKey: String(criterion.presetKey || ""),
       title: String(criterion.title || criterion.name || "").trim(),
       description: String(criterion.description || "").trim(),
       maxPoints: Number(criterion.maxPoints || criterion.points || 0)
