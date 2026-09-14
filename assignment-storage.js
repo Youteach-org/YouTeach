@@ -1,19 +1,4 @@
-import { app } from "./firebase.js";
-import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import {
-  getStorage,
-  ref as storageRef,
-  uploadBytesResumable,
-  getDownloadURL
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
-
-const auth = getAuth(app);
-const storage = getStorage(app);
-
-const MAX_SOURCE_BYTES = 12 * 1024 * 1024;
-const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
-const MAX_DIMENSION = 1800;
-const JPEG_QUALITY = 0.82;
+const MAX_PDF_BYTES = 15 * 1024 * 1024;
 
 export function safeSegment(value, fallback = "item") {
   const text = String(value || "")
@@ -25,89 +10,70 @@ export function safeSegment(value, fallback = "item") {
   return text || fallback;
 }
 
-export async function ensureAssignmentStorageAuth() {
-  if (auth.currentUser) return auth.currentUser;
-  try {
-    const result = await signInAnonymously(auth);
-    return result.user;
-  } catch (error) {
-    const wrapped = new Error(
-      "Photo storage is not enabled yet. Firebase Anonymous Authentication must be enabled for YouTeach assignments."
-    );
-    wrapped.cause = error;
-    throw wrapped;
-  }
+export function validateAssignmentPdf(file) {
+  const isPdf = file && (
+    String(file.type || "").toLowerCase() === "application/pdf" ||
+    String(file.name || "").toLowerCase().endsWith(".pdf")
+  );
+
+  if (!isPdf) throw new Error("Only PDF files are accepted.");
+  if (file.size > MAX_PDF_BYTES) throw new Error("The PDF must be 15 MB or smaller.");
+  return true;
 }
 
-export async function preparePhoto(file) {
-  const type = String(file?.type || "").toLowerCase();
-  const isPdf = type === "application/pdf" || String(file?.name || "").toLowerCase().endsWith(".pdf");
-
-  if (!file || !isPdf) {
-    throw new Error("Only PDF files are accepted.");
-  }
-  if (file.size > MAX_UPLOAD_BYTES) {
-    throw new Error("Each PDF must be 8 MB or smaller.");
-  }
-
-  return file;
-}
-
-export async function uploadAssignmentPhoto({
+export async function uploadAssignmentPdf({
   assignmentId,
-  taskCode,
   studentKey,
-  studentNumber,
-  groupName,
+  externalId,
   file,
-  index,
   onProgress
 }) {
-  const user = await ensureAssignmentStorageAuth();
-  const prepared = await preparePhoto(file);
-  const extension = "pdf";
-  const studentLabel = safeSegment(studentNumber || studentKey, "student");
-  const safeTaskCode = safeSegment(taskCode || assignmentId, "task");
-  const fileName = `${studentLabel}--${safeTaskCode}--${String(index + 1).padStart(2, "0")}.${extension}`;
-  const path = [
-    "assignments",
-    safeTaskCode,
-    safeSegment(studentKey),
-    fileName
-  ].join("/");
+  validateAssignmentPdf(file);
 
-  const target = storageRef(storage, path);
-  const task = uploadBytesResumable(target, prepared, {
-    contentType: prepared.type || "image/jpeg",
-    customMetadata: {
-      assignmentId: String(assignmentId),
-      studentKey: String(studentKey),
-      studentNumber: String(studentNumber || ""),
-      groupName: String(groupName || ""),
-      uploaderUid: user.uid
-    }
+  if (typeof onProgress === "function") onProgress(0.05);
+
+  const sessionResponse = await fetch("/api/drive-upload-session", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      assignmentId,
+      studentKey,
+      externalId,
+      fileSize: file.size,
+      mimeType: "application/pdf"
+    })
   });
 
-  await new Promise((resolve, reject) => {
-    task.on(
-      "state_changed",
-      (snapshot) => {
-        if (typeof onProgress === "function") {
-          onProgress(snapshot.bytesTransferred / Math.max(1, snapshot.totalBytes));
-        }
-      },
-      reject,
-      resolve
-    );
+  const session = await sessionResponse.json().catch(() => ({}));
+  if (!sessionResponse.ok || !session.ok || !session.sessionUrl) {
+    throw new Error(session.error || "Could not connect YouTeach to Google Drive.");
+  }
+
+  if (typeof onProgress === "function") onProgress(0.2);
+
+  const uploadResponse = await fetch(session.sessionUrl, {
+    method: "PUT",
+    headers: { "Content-Type": "application/pdf" },
+    body: file
   });
 
-  const downloadURL = await getDownloadURL(task.snapshot.ref);
+  if (!uploadResponse.ok) {
+    throw new Error(`Google Drive upload failed (HTTP ${uploadResponse.status}).`);
+  }
+
+  const driveFile = await uploadResponse.json();
+  if (!driveFile?.id) throw new Error("Google Drive did not return the uploaded file ID.");
+
+  if (typeof onProgress === "function") onProgress(1);
+
   return {
-    downloadURL,
-    storagePath: path,
-    fileName: prepared.name,
-    contentType: prepared.type || "image/jpeg",
-    size: prepared.size,
+    driveFileId: driveFile.id,
+    driveFileName: driveFile.name || session.fileName,
+    driveFileUrl: driveFile.webViewLink || `https://drive.google.com/file/d/${driveFile.id}/view`,
+    driveFolderId: session.folderId,
+    driveFolderUrl: session.folderUrl,
+    mimeType: "application/pdf",
+    size: Number(driveFile.size || file.size || 0),
     uploadedAt: Date.now()
   };
 }
