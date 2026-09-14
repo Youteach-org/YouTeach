@@ -42,7 +42,13 @@
     .criteria-row input,.criteria-row textarea{padding:8px!important}
     .criteria-row textarea{min-height:58px;resize:vertical}
     .criteria-remove{min-height:38px;padding:7px;border-radius:9px}
-    .criteria-total{font-size:13px;font-weight:800;color:#334155}
+    .criteria-total{font-size:13px;font-weight:800;color:#334155;white-space:nowrap}
+    .criteria-total.ok{color:#166534}
+    .criteria-total.bad{color:#b91c1c}
+    .distribution-control{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+    .distribution-control label{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:#475569}
+    .distribution-control input{width:16px;height:16px;margin:0}
+    .rubric-summary{display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:12px}
     .rubric-footer{display:grid;gap:8px}
     .rubric-footer textarea{min-height:72px;resize:vertical}
 
@@ -150,9 +156,15 @@
               <div class="rubric-header">
                 <div>
                   <h4>Evaluation criteria</h4>
-                  <p>Use preset criteria, custom criteria, or both. Points are added automatically.</p>
+                  <p>Criteria always total 100 points. Distribute them equally or assign weights manually.</p>
                 </div>
-                <div id="createCriteriaTotal" class="criteria-total">Total points: 0</div>
+                <div class="rubric-summary">
+                  <div class="distribution-control" aria-label="Point distribution">
+                    <label><input type="radio" name="createDistribution" value="equal" checked> Equal</label>
+                    <label><input type="radio" name="createDistribution" value="manual"> Manual</label>
+                  </div>
+                  <div id="createCriteriaTotal" class="criteria-total">0 / 100</div>
+                </div>
               </div>
 
               <div class="rubric-columns">
@@ -161,7 +173,7 @@
                     <h5>Preset criteria</h5>
                   </div>
                   <div id="createPresetCriteria" class="preset-grid"></div>
-                  <div class="criteria-help">Turn on only the general presentation requirements that apply to this task.</div>
+                  <div class="criteria-help">Preset options will only appear after they are approved for YouTeach.</div>
                 </div>
 
                 <div class="rubric-section">
@@ -231,9 +243,15 @@
                     <div class="rubric-header">
                       <div>
                         <h4>Edit evaluation criteria</h4>
-                        <p>Preset and custom criteria can be changed independently.</p>
+                        <p>Criteria always total 100 points. Use equal or manual distribution.</p>
                       </div>
-                      <div id="editCriteriaTotal" class="criteria-total">Total points: 0</div>
+                      <div class="rubric-summary">
+                        <div class="distribution-control" aria-label="Point distribution">
+                          <label><input type="radio" name="editDistribution" value="equal"> Equal</label>
+                          <label><input type="radio" name="editDistribution" value="manual" checked> Manual</label>
+                        </div>
+                        <div id="editCriteriaTotal" class="criteria-total">0 / 100</div>
+                      </div>
                     </div>
 
                     <div class="rubric-columns">
@@ -278,7 +296,7 @@
     </main>
   </div>
 
-  <script type="module" src="teacher-assignments.js?v=preset-custom-criteria-20260914"></script>
+  <script type="module" src="teacher-assignments.js?v=criteria-100-20260914"></script>
   <script defer src="shared-ui-fixes.js?v=assignments-20260914"></script>
 </body>
 </html>
