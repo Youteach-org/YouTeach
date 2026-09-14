@@ -222,6 +222,7 @@ async function ensureEvaluationRubricFile({
     groupName: String(assignment?.groupName || "ALL"),
     instructions: String(assignment?.instructions || ""),
     evaluationNotes: notes,
+    distributionMode: String(assignment?.evaluationDistribution || "manual"),
     totalPoints: Number(totalPoints.toFixed(2)),
     criteria,
     updatedAt: Number(
