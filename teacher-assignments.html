@@ -24,7 +24,21 @@
     .status-box strong{display:block;font-size:22px}
     .review-chip{display:inline-block;margin-top:8px;padding:5px 9px;border-radius:999px;background:#fef3c7;color:#92400e;font-size:12px;font-weight:800}
     .pdf-link{display:inline-block;margin-top:8px;font-weight:800}
-    @media(max-width:900px){.assignment-layout{grid-template-columns:1fr}.status-strip{grid-template-columns:1fr 1fr 1fr}}
+    .criteria-builder{border:1px solid #dbeafe;border-radius:12px;padding:12px;background:#f8fafc}
+    .criteria-builder-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+    .criteria-rows{display:grid;gap:8px}
+    .criteria-row{display:grid;grid-template-columns:minmax(140px,.8fr) minmax(220px,1.5fr) 92px 42px;gap:8px;align-items:start}
+    .criteria-row input,.criteria-row textarea{width:100%;padding:9px;border:1px solid #cbd5e1;border-radius:9px;font:inherit;box-sizing:border-box}
+    .criteria-row textarea{min-height:62px;resize:vertical}
+    .criteria-remove{min-height:40px;padding:8px;border-radius:9px}
+    .criteria-total{margin-top:8px;font-size:13px;font-weight:800;color:#334155}
+    .criteria-help{margin-top:8px;font-size:12px;line-height:1.45;color:#64748b}
+    .criteria-view{display:grid;gap:8px;margin-top:10px}
+    .criteria-view-item{border:1px solid #e2e8f0;border-radius:10px;padding:10px;background:#fff}
+    .criteria-view-item strong{display:block;color:#0f172a}
+    .criteria-view-item span{display:block;margin-top:4px;color:#64748b;font-size:13px;line-height:1.4}
+    .criteria-points{font-weight:800;color:#0f172a}
+    @media(max-width:900px){.assignment-layout{grid-template-columns:1fr}.status-strip{grid-template-columns:1fr 1fr 1fr}.criteria-row{grid-template-columns:1fr}.criteria-remove{width:100%}}
   </style>
 </head>
 <body>
@@ -66,6 +80,18 @@
               <input id="assignmentTitle" placeholder="Assignment title">
               <select id="assignmentGroup"><option value="ALL">All groups</option></select>
               <textarea id="assignmentInstructions" placeholder="Instructions for students"></textarea>
+
+              <div class="criteria-builder">
+                <div class="criteria-builder-head">
+                  <strong>Evaluation criteria</strong>
+                  <button id="addCreateCriterionBtn" type="button">+ Add criterion</button>
+                </div>
+                <div id="createCriteriaRows" class="criteria-rows"></div>
+                <div id="createCriteriaTotal" class="criteria-total">Total points: 0</div>
+                <textarea id="assignmentEvaluationNotes" placeholder="Teacher-only grading notes for ChatGPT (optional)"></textarea>
+                <div class="criteria-help">These criteria are stored with the assignment and copied into the task Drive folder so ChatGPT can use the same rubric when reviewing submitted PDFs.</div>
+              </div>
+
               <label>Due date (optional)
                 <input id="assignmentDueAt" type="datetime-local">
               </label>
@@ -104,6 +130,31 @@
             </div>
             <div id="driveStatus" class="status-text">The Drive folder is created automatically with the first PDF submission.</div>
 
+            <div class="panel-card" style="margin-top:14px;background:#f8fafc">
+              <div class="panel-card-header">
+                <h4 style="margin:0">Evaluation criteria</h4>
+                <button id="editCriteriaBtn" type="button">Edit criteria</button>
+              </div>
+              <div id="criteriaReadOnly" class="criteria-view"></div>
+
+              <div id="criteriaEditPanel" hidden style="margin-top:10px">
+                <div class="criteria-builder">
+                  <div class="criteria-builder-head">
+                    <strong>Edit rubric</strong>
+                    <button id="addEditCriterionBtn" type="button">+ Add criterion</button>
+                  </div>
+                  <div id="editCriteriaRows" class="criteria-rows"></div>
+                  <div id="editCriteriaTotal" class="criteria-total">Total points: 0</div>
+                  <textarea id="editEvaluationNotes" placeholder="Teacher-only grading notes for ChatGPT (optional)"></textarea>
+                  <div class="toolbar">
+                    <button id="saveCriteriaBtn" type="button">Save criteria</button>
+                    <button id="cancelCriteriaBtn" type="button">Cancel</button>
+                  </div>
+                  <div id="criteriaSaveStatus" class="status-text"></div>
+                </div>
+              </div>
+            </div>
+
             <div id="submissionList"></div>
 
             <div class="panel-card" style="margin-top:14px;background:#f8fafc">
@@ -116,7 +167,7 @@
     </main>
   </div>
 
-  <script type="module" src="teacher-assignments.js?v=drive-pdf-20260914"></script>
+  <script type="module" src="teacher-assignments.js?v=evaluation-criteria-20260914"></script>
   <script defer src="shared-ui-fixes.js?v=assignments-20260914"></script>
 </body>
 </html>
