@@ -947,35 +947,11 @@ numTeamsInput.addEventListener("keydown", (e) => {
   }
 });
 
-// Classroom Online Games remains a separate application; this is only its YouTeach bridge.
+// Classroom Online Games remains a separate application.
+// The Buzzer only opens the COG teacher monitor menu. Each game owns its own entry requirements.
 const openCogTeacherBtn = document.getElementById("openCogTeacherBtn");
 if (openCogTeacherBtn) {
-  openCogTeacherBtn.addEventListener("click", async () => {
-    if (!sessionCache?.active) {
-      alert("Create an active Buzzer session first.");
-      return;
-    }
-    const teamLabels = getAllTeamLabels();
-    if (teamLabels.length !== 2) {
-      alert("100 Students Said requires exactly 2 teams. Generate them first.");
-      return;
-    }
-    await update(ref(db), {
-      "session/current/connectedGame": {
-        id: "100-students-said",
-        status: "ready",
-        openedAt: Date.now(),
-        groupName: sessionCache.groupName || groupSelect.value || "",
-        teamLabels
-      },
-      "classroomGames/hundredStudentsSaid/current/integration": {
-        source: "youteach-buzzer",
-        active: true,
-        groupName: sessionCache.groupName || groupSelect.value || "",
-        teamLabels,
-        updatedAt: Date.now()
-      }
-    });
+  openCogTeacherBtn.addEventListener("click", () => {
     window.open("https://classroom-online-games.vercel.app/teacher/", "_blank", "noopener");
   });
 }
