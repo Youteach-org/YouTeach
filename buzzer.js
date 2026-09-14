@@ -952,6 +952,6 @@ numTeamsInput.addEventListener("keydown", (e) => {
 const openCogTeacherBtn = document.getElementById("openCogTeacherBtn");
 if (openCogTeacherBtn) {
   openCogTeacherBtn.addEventListener("click", () => {
-    window.open("https://classroom-online-games.vercel.app/teacher/", "_blank", "noopener");
+    window.open("https://classroom-online-games.pages.dev/teacher/", "_blank", "noopener");
   });
 }
