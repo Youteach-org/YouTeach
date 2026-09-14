@@ -1,4 +1,4 @@
-const ROOT_FOLDER_ID = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID || "1ramZnVilxmPcU4I38PvFsNuVHTetjw9A";
+const ROOT_FOLDER_NAME = "YouTeach Assignments";
 const DATABASE_URL = "https://youteach-d9a79-default-rtdb.firebaseio.com";
 const MAX_PDF_BYTES = 15 * 1024 * 1024;
 
@@ -58,10 +58,10 @@ async function getAccessToken() {
   return data.access_token;
 }
 
-async function findOrCreateTaskFolder(accessToken, taskCode) {
+async function findOrCreateFolder(accessToken, name, parentId = "root") {
   const query = [
-    `'${escapeDriveQuery(ROOT_FOLDER_ID)}' in parents`,
-    `name = '${escapeDriveQuery(taskCode)}'`,
+    `'${escapeDriveQuery(parentId)}' in parents`,
+    `name = '${escapeDriveQuery(name)}'`,
     "mimeType = 'application/vnd.google-apps.folder'",
     "trashed = false"
   ].join(" and ");
@@ -76,7 +76,7 @@ async function findOrCreateTaskFolder(accessToken, taskCode) {
   });
   const searchData = await searchResponse.json();
   if (!searchResponse.ok) {
-    throw new Error(searchData.error?.message || "Could not search the assignment folder.");
+    throw new Error(searchData.error?.message || "Could not search Google Drive folders.");
   }
 
   const existing = searchData.files?.[0];
@@ -96,15 +96,15 @@ async function findOrCreateTaskFolder(accessToken, taskCode) {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        name: taskCode,
+        name,
         mimeType: "application/vnd.google-apps.folder",
-        parents: [ROOT_FOLDER_ID]
+        parents: [parentId]
       })
     }
   );
   const created = await createResponse.json();
   if (!createResponse.ok) {
-    throw new Error(created.error?.message || "Could not create the assignment folder.");
+    throw new Error(created.error?.message || "Could not create the Google Drive folder.");
   }
 
   return {
@@ -113,6 +113,12 @@ async function findOrCreateTaskFolder(accessToken, taskCode) {
   };
 }
 
+async function findOrCreateTaskFolder(accessToken, taskCode) {
+  const root = await findOrCreateFolder(accessToken, ROOT_FOLDER_NAME, "root");
+  return findOrCreateFolder(accessToken, taskCode, root.id);
+}
+
+/* legacy body removed */
 async function beginResumableUpload({
   accessToken,
   fileId,
