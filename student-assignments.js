@@ -149,12 +149,18 @@ async function handleUpload(assignmentId) {
 
   const files = Array.from(input.files || []);
   if (!files.length) {
-    status.textContent = "Choose at least one photo first.";
+    status.textContent = "Choose at least one PDF first.";
     status.className = "assignment-status bad";
     return;
   }
+  if (files.some((file) => String(file.type || "").toLowerCase() !== "application/pdf" && !String(file.name || "").toLowerCase().endsWith(".pdf"))) {
+    status.textContent = "Only PDF files are accepted.";
+    status.className = "assignment-status bad";
+    return;
+  }
+
   if (files.length > 6) {
-    status.textContent = "Upload a maximum of 6 files at a time.";
+    status.textContent = "Upload a maximum of 6 PDF files at a time.";
     status.className = "assignment-status bad";
     return;
   }
