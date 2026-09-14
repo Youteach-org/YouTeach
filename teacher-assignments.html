@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YouTeach - Assignments</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .assignment-layout{display:grid;grid-template-columns:minmax(300px,.85fr) minmax(420px,1.6fr);gap:16px}
+    .assignment-list{display:grid;gap:10px}
+    .assignment-item{width:100%;text-align:left;background:#fff;border:1px solid #dbeafe;border-radius:14px;padding:13px;cursor:pointer}
+    .assignment-item.active{border-color:#2563eb;box-shadow:0 0 0 2px #dbeafe}
+    .assignment-item strong{display:block;font-size:16px;color:#0f172a}
+    .assignment-item span{display:block;margin-top:4px;font-size:12px;color:#64748b}
+    .form-grid{display:grid;gap:10px}
+    .form-grid input,.form-grid select,.form-grid textarea{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:10px;font:inherit}
+    .form-grid textarea{min-height:96px;resize:vertical}
+    .toolbar{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+    .submission-card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:13px;margin-bottom:10px}
+    .submission-card h4{margin:0 0 5px}
+    .submission-meta{font-size:12px;color:#64748b}
+    .photo-links{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+    .photo-links a{font-size:12px}
+    .status-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
+    .status-box{background:#eff6ff;border-radius:12px;padding:10px;text-align:center}
+    .status-box strong{display:block;font-size:22px}
+    .danger-btn{background:#fff1f2!important;color:#be123c!important;border:1px solid #fecdd3!important}
+    @media(max-width:900px){.assignment-layout{grid-template-columns:1fr}.status-strip{grid-template-columns:1fr 1fr 1fr}}
+  </style>
+</head>
+<body>
+  <button id="menuToggle" class="hamburger-btn" aria-label="Open menu"><span></span><span></span><span></span></button>
+  <div class="menu-shell">
+    <aside id="sidebar" class="sidebar collapsible-sidebar">
+      <div class="sidebar-content">
+        <div class="brand"><h1>YouTeach</h1><p>Teacher Menu</p></div>
+        <div id="sidebarIdentity" class="sidebar-identity">Teacher</div>
+        <div class="sidebar-links">
+          <a class="sidebar-link" href="buzzer.html">Buzzer</a>
+          <a class="sidebar-link" href="teacher.html">Teacher Home</a>
+          <a class="sidebar-link" href="teacher-students.html">Students</a>
+          <a class="sidebar-link" href="teacher-enrollment.html">Groups / Import</a>
+          <a class="sidebar-link" href="teacher-active.html">Active Today</a>
+          <a class="sidebar-link active-link" href="teacher-assignments.html">Assignments</a>
+          <a class="sidebar-link" href="teacher-points.html">Points / Export</a>
+          <a class="sidebar-link" href="teacher-history.html">History</a>
+          <button id="logoutBtn" class="logout-btn">Logout</button>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div>
+          <h2>Assignments</h2>
+          <p>Create photo assignments, review submissions, and download them as one ZIP.</p>
+        </div>
+        <div class="topbar-right"><span id="teacherIdentity" class="teacher-identity">Teacher</span></div>
+      </header>
+
+      <div class="assignment-layout">
+        <section>
+          <div class="panel-card">
+            <div class="panel-card-header"><h3>Create Assignment</h3></div>
+            <div class="form-grid">
+              <input id="assignmentTitle" placeholder="Assignment title">
+              <select id="assignmentGroup"><option value="ALL">All groups</option></select>
+              <textarea id="assignmentInstructions" placeholder="Instructions for students"></textarea>
+              <label>Due date (optional)
+                <input id="assignmentDueAt" type="datetime-local">
+              </label>
+              <button id="createAssignmentBtn">Create Assignment</button>
+              <div id="createAssignmentStatus" class="status-text"></div>
+            </div>
+          </div>
+
+          <div class="panel-card" style="margin-top:16px">
+            <div class="panel-card-header"><h3>Assignments</h3></div>
+            <div id="teacherAssignmentList" class="assignment-list">
+              <div class="status-text">Loading...</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel-card">
+          <div id="assignmentDetailEmpty">Select an assignment to see submissions.</div>
+          <div id="assignmentDetail" hidden>
+            <div class="panel-card-header">
+              <div>
+                <h3 id="detailTitle">Assignment</h3>
+                <div id="detailMeta" class="submission-meta"></div>
+              </div>
+            </div>
+
+            <div class="status-strip">
+              <div class="status-box"><span>Students</span><strong id="eligibleCount">0</strong></div>
+              <div class="status-box"><span>Submitted</span><strong id="submittedCount">0</strong></div>
+              <div class="status-box"><span>Missing</span><strong id="missingCount">0</strong></div>
+            </div>
+
+            <div class="toolbar">
+              <button id="downloadZipBtn">Download ZIP</button>
+              <button id="toggleAssignmentBtn">Close Assignment</button>
+            </div>
+            <div id="zipStatus" class="status-text"></div>
+
+            <div id="submissionList"></div>
+
+            <div class="panel-card" style="margin-top:14px;background:#f8fafc">
+              <h4 style="margin-top:0">Missing submissions</h4>
+              <div id="missingList" class="submission-meta">None</div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script type="module" src="teacher-assignments.js"></script>
+  <script defer src="shared-ui-fixes.js?v=assignments-20260914"></script>
+</body>
+</html>
