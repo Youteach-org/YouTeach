@@ -4,6 +4,9 @@ import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-aut
 
 if (!requireTeacherAuth()) throw new Error("Teacher authentication required.");
 
+const RUBRIC_MARKER = "\n\n[[YOUTEACH_RUBRIC_V1:";
+const RUBRIC_END = "]]";
+
 const PRESET_CRITERIA = [
   {
     key: "originality",
@@ -112,6 +115,69 @@ function escapeHtml(value) {
 function formatDate(timestamp) {
   const value = Number(timestamp || 0);
   return value ? new Date(value).toLocaleString() : "No due date";
+}
+
+function encodeRubricMetadata(value) {
+  const json = JSON.stringify(value || {});
+  const bytes = new TextEncoder().encode(json);
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
+function decodeRubricMetadata(value) {
+  try {
+    const binary = atob(String(value || ""));
+    const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+    return JSON.parse(new TextDecoder().decode(bytes));
+  } catch (_) {
+    return {};
+  }
+}
+
+function splitStoredInstructions(value) {
+  const raw = String(value || "");
+  const markerIndex = raw.lastIndexOf(RUBRIC_MARKER);
+  if (markerIndex < 0) {
+    return { visibleInstructions: raw, rubric: {} };
+  }
+
+  const encodedStart = markerIndex + RUBRIC_MARKER.length;
+  const endIndex = raw.indexOf(RUBRIC_END, encodedStart);
+  if (endIndex < 0) {
+    return { visibleInstructions: raw, rubric: {} };
+  }
+
+  return {
+    visibleInstructions: raw.slice(0, markerIndex).trimEnd(),
+    rubric: decodeRubricMetadata(raw.slice(encodedStart, endIndex))
+  };
+}
+
+function buildStoredInstructions(visibleInstructions, rubric) {
+  const visible = String(visibleInstructions || "").trim() ||
+    "Upload your completed work as one PDF file.";
+  return `${visible}${RUBRIC_MARKER}${encodeRubricMetadata(rubric)}${RUBRIC_END}`;
+}
+
+function getAssignmentRubric(assignment) {
+  const embedded = splitStoredInstructions(assignment?.instructions).rubric || {};
+  const directCriteria = normalizeCriteria(assignment?.evaluationCriteria);
+  const embeddedCriteria = normalizeCriteria(embedded.criteria);
+
+  return {
+    criteria: directCriteria.length ? directCriteria : embeddedCriteria,
+    distribution: String(
+      assignment?.evaluationDistribution ||
+      embedded.distribution ||
+      "manual"
+    ),
+    notes: String(
+      assignment?.evaluationNotes ??
+      embedded.notes ??
+      ""
+    )
+  };
 }
 
 function makeCriterionId() {
@@ -405,10 +471,11 @@ function renderCriteriaGroup(title, criteria) {
 }
 
 function renderEvaluationCriteria(assignment) {
-  const criteria = normalizeCriteria(assignment?.evaluationCriteria);
+  const rubric = getAssignmentRubric(assignment);
+  const criteria = rubric.criteria;
   const presets = criteria.filter((criterion) => criterion.type === "preset");
   const custom = criteria.filter((criterion) => criterion.type !== "preset");
-  const notes = String(assignment?.evaluationNotes || "").trim();
+  const notes = String(rubric.notes || "").trim();
   const total = criteria.reduce((sum, criterion) => sum + Number(criterion.maxPoints || 0), 0);
 
   if (!criteria.length && !notes) {
@@ -595,15 +662,19 @@ async function createAssignment() {
 
   try {
     const target = push(ref(db, "assignments"));
+    const storedInstructions = buildStoredInstructions(instructions, {
+      schemaVersion: 1,
+      criteria: rubricResult.criteria,
+      distribution: evaluationDistribution,
+      notes: evaluationNotes,
+      updatedAt: Date.now()
+    });
+
     await set(target, {
       code,
       title,
       groupName,
-      instructions: instructions || "Upload your completed work as one PDF file.",
-      evaluationCriteria: rubricResult.criteria,
-      evaluationDistribution,
-      evaluationNotes,
-      evaluationUpdatedAt: Date.now(),
+      instructions: storedInstructions,
       dueAt,
       active: true,
       storageProvider: "google-drive",
@@ -629,7 +700,11 @@ async function createAssignment() {
     createAssignmentStatus.className = "status-text ok";
   } catch (error) {
     console.error(error);
-    createAssignmentStatus.textContent = "Could not create the assignment.";
+    const code = String(error?.code || "").replace(/^database\//, "");
+    const message = String(error?.message || "").trim();
+    createAssignmentStatus.textContent = code
+      ? `Could not create the assignment (${code}).`
+      : (message ? `Could not create the assignment: ${message}` : "Could not create the assignment.");
     createAssignmentStatus.className = "status-text bad";
   } finally {
     createAssignmentBtn.disabled = false;
@@ -648,15 +723,16 @@ async function toggleAssignment() {
 function beginCriteriaEdit() {
   const assignment = assignmentsCache[selectedAssignmentId];
   if (!assignment) return;
+  const rubric = getAssignmentRubric(assignment);
   fillRubricEditor(
     editPresetCriteria,
     editCriteriaRows,
     editCriteriaTotal,
-    assignment.evaluationCriteria,
+    rubric.criteria,
     editDistributionRadios,
-    assignment.evaluationDistribution || "manual"
+    rubric.distribution
   );
-  editEvaluationNotes.value = assignment.evaluationNotes || "";
+  editEvaluationNotes.value = rubric.notes || "";
   criteriaSaveStatus.textContent = "";
   criteriaEditPanel.hidden = false;
 }
@@ -696,11 +772,17 @@ async function saveEvaluationCriteria() {
   criteriaSaveStatus.className = "status-text";
 
   try {
+    const visibleInstructions = splitStoredInstructions(assignment.instructions).visibleInstructions;
+    const storedInstructions = buildStoredInstructions(visibleInstructions, {
+      schemaVersion: 1,
+      criteria: result.criteria,
+      distribution: evaluationDistribution,
+      notes: editEvaluationNotes.value.trim(),
+      updatedAt: Date.now()
+    });
+
     await update(ref(db, `assignments/${selectedAssignmentId}`), {
-      evaluationCriteria: result.criteria,
-      evaluationDistribution,
-      evaluationNotes: editEvaluationNotes.value.trim(),
-      evaluationUpdatedAt: Date.now(),
+      instructions: storedInstructions,
       updatedAt: Date.now()
     });
     criteriaSaveStatus.textContent = "Evaluation criteria saved.";
