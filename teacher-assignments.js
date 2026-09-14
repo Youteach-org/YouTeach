@@ -4,11 +4,69 @@ import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-aut
 
 if (!requireTeacherAuth()) throw new Error("Teacher authentication required.");
 
+const PRESET_CRITERIA = [
+  {
+    key: "cleanliness",
+    title: "Cleanliness / neatness",
+    description: "Work is clean, orderly, and free of unnecessary marks.",
+    defaultPoints: 1
+  },
+  {
+    key: "handwritten",
+    title: "Handwritten work",
+    description: "Required work is completed by hand rather than typed or printed.",
+    defaultPoints: 1
+  },
+  {
+    key: "legibility",
+    title: "Legibility",
+    description: "Handwriting, labels, and annotations are easy to read.",
+    defaultPoints: 1
+  },
+  {
+    key: "completeness",
+    title: "Complete work",
+    description: "All requested sections, questions, steps, or components are included.",
+    defaultPoints: 2
+  },
+  {
+    key: "instructions",
+    title: "Follows instructions",
+    description: "Submission follows the specific instructions and requested format.",
+    defaultPoints: 2
+  },
+  {
+    key: "identification",
+    title: "Identification visible",
+    description: "Student name and required identifying information are clearly visible.",
+    defaultPoints: 1
+  },
+  {
+    key: "organization",
+    title: "Organization",
+    description: "Content is arranged in a logical, easy-to-follow order.",
+    defaultPoints: 1
+  },
+  {
+    key: "writing",
+    title: "Spelling / writing quality",
+    description: "Spelling, grammar, and wording are appropriate for the task.",
+    defaultPoints: 1
+  },
+  {
+    key: "bibliography",
+    title: "Sources / bibliography",
+    description: "Required sources, references, or bibliography are included and identifiable.",
+    defaultPoints: 1
+  }
+];
+
 const assignmentCode = document.getElementById("assignmentCode");
 const assignmentTitle = document.getElementById("assignmentTitle");
 const assignmentGroup = document.getElementById("assignmentGroup");
 const assignmentInstructions = document.getElementById("assignmentInstructions");
 const assignmentDueAt = document.getElementById("assignmentDueAt");
+const createPresetCriteria = document.getElementById("createPresetCriteria");
 const createCriteriaRows = document.getElementById("createCriteriaRows");
 const createCriteriaTotal = document.getElementById("createCriteriaTotal");
 const addCreateCriterionBtn = document.getElementById("addCreateCriterionBtn");
@@ -31,6 +89,7 @@ const driveStatus = document.getElementById("driveStatus");
 const criteriaReadOnly = document.getElementById("criteriaReadOnly");
 const editCriteriaBtn = document.getElementById("editCriteriaBtn");
 const criteriaEditPanel = document.getElementById("criteriaEditPanel");
+const editPresetCriteria = document.getElementById("editPresetCriteria");
 const editCriteriaRows = document.getElementById("editCriteriaRows");
 const editCriteriaTotal = document.getElementById("editCriteriaTotal");
 const editEvaluationNotes = document.getElementById("editEvaluationNotes");
@@ -52,7 +111,11 @@ teacherIdentity.textContent = getTeacherName();
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, (char) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
   }[char]));
 }
 
@@ -71,11 +134,55 @@ function normalizeCriteria(value) {
     .filter(Boolean)
     .map((criterion, index) => ({
       id: String(criterion.id || `criterion-${index + 1}`),
+      type: criterion.type === "preset" ? "preset" : "custom",
+      presetKey: String(criterion.presetKey || ""),
       title: String(criterion.title || criterion.name || "").trim(),
       description: String(criterion.description || "").trim(),
       maxPoints: Number(criterion.maxPoints || criterion.points || 0)
     }))
     .filter((criterion) => criterion.title || criterion.description || criterion.maxPoints);
+}
+
+function presetCardHtml(preset, selectedCriterion = null) {
+  const checked = Boolean(selectedCriterion);
+  const points = selectedCriterion?.maxPoints > 0
+    ? selectedCriterion.maxPoints
+    : preset.defaultPoints;
+
+  return `
+    <div class="preset-card" data-preset-key="${escapeHtml(preset.key)}">
+      <label class="preset-main">
+        <input type="checkbox" data-preset-enabled ${checked ? "checked" : ""}>
+        <span class="preset-copy">
+          <strong>${escapeHtml(preset.title)}</strong>
+          <span>${escapeHtml(preset.description)}</span>
+        </span>
+      </label>
+      <input
+        class="preset-points"
+        data-preset-points
+        type="number"
+        min="0.1"
+        step="0.1"
+        value="${escapeHtml(points)}"
+        aria-label="Points for ${escapeHtml(preset.title)}"
+        ${checked ? "" : "disabled"}
+      >
+    </div>
+  `;
+}
+
+function renderPresetEditor(container, criteria = []) {
+  const normalized = normalizeCriteria(criteria);
+  const byKey = new Map(
+    normalized
+      .filter((criterion) => criterion.type === "preset" && criterion.presetKey)
+      .map((criterion) => [criterion.presetKey, criterion])
+  );
+
+  container.innerHTML = PRESET_CRITERIA.map((preset) =>
+    presetCardHtml(preset, byKey.get(preset.key) || null)
+  ).join("");
 }
 
 function criterionRowHtml(criterion = {}) {
@@ -91,29 +198,52 @@ function criterionRowHtml(criterion = {}) {
   `;
 }
 
-function updateCriteriaTotal(container, totalElement) {
-  const total = [...container.querySelectorAll("[data-criterion-points]")]
-    .reduce((sum, input) => sum + Math.max(0, Number(input.value || 0)), 0);
-  totalElement.textContent = `Total points: ${Number(total.toFixed(2))}`;
-}
-
-function addCriterionRow(container, totalElement, criterion = {}) {
+function addCustomCriterionRow(container, criterion = {}) {
   container.insertAdjacentHTML("beforeend", criterionRowHtml(criterion));
-  updateCriteriaTotal(container, totalElement);
 }
 
-function fillCriteriaEditor(container, totalElement, criteria) {
+function renderCustomEditor(container, criteria = []) {
+  const custom = normalizeCriteria(criteria).filter((criterion) => criterion.type !== "preset");
   container.innerHTML = "";
-  const normalized = normalizeCriteria(criteria);
-  if (normalized.length) {
-    normalized.forEach((criterion) => addCriterionRow(container, totalElement, criterion));
+  if (custom.length) {
+    custom.forEach((criterion) => addCustomCriterionRow(container, criterion));
   } else {
-    addCriterionRow(container, totalElement);
+    addCustomCriterionRow(container);
   }
 }
 
-function collectCriteria(container) {
+function collectPresetCriteria(container) {
   const criteria = [];
+
+  for (const card of container.querySelectorAll(".preset-card")) {
+    const enabled = card.querySelector("[data-preset-enabled]")?.checked;
+    if (!enabled) continue;
+
+    const presetKey = String(card.dataset.presetKey || "");
+    const preset = PRESET_CRITERIA.find((item) => item.key === presetKey);
+    if (!preset) continue;
+
+    const maxPoints = Number(card.querySelector("[data-preset-points]")?.value || 0);
+    if (!Number.isFinite(maxPoints) || maxPoints <= 0) {
+      return { error: `Enter points greater than 0 for "${preset.title}".`, criteria: [] };
+    }
+
+    criteria.push({
+      id: `preset-${preset.key}`,
+      type: "preset",
+      presetKey: preset.key,
+      title: preset.title,
+      description: preset.description,
+      maxPoints: Number(maxPoints.toFixed(2))
+    });
+  }
+
+  return { error: "", criteria };
+}
+
+function collectCustomCriteria(container) {
+  const criteria = [];
+
   for (const row of container.querySelectorAll(".criteria-row")) {
     const title = row.querySelector("[data-criterion-title]")?.value.trim() || "";
     const description = row.querySelector("[data-criterion-description]")?.value.trim() || "";
@@ -122,23 +252,81 @@ function collectCriteria(container) {
     if (isBlank) continue;
 
     const maxPoints = Number(pointsRaw);
-    if (!title) return { error: "Each evaluation criterion needs a name.", criteria: [] };
+    if (!title) return { error: "Each custom criterion needs a name.", criteria: [] };
     if (!Number.isFinite(maxPoints) || maxPoints <= 0) {
       return { error: `Enter points greater than 0 for "${title}".`, criteria: [] };
     }
 
     criteria.push({
       id: row.dataset.criterionId || makeCriterionId(),
+      type: "custom",
+      presetKey: "",
       title,
       description,
       maxPoints: Number(maxPoints.toFixed(2))
     });
   }
+
   return { error: "", criteria };
+}
+
+function collectRubric(presetContainer, customContainer) {
+  const presetResult = collectPresetCriteria(presetContainer);
+  if (presetResult.error) return presetResult;
+
+  const customResult = collectCustomCriteria(customContainer);
+  if (customResult.error) return customResult;
+
+  return {
+    error: "",
+    criteria: [...presetResult.criteria, ...customResult.criteria]
+  };
+}
+
+function rubricTotal(presetContainer, customContainer) {
+  let total = 0;
+
+  for (const card of presetContainer.querySelectorAll(".preset-card")) {
+    if (!card.querySelector("[data-preset-enabled]")?.checked) continue;
+    total += Math.max(0, Number(card.querySelector("[data-preset-points]")?.value || 0));
+  }
+
+  for (const input of customContainer.querySelectorAll("[data-criterion-points]")) {
+    total += Math.max(0, Number(input.value || 0));
+  }
+
+  return Number(total.toFixed(2));
+}
+
+function updateRubricTotal(presetContainer, customContainer, totalElement) {
+  totalElement.textContent = `Total points: ${rubricTotal(presetContainer, customContainer)}`;
+}
+
+function fillRubricEditor(presetContainer, customContainer, totalElement, criteria = []) {
+  renderPresetEditor(presetContainer, criteria);
+  renderCustomEditor(customContainer, criteria);
+  updateRubricTotal(presetContainer, customContainer, totalElement);
+}
+
+function renderCriteriaGroup(title, criteria) {
+  if (!criteria.length) return "";
+  return `
+    <div class="criteria-view-group">
+      <h5>${escapeHtml(title)}</h5>
+      ${criteria.map((criterion) => `
+        <div class="criteria-view-item">
+          <strong>${escapeHtml(criterion.title)} <span class="criteria-points">· ${escapeHtml(criterion.maxPoints)} pts</span></strong>
+          ${criterion.description ? `<span>${escapeHtml(criterion.description)}</span>` : ""}
+        </div>
+      `).join("")}
+    </div>
+  `;
 }
 
 function renderEvaluationCriteria(assignment) {
   const criteria = normalizeCriteria(assignment?.evaluationCriteria);
+  const presets = criteria.filter((criterion) => criterion.type === "preset");
+  const custom = criteria.filter((criterion) => criterion.type !== "preset");
   const notes = String(assignment?.evaluationNotes || "").trim();
   const total = criteria.reduce((sum, criterion) => sum + Number(criterion.maxPoints || 0), 0);
 
@@ -147,19 +335,13 @@ function renderEvaluationCriteria(assignment) {
     return;
   }
 
-  const items = criteria.map((criterion) => `
-    <div class="criteria-view-item">
-      <strong>${escapeHtml(criterion.title)} <span class="criteria-points">· ${escapeHtml(criterion.maxPoints)} pts</span></strong>
-      ${criterion.description ? `<span>${escapeHtml(criterion.description)}</span>` : ""}
-    </div>
-  `).join("");
-
   const notesBlock = notes
     ? `<div class="criteria-view-item"><strong>Teacher grading notes</strong><span>${escapeHtml(notes)}</span></div>`
     : "";
 
   criteriaReadOnly.innerHTML = `
-    ${items}
+    ${renderCriteriaGroup("Preset criteria", presets)}
+    ${renderCriteriaGroup("Custom criteria", custom)}
     ${notesBlock}
     <div class="criteria-total">Total points: ${Number(total.toFixed(2))}</div>
   `;
@@ -244,6 +426,7 @@ function renderDetail() {
 
   selectedDriveFolderUrl =
     validSubmissionEntries.find(([, submission]) => submission.driveFolderUrl)?.[1]?.driveFolderUrl || "";
+
   openDriveFolderBtn.disabled = !selectedDriveFolderUrl;
   driveStatus.textContent = selectedDriveFolderUrl
     ? "PDFs are stored in the Google Drive folder for this task."
@@ -287,11 +470,11 @@ async function createAssignment() {
   const instructions = assignmentInstructions.value.trim();
   const dueValue = assignmentDueAt.value;
   const dueAt = dueValue ? new Date(dueValue).getTime() : null;
-  const criteriaResult = collectCriteria(createCriteriaRows);
+  const rubricResult = collectRubric(createPresetCriteria, createCriteriaRows);
   const evaluationNotes = assignmentEvaluationNotes.value.trim();
 
-  if (criteriaResult.error) {
-    createAssignmentStatus.textContent = criteriaResult.error;
+  if (rubricResult.error) {
+    createAssignmentStatus.textContent = rubricResult.error;
     createAssignmentStatus.className = "status-text bad";
     return;
   }
@@ -322,7 +505,7 @@ async function createAssignment() {
       title,
       groupName,
       instructions: instructions || "Upload your completed work as one PDF file.",
-      evaluationCriteria: criteriaResult.criteria,
+      evaluationCriteria: rubricResult.criteria,
       evaluationNotes,
       evaluationUpdatedAt: Date.now(),
       dueAt,
@@ -338,7 +521,7 @@ async function createAssignment() {
     assignmentInstructions.value = "";
     assignmentEvaluationNotes.value = "";
     assignmentDueAt.value = "";
-    fillCriteriaEditor(createCriteriaRows, createCriteriaTotal, []);
+    fillRubricEditor(createPresetCriteria, createCriteriaRows, createCriteriaTotal, []);
     createAssignmentStatus.textContent = "Assignment created.";
     createAssignmentStatus.className = "status-text ok";
   } catch (error) {
@@ -362,7 +545,12 @@ async function toggleAssignment() {
 function beginCriteriaEdit() {
   const assignment = assignmentsCache[selectedAssignmentId];
   if (!assignment) return;
-  fillCriteriaEditor(editCriteriaRows, editCriteriaTotal, assignment.evaluationCriteria);
+  fillRubricEditor(
+    editPresetCriteria,
+    editCriteriaRows,
+    editCriteriaTotal,
+    assignment.evaluationCriteria
+  );
   editEvaluationNotes.value = assignment.evaluationNotes || "";
   criteriaSaveStatus.textContent = "";
   criteriaEditPanel.hidden = false;
@@ -377,7 +565,7 @@ async function saveEvaluationCriteria() {
   const assignment = assignmentsCache[selectedAssignmentId];
   if (!assignment) return;
 
-  const result = collectCriteria(editCriteriaRows);
+  const result = collectRubric(editPresetCriteria, editCriteriaRows);
   if (result.error) {
     criteriaSaveStatus.textContent = result.error;
     criteriaSaveStatus.className = "status-text bad";
@@ -407,6 +595,34 @@ async function saveEvaluationCriteria() {
   }
 }
 
+function wireRubricEditor(presetContainer, customContainer, totalElement) {
+  presetContainer.addEventListener("change", (event) => {
+    const checkbox = event.target.closest("[data-preset-enabled]");
+    if (checkbox) {
+      const card = checkbox.closest(".preset-card");
+      const pointsInput = card?.querySelector("[data-preset-points]");
+      if (pointsInput) pointsInput.disabled = !checkbox.checked;
+    }
+    updateRubricTotal(presetContainer, customContainer, totalElement);
+  });
+
+  presetContainer.addEventListener("input", () => {
+    updateRubricTotal(presetContainer, customContainer, totalElement);
+  });
+
+  customContainer.addEventListener("click", (event) => {
+    const removeButton = event.target.closest("[data-remove-criterion]");
+    if (!removeButton) return;
+    removeButton.closest(".criteria-row")?.remove();
+    if (!customContainer.querySelector(".criteria-row")) addCustomCriterionRow(customContainer);
+    updateRubricTotal(presetContainer, customContainer, totalElement);
+  });
+
+  customContainer.addEventListener("input", () => {
+    updateRubricTotal(presetContainer, customContainer, totalElement);
+  });
+}
+
 teacherAssignmentList.addEventListener("click", (event) => {
   const button = event.target.closest("[data-assignment-select]");
   if (!button) return;
@@ -420,27 +636,22 @@ openDriveFolderBtn.addEventListener("click", () => {
 
 createAssignmentBtn.addEventListener("click", createAssignment);
 toggleAssignmentBtn.addEventListener("click", toggleAssignment);
-addCreateCriterionBtn.addEventListener("click", () => addCriterionRow(createCriteriaRows, createCriteriaTotal));
-addEditCriterionBtn.addEventListener("click", () => addCriterionRow(editCriteriaRows, editCriteriaTotal));
+addCreateCriterionBtn.addEventListener("click", () => {
+  addCustomCriterionRow(createCriteriaRows);
+  updateRubricTotal(createPresetCriteria, createCriteriaRows, createCriteriaTotal);
+});
+addEditCriterionBtn.addEventListener("click", () => {
+  addCustomCriterionRow(editCriteriaRows);
+  updateRubricTotal(editPresetCriteria, editCriteriaRows, editCriteriaTotal);
+});
 editCriteriaBtn.addEventListener("click", beginCriteriaEdit);
 cancelCriteriaBtn.addEventListener("click", cancelCriteriaEdit);
 saveCriteriaBtn.addEventListener("click", saveEvaluationCriteria);
 
-for (const [container, totalElement] of [
-  [createCriteriaRows, createCriteriaTotal],
-  [editCriteriaRows, editCriteriaTotal]
-]) {
-  container.addEventListener("click", (event) => {
-    const removeButton = event.target.closest("[data-remove-criterion]");
-    if (!removeButton) return;
-    removeButton.closest(".criteria-row")?.remove();
-    if (!container.querySelector(".criteria-row")) addCriterionRow(container, totalElement);
-    updateCriteriaTotal(container, totalElement);
-  });
-  container.addEventListener("input", () => updateCriteriaTotal(container, totalElement));
-}
+wireRubricEditor(createPresetCriteria, createCriteriaRows, createCriteriaTotal);
+wireRubricEditor(editPresetCriteria, editCriteriaRows, editCriteriaTotal);
+fillRubricEditor(createPresetCriteria, createCriteriaRows, createCriteriaTotal, []);
 
-fillCriteriaEditor(createCriteriaRows, createCriteriaTotal, []);
 logoutBtn.addEventListener("click", logoutTeacher);
 
 onValue(ref(db, "groups"), (snapshot) => {
