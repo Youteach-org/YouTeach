@@ -131,6 +131,133 @@ async function findOrCreateTaskFolder(accessToken, taskCode, configuredRootFolde
   return findOrCreateFolder(accessToken, taskCode, root.id);
 }
 
+function normalizeEvaluationCriteria(value) {
+  const raw = Array.isArray(value) ? value : Object.values(value || {});
+  return raw
+    .filter(Boolean)
+    .map((criterion, index) => ({
+      id: String(criterion.id || `criterion-${index + 1}`),
+      title: String(criterion.title || criterion.name || "").trim(),
+      description: String(criterion.description || "").trim(),
+      maxPoints: Number(criterion.maxPoints || criterion.points || 0)
+    }))
+    .filter((criterion) => criterion.title || criterion.description || criterion.maxPoints);
+}
+
+async function ensureEvaluationRubricFile({
+  accessToken,
+  folderId,
+  assignment,
+  assignmentId,
+  taskCode
+}) {
+  const criteria = normalizeEvaluationCriteria(assignment?.evaluationCriteria);
+  const notes = String(assignment?.evaluationNotes || "").trim();
+  if (!criteria.length && !notes) return null;
+
+  const fileName = `${taskCode}--evaluation-criteria.json`;
+  const query = [
+    `'${escapeDriveQuery(folderId)}' in parents`,
+    `name = '${escapeDriveQuery(fileName)}'`,
+    "trashed = false"
+  ].join(" and ");
+
+  const searchUrl = new URL("https://www.googleapis.com/drive/v3/files");
+  searchUrl.searchParams.set("q", query);
+  searchUrl.searchParams.set("fields", "files(id,name,webViewLink)");
+  searchUrl.searchParams.set("pageSize", "10");
+
+  const searchResponse = await fetch(searchUrl, {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
+  const searchData = await searchResponse.json();
+  if (!searchResponse.ok) {
+    throw new Error(searchData.error?.message || "Could not search the evaluation rubric file.");
+  }
+
+  let file = searchData.files?.[0] || null;
+  if (!file) {
+    const createResponse = await fetch(
+      "https://www.googleapis.com/drive/v3/files?fields=id,name,webViewLink",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          name: fileName,
+          mimeType: "application/json",
+          parents: [folderId],
+          appProperties: {
+            source: "youteach",
+            kind: "evaluation-rubric",
+            assignmentId: String(assignmentId),
+            taskCode: String(taskCode)
+          }
+        })
+      }
+    );
+    const created = await createResponse.json();
+    if (!createResponse.ok) {
+      throw new Error(created.error?.message || "Could not create the evaluation rubric file.");
+    }
+    file = created;
+  }
+
+  const totalPoints = criteria.reduce(
+    (sum, criterion) => sum + Math.max(0, Number(criterion.maxPoints || 0)),
+    0
+  );
+
+  const rubric = {
+    schemaVersion: 1,
+    source: "YouTeach",
+    purpose: "Evaluation criteria for ChatGPT-assisted grading",
+    assignmentId: String(assignmentId),
+    taskCode: String(taskCode),
+    title: String(assignment?.title || "Assignment"),
+    groupName: String(assignment?.groupName || "ALL"),
+    instructions: String(assignment?.instructions || ""),
+    evaluationNotes: notes,
+    totalPoints: Number(totalPoints.toFixed(2)),
+    criteria,
+    updatedAt: Number(
+      assignment?.evaluationUpdatedAt ||
+      assignment?.updatedAt ||
+      assignment?.createdAt ||
+      Date.now()
+    )
+  };
+
+  const uploadResponse = await fetch(
+    `https://www.googleapis.com/upload/drive/v3/files/${encodeURIComponent(file.id)}?uploadType=media`,
+    {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json; charset=UTF-8"
+      },
+      body: JSON.stringify(rubric, null, 2)
+    }
+  );
+
+  if (!uploadResponse.ok) {
+    let message = "Could not update the evaluation rubric file.";
+    try {
+      const errorBody = await uploadResponse.json();
+      message = errorBody.error?.message || message;
+    } catch (_) {}
+    throw new Error(message);
+  }
+
+  return {
+    id: file.id,
+    name: fileName,
+    url: file.webViewLink || `https://drive.google.com/file/d/${file.id}/view`
+  };
+}
+
 async function beginResumableUpload({
   accessToken,
   fileId,
