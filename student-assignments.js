@@ -89,7 +89,7 @@ function renderAssignments() {
 
     return `
       <article class="assignment-card">
-        <h3>${escapeHtml(assignment.title || "Assignment")}</h3>
+        <h3>${escapeHtml(assignment.code || "")} · ${escapeHtml(assignment.title || "Assignment")}</h3>
         <div class="assignment-meta">
           <span class="assignment-chip">Group: ${escapeHtml(assignment.groupName || "ALL")}</span>
           <span class="assignment-chip">Due: ${escapeHtml(formatDate(assignment.dueAt))}</span>
@@ -168,6 +168,7 @@ async function handleUpload(assignmentId) {
       progress.textContent = `Uploading photo ${index + 1} of ${files.length}...`;
       const fileResult = await uploadAssignmentPhoto({
         assignmentId,
+        taskCode: assignment.code || assignmentId,
         studentKey,
         studentNumber: currentStudent.studentNumber || currentStudent.id || "",
         groupName: currentStudent.groupName || "GENERAL",
@@ -186,6 +187,7 @@ async function handleUpload(assignmentId) {
         studentNumber: currentStudent.studentNumber || currentStudent.id || "",
         groupName: currentStudent.groupName || "GENERAL",
         assignmentId,
+        assignmentCode: assignment.code || "",
         assignmentTitle: assignment.title || "Assignment",
         submittedAt: submissionCache[assignmentId]?.submittedAt || Date.now(),
         updatedAt: Date.now(),
