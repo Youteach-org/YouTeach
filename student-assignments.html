@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YouTeach - My Assignments</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .assignment-grid{display:grid;gap:16px}
+    .assignment-card{background:#fff;border:1px solid #dbeafe;border-radius:18px;padding:18px;box-shadow:0 8px 22px rgba(15,23,42,.06)}
+    .assignment-card h3{margin:0 0 6px}
+    .assignment-meta{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px;color:#475569;font-size:13px}
+    .assignment-chip{background:#eff6ff;border-radius:999px;padding:5px 9px}
+    .assignment-instructions{white-space:pre-wrap;color:#334155;line-height:1.5}
+    .upload-box{margin-top:14px;padding:14px;border:2px dashed #93c5fd;border-radius:14px;background:#f8fbff}
+    .upload-box input{width:100%;margin:8px 0}
+    .upload-btn{width:100%;margin-top:8px}
+    .submission-row{display:flex;justify-content:space-between;gap:10px;margin-top:12px;padding:10px;background:#f1f5f9;border-radius:10px;font-size:13px}
+    .assignment-status{margin-top:8px;font-size:13px;font-weight:700}
+    .assignment-status.ok{color:#15803d}.assignment-status.bad{color:#b91c1c}
+    .empty-state{padding:28px;text-align:center;color:#64748b}
+  </style>
+</head>
+<body>
+  <button id="menuToggle" class="hamburger-btn" aria-label="Open menu"><span></span><span></span><span></span></button>
+  <div class="menu-shell">
+    <aside id="sidebar" class="sidebar collapsible-sidebar">
+      <div class="sidebar-content">
+        <div class="brand"><h1>YouTeach</h1><p>Student Menu</p></div>
+        <div id="sidebarIdentity" class="sidebar-identity">Student</div>
+        <div class="sidebar-links">
+          <a class="sidebar-link" href="student-buzzer.html">Buzzer</a>
+          <a class="sidebar-link active-link" href="student-assignments.html">My Assignments</a>
+          <a class="sidebar-link" href="student-summary.html">My Summary</a>
+          <a class="sidebar-link" href="student-settings.html">Settings</a>
+          <button id="logoutBtn" class="logout-btn">Logout</button>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div>
+          <h2>My Assignments</h2>
+          <p>Attach one PDF for each assignment.</p>
+        </div>
+        <div class="topbar-right"><span id="studentIdentity" class="teacher-identity">Student</span></div>
+      </header>
+
+      <div class="panel-card" style="margin-bottom:16px">
+        <strong id="studentAssignmentIdentity">Loading student...</strong>
+        <div style="margin-top:6px;color:#64748b;font-size:13px">
+          PDF only · maximum 15 MB · submitting again replaces the previous PDF.
+        </div>
+      </div>
+
+      <div id="assignmentList" class="assignment-grid">
+        <div class="empty-state">Loading assignments...</div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module" src="student-assignments.js?v=drive-pdf-20260914"></script>
+  <script defer src="shared-ui-fixes.js?v=assignments-20260914"></script>
+</body>
+</html>
