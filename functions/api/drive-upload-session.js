@@ -1,6 +1,8 @@
 const ROOT_FOLDER_NAME = "YouTeach Assignments";
 const DATABASE_URL = "https://youteach-d9a79-default-rtdb.firebaseio.com";
 const MAX_PDF_BYTES = 15 * 1024 * 1024;
+const RUBRIC_MARKER = "\n\n[[YOUTEACH_RUBRIC_V1:";
+const RUBRIC_END = "]]";
 
 function json(status, payload, extraHeaders = {}) {
   return new Response(JSON.stringify(payload), {
@@ -25,6 +27,35 @@ function safeSegment(value, fallback = "item") {
 
 function escapeDriveQuery(value) {
   return String(value || "").replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+}
+
+function decodeRubricMetadata(value) {
+  try {
+    const binary = atob(String(value || ""));
+    const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+    return JSON.parse(new TextDecoder().decode(bytes));
+  } catch (_) {
+    return {};
+  }
+}
+
+function splitStoredInstructions(value) {
+  const raw = String(value || "");
+  const markerIndex = raw.lastIndexOf(RUBRIC_MARKER);
+  if (markerIndex < 0) {
+    return { visibleInstructions: raw, rubric: {} };
+  }
+
+  const encodedStart = markerIndex + RUBRIC_MARKER.length;
+  const endIndex = raw.indexOf(RUBRIC_END, encodedStart);
+  if (endIndex < 0) {
+    return { visibleInstructions: raw, rubric: {} };
+  }
+
+  return {
+    visibleInstructions: raw.slice(0, markerIndex).trimEnd(),
+    rubric: decodeRubricMetadata(raw.slice(encodedStart, endIndex))
+  };
 }
 
 async function firebaseGet(path) {
@@ -153,8 +184,16 @@ async function ensureEvaluationRubricFile({
   assignmentId,
   taskCode
 }) {
-  const criteria = normalizeEvaluationCriteria(assignment?.evaluationCriteria);
-  const notes = String(assignment?.evaluationNotes || "").trim();
+  const embedded = splitStoredInstructions(assignment?.instructions);
+  const directCriteria = normalizeEvaluationCriteria(assignment?.evaluationCriteria);
+  const criteria = directCriteria.length
+    ? directCriteria
+    : normalizeEvaluationCriteria(embedded.rubric?.criteria);
+  const notes = String(
+    assignment?.evaluationNotes ??
+    embedded.rubric?.notes ??
+    ""
+  ).trim();
   if (!criteria.length && !notes) return null;
 
   const fileName = `${taskCode}--evaluation-criteria.json`;
@@ -220,9 +259,13 @@ async function ensureEvaluationRubricFile({
     taskCode: String(taskCode),
     title: String(assignment?.title || "Assignment"),
     groupName: String(assignment?.groupName || "ALL"),
-    instructions: String(assignment?.instructions || ""),
+    instructions: String(embedded.visibleInstructions || ""),
     evaluationNotes: notes,
-    distributionMode: String(assignment?.evaluationDistribution || "manual"),
+    distributionMode: String(
+      assignment?.evaluationDistribution ||
+      embedded.rubric?.distribution ||
+      "manual"
+    ),
     totalPoints: Number(totalPoints.toFixed(2)),
     criteria,
     updatedAt: Number(
