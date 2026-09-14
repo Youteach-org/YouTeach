@@ -154,13 +154,13 @@ async function handleUpload(assignmentId) {
     return;
   }
   if (files.length > 6) {
-    status.textContent = "Upload a maximum of 6 photos at a time.";
+    status.textContent = "Upload a maximum of 6 files at a time.";
     status.className = "assignment-status bad";
     return;
   }
 
   button.disabled = true;
-  status.textContent = "Preparing photos...";
+  status.textContent = "Preparing files...";
   status.className = "assignment-status";
 
   try {
@@ -188,20 +188,22 @@ async function handleUpload(assignmentId) {
         assignmentId,
         assignmentTitle: assignment.title || "Assignment",
         submittedAt: submissionCache[assignmentId]?.submittedAt || Date.now(),
-        updatedAt: Date.now()
+        updatedAt: Date.now(),
+        reviewStatus: "pending",
+        identityReviewStatus: "pending"
       });
       await update(fileRef, fileResult);
     }
 
     input.value = "";
     progress.textContent = "Upload complete.";
-    status.textContent = "Your photos were submitted successfully.";
+    status.textContent = "Your files were submitted successfully.";
     status.className = "assignment-status ok";
     await refreshAssignments();
   } catch (error) {
     console.error(error);
     progress.textContent = "";
-    status.textContent = error?.message || "Could not upload the photos.";
+    status.textContent = error?.message || "Could not upload the files.";
     status.className = "assignment-status bad";
   } finally {
     button.disabled = false;
