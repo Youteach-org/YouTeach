@@ -30,6 +30,29 @@
 
     if (!sidebar || !menuToggle) return;
 
+    function ensureAssignmentsLink() {
+      const links = sidebar.querySelector(".sidebar-links");
+      const brandLabel = (sidebar.querySelector(".brand p")?.textContent || "").toLowerCase();
+      if (!links || links.querySelector('a[href="student-assignments.html"], a[href="teacher-assignments.html"]')) return;
+
+      const link = document.createElement("a");
+      link.className = "sidebar-link";
+
+      if (brandLabel.includes("student")) {
+        link.href = "student-assignments.html";
+        link.textContent = "My Assignments";
+        const before = links.querySelector('a[href="student-summary.html"]');
+        links.insertBefore(link, before || links.querySelector("button"));
+      } else if (brandLabel.includes("teacher")) {
+        link.href = "teacher-assignments.html";
+        link.textContent = "Assignments";
+        const before = links.querySelector('a[href="teacher-points.html"]');
+        links.insertBefore(link, before || links.querySelector("button"));
+      }
+    }
+
+    ensureAssignmentsLink();
+
     function syncIdentity() {
       const identityText = getBestIdentityText();
       if (sidebarIdentity && identityText) {
