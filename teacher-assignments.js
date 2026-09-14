@@ -21,9 +21,9 @@ const submittedCount = document.getElementById("submittedCount");
 const missingCount = document.getElementById("missingCount");
 const submissionList = document.getElementById("submissionList");
 const missingList = document.getElementById("missingList");
-const downloadZipBtn = document.getElementById("downloadZipBtn");
+const openDriveFolderBtn = document.getElementById("openDriveFolderBtn");
 const toggleAssignmentBtn = document.getElementById("toggleAssignmentBtn");
-const zipStatus = document.getElementById("zipStatus");
+const driveStatus = document.getElementById("driveStatus");
 const logoutBtn = document.getElementById("logoutBtn");
 const teacherIdentity = document.getElementById("teacherIdentity");
 
@@ -32,6 +32,7 @@ let submissionsCache = {};
 let studentsCache = {};
 let groupsCache = {};
 let selectedAssignmentId = "";
+let selectedDriveFolderUrl = "";
 
 teacherIdentity.textContent = getTeacherName();
 
@@ -41,24 +42,9 @@ function escapeHtml(value) {
   }[char]));
 }
 
-function safeFileSegment(value, fallback = "item") {
-  const clean = String(value || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-zA-Z0-9._-]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-  return clean || fallback;
-}
-
 function formatDate(timestamp) {
   const value = Number(timestamp || 0);
   return value ? new Date(value).toLocaleString() : "No due date";
-}
-
-function csv(value) {
-  const text = String(value ?? "");
-  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
 function assignmentStudents(assignment) {
@@ -73,6 +59,7 @@ function assignmentSubmissions(assignmentId) {
 }
 
 function renderGroupOptions() {
+  const current = assignmentGroup.value;
   const groups = Object.values(groupsCache || {})
     .map((group) => String(group?.name || "").trim())
     .filter(Boolean)
@@ -81,6 +68,10 @@ function renderGroupOptions() {
   assignmentGroup.innerHTML =
     '<option value="ALL">All groups</option>' +
     groups.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("");
+
+  if ([...assignmentGroup.options].some((option) => option.value === current)) {
+    assignmentGroup.value = current;
+  }
 }
 
 function renderAssignmentList() {
@@ -100,7 +91,7 @@ function renderAssignmentList() {
 
   teacherAssignmentList.innerHTML = entries.map(([id, assignment]) => {
     const submissions = assignmentSubmissions(id);
-    const count = Object.keys(submissions).length;
+    const count = Object.values(submissions).filter((submission) => submission?.driveFileId).length;
     return `
       <button class="assignment-item ${id === selectedAssignmentId ? "active" : ""}" data-assignment-select="${id}">
         <strong>${escapeHtml(assignment.code || "")} · ${escapeHtml(assignment.title || "Assignment")}</strong>
@@ -117,6 +108,7 @@ function renderDetail() {
   if (!assignment) {
     assignmentDetail.hidden = true;
     assignmentDetailEmpty.hidden = false;
+    selectedDriveFolderUrl = "";
     return;
   }
 
@@ -125,38 +117,44 @@ function renderDetail() {
 
   const students = assignmentStudents(assignment);
   const submissions = assignmentSubmissions(selectedAssignmentId);
-  const submittedKeys = new Set(Object.keys(submissions));
+  const validSubmissionEntries = Object.entries(submissions)
+    .filter(([, submission]) => submission?.driveFileId)
+    .sort((a, b) => String(a[1]?.studentName || "").localeCompare(String(b[1]?.studentName || "")));
+
+  const submittedKeys = new Set(validSubmissionEntries.map(([studentKey]) => studentKey));
   const missing = students.filter(([studentKey]) => !submittedKeys.has(studentKey));
+
+  selectedDriveFolderUrl =
+    validSubmissionEntries.find(([, submission]) => submission.driveFolderUrl)?.[1]?.driveFolderUrl || "";
+  openDriveFolderBtn.disabled = !selectedDriveFolderUrl;
+  driveStatus.textContent = selectedDriveFolderUrl
+    ? "PDFs are stored in the Google Drive folder for this task."
+    : "The Drive folder is created automatically with the first PDF submission.";
 
   detailTitle.textContent = `${assignment.code || ""} · ${assignment.title || "Assignment"}`;
   detailMeta.textContent = `${assignment.groupName || "ALL"} · Due: ${formatDate(assignment.dueAt)} · ${assignment.active ? "Open" : "Closed"}`;
   eligibleCount.textContent = students.length;
-  submittedCount.textContent = Object.keys(submissions).length;
+  submittedCount.textContent = validSubmissionEntries.length;
   missingCount.textContent = missing.length;
   toggleAssignmentBtn.textContent = assignment.active ? "Close Assignment" : "Reopen Assignment";
 
-  const submissionEntries = Object.entries(submissions)
-    .sort((a, b) => String(a[1]?.studentName || "").localeCompare(String(b[1]?.studentName || "")));
-
-  submissionList.innerHTML = submissionEntries.length
-    ? submissionEntries.map(([studentKey, submission]) => {
-        const files = Object.values(submission.files || {}).sort((a, b) => Number(a.uploadedAt || 0) - Number(b.uploadedAt || 0));
-        return `
-          <article class="submission-card">
-            <h4>${escapeHtml(submission.studentName || "Student")}</h4>
-            <div class="submission-meta">
-              ${escapeHtml(submission.studentNumber || "No ID")} ·
-              ${escapeHtml(submission.groupName || "")} ·
-              ${files.length} photo${files.length === 1 ? "" : "s"} ·
-              ${escapeHtml(formatDate(submission.updatedAt || submission.submittedAt))}
-            </div>
-            <div class="photo-links">
-              ${files.map((file, index) => `<a href="${escapeHtml(file.downloadURL || "#")}" target="_blank" rel="noopener">Photo ${index + 1}</a>`).join("")}
-            </div>
-          </article>
-        `;
-      }).join("")
-    : '<div class="status-text">No submissions yet.</div>';
+  submissionList.innerHTML = validSubmissionEntries.length
+    ? validSubmissionEntries.map(([, submission]) => `
+        <article class="submission-card">
+          <h4>${escapeHtml(submission.studentName || "Student")}</h4>
+          <div class="submission-meta">
+            ${escapeHtml(submission.studentNumber || "No ID")} ·
+            ${escapeHtml(submission.groupName || "")} ·
+            ${Math.max(1, Math.round(Number(submission.size || 0) / 1024))} KB ·
+            ${escapeHtml(formatDate(submission.updatedAt || submission.submittedAt))}
+          </div>
+          <div class="review-chip">Identity pending review</div><br>
+          <a class="pdf-link" href="${escapeHtml(submission.driveFileUrl || "#")}" target="_blank" rel="noopener">
+            Open submitted PDF →
+          </a>
+        </article>
+      `).join("")
+    : '<div class="status-text">No PDF submissions yet.</div>';
 
   missingList.textContent = missing.length
     ? missing.map(([, student]) => student.fullName || student.name || student.nickname || "Student").join(", ")
@@ -164,7 +162,7 @@ function renderDetail() {
 }
 
 async function createAssignment() {
-  const code = assignmentCode.value.trim();
+  const code = assignmentCode.value.trim().toUpperCase();
   const title = assignmentTitle.value.trim();
   const groupName = assignmentGroup.value || "ALL";
   const instructions = assignmentInstructions.value.trim();
@@ -173,6 +171,15 @@ async function createAssignment() {
 
   if (!code || !title) {
     createAssignmentStatus.textContent = "Enter a task code and assignment title.";
+    createAssignmentStatus.className = "status-text bad";
+    return;
+  }
+
+  const duplicate = Object.values(assignmentsCache).some(
+    (assignment) => String(assignment?.code || "").trim().toUpperCase() === code
+  );
+  if (duplicate) {
+    createAssignmentStatus.textContent = "That task code is already in use.";
     createAssignmentStatus.className = "status-text bad";
     return;
   }
@@ -187,9 +194,10 @@ async function createAssignment() {
       code,
       title,
       groupName,
-      instructions: instructions || "Upload clear photos of your work.",
+      instructions: instructions || "Upload your completed work as one PDF file.",
       dueAt,
       active: true,
+      storageProvider: "google-drive",
       createdAt: Date.now(),
       createdBy: getTeacherName()
     });
@@ -219,106 +227,6 @@ async function toggleAssignment() {
   });
 }
 
-async function downloadZip() {
-  const assignment = assignmentsCache[selectedAssignmentId];
-  const submissions = assignmentSubmissions(selectedAssignmentId);
-  const entries = Object.entries(submissions);
-
-  if (!assignment || !entries.length) {
-    zipStatus.textContent = "There are no submitted photos to download.";
-    zipStatus.className = "status-text bad";
-    return;
-  }
-
-  if (!window.JSZip) {
-    zipStatus.textContent = "ZIP library did not load. Refresh the page and try again.";
-    zipStatus.className = "status-text bad";
-    return;
-  }
-
-  downloadZipBtn.disabled = true;
-  zipStatus.textContent = "Preparing ZIP...";
-  zipStatus.className = "status-text";
-
-  try {
-    const zip = new window.JSZip();
-    const assignmentFolderName = safeFileSegment(assignment.title || "assignment");
-    const folder = zip.folder(assignmentFolderName);
-
-    const manifest = [[
-      "studentNumber", "studentName", "groupName", "submittedAt", "updatedAt", "fileCount"
-    ].join(",")];
-
-    let totalFiles = 0;
-    for (const [, submission] of entries) totalFiles += Object.keys(submission.files || {}).length;
-    let completedFiles = 0;
-
-    for (const [studentKey, submission] of entries) {
-      const studentFolderName = [
-        safeFileSegment(submission.studentName || "Student"),
-        safeFileSegment(submission.studentNumber || studentKey)
-      ].join("--");
-      const studentFolder = folder.folder(studentFolderName);
-      const files = Object.values(submission.files || {}).sort((a, b) => Number(a.uploadedAt || 0) - Number(b.uploadedAt || 0));
-
-      manifest.push([
-        csv(submission.studentNumber || ""),
-        csv(submission.studentName || ""),
-        csv(submission.groupName || ""),
-        csv(submission.submittedAt ? new Date(submission.submittedAt).toISOString() : ""),
-        csv(submission.updatedAt ? new Date(submission.updatedAt).toISOString() : ""),
-        csv(files.length)
-      ].join(","));
-
-      for (let index = 0; index < files.length; index += 1) {
-        const file = files[index];
-        if (!file.downloadURL) continue;
-        completedFiles += 1;
-        zipStatus.textContent = `Downloading photo ${completedFiles} of ${totalFiles}...`;
-
-        const response = await fetch(file.downloadURL);
-        if (!response.ok) throw new Error(`Could not download a submitted photo (HTTP ${response.status}).`);
-        const blob = await response.blob();
-
-        const original = safeFileSegment(file.fileName || `photo-${index + 1}.jpg`);
-        const archiveName = `${String(index + 1).padStart(2, "0")}-${original}`;
-        studentFolder.file(archiveName, blob);
-      }
-    }
-
-    folder.file("manifest.csv", manifest.join("\n"));
-    folder.file("assignment-info.txt", [
-      `Task code: ${assignment.code || ""}`,
-      `Title: ${assignment.title || ""}`,
-      `Group: ${assignment.groupName || "ALL"}`,
-      `Due: ${assignment.dueAt ? new Date(assignment.dueAt).toISOString() : "None"}`,
-      "",
-      "Instructions:",
-      assignment.instructions || ""
-    ].join("\n"));
-
-    zipStatus.textContent = "Compressing ZIP...";
-    const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 } });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `${assignmentFolderName}-submissions.zip`;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-
-    zipStatus.textContent = `ZIP ready: ${entries.length} student submission${entries.length === 1 ? "" : "s"}.`;
-    zipStatus.className = "status-text ok";
-  } catch (error) {
-    console.error(error);
-    zipStatus.textContent = error?.message || "Could not build the ZIP.";
-    zipStatus.className = "status-text bad";
-  } finally {
-    downloadZipBtn.disabled = false;
-  }
-}
-
 teacherAssignmentList.addEventListener("click", (event) => {
   const button = event.target.closest("[data-assignment-select]");
   if (!button) return;
@@ -326,9 +234,12 @@ teacherAssignmentList.addEventListener("click", (event) => {
   renderAssignmentList();
 });
 
+openDriveFolderBtn.addEventListener("click", () => {
+  if (selectedDriveFolderUrl) window.open(selectedDriveFolderUrl, "_blank", "noopener");
+});
+
 createAssignmentBtn.addEventListener("click", createAssignment);
 toggleAssignmentBtn.addEventListener("click", toggleAssignment);
-downloadZipBtn.addEventListener("click", downloadZip);
 logoutBtn.addEventListener("click", logoutTeacher);
 
 onValue(ref(db, "groups"), (snapshot) => {
