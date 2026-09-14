@@ -18,6 +18,9 @@ const activityScoresStrip = document.getElementById("activityScoresStrip");
 
 let currentStudent = null;
 let currentSession = null;
+let hundredSS = null;
+const gameTurnCard = document.getElementById("gameTurnCard");
+const gameTurnPosition = document.getElementById("gameTurnPosition");
 
 function todayKey() {
   const now = new Date();
@@ -118,11 +121,22 @@ function renderBuzzer() {
   const team = currentSession.assignments?.[studentKey] || "No team";
   const buzzer = getBuzzerState();
   const currentBuzz = buzzer.currentBuzz || null;
+  const gameActive = Boolean(currentSession?.connectedGame?.id === "100-students-said" && hundredSS?.integration?.active);
+  const alreadyParticipated = Boolean(hundredSS?.usedStudents?.[studentKey]);
+  const assignedTurn = hundredSS?.turnStudentKey || "";
+  if (gameTurnCard) gameTurnCard.hidden = !gameActive;
+  if (gameActive && gameTurnPosition) gameTurnPosition.textContent = assignedTurn === studentKey ? "YOUR TURN" : (alreadyParticipated ? "Already participated this round" : "Waiting for assigned turn");
   const lockedOutTeam = Boolean(buzzer.lockedOutTeams?.[team]);
   const currentTeam = currentBuzz?.team || "";
 
   studentTeam.textContent = team;
   renderActivityScores();
+
+  if (gameActive && (alreadyParticipated || (assignedTurn && assignedTurn !== studentKey))) {
+    buzzBtn.disabled = true;
+    studentStatus.textContent = alreadyParticipated ? "You already participated in this round." : "Wait for your assigned turn.";
+    return;
+  }
 
   if (lockedOutTeam) {
     buzzBtn.disabled = true;
@@ -160,6 +174,19 @@ buzzBtn.addEventListener("click", async () => {
 
   const team = currentSession.assignments?.[studentKey] || "No team";
   const studentNameText = getDisplayName(currentStudent);
+
+  if (currentSession?.connectedGame?.id === "100-students-said" && hundredSS?.integration?.active) {
+    let eligible = false;
+    await runTransaction(ref(db, "classroomGames/hundredStudentsSaid/current"), (game) => {
+      if (!game || game.usedStudents?.[studentKey]) return game;
+      if (game.turnStudentKey && game.turnStudentKey !== studentKey) return game;
+      game.usedStudents = game.usedStudents || {};
+      game.usedStudents[studentKey] = true;
+      eligible = true;
+      return game;
+    });
+    if (!eligible) return;
+  }
 
   playContestBuzz();
 
@@ -203,4 +230,8 @@ onValue(ref(db, "session/current"), (snapshot) => {
 
 onValue(ref(db, `attendance/${todayKey()}/${studentKey}`), (snapshot) => {
   renderAttendanceStatus(snapshot.val() || null);
+});
+onValue(ref(db, "classroomGames/hundredStudentsSaid/current"), (snapshot) => {
+  hundredSS = snapshot.val() || null;
+  renderBuzzer();
 });
