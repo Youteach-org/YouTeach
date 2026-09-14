@@ -39,82 +39,18 @@ export async function ensureAssignmentStorageAuth() {
   }
 }
 
-function loadImageFromFile(file) {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
-    const image = new Image();
-    image.onload = () => {
-      URL.revokeObjectURL(url);
-      resolve(image);
-    };
-    image.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error("Could not read this image."));
-    };
-    image.src = url;
-  });
-}
-
-async function decodeImage(file) {
-  if ("createImageBitmap" in window) {
-    try {
-      return await createImageBitmap(file);
-    } catch (_) {}
-  }
-  return loadImageFromFile(file);
-}
-
 export async function preparePhoto(file) {
   const type = String(file?.type || "").toLowerCase();
-  const isImage = type.startsWith("image/");
   const isPdf = type === "application/pdf" || String(file?.name || "").toLowerCase().endsWith(".pdf");
 
-  if (!file || (!isImage && !isPdf)) {
-    throw new Error("Only images or PDF files are accepted.");
+  if (!file || !isPdf) {
+    throw new Error("Only PDF files are accepted.");
   }
-  if (file.size > MAX_SOURCE_BYTES) {
-    throw new Error("Each file must be 12 MB or smaller.");
-  }
-
-  if (isPdf) {
-    return file;
+  if (file.size > MAX_UPLOAD_BYTES) {
+    throw new Error("Each PDF must be 8 MB or smaller.");
   }
 
-  try {
-    const image = await decodeImage(file);
-    const width = image.width || image.naturalWidth;
-    const height = image.height || image.naturalHeight;
-    const scale = Math.min(1, MAX_DIMENSION / Math.max(width, height));
-    const targetWidth = Math.max(1, Math.round(width * scale));
-    const targetHeight = Math.max(1, Math.round(height * scale));
-
-    const canvas = document.createElement("canvas");
-    canvas.width = targetWidth;
-    canvas.height = targetHeight;
-    const ctx = canvas.getContext("2d", { alpha: false });
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, targetWidth, targetHeight);
-    ctx.drawImage(image, 0, 0, targetWidth, targetHeight);
-    if (typeof image.close === "function") image.close();
-
-    const blob = await new Promise((resolve, reject) => {
-      canvas.toBlob(
-        (value) => value ? resolve(value) : reject(new Error("Could not compress this photo.")),
-        "image/jpeg",
-        JPEG_QUALITY
-      );
-    });
-
-    if (blob.size > MAX_UPLOAD_BYTES) {
-      throw new Error("The compressed photo is still too large.");
-    }
-
-    const baseName = safeSegment(String(file.name || "photo").replace(/\.[^.]+$/, ""), "photo");
-    return new File([blob], `${baseName}.jpg`, { type: "image/jpeg" });
-  } catch (error) {
-    if (file.size <= MAX_UPLOAD_BYTES) return file;
-    throw error;
-  }
+  return file;
 }
 
 export async function uploadAssignmentPhoto({
@@ -129,7 +65,7 @@ export async function uploadAssignmentPhoto({
 }) {
   const user = await ensureAssignmentStorageAuth();
   const prepared = await preparePhoto(file);
-  const extension = prepared.type === "application/pdf" || String(prepared.name).toLowerCase().endsWith(".pdf") ? "pdf" : "jpg";
+  const extension = "pdf";
   const studentLabel = safeSegment(studentNumber || studentKey, "student");
   const safeTaskCode = safeSegment(taskCode || assignmentId, "task");
   const fileName = `${studentLabel}--${safeTaskCode}--${String(index + 1).padStart(2, "0")}.${extension}`;
