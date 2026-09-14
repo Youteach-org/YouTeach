@@ -53,6 +53,9 @@ const PRESET_CRITERIA = [
 ];
 
 const assignmentCode = document.getElementById("assignmentCode");
+const assignmentType = document.getElementById("assignmentType");
+const assignmentOtherTypeField = document.getElementById("assignmentOtherTypeField");
+const assignmentOtherType = document.getElementById("assignmentOtherType");
 const assignmentTitle = document.getElementById("assignmentTitle");
 const assignmentGroup = document.getElementById("assignmentGroup");
 const assignmentInstructions = document.getElementById("assignmentInstructions");
@@ -115,6 +118,65 @@ function escapeHtml(value) {
 function formatDate(timestamp) {
   const value = Number(timestamp || 0);
   return value ? new Date(value).toLocaleString() : "No due date";
+}
+
+function slugCode(value, fallback = "ITEM") {
+  const clean = String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+  return clean || fallback;
+}
+
+function dateCode(value) {
+  const date = value ? new Date(value) : new Date();
+  if (Number.isNaN(date.getTime())) return "";
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  return `${yyyy}${mm}${dd}`;
+}
+
+function selectedAssignmentTypeLabel() {
+  const selected = String(assignmentType.value || "TASK");
+  if (selected === "OTHER") {
+    return assignmentOtherType.value.trim() || "OTHER";
+  }
+  const option = assignmentType.options[assignmentType.selectedIndex];
+  return option?.textContent?.trim() || selected;
+}
+
+function taskCodeBase() {
+  const typePart = slugCode(selectedAssignmentTypeLabel(), "TASK");
+  const titlePart = slugCode(assignmentTitle.value, "UNTITLED");
+  const groupPart = slugCode(assignmentGroup.value || "ALL", "ALL");
+  const datePart = dateCode(assignmentDueAt.value);
+  return [typePart, titlePart, groupPart, datePart].filter(Boolean).join("-");
+}
+
+function uniqueTaskCode(baseCode) {
+  const used = new Set(
+    Object.values(assignmentsCache || {})
+      .map((assignment) => String(assignment?.code || "").trim().toUpperCase())
+      .filter(Boolean)
+  );
+
+  if (!used.has(baseCode)) return baseCode;
+
+  let suffix = 2;
+  while (used.has(`${baseCode}-${String(suffix).padStart(2, "0")}`)) {
+    suffix += 1;
+  }
+  return `${baseCode}-${String(suffix).padStart(2, "0")}`;
+}
+
+function refreshAutomaticTaskCode() {
+  assignmentOtherTypeField.hidden = assignmentType.value !== "OTHER";
+  const base = taskCodeBase();
+  assignmentCode.value = base ? uniqueTaskCode(base) : "";
 }
 
 function encodeRubricMetadata(value) {
@@ -520,6 +582,7 @@ function renderGroupOptions() {
   if ([...assignmentGroup.options].some((option) => option.value === current)) {
     assignmentGroup.value = current;
   }
+  refreshAutomaticTaskCode();
 }
 
 function renderAssignmentList() {
@@ -612,7 +675,11 @@ function renderDetail() {
 }
 
 async function createAssignment() {
+  refreshAutomaticTaskCode();
   const code = assignmentCode.value.trim().toUpperCase();
+  const typeValue = assignmentType.value === "OTHER"
+    ? assignmentOtherType.value.trim()
+    : assignmentType.options[assignmentType.selectedIndex]?.textContent?.trim() || assignmentType.value;
   const title = assignmentTitle.value.trim();
   const groupName = assignmentGroup.value || "ALL";
   const instructions = assignmentInstructions.value.trim();
@@ -641,17 +708,20 @@ async function createAssignment() {
     }
   }
 
-  if (!code || !title) {
-    createAssignmentStatus.textContent = "Enter a task code and assignment title.";
+  if (!title) {
+    createAssignmentStatus.textContent = "Enter an assignment title.";
     createAssignmentStatus.className = "status-text bad";
     return;
   }
 
-  const duplicate = Object.values(assignmentsCache).some(
-    (assignment) => String(assignment?.code || "").trim().toUpperCase() === code
-  );
-  if (duplicate) {
-    createAssignmentStatus.textContent = "That task code is already in use.";
+  if (assignmentType.value === "OTHER" && !assignmentOtherType.value.trim()) {
+    createAssignmentStatus.textContent = "Specify the assignment type.";
+    createAssignmentStatus.className = "status-text bad";
+    return;
+  }
+
+  if (!code) {
+    createAssignmentStatus.textContent = "Could not generate the task code.";
     createAssignmentStatus.className = "status-text bad";
     return;
   }
@@ -664,6 +734,7 @@ async function createAssignment() {
     const target = push(ref(db, "assignments"));
     const storedInstructions = buildStoredInstructions(instructions, {
       schemaVersion: 1,
+      assignmentType: typeValue,
       criteria: rubricResult.criteria,
       distribution: evaluationDistribution,
       notes: evaluationNotes,
@@ -683,6 +754,9 @@ async function createAssignment() {
     });
 
     selectedAssignmentId = target.key;
+    assignmentType.value = "TASK";
+    assignmentOtherType.value = "";
+    assignmentOtherTypeField.hidden = true;
     assignmentCode.value = "";
     assignmentTitle.value = "";
     assignmentInstructions.value = "";
@@ -844,6 +918,12 @@ openDriveFolderBtn.addEventListener("click", () => {
   if (selectedDriveFolderUrl) window.open(selectedDriveFolderUrl, "_blank", "noopener");
 });
 
+assignmentType.addEventListener("change", refreshAutomaticTaskCode);
+assignmentOtherType.addEventListener("input", refreshAutomaticTaskCode);
+assignmentTitle.addEventListener("input", refreshAutomaticTaskCode);
+assignmentGroup.addEventListener("change", refreshAutomaticTaskCode);
+assignmentDueAt.addEventListener("input", refreshAutomaticTaskCode);
+
 createAssignmentBtn.addEventListener("click", createAssignment);
 toggleAssignmentBtn.addEventListener("click", toggleAssignment);
 addCreateCriterionBtn.addEventListener("click", () => {
@@ -868,6 +948,7 @@ fillRubricEditor(
   createDistributionRadios,
   "equal"
 );
+refreshAutomaticTaskCode();
 
 logoutBtn.addEventListener("click", logoutTeacher);
 
@@ -884,6 +965,7 @@ onValue(ref(db, "students"), (snapshot) => {
 onValue(ref(db, "assignments"), (snapshot) => {
   assignmentsCache = snapshot.val() || {};
   renderAssignmentList();
+  refreshAutomaticTaskCode();
 });
 
 onValue(ref(db, "assignmentSubmissions"), (snapshot) => {
