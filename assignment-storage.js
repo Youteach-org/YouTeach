@@ -65,11 +65,19 @@ async function decodeImage(file) {
 }
 
 export async function preparePhoto(file) {
-  if (!file || !String(file.type || "").startsWith("image/")) {
-    throw new Error("Only image files are accepted.");
+  const type = String(file?.type || "").toLowerCase();
+  const isImage = type.startsWith("image/");
+  const isPdf = type === "application/pdf" || String(file?.name || "").toLowerCase().endsWith(".pdf");
+
+  if (!file || (!isImage && !isPdf)) {
+    throw new Error("Only images or PDF files are accepted.");
   }
   if (file.size > MAX_SOURCE_BYTES) {
-    throw new Error("Each original photo must be 12 MB or smaller.");
+    throw new Error("Each file must be 12 MB or smaller.");
+  }
+
+  if (isPdf) {
+    return file;
   }
 
   try {
@@ -120,13 +128,15 @@ export async function uploadAssignmentPhoto({
 }) {
   const user = await ensureAssignmentStorageAuth();
   const prepared = await preparePhoto(file);
-  const stamp = Date.now();
-  const fileName = `${String(index + 1).padStart(2, "0")}-${safeSegment(prepared.name, "photo.jpg")}`;
+  const extension = prepared.type === "application/pdf" || String(prepared.name).toLowerCase().endsWith(".pdf") ? "pdf" : "jpg";
+  const studentLabel = safeSegment(studentNumber || studentKey, "student");
+  const taskCode = safeSegment(assignmentId, "task");
+  const fileName = `${studentLabel}--${taskCode}--${String(index + 1).padStart(2, "0")}.${extension}`;
   const path = [
     "assignments",
-    safeSegment(assignmentId),
+    taskCode,
     safeSegment(studentKey),
-    `${stamp}-${fileName}`
+    fileName
   ].join("/");
 
   const target = storageRef(storage, path);
