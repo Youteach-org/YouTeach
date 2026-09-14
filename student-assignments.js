@@ -7,6 +7,7 @@ const session = requireStudentSession();
 if (!session) throw new Error("Student session required.");
 
 const { studentKey, externalId } = session;
+const RUBRIC_MARKER = "\n\n[[YOUTEACH_RUBRIC_V1:";
 const assignmentList = document.getElementById("assignmentList");
 const studentIdentity = document.getElementById("studentIdentity");
 const studentAssignmentIdentity = document.getElementById("studentAssignmentIdentity");
@@ -27,6 +28,12 @@ function formatDate(timestamp) {
   const value = Number(timestamp || 0);
   if (!value) return "No due date";
   return new Date(value).toLocaleString();
+}
+
+function visibleAssignmentInstructions(value) {
+  const raw = String(value || "");
+  const markerIndex = raw.lastIndexOf(RUBRIC_MARKER);
+  return (markerIndex >= 0 ? raw.slice(0, markerIndex) : raw).trim();
 }
 
 function assignmentApplies(assignment) {
@@ -89,7 +96,7 @@ function renderAssignments() {
         </div>
 
         <div class="assignment-instructions">${escapeHtml(
-          assignment.instructions || "Upload your completed work as one PDF file."
+          visibleAssignmentInstructions(assignment.instructions) || "Upload your completed work as one PDF file."
         )}</div>
 
         ${submissionRow(submission)}
