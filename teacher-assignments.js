@@ -4,7 +4,44 @@ import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-aut
 
 if (!requireTeacherAuth()) throw new Error("Teacher authentication required.");
 
-const PRESET_CRITERIA = [];
+const PRESET_CRITERIA = [
+  {
+    key: "originality",
+    title: "Originality",
+    description: "The work shows the student's own development and is not merely copied or mechanically reproduced.",
+    defaultPoints: 0
+  },
+  {
+    key: "neatness",
+    title: "Neatness",
+    description: "The submission is clean, careful, orderly, and visually well presented.",
+    defaultPoints: 0
+  },
+  {
+    key: "analysis",
+    title: "Analysis",
+    description: "The student interprets, relates, explains, or evaluates the information rather than only reproducing it.",
+    defaultPoints: 0
+  },
+  {
+    key: "conclusions",
+    title: "Conclusions",
+    description: "The work includes clear conclusions that are consistent with the development and evidence presented.",
+    defaultPoints: 0
+  },
+  {
+    key: "labeled-visuals",
+    title: "Correctly labeled diagrams, tables, or drawings",
+    description: "Required diagrams, tables, figures, or drawings are correctly identified and labeled.",
+    defaultPoints: 0
+  },
+  {
+    key: "required-format",
+    title: "Compliance with requested format",
+    description: "The submission follows the requested structure, presentation, and formatting requirements.",
+    defaultPoints: 0
+  }
+];
 
 const assignmentCode = document.getElementById("assignmentCode");
 const assignmentTitle = document.getElementById("assignmentTitle");
