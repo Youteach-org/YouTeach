@@ -4,6 +4,7 @@ import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-aut
 
 if (!requireTeacherAuth()) throw new Error("Teacher authentication required.");
 
+const assignmentCode = document.getElementById("assignmentCode");
 const assignmentTitle = document.getElementById("assignmentTitle");
 const assignmentGroup = document.getElementById("assignmentGroup");
 const assignmentInstructions = document.getElementById("assignmentInstructions");
@@ -102,7 +103,7 @@ function renderAssignmentList() {
     const count = Object.keys(submissions).length;
     return `
       <button class="assignment-item ${id === selectedAssignmentId ? "active" : ""}" data-assignment-select="${id}">
-        <strong>${escapeHtml(assignment.title || "Assignment")}</strong>
+        <strong>${escapeHtml(assignment.code || "")} · ${escapeHtml(assignment.title || "Assignment")}</strong>
         <span>${escapeHtml(assignment.groupName || "ALL")} · ${assignment.active ? "Open" : "Closed"} · ${count} submitted</span>
       </button>
     `;
@@ -127,7 +128,7 @@ function renderDetail() {
   const submittedKeys = new Set(Object.keys(submissions));
   const missing = students.filter(([studentKey]) => !submittedKeys.has(studentKey));
 
-  detailTitle.textContent = assignment.title || "Assignment";
+  detailTitle.textContent = `${assignment.code || ""} · ${assignment.title || "Assignment"}`;
   detailMeta.textContent = `${assignment.groupName || "ALL"} · Due: ${formatDate(assignment.dueAt)} · ${assignment.active ? "Open" : "Closed"}`;
   eligibleCount.textContent = students.length;
   submittedCount.textContent = Object.keys(submissions).length;
@@ -163,14 +164,15 @@ function renderDetail() {
 }
 
 async function createAssignment() {
+  const code = assignmentCode.value.trim();
   const title = assignmentTitle.value.trim();
   const groupName = assignmentGroup.value || "ALL";
   const instructions = assignmentInstructions.value.trim();
   const dueValue = assignmentDueAt.value;
   const dueAt = dueValue ? new Date(dueValue).getTime() : null;
 
-  if (!title) {
-    createAssignmentStatus.textContent = "Enter an assignment title.";
+  if (!code || !title) {
+    createAssignmentStatus.textContent = "Enter a task code and assignment title.";
     createAssignmentStatus.className = "status-text bad";
     return;
   }
@@ -182,6 +184,7 @@ async function createAssignment() {
   try {
     const target = push(ref(db, "assignments"));
     await set(target, {
+      code,
       title,
       groupName,
       instructions: instructions || "Upload clear photos of your work.",
@@ -192,6 +195,7 @@ async function createAssignment() {
     });
 
     selectedAssignmentId = target.key;
+    assignmentCode.value = "";
     assignmentTitle.value = "";
     assignmentInstructions.value = "";
     assignmentDueAt.value = "";
@@ -284,6 +288,7 @@ async function downloadZip() {
 
     folder.file("manifest.csv", manifest.join("\n"));
     folder.file("assignment-info.txt", [
+      `Task code: ${assignment.code || ""}`,
       `Title: ${assignment.title || ""}`,
       `Group: ${assignment.groupName || "ALL"}`,
       `Due: ${assignment.dueAt ? new Date(assignment.dueAt).toISOString() : "None"}`,
