@@ -9,6 +9,10 @@ const assignmentTitle = document.getElementById("assignmentTitle");
 const assignmentGroup = document.getElementById("assignmentGroup");
 const assignmentInstructions = document.getElementById("assignmentInstructions");
 const assignmentDueAt = document.getElementById("assignmentDueAt");
+const createCriteriaRows = document.getElementById("createCriteriaRows");
+const createCriteriaTotal = document.getElementById("createCriteriaTotal");
+const addCreateCriterionBtn = document.getElementById("addCreateCriterionBtn");
+const assignmentEvaluationNotes = document.getElementById("assignmentEvaluationNotes");
 const createAssignmentBtn = document.getElementById("createAssignmentBtn");
 const createAssignmentStatus = document.getElementById("createAssignmentStatus");
 const teacherAssignmentList = document.getElementById("teacherAssignmentList");
@@ -24,6 +28,16 @@ const missingList = document.getElementById("missingList");
 const openDriveFolderBtn = document.getElementById("openDriveFolderBtn");
 const toggleAssignmentBtn = document.getElementById("toggleAssignmentBtn");
 const driveStatus = document.getElementById("driveStatus");
+const criteriaReadOnly = document.getElementById("criteriaReadOnly");
+const editCriteriaBtn = document.getElementById("editCriteriaBtn");
+const criteriaEditPanel = document.getElementById("criteriaEditPanel");
+const editCriteriaRows = document.getElementById("editCriteriaRows");
+const editCriteriaTotal = document.getElementById("editCriteriaTotal");
+const editEvaluationNotes = document.getElementById("editEvaluationNotes");
+const addEditCriterionBtn = document.getElementById("addEditCriterionBtn");
+const saveCriteriaBtn = document.getElementById("saveCriteriaBtn");
+const cancelCriteriaBtn = document.getElementById("cancelCriteriaBtn");
+const criteriaSaveStatus = document.getElementById("criteriaSaveStatus");
 const logoutBtn = document.getElementById("logoutBtn");
 const teacherIdentity = document.getElementById("teacherIdentity");
 
@@ -45,6 +59,110 @@ function escapeHtml(value) {
 function formatDate(timestamp) {
   const value = Number(timestamp || 0);
   return value ? new Date(value).toLocaleString() : "No due date";
+}
+
+function makeCriterionId() {
+  return `criterion-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function normalizeCriteria(value) {
+  const raw = Array.isArray(value) ? value : Object.values(value || {});
+  return raw
+    .filter(Boolean)
+    .map((criterion, index) => ({
+      id: String(criterion.id || `criterion-${index + 1}`),
+      title: String(criterion.title || criterion.name || "").trim(),
+      description: String(criterion.description || "").trim(),
+      maxPoints: Number(criterion.maxPoints || criterion.points || 0)
+    }))
+    .filter((criterion) => criterion.title || criterion.description || criterion.maxPoints);
+}
+
+function criterionRowHtml(criterion = {}) {
+  const id = criterion.id || makeCriterionId();
+  const points = Number(criterion.maxPoints || 0);
+  return `
+    <div class="criteria-row" data-criterion-id="${escapeHtml(id)}">
+      <input data-criterion-title placeholder="Criterion" value="${escapeHtml(criterion.title || "")}">
+      <textarea data-criterion-description placeholder="What should be evaluated?">${escapeHtml(criterion.description || "")}</textarea>
+      <input data-criterion-points type="number" min="0.1" step="0.1" placeholder="Points" value="${points > 0 ? escapeHtml(points) : ""}">
+      <button class="criteria-remove" type="button" data-remove-criterion title="Remove criterion">×</button>
+    </div>
+  `;
+}
+
+function updateCriteriaTotal(container, totalElement) {
+  const total = [...container.querySelectorAll("[data-criterion-points]")]
+    .reduce((sum, input) => sum + Math.max(0, Number(input.value || 0)), 0);
+  totalElement.textContent = `Total points: ${Number(total.toFixed(2))}`;
+}
+
+function addCriterionRow(container, totalElement, criterion = {}) {
+  container.insertAdjacentHTML("beforeend", criterionRowHtml(criterion));
+  updateCriteriaTotal(container, totalElement);
+}
+
+function fillCriteriaEditor(container, totalElement, criteria) {
+  container.innerHTML = "";
+  const normalized = normalizeCriteria(criteria);
+  if (normalized.length) {
+    normalized.forEach((criterion) => addCriterionRow(container, totalElement, criterion));
+  } else {
+    addCriterionRow(container, totalElement);
+  }
+}
+
+function collectCriteria(container) {
+  const criteria = [];
+  for (const row of container.querySelectorAll(".criteria-row")) {
+    const title = row.querySelector("[data-criterion-title]")?.value.trim() || "";
+    const description = row.querySelector("[data-criterion-description]")?.value.trim() || "";
+    const pointsRaw = row.querySelector("[data-criterion-points]")?.value.trim() || "";
+    const isBlank = !title && !description && !pointsRaw;
+    if (isBlank) continue;
+
+    const maxPoints = Number(pointsRaw);
+    if (!title) return { error: "Each evaluation criterion needs a name.", criteria: [] };
+    if (!Number.isFinite(maxPoints) || maxPoints <= 0) {
+      return { error: `Enter points greater than 0 for "${title}".`, criteria: [] };
+    }
+
+    criteria.push({
+      id: row.dataset.criterionId || makeCriterionId(),
+      title,
+      description,
+      maxPoints: Number(maxPoints.toFixed(2))
+    });
+  }
+  return { error: "", criteria };
+}
+
+function renderEvaluationCriteria(assignment) {
+  const criteria = normalizeCriteria(assignment?.evaluationCriteria);
+  const notes = String(assignment?.evaluationNotes || "").trim();
+  const total = criteria.reduce((sum, criterion) => sum + Number(criterion.maxPoints || 0), 0);
+
+  if (!criteria.length && !notes) {
+    criteriaReadOnly.innerHTML = '<div class="status-text">No evaluation criteria have been set.</div>';
+    return;
+  }
+
+  const items = criteria.map((criterion) => `
+    <div class="criteria-view-item">
+      <strong>${escapeHtml(criterion.title)} <span class="criteria-points">· ${escapeHtml(criterion.maxPoints)} pts</span></strong>
+      ${criterion.description ? `<span>${escapeHtml(criterion.description)}</span>` : ""}
+    </div>
+  `).join("");
+
+  const notesBlock = notes
+    ? `<div class="criteria-view-item"><strong>Teacher grading notes</strong><span>${escapeHtml(notes)}</span></div>`
+    : "";
+
+  criteriaReadOnly.innerHTML = `
+    ${items}
+    ${notesBlock}
+    <div class="criteria-total">Total points: ${Number(total.toFixed(2))}</div>
+  `;
 }
 
 function assignmentStudents(assignment) {
@@ -137,6 +255,7 @@ function renderDetail() {
   submittedCount.textContent = validSubmissionEntries.length;
   missingCount.textContent = missing.length;
   toggleAssignmentBtn.textContent = assignment.active ? "Close Assignment" : "Reopen Assignment";
+  renderEvaluationCriteria(assignment);
 
   submissionList.innerHTML = validSubmissionEntries.length
     ? validSubmissionEntries.map(([, submission]) => `
@@ -168,6 +287,14 @@ async function createAssignment() {
   const instructions = assignmentInstructions.value.trim();
   const dueValue = assignmentDueAt.value;
   const dueAt = dueValue ? new Date(dueValue).getTime() : null;
+  const criteriaResult = collectCriteria(createCriteriaRows);
+  const evaluationNotes = assignmentEvaluationNotes.value.trim();
+
+  if (criteriaResult.error) {
+    createAssignmentStatus.textContent = criteriaResult.error;
+    createAssignmentStatus.className = "status-text bad";
+    return;
+  }
 
   if (!code || !title) {
     createAssignmentStatus.textContent = "Enter a task code and assignment title.";
@@ -195,6 +322,9 @@ async function createAssignment() {
       title,
       groupName,
       instructions: instructions || "Upload your completed work as one PDF file.",
+      evaluationCriteria: criteriaResult.criteria,
+      evaluationNotes,
+      evaluationUpdatedAt: Date.now(),
       dueAt,
       active: true,
       storageProvider: "google-drive",
@@ -206,7 +336,9 @@ async function createAssignment() {
     assignmentCode.value = "";
     assignmentTitle.value = "";
     assignmentInstructions.value = "";
+    assignmentEvaluationNotes.value = "";
     assignmentDueAt.value = "";
+    fillCriteriaEditor(createCriteriaRows, createCriteriaTotal, []);
     createAssignmentStatus.textContent = "Assignment created.";
     createAssignmentStatus.className = "status-text ok";
   } catch (error) {
@@ -227,6 +359,54 @@ async function toggleAssignment() {
   });
 }
 
+function beginCriteriaEdit() {
+  const assignment = assignmentsCache[selectedAssignmentId];
+  if (!assignment) return;
+  fillCriteriaEditor(editCriteriaRows, editCriteriaTotal, assignment.evaluationCriteria);
+  editEvaluationNotes.value = assignment.evaluationNotes || "";
+  criteriaSaveStatus.textContent = "";
+  criteriaEditPanel.hidden = false;
+}
+
+function cancelCriteriaEdit() {
+  criteriaEditPanel.hidden = true;
+  criteriaSaveStatus.textContent = "";
+}
+
+async function saveEvaluationCriteria() {
+  const assignment = assignmentsCache[selectedAssignmentId];
+  if (!assignment) return;
+
+  const result = collectCriteria(editCriteriaRows);
+  if (result.error) {
+    criteriaSaveStatus.textContent = result.error;
+    criteriaSaveStatus.className = "status-text bad";
+    return;
+  }
+
+  saveCriteriaBtn.disabled = true;
+  criteriaSaveStatus.textContent = "Saving...";
+  criteriaSaveStatus.className = "status-text";
+
+  try {
+    await update(ref(db, `assignments/${selectedAssignmentId}`), {
+      evaluationCriteria: result.criteria,
+      evaluationNotes: editEvaluationNotes.value.trim(),
+      evaluationUpdatedAt: Date.now(),
+      updatedAt: Date.now()
+    });
+    criteriaSaveStatus.textContent = "Evaluation criteria saved.";
+    criteriaSaveStatus.className = "status-text ok";
+    criteriaEditPanel.hidden = true;
+  } catch (error) {
+    console.error(error);
+    criteriaSaveStatus.textContent = "Could not save the evaluation criteria.";
+    criteriaSaveStatus.className = "status-text bad";
+  } finally {
+    saveCriteriaBtn.disabled = false;
+  }
+}
+
 teacherAssignmentList.addEventListener("click", (event) => {
   const button = event.target.closest("[data-assignment-select]");
   if (!button) return;
@@ -240,6 +420,27 @@ openDriveFolderBtn.addEventListener("click", () => {
 
 createAssignmentBtn.addEventListener("click", createAssignment);
 toggleAssignmentBtn.addEventListener("click", toggleAssignment);
+addCreateCriterionBtn.addEventListener("click", () => addCriterionRow(createCriteriaRows, createCriteriaTotal));
+addEditCriterionBtn.addEventListener("click", () => addCriterionRow(editCriteriaRows, editCriteriaTotal));
+editCriteriaBtn.addEventListener("click", beginCriteriaEdit);
+cancelCriteriaBtn.addEventListener("click", cancelCriteriaEdit);
+saveCriteriaBtn.addEventListener("click", saveEvaluationCriteria);
+
+for (const [container, totalElement] of [
+  [createCriteriaRows, createCriteriaTotal],
+  [editCriteriaRows, editCriteriaTotal]
+]) {
+  container.addEventListener("click", (event) => {
+    const removeButton = event.target.closest("[data-remove-criterion]");
+    if (!removeButton) return;
+    removeButton.closest(".criteria-row")?.remove();
+    if (!container.querySelector(".criteria-row")) addCriterionRow(container, totalElement);
+    updateCriteriaTotal(container, totalElement);
+  });
+  container.addEventListener("input", () => updateCriteriaTotal(container, totalElement));
+}
+
+fillCriteriaEditor(createCriteriaRows, createCriteriaTotal, []);
 logoutBtn.addEventListener("click", logoutTeacher);
 
 onValue(ref(db, "groups"), (snapshot) => {
