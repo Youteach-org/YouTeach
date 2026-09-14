@@ -1,12 +1,12 @@
 import { db } from "./firebase.js";
-import { ref, get, onValue, push, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { ref, get, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireStudentSession, clearStudentSession, saveLeaveLog } from "./student-auth.js";
-import { uploadAssignmentPhoto } from "./assignment-storage.js";
+import { uploadAssignmentPdf, validateAssignmentPdf } from "./assignment-storage.js";
 
 const session = requireStudentSession();
 if (!session) throw new Error("Student session required.");
 
-const { studentKey } = session;
+const { studentKey, externalId } = session;
 const assignmentList = document.getElementById("assignmentList");
 const studentIdentity = document.getElementById("studentIdentity");
 const studentAssignmentIdentity = document.getElementById("studentAssignmentIdentity");
@@ -52,17 +52,12 @@ async function loadOwnSubmissions(assignments, token) {
   submissionCache = next;
 }
 
-function submissionRows(submission) {
-  const files = Object.values(submission?.files || {}).sort((a, b) => Number(a.uploadedAt || 0) - Number(b.uploadedAt || 0));
-  if (!files.length) return "";
+function submissionRow(submission) {
+  if (!submission?.driveFileId) return "";
   return `
-    <div class="submission-list">
-      ${files.map((file, index) => `
-        <div class="submission-row">
-          <span>Photo ${index + 1}: ${escapeHtml(file.fileName || "image")}</span>
-          <span>${Math.max(1, Math.round(Number(file.size || 0) / 1024))} KB</span>
-        </div>
-      `).join("")}
+    <div class="submission-row">
+      <span>${escapeHtml(submission.driveFileName || "Submitted PDF")}</span>
+      <span>${Math.max(1, Math.round(Number(submission.size || 0) / 1024))} KB · pending review</span>
     </div>
   `;
 }
@@ -81,11 +76,8 @@ function renderAssignments() {
 
   assignmentList.innerHTML = entries.map(([assignmentId, assignment]) => {
     const submission = submissionCache[assignmentId];
-    const fileCount = Object.keys(submission?.files || {}).length;
+    const hasPdf = Boolean(submission?.driveFileId);
     const closed = isClosed(assignment);
-    const statusText = fileCount
-      ? `Submitted: ${fileCount} photo${fileCount === 1 ? "" : "s"}`
-      : "Not submitted yet";
 
     return `
       <article class="assignment-card">
@@ -95,30 +87,30 @@ function renderAssignments() {
           <span class="assignment-chip">Due: ${escapeHtml(formatDate(assignment.dueAt))}</span>
           <span class="assignment-chip">${closed ? "Closed" : "Open"}</span>
         </div>
-        <div class="assignment-instructions">${escapeHtml(assignment.instructions || "Upload clear photos of your work.")}</div>
 
-        ${submissionRows(submission)}
+        <div class="assignment-instructions">${escapeHtml(
+          assignment.instructions || "Upload your completed work as one PDF file."
+        )}</div>
 
-        <div class="assignment-status ${fileCount ? "ok" : ""}" id="status-${assignmentId}">
-          ${escapeHtml(statusText)}
+        ${submissionRow(submission)}
+
+        <div class="assignment-status ${hasPdf ? "ok" : ""}" id="status-${assignmentId}">
+          ${hasPdf ? "Submitted · identity pending review" : "Not submitted yet"}
         </div>
 
         <div class="upload-box">
-          <strong>${fileCount ? "Add more photos" : "Submit photos"}</strong>
+          <strong>${hasPdf ? "Replace submitted PDF" : "Attach PDF"}</strong>
           <input
-            id="files-${assignmentId}"
-            data-assignment-id="${assignmentId}"
+            id="file-${assignmentId}"
             type="file"
-            accept="image/*"
-            capture="environment"
-            multiple
+            accept="application/pdf,.pdf"
             ${closed ? "disabled" : ""}
           >
           <button
             class="upload-btn"
             data-upload-assignment="${assignmentId}"
             ${closed ? "disabled" : ""}
-          >Upload selected photos</button>
+          >${hasPdf ? "Replace PDF" : "Submit PDF"}</button>
           <div id="progress-${assignmentId}" style="margin-top:8px;color:#475569;font-size:13px"></div>
         </div>
       </article>
@@ -135,7 +127,7 @@ async function refreshAssignments() {
 
 async function handleUpload(assignmentId) {
   const assignment = assignmentsCache[assignmentId];
-  const input = document.getElementById(`files-${assignmentId}`);
+  const input = document.getElementById(`file-${assignmentId}`);
   const button = document.querySelector(`[data-upload-assignment="${assignmentId}"]`);
   const status = document.getElementById(`status-${assignmentId}`);
   const progress = document.getElementById(`progress-${assignmentId}`);
@@ -147,71 +139,63 @@ async function handleUpload(assignmentId) {
     return;
   }
 
-  const files = Array.from(input.files || []);
-  if (!files.length) {
-    status.textContent = "Choose at least one PDF first.";
-    status.className = "assignment-status bad";
-    return;
-  }
-  if (files.some((file) => String(file.type || "").toLowerCase() !== "application/pdf" && !String(file.name || "").toLowerCase().endsWith(".pdf"))) {
-    status.textContent = "Only PDF files are accepted.";
+  const file = input.files?.[0];
+  if (!file) {
+    status.textContent = "Attach a PDF first.";
     status.className = "assignment-status bad";
     return;
   }
 
-  if (files.length > 6) {
-    status.textContent = "Upload a maximum of 6 PDF files at a time.";
+  try {
+    validateAssignmentPdf(file);
+  } catch (error) {
+    status.textContent = error.message;
     status.className = "assignment-status bad";
     return;
   }
 
   button.disabled = true;
-  status.textContent = "Preparing files...";
+  status.textContent = "Preparing Google Drive upload...";
   status.className = "assignment-status";
 
   try {
-    for (let index = 0; index < files.length; index += 1) {
-      progress.textContent = `Uploading photo ${index + 1} of ${files.length}...`;
-      const fileResult = await uploadAssignmentPhoto({
-        assignmentId,
-        taskCode: assignment.code || assignmentId,
-        studentKey,
-        studentNumber: currentStudent.studentNumber || currentStudent.id || "",
-        groupName: currentStudent.groupName || "GENERAL",
-        file: files[index],
-        index,
-        onProgress: (ratio) => {
-          progress.textContent = `Photo ${index + 1} of ${files.length}: ${Math.round(ratio * 100)}%`;
-        }
-      });
+    const uploaded = await uploadAssignmentPdf({
+      assignmentId,
+      studentKey,
+      externalId,
+      file,
+      onProgress: (ratio) => {
+        progress.textContent = ratio >= 1
+          ? "Upload complete."
+          : `Uploading to Google Drive... ${Math.round(ratio * 100)}%`;
+      }
+    });
 
-      const fileRef = push(ref(db, `assignmentSubmissions/${assignmentId}/${studentKey}/files`));
-      await update(ref(db, `assignmentSubmissions/${assignmentId}/${studentKey}`), {
-        studentKey,
-        studentName: currentStudent.fullName || currentStudent.name || currentStudent.nickname || "Student",
-        nickname: currentStudent.nickname || "",
-        studentNumber: currentStudent.studentNumber || currentStudent.id || "",
-        groupName: currentStudent.groupName || "GENERAL",
-        assignmentId,
-        assignmentCode: assignment.code || "",
-        assignmentTitle: assignment.title || "Assignment",
-        submittedAt: submissionCache[assignmentId]?.submittedAt || Date.now(),
-        updatedAt: Date.now(),
-        reviewStatus: "pending",
-        identityReviewStatus: "pending"
-      });
-      await update(fileRef, fileResult);
-    }
+    const previous = submissionCache[assignmentId] || {};
+    await update(ref(db, `assignmentSubmissions/${assignmentId}/${studentKey}`), {
+      studentKey,
+      studentName: currentStudent.fullName || currentStudent.name || currentStudent.nickname || "Student",
+      nickname: currentStudent.nickname || "",
+      studentNumber: currentStudent.studentNumber || currentStudent.id || "",
+      groupName: currentStudent.groupName || "GENERAL",
+      assignmentId,
+      assignmentCode: assignment.code || "",
+      assignmentTitle: assignment.title || "Assignment",
+      submittedAt: previous.submittedAt || Date.now(),
+      updatedAt: Date.now(),
+      reviewStatus: "pending",
+      identityReviewStatus: "pending",
+      ...uploaded
+    });
 
     input.value = "";
-    progress.textContent = "Upload complete.";
-    status.textContent = "Your files were submitted successfully.";
+    status.textContent = "PDF submitted. Identity is pending review.";
     status.className = "assignment-status ok";
     await refreshAssignments();
   } catch (error) {
     console.error(error);
     progress.textContent = "";
-    status.textContent = error?.message || "Could not upload the files.";
+    status.textContent = error?.message || "Could not upload the PDF.";
     status.className = "assignment-status bad";
   } finally {
     button.disabled = false;
