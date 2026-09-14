@@ -119,6 +119,7 @@ export async function preparePhoto(file) {
 
 export async function uploadAssignmentPhoto({
   assignmentId,
+  taskCode,
   studentKey,
   studentNumber,
   groupName,
@@ -130,11 +131,11 @@ export async function uploadAssignmentPhoto({
   const prepared = await preparePhoto(file);
   const extension = prepared.type === "application/pdf" || String(prepared.name).toLowerCase().endsWith(".pdf") ? "pdf" : "jpg";
   const studentLabel = safeSegment(studentNumber || studentKey, "student");
-  const taskCode = safeSegment(assignmentId, "task");
-  const fileName = `${studentLabel}--${taskCode}--${String(index + 1).padStart(2, "0")}.${extension}`;
+  const safeTaskCode = safeSegment(taskCode || assignmentId, "task");
+  const fileName = `${studentLabel}--${safeTaskCode}--${String(index + 1).padStart(2, "0")}.${extension}`;
   const path = [
     "assignments",
-    taskCode,
+    safeTaskCode,
     safeSegment(studentKey),
     fileName
   ].join("/");
