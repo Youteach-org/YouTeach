@@ -4,62 +4,7 @@ import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-aut
 
 if (!requireTeacherAuth()) throw new Error("Teacher authentication required.");
 
-const PRESET_CRITERIA = [
-  {
-    key: "cleanliness",
-    title: "Cleanliness / neatness",
-    description: "Work is clean, orderly, and free of unnecessary marks.",
-    defaultPoints: 1
-  },
-  {
-    key: "handwritten",
-    title: "Handwritten work",
-    description: "Required work is completed by hand rather than typed or printed.",
-    defaultPoints: 1
-  },
-  {
-    key: "legibility",
-    title: "Legibility",
-    description: "Handwriting, labels, and annotations are easy to read.",
-    defaultPoints: 1
-  },
-  {
-    key: "completeness",
-    title: "Complete work",
-    description: "All requested sections, questions, steps, or components are included.",
-    defaultPoints: 2
-  },
-  {
-    key: "instructions",
-    title: "Follows instructions",
-    description: "Submission follows the specific instructions and requested format.",
-    defaultPoints: 2
-  },
-  {
-    key: "identification",
-    title: "Identification visible",
-    description: "Student name and required identifying information are clearly visible.",
-    defaultPoints: 1
-  },
-  {
-    key: "organization",
-    title: "Organization",
-    description: "Content is arranged in a logical, easy-to-follow order.",
-    defaultPoints: 1
-  },
-  {
-    key: "writing",
-    title: "Spelling / writing quality",
-    description: "Spelling, grammar, and wording are appropriate for the task.",
-    defaultPoints: 1
-  },
-  {
-    key: "bibliography",
-    title: "Sources / bibliography",
-    description: "Required sources, references, or bibliography are included and identifiable.",
-    defaultPoints: 1
-  }
-];
+const PRESET_CRITERIA = [];
 
 const assignmentCode = document.getElementById("assignmentCode");
 const assignmentTitle = document.getElementById("assignmentTitle");
@@ -69,6 +14,7 @@ const assignmentDueAt = document.getElementById("assignmentDueAt");
 const createPresetCriteria = document.getElementById("createPresetCriteria");
 const createCriteriaRows = document.getElementById("createCriteriaRows");
 const createCriteriaTotal = document.getElementById("createCriteriaTotal");
+const createDistributionRadios = document.querySelectorAll('input[name="createDistribution"]');
 const addCreateCriterionBtn = document.getElementById("addCreateCriterionBtn");
 const assignmentEvaluationNotes = document.getElementById("assignmentEvaluationNotes");
 const createAssignmentBtn = document.getElementById("createAssignmentBtn");
@@ -92,6 +38,7 @@ const criteriaEditPanel = document.getElementById("criteriaEditPanel");
 const editPresetCriteria = document.getElementById("editPresetCriteria");
 const editCriteriaRows = document.getElementById("editCriteriaRows");
 const editCriteriaTotal = document.getElementById("editCriteriaTotal");
+const editDistributionRadios = document.querySelectorAll('input[name="editDistribution"]');
 const editEvaluationNotes = document.getElementById("editEvaluationNotes");
 const addEditCriterionBtn = document.getElementById("addEditCriterionBtn");
 const saveCriteriaBtn = document.getElementById("saveCriteriaBtn");
@@ -173,6 +120,11 @@ function presetCardHtml(preset, selectedCriterion = null) {
 }
 
 function renderPresetEditor(container, criteria = []) {
+  if (!PRESET_CRITERIA.length) {
+    container.innerHTML = '<div class="status-text">No preset criteria have been approved yet.</div>';
+    return;
+  }
+
   const normalized = normalizeCriteria(criteria);
   const byKey = new Map(
     normalized
@@ -203,7 +155,10 @@ function addCustomCriterionRow(container, criterion = {}) {
 }
 
 function renderCustomEditor(container, criteria = []) {
-  const custom = normalizeCriteria(criteria).filter((criterion) => criterion.type !== "preset");
+  const approvedPresetKeys = new Set(PRESET_CRITERIA.map((preset) => preset.key));
+  const custom = normalizeCriteria(criteria).filter(
+    (criterion) => criterion.type !== "preset" || !approvedPresetKeys.has(criterion.presetKey)
+  );
   container.innerHTML = "";
   if (custom.length) {
     custom.forEach((criterion) => addCustomCriterionRow(container, criterion));
@@ -283,29 +238,112 @@ function collectRubric(presetContainer, customContainer) {
   };
 }
 
-function rubricTotal(presetContainer, customContainer) {
-  let total = 0;
+function getDistributionMode(radios) {
+  return [...radios].find((radio) => radio.checked)?.value || "manual";
+}
+
+function setDistributionMode(radios, mode) {
+  const safeMode = mode === "equal" ? "equal" : "manual";
+  for (const radio of radios) radio.checked = radio.value === safeMode;
+}
+
+function activePointInputs(presetContainer, customContainer) {
+  const inputs = [];
 
   for (const card of presetContainer.querySelectorAll(".preset-card")) {
     if (!card.querySelector("[data-preset-enabled]")?.checked) continue;
-    total += Math.max(0, Number(card.querySelector("[data-preset-points]")?.value || 0));
+    const input = card.querySelector("[data-preset-points]");
+    if (input) inputs.push(input);
+  }
+
+  for (const row of customContainer.querySelectorAll(".criteria-row")) {
+    const title = row.querySelector("[data-criterion-title]")?.value.trim() || "";
+    if (!title) continue;
+    const input = row.querySelector("[data-criterion-points]");
+    if (input) inputs.push(input);
+  }
+
+  return inputs;
+}
+
+function applyEqualDistribution(presetContainer, customContainer) {
+  const activeInputs = activePointInputs(presetContainer, customContainer);
+
+  for (const card of presetContainer.querySelectorAll(".preset-card")) {
+    const enabled = card.querySelector("[data-preset-enabled]")?.checked;
+    const input = card.querySelector("[data-preset-points]");
+    if (input) input.disabled = true;
+    if (!enabled && input) input.value = "";
+  }
+
+  for (const row of customContainer.querySelectorAll(".criteria-row")) {
+    const title = row.querySelector("[data-criterion-title]")?.value.trim() || "";
+    const input = row.querySelector("[data-criterion-points]");
+    if (!input) continue;
+    input.disabled = true;
+    if (!title) input.value = "";
+  }
+
+  if (!activeInputs.length) return;
+
+  const totalHundredths = 10000;
+  const base = Math.floor(totalHundredths / activeInputs.length);
+  let remainder = totalHundredths - base * activeInputs.length;
+
+  activeInputs.forEach((input) => {
+    const hundredths = base + (remainder-- > 0 ? 1 : 0);
+    input.value = (hundredths / 100).toFixed(2).replace(/\.00$/, "");
+  });
+}
+
+function applyManualDistribution(presetContainer, customContainer) {
+  for (const card of presetContainer.querySelectorAll(".preset-card")) {
+    const enabled = card.querySelector("[data-preset-enabled]")?.checked;
+    const input = card.querySelector("[data-preset-points]");
+    if (input) input.disabled = !enabled;
   }
 
   for (const input of customContainer.querySelectorAll("[data-criterion-points]")) {
-    total += Math.max(0, Number(input.value || 0));
+    input.disabled = false;
   }
+}
 
-  return Number(total.toFixed(2));
+function rubricTotal(presetContainer, customContainer) {
+  return Number(activePointInputs(presetContainer, customContainer)
+    .reduce((sum, input) => sum + Math.max(0, Number(input.value || 0)), 0)
+    .toFixed(2));
 }
 
 function updateRubricTotal(presetContainer, customContainer, totalElement) {
-  totalElement.textContent = `Total points: ${rubricTotal(presetContainer, customContainer)}`;
+  const activeCount = activePointInputs(presetContainer, customContainer).length;
+  const total = rubricTotal(presetContainer, customContainer);
+  totalElement.textContent = `${total} / 100`;
+  totalElement.classList.remove("ok", "bad");
+  if (!activeCount) return;
+  totalElement.classList.add(Math.abs(total - 100) < 0.01 ? "ok" : "bad");
 }
 
-function fillRubricEditor(presetContainer, customContainer, totalElement, criteria = []) {
+function refreshDistribution(presetContainer, customContainer, totalElement, radios) {
+  if (getDistributionMode(radios) === "equal") {
+    applyEqualDistribution(presetContainer, customContainer);
+  } else {
+    applyManualDistribution(presetContainer, customContainer);
+  }
+  updateRubricTotal(presetContainer, customContainer, totalElement);
+}
+
+function fillRubricEditor(
+  presetContainer,
+  customContainer,
+  totalElement,
+  criteria = [],
+  radios,
+  mode = "equal"
+) {
   renderPresetEditor(presetContainer, criteria);
   renderCustomEditor(customContainer, criteria);
-  updateRubricTotal(presetContainer, customContainer, totalElement);
+  setDistributionMode(radios, mode);
+  refreshDistribution(presetContainer, customContainer, totalElement, radios);
 }
 
 function renderCriteriaGroup(title, criteria) {
@@ -343,7 +381,7 @@ function renderEvaluationCriteria(assignment) {
     ${renderCriteriaGroup("Preset criteria", presets)}
     ${renderCriteriaGroup("Custom criteria", custom)}
     ${notesBlock}
-    <div class="criteria-total">Total points: ${Number(total.toFixed(2))}</div>
+    <div class="criteria-total">${Number(total.toFixed(2))} / 100 points</div>
   `;
 }
 
@@ -470,13 +508,27 @@ async function createAssignment() {
   const instructions = assignmentInstructions.value.trim();
   const dueValue = assignmentDueAt.value;
   const dueAt = dueValue ? new Date(dueValue).getTime() : null;
+  refreshDistribution(createPresetCriteria, createCriteriaRows, createCriteriaTotal, createDistributionRadios);
   const rubricResult = collectRubric(createPresetCriteria, createCriteriaRows);
+  const evaluationDistribution = getDistributionMode(createDistributionRadios);
   const evaluationNotes = assignmentEvaluationNotes.value.trim();
 
   if (rubricResult.error) {
     createAssignmentStatus.textContent = rubricResult.error;
     createAssignmentStatus.className = "status-text bad";
     return;
+  }
+
+  if (rubricResult.criteria.length) {
+    const rubricPoints = rubricResult.criteria.reduce(
+      (sum, criterion) => sum + Number(criterion.maxPoints || 0),
+      0
+    );
+    if (Math.abs(rubricPoints - 100) >= 0.01) {
+      createAssignmentStatus.textContent = "Evaluation criteria must total exactly 100 points.";
+      createAssignmentStatus.className = "status-text bad";
+      return;
+    }
   }
 
   if (!code || !title) {
@@ -506,6 +558,7 @@ async function createAssignment() {
       groupName,
       instructions: instructions || "Upload your completed work as one PDF file.",
       evaluationCriteria: rubricResult.criteria,
+      evaluationDistribution,
       evaluationNotes,
       evaluationUpdatedAt: Date.now(),
       dueAt,
@@ -521,7 +574,14 @@ async function createAssignment() {
     assignmentInstructions.value = "";
     assignmentEvaluationNotes.value = "";
     assignmentDueAt.value = "";
-    fillRubricEditor(createPresetCriteria, createCriteriaRows, createCriteriaTotal, []);
+    fillRubricEditor(
+      createPresetCriteria,
+      createCriteriaRows,
+      createCriteriaTotal,
+      [],
+      createDistributionRadios,
+      "equal"
+    );
     createAssignmentStatus.textContent = "Assignment created.";
     createAssignmentStatus.className = "status-text ok";
   } catch (error) {
@@ -549,7 +609,9 @@ function beginCriteriaEdit() {
     editPresetCriteria,
     editCriteriaRows,
     editCriteriaTotal,
-    assignment.evaluationCriteria
+    assignment.evaluationCriteria,
+    editDistributionRadios,
+    assignment.evaluationDistribution || "manual"
   );
   editEvaluationNotes.value = assignment.evaluationNotes || "";
   criteriaSaveStatus.textContent = "";
@@ -565,11 +627,25 @@ async function saveEvaluationCriteria() {
   const assignment = assignmentsCache[selectedAssignmentId];
   if (!assignment) return;
 
+  refreshDistribution(editPresetCriteria, editCriteriaRows, editCriteriaTotal, editDistributionRadios);
   const result = collectRubric(editPresetCriteria, editCriteriaRows);
+  const evaluationDistribution = getDistributionMode(editDistributionRadios);
   if (result.error) {
     criteriaSaveStatus.textContent = result.error;
     criteriaSaveStatus.className = "status-text bad";
     return;
+  }
+
+  if (result.criteria.length) {
+    const rubricPoints = result.criteria.reduce(
+      (sum, criterion) => sum + Number(criterion.maxPoints || 0),
+      0
+    );
+    if (Math.abs(rubricPoints - 100) >= 0.01) {
+      criteriaSaveStatus.textContent = "Evaluation criteria must total exactly 100 points.";
+      criteriaSaveStatus.className = "status-text bad";
+      return;
+    }
   }
 
   saveCriteriaBtn.disabled = true;
@@ -579,6 +655,7 @@ async function saveEvaluationCriteria() {
   try {
     await update(ref(db, `assignments/${selectedAssignmentId}`), {
       evaluationCriteria: result.criteria,
+      evaluationDistribution,
       evaluationNotes: editEvaluationNotes.value.trim(),
       evaluationUpdatedAt: Date.now(),
       updatedAt: Date.now()
@@ -595,19 +672,15 @@ async function saveEvaluationCriteria() {
   }
 }
 
-function wireRubricEditor(presetContainer, customContainer, totalElement) {
-  presetContainer.addEventListener("change", (event) => {
-    const checkbox = event.target.closest("[data-preset-enabled]");
-    if (checkbox) {
-      const card = checkbox.closest(".preset-card");
-      const pointsInput = card?.querySelector("[data-preset-points]");
-      if (pointsInput) pointsInput.disabled = !checkbox.checked;
-    }
-    updateRubricTotal(presetContainer, customContainer, totalElement);
+function wireRubricEditor(presetContainer, customContainer, totalElement, radios) {
+  presetContainer.addEventListener("change", () => {
+    refreshDistribution(presetContainer, customContainer, totalElement, radios);
   });
 
   presetContainer.addEventListener("input", () => {
-    updateRubricTotal(presetContainer, customContainer, totalElement);
+    if (getDistributionMode(radios) === "manual") {
+      updateRubricTotal(presetContainer, customContainer, totalElement);
+    }
   });
 
   customContainer.addEventListener("click", (event) => {
@@ -615,12 +688,24 @@ function wireRubricEditor(presetContainer, customContainer, totalElement) {
     if (!removeButton) return;
     removeButton.closest(".criteria-row")?.remove();
     if (!customContainer.querySelector(".criteria-row")) addCustomCriterionRow(customContainer);
-    updateRubricTotal(presetContainer, customContainer, totalElement);
+    refreshDistribution(presetContainer, customContainer, totalElement, radios);
   });
 
-  customContainer.addEventListener("input", () => {
-    updateRubricTotal(presetContainer, customContainer, totalElement);
+  customContainer.addEventListener("input", (event) => {
+    if (event.target.matches("[data-criterion-title]")) {
+      refreshDistribution(presetContainer, customContainer, totalElement, radios);
+      return;
+    }
+    if (getDistributionMode(radios) === "manual") {
+      updateRubricTotal(presetContainer, customContainer, totalElement);
+    }
   });
+
+  for (const radio of radios) {
+    radio.addEventListener("change", () => {
+      refreshDistribution(presetContainer, customContainer, totalElement, radios);
+    });
+  }
 }
 
 teacherAssignmentList.addEventListener("click", (event) => {
@@ -638,19 +723,26 @@ createAssignmentBtn.addEventListener("click", createAssignment);
 toggleAssignmentBtn.addEventListener("click", toggleAssignment);
 addCreateCriterionBtn.addEventListener("click", () => {
   addCustomCriterionRow(createCriteriaRows);
-  updateRubricTotal(createPresetCriteria, createCriteriaRows, createCriteriaTotal);
+  refreshDistribution(createPresetCriteria, createCriteriaRows, createCriteriaTotal, createDistributionRadios);
 });
 addEditCriterionBtn.addEventListener("click", () => {
   addCustomCriterionRow(editCriteriaRows);
-  updateRubricTotal(editPresetCriteria, editCriteriaRows, editCriteriaTotal);
+  refreshDistribution(editPresetCriteria, editCriteriaRows, editCriteriaTotal, editDistributionRadios);
 });
 editCriteriaBtn.addEventListener("click", beginCriteriaEdit);
 cancelCriteriaBtn.addEventListener("click", cancelCriteriaEdit);
 saveCriteriaBtn.addEventListener("click", saveEvaluationCriteria);
 
-wireRubricEditor(createPresetCriteria, createCriteriaRows, createCriteriaTotal);
-wireRubricEditor(editPresetCriteria, editCriteriaRows, editCriteriaTotal);
-fillRubricEditor(createPresetCriteria, createCriteriaRows, createCriteriaTotal, []);
+wireRubricEditor(createPresetCriteria, createCriteriaRows, createCriteriaTotal, createDistributionRadios);
+wireRubricEditor(editPresetCriteria, editCriteriaRows, editCriteriaTotal, editDistributionRadios);
+fillRubricEditor(
+  createPresetCriteria,
+  createCriteriaRows,
+  createCriteriaTotal,
+  [],
+  createDistributionRadios,
+  "equal"
+);
 
 logoutBtn.addEventListener("click", logoutTeacher);
 
