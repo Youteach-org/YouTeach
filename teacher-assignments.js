@@ -30,6 +30,12 @@ const PRESET_CRITERIA = [
     defaultPoints: 0
   },
   {
+    key: "completeness",
+    title: "Complete work",
+    description: "All requested sections, questions, steps, or components are included.",
+    defaultPoints: 0
+  },
+  {
     key: "labeled-visuals",
     title: "Correctly labeled diagrams, tables, or drawings",
     description: "Required diagrams, tables, figures, or drawings are correctly identified and labeled.",
