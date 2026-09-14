@@ -17,6 +17,9 @@
     .field input,.field select,.field textarea,
     .criteria-builder input,.criteria-builder textarea{width:100%;min-width:0;padding:10px;border:1px solid #cbd5e1;border-radius:10px;font:inherit;background:#fff}
     .field textarea{min-height:96px;resize:vertical}
+    .field input[readonly]{background:#f1f5f9;color:#475569;font-weight:800;letter-spacing:.02em}
+    .field-help{font-size:11px;line-height:1.35;color:#64748b}
+    [hidden]{display:none!important}
 
     .rubric-shell{grid-column:1/-1;display:grid;gap:14px;border:1px solid #dbeafe;border-radius:14px;padding:14px;background:#f8fafc}
     .rubric-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
@@ -132,8 +135,20 @@
           <div class="panel-card-header"><h3>Create Assignment</h3></div>
           <div class="create-grid">
             <div class="field">
-              <label for="assignmentCode">Task code</label>
-              <input id="assignmentCode" placeholder="e.g. EPID-01">
+              <label for="assignmentType">Assignment type</label>
+              <select id="assignmentType">
+                <option value="TASK">Task</option>
+                <option value="EXAM">Exam</option>
+                <option value="PROJECT">Project</option>
+                <option value="PRACTICE">Practice</option>
+                <option value="RESEARCH">Research</option>
+                <option value="PRESENTATION">Presentation</option>
+                <option value="OTHER">Other</option>
+              </select>
+            </div>
+            <div class="field" id="assignmentOtherTypeField" hidden>
+              <label for="assignmentOtherType">Specify other type</label>
+              <input id="assignmentOtherType" placeholder="e.g. Lab, Portfolio, Case study">
             </div>
             <div class="field">
               <label for="assignmentTitle">Assignment title</label>
@@ -144,8 +159,14 @@
               <select id="assignmentGroup"><option value="ALL">All groups</option></select>
             </div>
             <div class="field">
-              <label for="assignmentDueAt">Due date (optional)</label>
+              <label for="assignmentDueAt">Due date</label>
               <input id="assignmentDueAt" type="datetime-local">
+              <div class="field-help">If left empty, today's date is used in the task code.</div>
+            </div>
+            <div class="field">
+              <label for="assignmentCode">Task code</label>
+              <input id="assignmentCode" readonly aria-readonly="true" placeholder="Generated automatically">
+              <div class="field-help">Generated from type, title, group, and date.</div>
             </div>
             <div class="field full">
               <label for="assignmentInstructions">Instructions for students</label>
@@ -296,7 +317,7 @@
     </main>
   </div>
 
-  <script type="module" src="teacher-assignments.js?v=criteria-100-20260914"></script>
+  <script type="module" src="teacher-assignments.js?v=automatic-task-code-20260914"></script>
   <script defer src="shared-ui-fixes.js?v=assignments-20260914"></script>
 </body>
 </html>
