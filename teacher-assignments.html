@@ -879,6 +879,144 @@
       }
     }
 
+  
+    /* Assignment Browser */
+    .assignment-browser-heading{
+      display:flex;
+      align-items:center;
+      gap:7px;
+      min-width:0
+    }
+    .assignment-browser-title{
+      font-size:15px;
+      font-weight:900;
+      color:#0f172a;
+      white-space:nowrap
+    }
+    .assignment-browser-count{
+      padding:3px 6px;
+      border-radius:999px;
+      background:#eef2ff;
+      color:#475569;
+      font-size:9px;
+      font-weight:800;
+      white-space:nowrap
+    }
+    .assignment-filter-row{
+      display:grid;
+      grid-template-columns:minmax(150px,1fr) 145px 170px auto;
+      gap:6px;
+      align-items:end;
+      margin-bottom:6px
+    }
+    .assignment-filter-field{
+      display:grid;
+      gap:2px;
+      min-width:0
+    }
+    .assignment-filter-field span{
+      font-size:8px;
+      font-weight:900;
+      color:#64748b
+    }
+    .assignment-filter-field input,
+    .assignment-filter-field select{
+      min-width:0;
+      height:30px;
+      padding:5px 7px;
+      border:1px solid #cbd5e1;
+      border-radius:8px;
+      background:#fff;
+      font-size:10px
+    }
+    .assignment-filter-clear{
+      height:30px;
+      padding:5px 9px;
+      font-size:9px
+    }
+    .assignment-carousel-shell{
+      display:grid;
+      grid-template-columns:28px minmax(0,1fr) 28px;
+      gap:5px;
+      align-items:stretch;
+      min-width:0
+    }
+    .assignment-scroll-btn{
+      width:28px;
+      min-width:28px;
+      padding:0;
+      border-radius:8px;
+      font-size:20px;
+      font-weight:900;
+      background:#e2e8f0;
+      color:#334155
+    }
+    .assignment-scroll-btn:hover{background:#cbd5e1;color:#0f172a}
+    .assignment-list{
+      display:flex!important;
+      grid-template-columns:none!important;
+      gap:8px;
+      min-width:0;
+      overflow-x:auto;
+      overflow-y:hidden;
+      scroll-snap-type:x proximity;
+      overscroll-behavior-x:contain;
+      -webkit-overflow-scrolling:touch;
+      padding:2px 2px 7px;
+      scrollbar-width:thin;
+      scrollbar-color:#94a3b8 #e2e8f0
+    }
+    .assignment-list::-webkit-scrollbar{height:7px}
+    .assignment-list::-webkit-scrollbar-track{background:#e2e8f0;border-radius:999px}
+    .assignment-list::-webkit-scrollbar-thumb{background:#94a3b8;border-radius:999px}
+    .assignment-list .assignment-item{
+      flex:0 0 320px;
+      width:320px;
+      scroll-snap-align:start
+    }
+    .assignments-header-row{
+      min-height:28px;
+      justify-content:space-between!important;
+      margin-bottom:5px!important
+    }
+    .assignment-actions-menu{margin-left:0}
+    @media (min-width:769px){
+      .assignments-header-row{
+        padding-left:78px;
+      }
+    }
+    @media (max-width:768px){
+      .main-content{
+        padding-top:92px!important;
+      }
+      .assignment-filter-row{
+        grid-template-columns:1fr 1fr;
+      }
+      .assignment-filter-clear{
+        width:100%
+      }
+      .assignment-carousel-shell{
+        grid-template-columns:24px minmax(0,1fr) 24px
+      }
+      .assignment-scroll-btn{
+        width:24px;
+        min-width:24px
+      }
+      .assignment-list .assignment-item{
+        flex-basis:290px;
+        width:290px
+      }
+    }
+    @media (max-width:520px){
+      .assignment-filter-row{
+        grid-template-columns:1fr
+      }
+      .assignment-list .assignment-item{
+        flex-basis:calc(100vw - 90px);
+        width:calc(100vw - 90px)
+      }
+    }
+
   </style>
 </head>
 <body>
@@ -1012,7 +1150,10 @@
         <div class="assignment-layout">
           <section class="panel-card">
             <div class="panel-card-header assignments-header-row">
-              <h3>Assignments</h3>
+              <div class="assignment-browser-heading">
+                <div class="assignment-browser-title">Assignment Browser</div>
+                <span id="assignmentBrowserCount" class="assignment-browser-count">0 shown</span>
+              </div>
               <details id="assignmentActionsMenu" class="assignment-actions-menu">
                 <summary>Actions</summary>
                 <div class="assignment-actions-popover">
@@ -1020,8 +1161,31 @@
                 </div>
               </details>
             </div>
-            <div id="teacherAssignmentList" class="assignment-list">
-              <div class="status-text">Loading...</div>
+
+            <div class="assignment-filter-row" aria-label="Assignment filters">
+              <label class="assignment-filter-field">
+                <span>Code</span>
+                <input id="assignmentFilterCode" type="search" placeholder="Search task code">
+              </label>
+              <label class="assignment-filter-field">
+                <span>Date</span>
+                <input id="assignmentFilterDate" type="date">
+              </label>
+              <label class="assignment-filter-field">
+                <span>Group</span>
+                <select id="assignmentFilterGroup">
+                  <option value="ALL">All groups</option>
+                </select>
+              </label>
+              <button id="clearAssignmentFiltersBtn" class="assignment-filter-clear" type="button">Clear</button>
+            </div>
+
+            <div class="assignment-carousel-shell">
+              <button id="assignmentScrollLeftBtn" class="assignment-scroll-btn" type="button" aria-label="Scroll assignments left">‹</button>
+              <div id="teacherAssignmentList" class="assignment-list">
+                <div class="status-text">Loading...</div>
+              </div>
+              <button id="assignmentScrollRightBtn" class="assignment-scroll-btn" type="button" aria-label="Scroll assignments right">›</button>
             </div>
           </section>
 
@@ -1139,7 +1303,7 @@
     </main>
   </div>
 
-  <script type="module" src="teacher-assignments.js?v=criteria-two-columns-fixed-20260914"></script>
+  <script type="module" src="teacher-assignments.js?v=assignment-browser-filters-20260915"></script>
   <script defer src="shared-ui-fixes.js?v=assignments-20260914"></script>
 </body>
 </html>
