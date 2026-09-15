@@ -1,5 +1,5 @@
 import { db } from "./firebase.js";
-import { ref, onValue, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { ref, onValue, runTransaction, set } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireStudentSession, clearStudentSession, saveLeaveLog } from "./student-auth.js";
 
 const session = requireStudentSession();
@@ -13,6 +13,7 @@ const studentName = document.getElementById("studentName");
 const studentTeam = document.getElementById("studentTeam");
 const studentStatus = document.getElementById("studentStatus");
 const buzzBtn = document.getElementById("buzzBtn");
+const openVerbRunnerBtn = document.getElementById("openVerbRunnerBtn");
 
 const activityScoresStrip = document.getElementById("activityScoresStrip");
 
@@ -30,6 +31,27 @@ function todayKey() {
 function getDisplayName(student) {
   if (!student) return "Student";
   return student.nickname || ((student.fullName || student.name || "").split(" ")[0]) || "Student";
+}
+
+function createOpaqueLaunchToken() {
+  const bytes = new Uint8Array(24);
+  crypto.getRandomValues(bytes);
+  let raw = "";
+  bytes.forEach((value) => { raw += String.fromCharCode(value); });
+  return btoa(raw).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+async function createVerbRunnerLaunchToken(studentKey) {
+  const token = createOpaqueLaunchToken();
+  const now = Date.now();
+  await set(ref(db, `classroomGames/verbRunnerV2/launchTokens/${token}`), {
+    studentKey,
+    game: "verb-runner",
+    createdAt: now,
+    expiresAt: now + 5 * 60 * 1000,
+    used: false
+  });
+  return token;
 }
 
 function getBuzzerState() {
@@ -160,6 +182,24 @@ function renderBuzzer() {
 
   buzzBtn.disabled = false;
   studentStatus.textContent = "Round is open. Your team can buzz.";
+}
+
+if (openVerbRunnerBtn) {
+  openVerbRunnerBtn.addEventListener("click", async () => {
+    if (!currentStudent || !studentKey) return;
+    openVerbRunnerBtn.disabled = true;
+    const oldText = openVerbRunnerBtn.textContent;
+    openVerbRunnerBtn.textContent = "Opening Verb Runner…";
+    try {
+      const token = await createVerbRunnerLaunchToken(studentKey);
+      window.location.href = `https://classroom-online-games.pages.dev/Verb-Runner/?launch=${encodeURIComponent(token)}`;
+    } catch (error) {
+      console.error("Could not create Verb Runner credential", error);
+      studentStatus.textContent = "Could not open Verb Runner. Try again.";
+      openVerbRunnerBtn.disabled = false;
+      openVerbRunnerBtn.textContent = oldText;
+    }
+  });
 }
 
 logoutBtn.addEventListener("click", async () => {
