@@ -7,96 +7,190 @@
   <link rel="stylesheet" href="styles.css">
   <style>
     *{box-sizing:border-box}
-    .assignments-page{display:grid;gap:18px}
-    .panel-card{min-width:0}
-    .create-card{overflow:hidden}
-    .create-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-    .field{display:grid;gap:6px;min-width:0}
-    .field.full{grid-column:1/-1}
-    .field label,.section-label{font-size:13px;font-weight:800;color:#334155}
-    .field input,.field select,.field textarea,
-    .criteria-builder input,.criteria-builder textarea{width:100%;min-width:0;padding:10px;border:1px solid #cbd5e1;border-radius:10px;font:inherit;background:#fff}
-    .field textarea{min-height:96px;resize:vertical}
-    .field input[readonly]{background:#f1f5f9;color:#475569;font-weight:800;letter-spacing:.02em}
-    .field-help{font-size:11px;line-height:1.35;color:#64748b}
     [hidden]{display:none!important}
+    .main-content{min-width:0}
+    .assignments-page{display:grid;gap:12px}
+    .panel-card{min-width:0}
 
-    .rubric-shell{grid-column:1/-1;display:grid;gap:14px;border:1px solid #dbeafe;border-radius:14px;padding:14px;background:#f8fafc}
-    .rubric-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
-    .rubric-header h4{margin:0;color:#0f172a}
-    .rubric-header p{margin:4px 0 0;font-size:12px;line-height:1.45;color:#64748b}
-    .rubric-columns{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
-    .rubric-section{min-width:0;border:1px solid #e2e8f0;border-radius:12px;padding:12px;background:#fff}
-    .rubric-section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
-    .rubric-section-head h5{margin:0;font-size:14px;color:#0f172a}
-    .criteria-help{font-size:12px;line-height:1.45;color:#64748b}
+    /* Compact create assignment */
+    .create-card{overflow:hidden;padding:12px!important}
+    .create-card .panel-card-header{margin-bottom:8px}
+    .create-card .panel-card-header h3{margin:0;font-size:18px}
+    .create-grid{
+      display:grid;
+      grid-template-columns:repeat(6,minmax(0,1fr));
+      gap:8px;
+      align-items:start
+    }
+    .field{display:grid;gap:4px;min-width:0}
+    .field label,.section-label{font-size:11px;font-weight:900;color:#334155}
+    .field input,.field select,.field textarea,
+    .criteria-builder input,.criteria-builder textarea{
+      width:100%;min-width:0;padding:7px 8px;border:1px solid #cbd5e1;
+      border-radius:8px;font:inherit;font-size:12px;background:#fff
+    }
+    .field textarea{min-height:58px;resize:vertical}
+    .field input[readonly]{background:#f1f5f9;color:#475569;font-weight:800}
+    .field-help{font-size:9px;line-height:1.25;color:#64748b}
+    .title-field{grid-column:span 2}
+    .instructions-field{grid-column:span 3}
+    .create-action-field{grid-column:span 3;align-self:end}
+    .create-action-field button{min-height:36px;padding:7px 12px;font-size:13px}
 
-    .preset-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-    .preset-card{display:grid;grid-template-columns:minmax(0,1fr) 76px;gap:8px;align-items:center;border:1px solid #e2e8f0;border-radius:10px;padding:9px;background:#fff}
-    .preset-main{display:flex;align-items:flex-start;gap:8px;min-width:0}
-    .preset-main input[type="checkbox"]{width:18px;height:18px;margin:2px 0 0;flex:0 0 auto}
+    /* Collapsible rubric keeps create area short */
+    .rubric-details{
+      grid-column:1/-1;
+      border:1px solid #dbeafe;
+      border-radius:10px;
+      background:#f8fafc;
+      overflow:hidden
+    }
+    .rubric-details>summary{
+      cursor:pointer;
+      list-style:none;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      padding:8px 10px;
+      font-size:12px;
+      font-weight:900;
+      color:#0f172a
+    }
+    .rubric-details>summary::-webkit-details-marker{display:none}
+    .rubric-details>summary::after{content:"▾";font-size:12px;color:#64748b}
+    .rubric-details[open]>summary::after{content:"▴"}
+    .rubric-summary-note{font-size:10px;font-weight:700;color:#64748b}
+    .rubric-shell{display:grid;gap:9px;border-top:1px solid #dbeafe;padding:10px;background:#f8fafc}
+    .rubric-header{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+    .rubric-header h4{margin:0;font-size:13px;color:#0f172a}
+    .rubric-header p{margin:2px 0 0;font-size:10px;line-height:1.3;color:#64748b}
+    .rubric-columns{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+    .rubric-section{min-width:0;border:1px solid #e2e8f0;border-radius:9px;padding:8px;background:#fff}
+    .rubric-section-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px}
+    .rubric-section-head h5{margin:0;font-size:11px;color:#0f172a}
+    .rubric-section-head button{padding:5px 7px;font-size:10px}
+    .criteria-help{font-size:9px;line-height:1.3;color:#64748b}
+    .preset-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+    .preset-card{
+      display:grid;grid-template-columns:minmax(0,1fr) 54px;gap:5px;align-items:center;
+      border:1px solid #e2e8f0;border-radius:8px;padding:6px;background:#fff
+    }
+    .preset-main{display:flex;align-items:flex-start;gap:5px;min-width:0}
+    .preset-main input[type="checkbox"]{width:14px;height:14px;margin:1px 0 0;flex:0 0 auto}
     .preset-copy{min-width:0}
-    .preset-copy strong{display:block;font-size:13px;color:#0f172a}
-    .preset-copy span{display:block;margin-top:2px;font-size:11px;line-height:1.35;color:#64748b}
-    .preset-points{width:76px!important;text-align:center;padding:8px!important}
+    .preset-copy strong{display:block;font-size:10px;color:#0f172a}
+    .preset-copy span{display:none}
+    .preset-points{width:54px!important;text-align:center;padding:5px!important;font-size:10px!important}
+    .criteria-rows{display:grid;gap:5px}
+    .criteria-row{display:grid;grid-template-columns:minmax(90px,.7fr) minmax(120px,1.2fr) 58px 30px;gap:5px;align-items:start}
+    .criteria-row input,.criteria-row textarea{padding:5px!important;font-size:10px!important}
+    .criteria-row textarea{min-height:40px;resize:vertical}
+    .criteria-remove{min-height:30px;padding:4px;border-radius:7px}
+    .criteria-total{font-size:11px;font-weight:900;color:#334155;white-space:nowrap}
+    .criteria-total.ok{color:#166534}.criteria-total.bad{color:#b91c1c}
+    .distribution-control{display:flex;align-items:center;gap:7px}
+    .distribution-control label{display:flex;align-items:center;gap:4px;font-size:10px;font-weight:800;color:#475569}
+    .distribution-control input{width:13px;height:13px;margin:0}
+    .rubric-summary{display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:9px}
+    .rubric-footer{display:grid;gap:5px}
+    .rubric-footer textarea{min-height:44px;resize:vertical}
 
-    .criteria-rows{display:grid;gap:8px}
-    .criteria-row{display:grid;grid-template-columns:minmax(120px,.75fr) minmax(180px,1.35fr) 82px 38px;gap:8px;align-items:start}
-    .criteria-row input,.criteria-row textarea{padding:8px!important}
-    .criteria-row textarea{min-height:58px;resize:vertical}
-    .criteria-remove{min-height:38px;padding:7px;border-radius:9px}
-    .criteria-total{font-size:13px;font-weight:800;color:#334155;white-space:nowrap}
-    .criteria-total.ok{color:#166534}
-    .criteria-total.bad{color:#b91c1c}
-    .distribution-control{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
-    .distribution-control label{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:#475569}
-    .distribution-control input{width:16px;height:16px;margin:0}
-    .rubric-summary{display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:12px}
-    .rubric-footer{display:grid;gap:8px}
-    .rubric-footer textarea{min-height:72px;resize:vertical}
+    /* Assignment cards */
+    .assignment-layout{display:grid;grid-template-columns:1fr;gap:10px;align-items:start}
+    .assignment-layout>section{padding:11px!important}
+    .assignment-list{
+      display:grid;
+      grid-template-columns:repeat(6,minmax(0,1fr));
+      gap:8px
+    }
+    .assignment-item{
+      width:100%;min-width:0;text-align:left;background:#fff;border:1px solid #dbeafe;
+      border-radius:12px;padding:9px;cursor:pointer;display:flex;flex-direction:column;gap:5px;
+      min-height:112px
+    }
+    .assignment-item:hover{border-color:#93c5fd;background:#f8fbff}
+    .assignment-item.active{border-color:#2563eb;box-shadow:0 0 0 2px #dbeafe;background:#eff6ff}
+    .assignment-code{font-size:10px;font-weight:900;color:#2563eb;overflow-wrap:anywhere}
+    .assignment-item strong{
+      display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+      font-size:13px;line-height:1.15;color:#0f172a;min-height:30px
+    }
+    .assignment-item-meta{display:flex;flex-wrap:wrap;gap:3px;margin-top:auto}
+    .assignment-mini-chip{
+      display:inline-flex;padding:3px 5px;border-radius:999px;background:#f1f5f9;
+      color:#475569;font-size:9px;font-weight:800;white-space:nowrap
+    }
+    .assignment-mini-chip.open{background:#dcfce7;color:#166534}
+    .assignment-mini-chip.closed{background:#fee2e2;color:#991b1b}
+    .assignment-progress{font-size:9px;font-weight:900;color:#475569}
 
-    .assignment-layout{display:grid;grid-template-columns:minmax(280px,340px) minmax(0,1fr);gap:16px;align-items:start}
-    .assignment-list{display:grid;gap:10px}
-    .assignment-item{width:100%;text-align:left;background:#fff;border:1px solid #dbeafe;border-radius:14px;padding:13px;cursor:pointer}
-    .assignment-item.active{border-color:#2563eb;box-shadow:0 0 0 2px #dbeafe}
-    .assignment-item strong{display:block;font-size:16px;color:#0f172a}
-    .assignment-item span{display:block;margin-top:4px;font-size:12px;color:#64748b;line-height:1.4}
+    /* Selected assignment detail */
+    #assignmentDetailEmpty{padding:8px;color:#64748b;font-size:12px}
+    .detail-stack{display:grid;gap:9px}
+    .detail-stack>.panel-card-header h3{font-size:16px;margin:0}
+    .toolbar{display:flex;flex-wrap:wrap;gap:6px;margin:5px 0}
+    .toolbar button{padding:6px 9px;font-size:11px}
+    .status-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+    .status-box{background:#eff6ff;border-radius:9px;padding:7px;text-align:center;font-size:10px}
+    .status-box strong{display:block;font-size:18px}
+    .submission-meta{font-size:10px;color:#64748b;line-height:1.35}
+    #submissionList{
+      display:grid;
+      grid-template-columns:repeat(5,minmax(0,1fr));
+      gap:7px
+    }
+    .submission-card{
+      min-width:0;background:#fff;border:1px solid #e2e8f0;border-radius:10px;
+      padding:9px;margin:0;display:flex;flex-direction:column;gap:4px
+    }
+    .submission-card h4{
+      margin:0;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+    }
+    .review-chip{
+      display:inline-block;margin-top:2px;padding:3px 5px;border-radius:999px;
+      background:#fef3c7;color:#92400e;font-size:9px;font-weight:900
+    }
+    .pdf-link{display:inline-block;margin-top:2px;font-size:10px;font-weight:900}
+    .criteria-view{display:grid;gap:6px;margin-top:7px}
+    .criteria-view-group{display:grid;gap:5px}
+    .criteria-view-group h5{margin:3px 0 0;color:#475569;font-size:10px;text-transform:uppercase}
+    .criteria-view-item{border:1px solid #e2e8f0;border-radius:8px;padding:7px;background:#fff}
+    .criteria-view-item strong{display:block;color:#0f172a;font-size:10px}
+    .criteria-view-item span{display:block;margin-top:2px;color:#64748b;font-size:9px;line-height:1.3}
+    .criteria-points{font-weight:900;color:#0f172a}
 
-    .detail-stack{display:grid;gap:14px}
-    .toolbar{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
-    .status-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-    .status-box{background:#eff6ff;border-radius:12px;padding:10px;text-align:center}
-    .status-box strong{display:block;font-size:22px}
-    .submission-card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:13px;margin-bottom:10px}
-    .submission-card h4{margin:0 0 5px}
-    .submission-meta{font-size:12px;color:#64748b;line-height:1.5}
-    .review-chip{display:inline-block;margin-top:8px;padding:5px 9px;border-radius:999px;background:#fef3c7;color:#92400e;font-size:12px;font-weight:800}
-    .pdf-link{display:inline-block;margin-top:8px;font-weight:800}
-    .criteria-view{display:grid;gap:8px;margin-top:10px}
-    .criteria-view-group{display:grid;gap:8px}
-    .criteria-view-group h5{margin:4px 0 0;color:#475569;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
-    .criteria-view-item{border:1px solid #e2e8f0;border-radius:10px;padding:10px;background:#fff}
-    .criteria-view-item strong{display:block;color:#0f172a}
-    .criteria-view-item span{display:block;margin-top:4px;color:#64748b;font-size:13px;line-height:1.4}
-    .criteria-points{font-weight:800;color:#0f172a}
-
-    @media(max-width:1100px){
-      .rubric-columns{grid-template-columns:1fr}
-      .preset-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+    @media(max-width:1400px){
+      .assignment-list{grid-template-columns:repeat(5,minmax(0,1fr))}
+      #submissionList{grid-template-columns:repeat(4,minmax(0,1fr))}
+    }
+    @media(max-width:1180px){
+      .create-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+      .title-field{grid-column:span 2}
+      .instructions-field{grid-column:span 2}
+      .create-action-field{grid-column:span 2}
+      .assignment-list{grid-template-columns:repeat(4,minmax(0,1fr))}
     }
     @media(max-width:900px){
-      .create-grid{grid-template-columns:1fr}
-      .field.full,.rubric-shell{grid-column:auto}
-      .assignment-layout{grid-template-columns:1fr}
+      .create-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .title-field,.instructions-field,.create-action-field{grid-column:span 2}
+      .rubric-columns{grid-template-columns:1fr}
       .preset-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-      .criteria-row{grid-template-columns:1fr 1fr 82px 38px}
+      .assignment-list{grid-template-columns:repeat(3,minmax(0,1fr))}
+      #submissionList{grid-template-columns:repeat(3,minmax(0,1fr))}
     }
-    @media(max-width:620px){
+    @media(max-width:650px){
+      .create-grid{grid-template-columns:1fr}
+      .title-field,.instructions-field,.create-action-field{grid-column:auto}
       .preset-grid{grid-template-columns:1fr}
       .criteria-row{grid-template-columns:1fr}
-      .criteria-remove{width:100%}
-      .status-strip{grid-template-columns:1fr}
+      .assignment-list{grid-template-columns:repeat(2,minmax(0,1fr))}
+      #submissionList{grid-template-columns:repeat(2,minmax(0,1fr))}
       .rubric-header,.rubric-section-head{align-items:stretch;flex-direction:column}
+    }
+    @media(max-width:450px){
+      .assignment-list,#submissionList{grid-template-columns:1fr}
+      .status-strip{grid-template-columns:1fr}
     }
   </style>
 </head>
@@ -152,7 +246,7 @@
               <input id="assignmentOtherType" placeholder="e.g. Lab, Portfolio, Case study">
               <div class="field-help">YouTeach will create a short prefix automatically from this type.</div>
             </div>
-            <div class="field">
+            <div class="field title-field">
               <label for="assignmentTitle">Assignment title</label>
               <input id="assignmentTitle" placeholder="Assignment title">
             </div>
@@ -170,12 +264,14 @@
               <input id="assignmentCode" readonly aria-readonly="true" placeholder="Generated automatically">
               <div id="taskCodeStatus" class="field-help">Format: TYPE-TITLE-GROUP-DDMMYY.</div>
             </div>
-            <div class="field full">
+            <div class="field instructions-field">
               <label for="assignmentInstructions">Instructions for students</label>
               <textarea id="assignmentInstructions" placeholder="What should students submit?"></textarea>
             </div>
 
-            <div class="rubric-shell">
+            <details class="rubric-details">
+              <summary>Evaluation criteria <span class="rubric-summary-note">Open to configure · total 100 pts</span></summary>
+              <div class="rubric-shell">
               <div class="rubric-header">
                 <div>
                   <h4>Evaluation criteria</h4>
@@ -213,9 +309,10 @@
                 <label class="section-label" for="assignmentEvaluationNotes">Teacher-only grading notes for ChatGPT (optional)</label>
                 <textarea id="assignmentEvaluationNotes" placeholder="Special grading instructions, tolerances, deductions, or exceptions."></textarea>
               </div>
-            </div>
+              </div>
+            </details>
 
-            <div class="field full">
+            <div class="field create-action-field">
               <button id="createAssignmentBtn">Create Assignment</button>
               <div id="createAssignmentStatus" class="status-text"></div>
             </div>
@@ -319,7 +416,7 @@
     </main>
   </div>
 
-  <script type="module" src="teacher-assignments.js?v=task-code-reset-20260914"></script>
+  <script type="module" src="teacher-assignments.js?v=compact-cards-20260914"></script>
   <script defer src="shared-ui-fixes.js?v=assignments-20260914"></script>
 </body>
 </html>
