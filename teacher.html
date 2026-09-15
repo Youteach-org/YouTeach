@@ -5,6 +5,102 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>YouTeach - Teacher Home</title>
   <link rel="stylesheet" href="styles.css">
+  <style>
+    /* Teacher Home responsive portrait tablet */
+    .teacher-home-summary,
+    .teacher-home-tools {
+      width: 100%;
+      min-width: 0;
+    }
+
+    .teacher-home-summary > *,
+    .teacher-home-tools > * {
+      min-width: 0;
+    }
+
+    @media (min-width: 560px) and (max-width: 1100px) {
+      .main-content {
+        width: 100% !important;
+        max-width: none !important;
+        padding-left: 24px !important;
+        padding-right: 24px !important;
+      }
+
+      .topbar {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 16px !important;
+        margin-bottom: 16px !important;
+      }
+
+      .topbar > div:first-child {
+        min-width: 0;
+      }
+
+      .topbar h2 {
+        margin-bottom: 4px !important;
+      }
+
+      .topbar .topbar-right {
+        margin-top: 0 !important;
+        flex: 0 0 auto;
+      }
+
+      .teacher-home-summary {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 14px !important;
+        margin-bottom: 16px !important;
+      }
+
+      .teacher-home-summary .summary-card {
+        width: 100% !important;
+        min-height: 104px !important;
+        padding: 16px 18px !important;
+        margin: 0 !important;
+      }
+
+      .teacher-home-summary .summary-label {
+        margin-bottom: 6px !important;
+      }
+
+      .teacher-home-summary .summary-card strong {
+        font-size: 26px !important;
+      }
+
+      .teacher-home-tools {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 14px !important;
+        width: 100% !important;
+      }
+
+      .teacher-home-tools .landing-link-card {
+        width: 100% !important;
+        min-height: 150px !important;
+        padding: 18px !important;
+        margin: 0 !important;
+      }
+
+      .teacher-home-tools .landing-link-card h2 {
+        margin: 0 0 10px !important;
+        font-size: 24px !important;
+      }
+
+      .teacher-home-tools .landing-link-card p {
+        margin: 0 !important;
+        line-height: 1.35 !important;
+      }
+    }
+
+    @media (max-width: 559px) {
+      .teacher-home-summary,
+      .teacher-home-tools {
+        grid-template-columns: 1fr !important;
+      }
+    }
+  </style>
 </head>
 <body>
   <button id="menuToggle" class="hamburger-btn" aria-label="Open menu">
@@ -46,7 +142,7 @@
         </div>
       </header>
 
-      <div class="section-grid summary-grid">
+      <div class="section-grid summary-grid teacher-home-summary">
         <div class="summary-card">
           <span class="summary-label">Active Block</span>
           <strong id="activeBlockCard">Block 1</strong>
@@ -65,7 +161,7 @@
         </div>
       </div>
 
-      <div class="landing-grid">
+      <div class="landing-grid teacher-home-tools">
         <a class="landing-link-card" href="buzzer.html">
           <h2>Buzzer</h2>
           <p>Make teams only from active students of the selected group.</p>
@@ -99,7 +195,7 @@
   </div>
 
   <script type="module" src="teacher-home.js"></script>
-<script defer src="shared-ui-fixes.js?v=force-clean-20260508121228"></script>
+<script defer src="shared-ui-fixes.js?v=teacher-home-responsive-20260915"></script>
 <script type="module" src="attendance-validation.js"></script>
 </body>
 </html>
