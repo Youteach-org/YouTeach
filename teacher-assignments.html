@@ -12,6 +12,25 @@
     .assignments-page{display:grid;gap:12px}
     .panel-card{min-width:0}
 
+
+    .assignments-header-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+    .assignment-actions-menu{position:relative}
+    .assignment-actions-menu>summary{
+      list-style:none;cursor:pointer;padding:6px 10px;border:1px solid #cbd5e1;
+      border-radius:8px;background:#fff;font-size:11px;font-weight:900;color:#334155
+    }
+    .assignment-actions-menu>summary::-webkit-details-marker{display:none}
+    .assignment-actions-menu[open] .assignment-actions-popover{display:grid}
+    .assignment-actions-popover{
+      display:none;position:absolute;right:0;top:calc(100% + 5px);z-index:20;
+      min-width:170px;padding:6px;border:1px solid #dbeafe;border-radius:9px;
+      background:#fff;box-shadow:0 10px 24px rgba(15,23,42,.12)
+    }
+    .assignment-actions-popover button{width:100%;padding:7px 9px;font-size:11px}
+    .create-card[hidden]{display:none!important}
+    .create-card .panel-card-header{display:flex;align-items:center;justify-content:space-between;gap:8px}
+    .create-card .panel-card-header button{padding:5px 8px;font-size:10px}
+
     /* Compact create assignment */
     .create-card{overflow:hidden;padding:12px!important}
     .create-card .panel-card-header{margin-bottom:8px}
@@ -111,13 +130,33 @@
     }
     .assignment-item:hover{border-color:#93c5fd;background:#f8fbff}
     .assignment-item.active{border-color:#2563eb;box-shadow:0 0 0 2px #dbeafe;background:#eff6ff}
-    .assignment-code-row{display:flex;align-items:flex-start;justify-content:space-between;gap:5px}
-    .assignment-code{font-size:10px;font-weight:900;color:#2563eb;overflow-wrap:anywhere;min-width:0}
-    .grading-actions{display:flex;gap:3px;flex:0 0 auto}
+    .assignment-item.evaluated{
+      border-color:#86efac;
+      background:#f0fdf4;
+      opacity:.88
+    }
+    .assignment-item.evaluated.active{
+      border-color:#22c55e;
+      box-shadow:0 0 0 2px #bbf7d0;
+      background:#ecfdf5
+    }
+    .evaluated-chip{
+      display:inline-flex;padding:3px 5px;border-radius:999px;
+      background:#dcfce7;color:#166534;font-size:9px;font-weight:900;white-space:nowrap
+    }
+    .assignment-code-row{display:block;width:100%}
+    .assignment-code{
+      display:block;width:100%;font-size:11px;font-weight:900;color:#2563eb;
+      overflow-wrap:anywhere;line-height:1.25
+    }
+    .grading-actions{
+      display:grid;grid-template-columns:1fr 1fr;gap:5px;width:100%;margin-bottom:4px
+    }
     .ai-grading-btn,.manual-grading-btn{
-      border-radius:7px;
-      padding:3px 5px;
-      font-size:8px;
+      width:100%;
+      border-radius:8px;
+      padding:6px 5px;
+      font-size:10px;
       font-weight:900;
       line-height:1.1;
       cursor:pointer;
@@ -195,46 +234,46 @@
     .manual-grading-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
     .manual-grading-head h4{margin:0;font-size:15px;color:#0f172a}
     .manual-grading-head p{margin:3px 0 0;font-size:10px;color:#64748b}
-    .manual-grading-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:8px}
-    .manual-grade-card{background:#fff;border:1px solid #dbeafe;border-radius:10px;padding:9px;min-width:0}
-    .manual-grade-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:7px}
-    .manual-grade-card-head h5{margin:0;font-size:12px;color:#0f172a}
-    .manual-grade-total{font-size:14px;font-weight:900;color:#1d4ed8;white-space:nowrap}
-    .manual-grade-meta{font-size:9px;color:#64748b;margin-top:2px}
-    .manual-criterion-list{display:grid;gap:5px}
+    .manual-grading-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:6px}
+    .manual-grade-card{background:#fff;border:1px solid #dbeafe;border-radius:9px;padding:7px;min-width:0}
+    .manual-grade-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:6px;margin-bottom:4px}
+    .manual-grade-card-head h5{margin:0;font-size:11px;color:#0f172a}
+    .manual-grade-total{font-size:12px;font-weight:900;color:#1d4ed8;white-space:nowrap}
+    .manual-grade-meta{font-size:8px;color:#64748b;margin-top:1px}
+    .manual-criterion-list{display:grid;gap:2px}
     .manual-criterion-row{
       display:grid;
-      grid-template-columns:minmax(0,1fr) 62px 45px;
-      gap:6px;
+      grid-template-columns:minmax(0,1fr) 54px 40px;
+      gap:4px;
       align-items:center;
-      padding:5px 0;
+      padding:3px 0;
       border-bottom:1px solid #f1f5f9
     }
     .manual-criterion-row:last-child{border-bottom:0}
-    .manual-criterion-name{font-size:10px;font-weight:800;color:#334155;min-width:0}
+    .manual-criterion-name{font-size:9px;font-weight:800;color:#334155;min-width:0}
     .manual-criterion-row input{
       width:100%;
       min-width:0;
-      padding:5px 6px;
+      padding:4px 5px;
       border:1px solid #cbd5e1;
       border-radius:7px;
-      font-size:10px;
+      font-size:9px;
       text-align:center
     }
-    .manual-criterion-max{font-size:9px;font-weight:800;color:#64748b}
+    .manual-criterion-max{font-size:8px;font-weight:800;color:#64748b}
     .manual-grade-feedback{
       width:100%;
-      min-height:54px;
-      margin-top:7px;
-      padding:6px 7px;
+      min-height:38px;
+      margin-top:5px;
+      padding:5px 6px;
       border:1px solid #cbd5e1;
       border-radius:8px;
       resize:vertical;
       font:inherit;
-      font-size:10px
+      font-size:9px
     }
-    .manual-grade-actions{display:flex;align-items:center;justify-content:space-between;gap:7px;margin-top:7px}
-    .manual-grade-actions button{padding:6px 8px;font-size:10px}
+    .manual-grade-actions{display:flex;align-items:center;justify-content:space-between;gap:5px;margin-top:5px}
+    .manual-grade-actions button{padding:5px 7px;font-size:9px}
     .manual-grade-status{font-size:9px;font-weight:800;color:#64748b}
     .saved-grade-chip{
       display:inline-flex;margin-top:3px;padding:3px 5px;border-radius:999px;
@@ -252,8 +291,10 @@
       .create-action-field{grid-column:span 2}
       .assignment-list{grid-template-columns:repeat(4,minmax(0,1fr))}
     }
+    @media(max-width:1050px){
+      .manual-grading-list{grid-template-columns:repeat(2,minmax(0,1fr))}
+    }
     @media(max-width:900px){
-      .manual-grading-list{grid-template-columns:1fr}
       .create-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
       .title-field,.instructions-field,.create-action-field{grid-column:span 2}
       .rubric-columns{grid-template-columns:1fr}
@@ -262,6 +303,7 @@
       #submissionList{grid-template-columns:repeat(3,minmax(0,1fr))}
     }
     @media(max-width:650px){
+      .manual-grading-list{grid-template-columns:1fr}
       .create-grid{grid-template-columns:1fr}
       .title-field,.instructions-field,.create-action-field{grid-column:auto}
       .preset-grid{grid-template-columns:1fr}
@@ -307,8 +349,11 @@
       </header>
 
       <div class="assignments-page">
-        <section class="panel-card create-card">
-          <div class="panel-card-header"><h3>Create Assignment</h3></div>
+        <section id="createAssignmentPanel" class="panel-card create-card" hidden>
+          <div class="panel-card-header">
+            <h3>Create Assignment</h3>
+            <button id="hideCreateAssignmentBtn" type="button">Close</button>
+          </div>
           <div class="create-grid">
             <div class="field">
               <label for="assignmentType">Assignment type</label>
@@ -403,7 +448,15 @@
 
         <div class="assignment-layout">
           <section class="panel-card">
-            <div class="panel-card-header"><h3>Assignments</h3></div>
+            <div class="panel-card-header assignments-header-row">
+              <h3>Assignments</h3>
+              <details id="assignmentActionsMenu" class="assignment-actions-menu">
+                <summary>Actions</summary>
+                <div class="assignment-actions-popover">
+                  <button id="showCreateAssignmentBtn" type="button">+ Create Assignment</button>
+                </div>
+              </details>
+            </div>
             <div id="teacherAssignmentList" class="assignment-list">
               <div class="status-text">Loading...</div>
             </div>
@@ -519,7 +572,7 @@
     </main>
   </div>
 
-  <script type="module" src="teacher-assignments.js?v=ai-grade-sync-20260914"></script>
+  <script type="module" src="teacher-assignments.js?v=compact-grading-status-20260914"></script>
   <script defer src="shared-ui-fixes.js?v=assignments-20260914"></script>
 </body>
 </html>
