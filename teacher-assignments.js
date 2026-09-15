@@ -767,6 +767,14 @@ function gradingTotalForSubmission(submission) {
   return Number.isFinite(total) ? total : null;
 }
 
+function submissionIsGraded(submission) {
+  return (
+    submission?.reviewStatus === "graded" &&
+    submission?.grading &&
+    gradingTotalForSubmission(submission) !== null
+  );
+}
+
 function identityStatusLabel(status) {
   const value = String(status || "pending");
   if (value === "verified") return "Identity verified";
@@ -1116,7 +1124,13 @@ function renderDetail() {
   const submissions = assignmentSubmissions(selectedAssignmentId);
   const validSubmissionEntries = Object.entries(submissions)
     .filter(([, submission]) => submission?.driveFileId)
-    .sort((a, b) => String(a[1]?.studentName || "").localeCompare(String(b[1]?.studentName || "")));
+    .sort((a, b) => {
+      const aGraded = submissionIsGraded(a[1]);
+      const bGraded = submissionIsGraded(b[1]);
+      if (aGraded !== bGraded) return aGraded ? 1 : -1;
+      return String(a[1]?.studentName || "")
+        .localeCompare(String(b[1]?.studentName || ""));
+    });
 
   const submittedKeys = new Set(validSubmissionEntries.map(([studentKey]) => studentKey));
   const missing = students.filter(([studentKey]) => !submittedKeys.has(studentKey));
@@ -1153,31 +1167,44 @@ function renderDetail() {
   }
 
   submissionList.innerHTML = validSubmissionEntries.length
-    ? validSubmissionEntries.map(([, submission]) => `
-        <article class="submission-card">
-          <h4>${escapeHtml(submission.studentName || "Student")}</h4>
-          <div class="submission-meta">
-            ${escapeHtml(submission.studentNumber || "No ID")} ·
-            ${escapeHtml(submission.groupName || "")} ·
-            ${Math.max(1, Math.round(Number(submission.size || 0) / 1024))} KB ·
-            ${escapeHtml(formatDate(submission.updatedAt || submission.submittedAt))}
-          </div>
-          <div class="review-chip">${escapeHtml(identityStatusLabel(submission.identityReviewStatus))}</div>
-          ${gradingTotalForSubmission(submission) === null
-            ? (submission?.grading?.mode === "ai"
-              ? '<div class="saved-grade-chip">AI reviewed · score pending manual review</div>'
-              : "")
-            : `<div class="saved-grade-chip">Grade: ${escapeHtml(Number(gradingTotalForSubmission(submission).toFixed(2)))} / 100 · ${escapeHtml(submission?.grading?.mode || "manual")}</div>`
-          }
-          ${submission?.aiGradingCandidate
-            ? '<div class="ai-candidate-chip">AI comparison available</div>'
-            : ""
-          }<br>
-          <a class="pdf-link" href="${escapeHtml(submission.driveFileUrl || "#")}" target="_blank" rel="noopener">
-            Open submitted PDF →
-          </a>
-        </article>
-      `).join("")
+    ? validSubmissionEntries.map(([, submission]) => {
+        const graded = submissionIsGraded(submission);
+        const gradeTotal = gradingTotalForSubmission(submission);
+
+        return `
+          <article class="submission-card ${graded ? "graded" : "pending-grade"}">
+            <h4>${escapeHtml(submission.studentName || "Student")}</h4>
+            <div class="submission-meta">
+              ${escapeHtml(submission.studentNumber || "No ID")} ·
+              ${escapeHtml(submission.groupName || "")} ·
+              ${Math.max(1, Math.round(Number(submission.size || 0) / 1024))} KB ·
+              ${escapeHtml(formatDate(submission.updatedAt || submission.submittedAt))}
+            </div>
+
+            <div class="grading-state-chip ${graded ? "graded" : "pending"}">
+              ${graded ? "Graded" : "Pending grading"}
+            </div>
+
+            <div class="review-chip">${escapeHtml(identityStatusLabel(submission.identityReviewStatus))}</div>
+
+            ${gradeTotal === null
+              ? (submission?.grading?.mode === "ai"
+                ? '<div class="saved-grade-chip">AI reviewed · score pending manual review</div>'
+                : "")
+              : `<div class="saved-grade-chip">Grade: ${escapeHtml(Number(gradeTotal.toFixed(2)))} / 100 · ${escapeHtml(submission?.grading?.mode || "manual")}</div>`
+            }
+
+            ${submission?.aiGradingCandidate
+              ? '<div class="ai-candidate-chip">AI comparison available</div>'
+              : ""
+            }
+
+            <a class="pdf-link" href="${escapeHtml(submission.driveFileUrl || "#")}" target="_blank" rel="noopener">
+              Open submitted PDF →
+            </a>
+          </article>
+        `;
+      }).join("")
     : '<div class="status-text">No PDF submissions yet.</div>';
 
   missingList.textContent = missing.length
