@@ -212,6 +212,13 @@
       background:#fff;
       border-color:#bfdbfe
     }
+    .submission-card[data-submission-student-key]{cursor:pointer}
+    .submission-card[data-submission-student-key]:hover{box-shadow:0 0 0 2px #dbeafe}
+    .submission-card.selected-for-grading{
+      border-color:#2563eb;
+      box-shadow:0 0 0 2px #bfdbfe;
+      background:#eff6ff
+    }
     .grading-state-chip{
       display:inline-flex;margin-top:2px;padding:3px 5px;border-radius:999px;
       font-size:9px;font-weight:900
@@ -227,39 +234,77 @@
     }
     .pdf-link{display:inline-block;margin-top:2px;font-size:10px;font-weight:900}
 
-    .criteria-details{
-      border:1px solid #dbeafe;
-      border-radius:10px;
-      background:#f8fafc;
-      overflow:hidden
+    .assignment-overview-grid{
+      display:grid;
+      grid-template-columns:minmax(0,1.7fr) minmax(300px,.9fr);
+      gap:9px;
+      align-items:start
     }
-    .criteria-details>summary{
-      list-style:none;
-      cursor:pointer;
+    .assignment-overview-card,.criteria-summary-card{
+      border:1px solid #dbeafe;
+      border-radius:11px;
+      background:#f8fafc;
+      padding:10px;
+      min-width:0
+    }
+    .assignment-overview-card .panel-card-header{margin-bottom:6px}
+    .criteria-summary-head{
       display:flex;
       align-items:center;
       justify-content:space-between;
       gap:8px;
-      padding:8px 10px;
-      font-size:11px;
-      font-weight:900;
-      color:#334155;
-      background:#f8fafc
+      margin-bottom:6px
     }
-    .criteria-details>summary::-webkit-details-marker{display:none}
-    .criteria-details>summary::after{
-      content:"View";
-      display:inline-flex;
-      padding:4px 7px;
-      border-radius:7px;
-      background:#e2e8f0;
-      color:#334155;
-      font-size:9px;
+    .criteria-summary-head h4{margin:0;font-size:13px;color:#0f172a}
+    .criteria-summary-head button{
+      flex:0 0 auto;
+      padding:6px 9px;
+      font-size:10px;
       font-weight:900
     }
-    .criteria-details[open]>summary::after{content:"Hide"}
-    .criteria-details-body{
-      border-top:1px solid #dbeafe;
+    .criteria-compact-list{display:grid;gap:4px}
+    .criteria-compact-item{
+      display:flex;
+      justify-content:space-between;
+      gap:8px;
+      padding:5px 6px;
+      border:1px solid #e2e8f0;
+      border-radius:7px;
+      background:#fff;
+      font-size:9px;
+      line-height:1.2
+    }
+    .criteria-compact-item strong{
+      min-width:0;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+      color:#334155
+    }
+    .criteria-compact-item span{flex:0 0 auto;font-weight:900;color:#0f172a}
+    .criteria-compact-notes{
+      margin-top:5px;
+      padding:5px 6px;
+      border-radius:7px;
+      background:#fff7ed;
+      color:#9a3412;
+      font-size:8px;
+      line-height:1.25;
+      display:-webkit-box;
+      -webkit-line-clamp:2;
+      -webkit-box-orient:vertical;
+      overflow:hidden
+    }
+    .criteria-compact-total{
+      margin-top:5px;
+      font-size:10px;
+      font-weight:900;
+      color:#334155
+    }
+    .criteria-edit-workspace{
+      border:1px solid #dbeafe;
+      border-radius:10px;
+      background:#f8fafc;
       padding:9px
     }
 
@@ -286,11 +331,16 @@
       background:#ede9fe;color:#6d28d9;font-size:9px;font-weight:900
     }
 
-    .manual-grading-panel{background:#f8fafc!important}
+    .manual-grading-panel{
+      width:min(100%,620px);
+      justify-self:start;
+      background:#f8fafc!important;
+      padding:9px!important
+    }
     .manual-grading-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
     .manual-grading-head h4{margin:0;font-size:15px;color:#0f172a}
     .manual-grading-head p{margin:3px 0 0;font-size:10px;color:#64748b}
-    .manual-grading-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:6px}
+    .manual-grading-list{display:grid;grid-template-columns:1fr;gap:6px;margin-top:6px}
     .manual-grade-card{background:#fff;border:1px solid #dbeafe;border-radius:9px;padding:7px;min-width:0}
     .manual-grade-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:6px;margin-bottom:4px}
     .manual-grade-card-head h5{margin:0;font-size:11px;color:#0f172a}
@@ -348,7 +398,7 @@
       .assignment-list{grid-template-columns:repeat(4,minmax(0,1fr))}
     }
     @media(max-width:1050px){
-      .manual-grading-list{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .assignment-overview-grid{grid-template-columns:1fr}
     }
     @media(max-width:900px){
       .create-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -359,7 +409,6 @@
       #submissionList{grid-template-columns:repeat(3,minmax(0,1fr))}
     }
     @media(max-width:650px){
-      .manual-grading-list{grid-template-columns:1fr}
       .create-grid{grid-template-columns:1fr}
       .title-field,.instructions-field,.create-action-field{grid-column:auto}
       .preset-grid{grid-template-columns:1fr}
@@ -521,100 +570,100 @@
           <section class="panel-card">
             <div id="assignmentDetailEmpty">Select an assignment to see submissions.</div>
             <div id="assignmentDetail" hidden class="detail-stack">
-              <div class="panel-card-header">
-                <div>
-                  <h3 id="detailTitle">Assignment</h3>
-                  <div id="detailMeta" class="submission-meta"></div>
-                </div>
+              <div class="assignment-overview-grid">
+                <section class="assignment-overview-card">
+                  <div class="panel-card-header">
+                    <div>
+                      <h3 id="detailTitle">Assignment</h3>
+                      <div id="detailMeta" class="submission-meta"></div>
+                    </div>
+                  </div>
+
+                  <div class="status-strip">
+                    <div class="status-box"><span>Students</span><strong id="eligibleCount">0</strong></div>
+                    <div class="status-box"><span>Submitted</span><strong id="submittedCount">0</strong></div>
+                    <div class="status-box"><span>Missing</span><strong id="missingCount">0</strong></div>
+                  </div>
+
+                  <div class="toolbar">
+                    <button id="openDriveFolderBtn" disabled>Open Drive Folder</button>
+                    <button id="toggleAssignmentBtn">Close Assignment</button>
+                  </div>
+
+                  <div class="ai-sync-bar">
+                    <label for="aiConflictMode">AI grade conflicts</label>
+                    <select id="aiConflictMode">
+                      <option value="keep-manual">Keep Manual</option>
+                      <option value="replace-manual">Replace with AI</option>
+                      <option value="compare">Compare</option>
+                    </select>
+                    <button id="syncAiGradesBtn" type="button">Sync AI Grades</button>
+                    <span id="aiSyncStatus" class="ai-sync-status"></span>
+                  </div>
+
+                  <div id="driveStatus" class="status-text">The Drive folder is created automatically with the first PDF submission.</div>
+                </section>
+
+                <section class="criteria-summary-card">
+                  <div class="criteria-summary-head">
+                    <h4>Evaluation criteria</h4>
+                    <button id="editCriteriaBtn" type="button">Edit</button>
+                  </div>
+                  <div id="criteriaReadOnly"></div>
+                </section>
               </div>
 
-              <div class="status-strip">
-                <div class="status-box"><span>Students</span><strong id="eligibleCount">0</strong></div>
-                <div class="status-box"><span>Submitted</span><strong id="submittedCount">0</strong></div>
-                <div class="status-box"><span>Missing</span><strong id="missingCount">0</strong></div>
-              </div>
+              <div id="criteriaEditPanel" class="criteria-edit-workspace" hidden>
+                <div class="rubric-shell">
+                  <div class="rubric-header">
+                    <div>
+                      <h4>Edit evaluation criteria</h4>
+                      <p>Criteria always total 100 points. Use equal or manual distribution.</p>
+                    </div>
+                    <div class="rubric-summary">
+                      <div class="distribution-control" aria-label="Point distribution">
+                        <label><input type="radio" name="editDistribution" value="equal"> Equal</label>
+                        <label><input type="radio" name="editDistribution" value="manual" checked> Manual</label>
+                      </div>
+                      <div id="editCriteriaTotal" class="criteria-total">0 / 100</div>
+                    </div>
+                  </div>
 
-              <div>
-                <div class="toolbar">
-                  <button id="openDriveFolderBtn" disabled>Open Drive Folder</button>
-                  <button id="toggleAssignmentBtn">Close Assignment</button>
+                  <div class="rubric-columns">
+                    <div class="rubric-section">
+                      <div class="rubric-section-head"><h5>Preset criteria</h5></div>
+                      <div id="editPresetCriteria" class="preset-grid"></div>
+                    </div>
+
+                    <div class="rubric-section">
+                      <div class="rubric-section-head">
+                        <h5>Custom criteria</h5>
+                        <button id="addEditCriterionBtn" type="button">+ Add custom criterion</button>
+                      </div>
+                      <div id="editCriteriaRows" class="criteria-rows"></div>
+                    </div>
+                  </div>
+
+                  <div class="rubric-footer">
+                    <label class="section-label" for="editEvaluationNotes">Teacher-only grading notes for ChatGPT (optional)</label>
+                    <textarea id="editEvaluationNotes" placeholder="Special grading instructions, tolerances, deductions, or exceptions."></textarea>
+                  </div>
+
+                  <div class="toolbar">
+                    <button id="saveCriteriaBtn" type="button">Save criteria</button>
+                    <button id="cancelCriteriaBtn" type="button">Cancel</button>
+                  </div>
+                  <div id="criteriaSaveStatus" class="status-text"></div>
                 </div>
-                <div class="ai-sync-bar">
-                  <label for="aiConflictMode">AI grade conflicts</label>
-                  <select id="aiConflictMode">
-                    <option value="keep-manual">Keep Manual</option>
-                    <option value="replace-manual">Replace with AI</option>
-                    <option value="compare">Compare</option>
-                  </select>
-                  <button id="syncAiGradesBtn" type="button">Sync AI Grades</button>
-                  <span id="aiSyncStatus" class="ai-sync-status"></span>
-                </div>
-                <div id="driveStatus" class="status-text">The Drive folder is created automatically with the first PDF submission.</div>
               </div>
 
               <div id="submissionList"></div>
-
-              <details class="criteria-details">
-                <summary>Evaluation criteria</summary>
-                <div class="criteria-details-body">
-                  <div class="panel-card-header">
-                    <h4 style="margin:0">Evaluation criteria</h4>
-                    <button id="editCriteriaBtn" type="button">Edit criteria</button>
-                  </div>
-
-                  <div id="criteriaReadOnly" class="criteria-view"></div>
-
-                  <div id="criteriaEditPanel" hidden style="margin-top:12px">
-                    <div class="rubric-shell">
-                      <div class="rubric-header">
-                        <div>
-                          <h4>Edit evaluation criteria</h4>
-                          <p>Criteria always total 100 points. Use equal or manual distribution.</p>
-                        </div>
-                        <div class="rubric-summary">
-                          <div class="distribution-control" aria-label="Point distribution">
-                            <label><input type="radio" name="editDistribution" value="equal"> Equal</label>
-                            <label><input type="radio" name="editDistribution" value="manual" checked> Manual</label>
-                          </div>
-                          <div id="editCriteriaTotal" class="criteria-total">0 / 100</div>
-                        </div>
-                      </div>
-
-                      <div class="rubric-columns">
-                        <div class="rubric-section">
-                          <div class="rubric-section-head"><h5>Preset criteria</h5></div>
-                          <div id="editPresetCriteria" class="preset-grid"></div>
-                        </div>
-
-                        <div class="rubric-section">
-                          <div class="rubric-section-head">
-                            <h5>Custom criteria</h5>
-                            <button id="addEditCriterionBtn" type="button">+ Add custom criterion</button>
-                          </div>
-                          <div id="editCriteriaRows" class="criteria-rows"></div>
-                        </div>
-                      </div>
-
-                      <div class="rubric-footer">
-                        <label class="section-label" for="editEvaluationNotes">Teacher-only grading notes for ChatGPT (optional)</label>
-                        <textarea id="editEvaluationNotes" placeholder="Special grading instructions, tolerances, deductions, or exceptions."></textarea>
-                      </div>
-
-                      <div class="toolbar">
-                        <button id="saveCriteriaBtn" type="button">Save criteria</button>
-                        <button id="cancelCriteriaBtn" type="button">Cancel</button>
-                      </div>
-                      <div id="criteriaSaveStatus" class="status-text"></div>
-                    </div>
-                  </div>
-                </div>
-              </details>
 
               <section id="manualGradingPanel" class="panel-card manual-grading-panel" hidden>
                 <div class="manual-grading-head">
                   <div>
                     <h4 id="manualGradingTitle">Manual Grading</h4>
-                    <p>Score each student using the assignment criteria. Totals are calculated automatically out of 100.</p>
+                    <p>Score this student using the assignment criteria.</p>
                   </div>
                   <button id="closeManualGradingBtn" type="button">Close</button>
                 </div>
@@ -632,7 +681,7 @@
     </main>
   </div>
 
-  <script type="module" src="teacher-assignments.js?v=collapsed-criteria-20260914"></script>
+  <script type="module" src="teacher-assignments.js?v=student-card-grading-20260914"></script>
   <script defer src="shared-ui-fixes.js?v=assignments-20260914"></script>
 </body>
 </html>
