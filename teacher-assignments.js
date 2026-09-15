@@ -628,6 +628,11 @@ function assignmentSubmissions(assignmentId) {
   return submissionsCache?.[assignmentId] || {};
 }
 
+function assignmentHasSubmissions(assignmentId) {
+  return Object.values(assignmentSubmissions(assignmentId))
+    .some((submission) => Boolean(submission?.driveFileId));
+}
+
 function renderGroupOptions() {
   const current = assignmentGroup.value;
   const groups = Object.values(groupsCache || {})
@@ -704,7 +709,10 @@ function renderDetail() {
     : "The Drive folder is created automatically with the first PDF submission.";
 
   detailTitle.textContent = `${assignment.code || ""} · ${assignment.title || "Assignment"}`;
-  detailMeta.textContent = `${assignment.groupName || "ALL"} · Due: ${formatDate(assignment.dueAt)} · ${assignment.active ? "Open" : "Closed"}`;
+  const codeLockText = assignmentHasSubmissions(selectedAssignmentId)
+    ? " · Code locked after first submission"
+    : "";
+  detailMeta.textContent = `${assignment.groupName || "ALL"} · Due: ${formatDate(assignment.dueAt)} · ${assignment.active ? "Open" : "Closed"}${codeLockText}`;
   eligibleCount.textContent = students.length;
   submittedCount.textContent = validSubmissionEntries.length;
   missingCount.textContent = missing.length;
