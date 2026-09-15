@@ -226,6 +226,43 @@
       background:#fef3c7;color:#92400e;font-size:9px;font-weight:900
     }
     .pdf-link{display:inline-block;margin-top:2px;font-size:10px;font-weight:900}
+
+    .criteria-details{
+      border:1px solid #dbeafe;
+      border-radius:10px;
+      background:#f8fafc;
+      overflow:hidden
+    }
+    .criteria-details>summary{
+      list-style:none;
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:8px;
+      padding:8px 10px;
+      font-size:11px;
+      font-weight:900;
+      color:#334155;
+      background:#f8fafc
+    }
+    .criteria-details>summary::-webkit-details-marker{display:none}
+    .criteria-details>summary::after{
+      content:"View";
+      display:inline-flex;
+      padding:4px 7px;
+      border-radius:7px;
+      background:#e2e8f0;
+      color:#334155;
+      font-size:9px;
+      font-weight:900
+    }
+    .criteria-details[open]>summary::after{content:"Hide"}
+    .criteria-details-body{
+      border-top:1px solid #dbeafe;
+      padding:9px
+    }
+
     .criteria-view{display:grid;gap:6px;margin-top:7px}
     .criteria-view-group{display:grid;gap:5px}
     .criteria-view-group h5{margin:3px 0 0;color:#475569;font-size:10px;text-transform:uppercase}
@@ -515,59 +552,63 @@
                 <div id="driveStatus" class="status-text">The Drive folder is created automatically with the first PDF submission.</div>
               </div>
 
-              <div class="panel-card" style="background:#f8fafc">
-                <div class="panel-card-header">
-                  <h4 style="margin:0">Evaluation criteria</h4>
-                  <button id="editCriteriaBtn" type="button">Edit criteria</button>
-                </div>
-                <div id="criteriaReadOnly" class="criteria-view"></div>
+              <div id="submissionList"></div>
 
-                <div id="criteriaEditPanel" hidden style="margin-top:12px">
-                  <div class="rubric-shell">
-                    <div class="rubric-header">
-                      <div>
-                        <h4>Edit evaluation criteria</h4>
-                        <p>Criteria always total 100 points. Use equal or manual distribution.</p>
-                      </div>
-                      <div class="rubric-summary">
-                        <div class="distribution-control" aria-label="Point distribution">
-                          <label><input type="radio" name="editDistribution" value="equal"> Equal</label>
-                          <label><input type="radio" name="editDistribution" value="manual" checked> Manual</label>
+              <details class="criteria-details">
+                <summary>Evaluation criteria</summary>
+                <div class="criteria-details-body">
+                  <div class="panel-card-header">
+                    <h4 style="margin:0">Evaluation criteria</h4>
+                    <button id="editCriteriaBtn" type="button">Edit criteria</button>
+                  </div>
+
+                  <div id="criteriaReadOnly" class="criteria-view"></div>
+
+                  <div id="criteriaEditPanel" hidden style="margin-top:12px">
+                    <div class="rubric-shell">
+                      <div class="rubric-header">
+                        <div>
+                          <h4>Edit evaluation criteria</h4>
+                          <p>Criteria always total 100 points. Use equal or manual distribution.</p>
                         </div>
-                        <div id="editCriteriaTotal" class="criteria-total">0 / 100</div>
-                      </div>
-                    </div>
-
-                    <div class="rubric-columns">
-                      <div class="rubric-section">
-                        <div class="rubric-section-head"><h5>Preset criteria</h5></div>
-                        <div id="editPresetCriteria" class="preset-grid"></div>
-                      </div>
-
-                      <div class="rubric-section">
-                        <div class="rubric-section-head">
-                          <h5>Custom criteria</h5>
-                          <button id="addEditCriterionBtn" type="button">+ Add custom criterion</button>
+                        <div class="rubric-summary">
+                          <div class="distribution-control" aria-label="Point distribution">
+                            <label><input type="radio" name="editDistribution" value="equal"> Equal</label>
+                            <label><input type="radio" name="editDistribution" value="manual" checked> Manual</label>
+                          </div>
+                          <div id="editCriteriaTotal" class="criteria-total">0 / 100</div>
                         </div>
-                        <div id="editCriteriaRows" class="criteria-rows"></div>
                       </div>
-                    </div>
 
-                    <div class="rubric-footer">
-                      <label class="section-label" for="editEvaluationNotes">Teacher-only grading notes for ChatGPT (optional)</label>
-                      <textarea id="editEvaluationNotes" placeholder="Special grading instructions, tolerances, deductions, or exceptions."></textarea>
-                    </div>
+                      <div class="rubric-columns">
+                        <div class="rubric-section">
+                          <div class="rubric-section-head"><h5>Preset criteria</h5></div>
+                          <div id="editPresetCriteria" class="preset-grid"></div>
+                        </div>
 
-                    <div class="toolbar">
-                      <button id="saveCriteriaBtn" type="button">Save criteria</button>
-                      <button id="cancelCriteriaBtn" type="button">Cancel</button>
+                        <div class="rubric-section">
+                          <div class="rubric-section-head">
+                            <h5>Custom criteria</h5>
+                            <button id="addEditCriterionBtn" type="button">+ Add custom criterion</button>
+                          </div>
+                          <div id="editCriteriaRows" class="criteria-rows"></div>
+                        </div>
+                      </div>
+
+                      <div class="rubric-footer">
+                        <label class="section-label" for="editEvaluationNotes">Teacher-only grading notes for ChatGPT (optional)</label>
+                        <textarea id="editEvaluationNotes" placeholder="Special grading instructions, tolerances, deductions, or exceptions."></textarea>
+                      </div>
+
+                      <div class="toolbar">
+                        <button id="saveCriteriaBtn" type="button">Save criteria</button>
+                        <button id="cancelCriteriaBtn" type="button">Cancel</button>
+                      </div>
+                      <div id="criteriaSaveStatus" class="status-text"></div>
                     </div>
-                    <div id="criteriaSaveStatus" class="status-text"></div>
                   </div>
                 </div>
-              </div>
-
-              <div id="submissionList"></div>
+              </details>
 
               <section id="manualGradingPanel" class="panel-card manual-grading-panel" hidden>
                 <div class="manual-grading-head">
@@ -591,7 +632,7 @@
     </main>
   </div>
 
-  <script type="module" src="teacher-assignments.js?v=submission-grading-order-20260914"></script>
+  <script type="module" src="teacher-assignments.js?v=collapsed-criteria-20260914"></script>
   <script defer src="shared-ui-fixes.js?v=assignments-20260914"></script>
 </body>
 </html>
