@@ -121,6 +121,16 @@ function formatDate(timestamp) {
   return value ? new Date(value).toLocaleString() : "No due date";
 }
 
+function formatCompactDate(timestamp) {
+  const value = Number(timestamp || 0);
+  if (!value) return "No date";
+  return new Date(value).toLocaleDateString(undefined, {
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit"
+  });
+}
+
 function slugCode(value, fallback = "ITEM") {
   const clean = String(value || "")
     .normalize("NFD")
@@ -681,10 +691,29 @@ function renderAssignmentList() {
   teacherAssignmentList.innerHTML = entries.map(([id, assignment]) => {
     const submissions = assignmentSubmissions(id);
     const count = Object.values(submissions).filter((submission) => submission?.driveFileId).length;
+    const total = assignmentStudents(assignment).length;
+    const missing = Math.max(0, total - count);
+
     return `
-      <button class="assignment-item ${id === selectedAssignmentId ? "active" : ""}" data-assignment-select="${id}">
-        <strong>${escapeHtml(assignment.code || "")} · ${escapeHtml(assignment.title || "Assignment")}</strong>
-        <span>${escapeHtml(assignment.groupName || "ALL")} · ${assignment.active ? "Open" : "Closed"} · ${count} submitted</span>
+      <button
+        class="assignment-item ${id === selectedAssignmentId ? "active" : ""}"
+        data-assignment-select="${id}"
+        title="${escapeHtml(assignment.title || "Assignment")}"
+      >
+        <span class="assignment-code">${escapeHtml(assignment.code || "")}</span>
+        <strong>${escapeHtml(assignment.title || "Assignment")}</strong>
+
+        <span class="assignment-item-meta">
+          <span class="assignment-mini-chip">${escapeHtml(assignment.groupName || "ALL")}</span>
+          <span class="assignment-mini-chip">${escapeHtml(formatCompactDate(assignment.dueAt))}</span>
+          <span class="assignment-mini-chip ${assignment.active ? "open" : "closed"}">
+            ${assignment.active ? "Open" : "Closed"}
+          </span>
+        </span>
+
+        <span class="assignment-progress">
+          ${count}/${total} submitted · ${missing} missing
+        </span>
       </button>
     `;
   }).join("");
