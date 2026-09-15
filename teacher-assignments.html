@@ -667,6 +667,98 @@
       .assignment-list,#submissionList{grid-template-columns:1fr}
       .status-strip{grid-template-columns:1fr}
     }
+  
+    /* Final selected-assignment alignment */
+    .assignment-overview-card{
+      min-height:58px!important;
+      max-height:58px;
+      display:flex!important;
+      align-items:center!important;
+      gap:8px!important;
+      overflow:hidden
+    }
+    .assignment-overview-card .status-strip{
+      display:flex!important;
+      flex-wrap:nowrap!important;
+      align-items:center!important;
+      gap:4px!important;
+      margin:0!important
+    }
+    .assignment-overview-card .status-box{
+      min-width:92px!important;
+      min-height:32px;
+      padding:4px 8px!important;
+      display:flex!important;
+      align-items:center!important;
+      justify-content:space-between!important;
+      gap:7px!important;
+      border-radius:7px!important;
+      font-size:9px!important;
+      line-height:1!important
+    }
+    .assignment-overview-card .status-box strong{
+      display:inline!important;
+      font-size:16px!important;
+      line-height:1!important
+    }
+    .overview-actions-stack{
+      flex:0 0 auto;
+      height:48px;
+      display:grid;
+      grid-template-rows:20px 24px;
+      gap:2px;
+      align-content:center
+    }
+    .overview-actions-stack .ai-sync-bar{
+      display:flex!important;
+      flex-wrap:nowrap!important;
+      align-items:center!important;
+      justify-content:flex-end;
+      gap:4px!important;
+      margin:0!important;
+      padding:0!important;
+      border:0!important;
+      background:transparent!important
+    }
+    .overview-actions-stack .ai-sync-bar label{
+      font-size:8px!important;
+      font-weight:900!important
+    }
+    .overview-actions-stack .ai-sync-bar select{
+      width:128px!important;
+      max-width:128px!important;
+      height:20px;
+      padding:2px 5px!important;
+      font-size:8px!important;
+      border-radius:6px!important
+    }
+    .overview-actions-stack .ai-sync-status{
+      max-width:74px;
+      font-size:7px!important
+    }
+    .overview-actions-stack .toolbar{
+      display:flex!important;
+      flex-wrap:nowrap!important;
+      justify-content:flex-end;
+      align-items:center;
+      gap:3px!important;
+      margin:0!important
+    }
+    .overview-actions-stack .toolbar button{
+      height:24px;
+      padding:4px 7px!important;
+      font-size:8px!important;
+      white-space:nowrap
+    }
+    @media(max-width:1250px){
+      .assignment-overview-card{
+        max-height:none;
+        min-height:58px!important;
+        flex-wrap:wrap!important
+      }
+      .overview-actions-stack{height:auto;grid-template-rows:auto auto}
+    }
+
   </style>
 </head>
 <body>
@@ -829,20 +921,22 @@
                     <div class="status-box"><span>Missing</span><strong id="missingCount">0</strong></div>
                   </div>
 
-                  <div class="ai-sync-bar">
-                    <label for="aiConflictMode">AI</label>
-                    <select id="aiConflictMode">
-                      <option value="keep-manual">Keep Manual</option>
-                      <option value="replace-manual">Replace with AI</option>
-                      <option value="compare">Compare</option>
-                    </select>
-                    <button id="syncAiGradesBtn" type="button">Sync</button>
-                    <span id="aiSyncStatus" class="ai-sync-status"></span>
-                  </div>
+                  <div class="overview-actions-stack">
+                    <div class="ai-sync-bar">
+                      <label for="aiConflictMode">AI</label>
+                      <select id="aiConflictMode">
+                        <option value="keep-manual">Keep Manual</option>
+                        <option value="replace-manual">Replace with AI</option>
+                        <option value="compare">Compare</option>
+                      </select>
+                      <span id="aiSyncStatus" class="ai-sync-status"></span>
+                    </div>
 
-                  <div class="toolbar">
-                    <button id="openDriveFolderBtn" disabled>Drive</button>
-                    <button id="toggleAssignmentBtn">Close</button>
+                    <div class="toolbar">
+                      <button id="syncAiGradesBtn" type="button">Sync</button>
+                      <button id="openDriveFolderBtn" disabled>Drive</button>
+                      <button id="toggleAssignmentBtn">Close</button>
+                    </div>
                   </div>
 
                   <div id="driveStatus" class="status-text">The Drive folder is created automatically with the first PDF submission.</div>
@@ -923,7 +1017,7 @@
     </main>
   </div>
 
-  <script type="module" src="teacher-assignments.js?v=single-line-summary-20260914"></script>
+  <script type="module" src="teacher-assignments.js?v=stacked-ai-controls-20260914"></script>
   <script defer src="shared-ui-fixes.js?v=assignments-20260914"></script>
 </body>
 </html>
