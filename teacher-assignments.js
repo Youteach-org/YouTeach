@@ -656,6 +656,41 @@ function assignmentHasSubmissions(assignmentId) {
     .some((submission) => Boolean(submission?.driveFileId));
 }
 
+function buildChatGPTGradingPrompt(assignmentId) {
+  const assignment = assignmentsCache[assignmentId];
+  if (!assignment) return "";
+
+  const code = String(assignment.code || "").trim();
+  const title = String(assignment.title || "Assignment").trim();
+  const group = String(assignment.groupName || "ALL").trim();
+
+  return [
+    `Califica la actividad de YouTeach con Task Code: ${code}.`,
+    `Título: ${title}. Grupo: ${group}.`,
+    "",
+    "Usa mi conexión de Google Drive. En la carpeta YouTeach Assignments/" + code + ":",
+    "1. Abre y lee el archivo " + code + "--evaluation-criteria.json.",
+    "2. Revisa todos los PDFs de estudiantes dentro de esa carpeta.",
+    "3. Evalúa cada entrega sobre 100 usando exactamente los criterios, puntos y notas del archivo JSON.",
+    "4. Verifica la identidad comparando el nombre esperado del alumno con el nombre visible o escrito dentro del PDF. Si falta, no se puede leer o no coincide, marca MANUAL REVIEW y no inventes la identidad.",
+    "5. No uses material fuera de esa carpeta salvo que yo lo pida.",
+    "6. Devuélveme una tabla por alumno con: calificación /100, estado de identidad, desglose por criterio y feedback breve.",
+    "",
+    "Si alguna parte no puede evaluarse con la evidencia disponible (por ejemplo pronunciación sin audio), indícalo claramente y no inventes una puntuación."
+  ].join("\n");
+}
+
+function openChatGPTGrading(assignmentId) {
+  const prompt = buildChatGPTGradingPrompt(assignmentId);
+  if (!prompt) return;
+
+  // Keep the prompt on the clipboard as a fallback if ChatGPT does not prefill it.
+  navigator.clipboard?.writeText(prompt).catch(() => {});
+
+  const url = `https://chatgpt.com/?prompt=${encodeURIComponent(prompt)}`;
+  window.open(url, "_blank", "noopener");
+}
+
 function renderGroupOptions() {
   const current = assignmentGroup.value;
   const groups = Object.values(groupsCache || {})
@@ -695,12 +730,22 @@ function renderAssignmentList() {
     const missing = Math.max(0, total - count);
 
     return `
-      <button
+      <article
         class="assignment-item ${id === selectedAssignmentId ? "active" : ""}"
         data-assignment-select="${id}"
         title="${escapeHtml(assignment.title || "Assignment")}"
       >
-        <span class="assignment-code">${escapeHtml(assignment.code || "")}</span>
+        <div class="assignment-code-row">
+          <span class="assignment-code">${escapeHtml(assignment.code || "")}</span>
+          <button
+            type="button"
+            class="grade-chatgpt-btn"
+            data-grade-assignment="${id}"
+            ${count ? "" : "disabled"}
+            title="${count ? "Open ChatGPT to grade this activity" : "No submissions to grade yet"}"
+          >Grade</button>
+        </div>
+
         <strong>${escapeHtml(assignment.title || "Assignment")}</strong>
 
         <span class="assignment-item-meta">
@@ -714,7 +759,7 @@ function renderAssignmentList() {
         <span class="assignment-progress">
           ${count}/${total} submitted · ${missing} missing
         </span>
-      </button>
+      </article>
     `;
   }).join("");
 
@@ -1055,9 +1100,15 @@ function wireRubricEditor(presetContainer, customContainer, totalElement, radios
 }
 
 teacherAssignmentList.addEventListener("click", (event) => {
-  const button = event.target.closest("[data-assignment-select]");
-  if (!button) return;
-  selectedAssignmentId = button.dataset.assignmentSelect;
+  const gradeButton = event.target.closest("[data-grade-assignment]");
+  if (gradeButton) {
+    if (!gradeButton.disabled) openChatGPTGrading(gradeButton.dataset.gradeAssignment);
+    return;
+  }
+
+  const card = event.target.closest("[data-assignment-select]");
+  if (!card) return;
+  selectedAssignmentId = card.dataset.assignmentSelect;
   renderAssignmentList();
 });
 
