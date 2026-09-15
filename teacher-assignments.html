@@ -184,11 +184,27 @@
     #assignmentDetailEmpty{padding:8px;color:#64748b;font-size:12px}
     .detail-stack{display:grid;gap:9px}
     .detail-stack>.panel-card-header h3{font-size:16px;margin:0}
-    .toolbar{display:flex;flex-wrap:wrap;gap:6px;margin:5px 0}
-    .toolbar button{padding:6px 9px;font-size:11px}
-    .status-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
-    .status-box{background:#eff6ff;border-radius:9px;padding:7px;text-align:center;font-size:10px}
-    .status-box strong{display:block;font-size:18px}
+    .toolbar{display:flex;flex-wrap:wrap;gap:5px;margin:0}
+    .toolbar button{padding:5px 8px;font-size:10px}
+    .status-strip{
+      display:flex;
+      flex-wrap:wrap;
+      gap:5px;
+      margin-top:5px
+    }
+    .status-box{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:8px;
+      min-width:96px;
+      background:#eff6ff;
+      border-radius:8px;
+      padding:4px 7px;
+      text-align:left;
+      font-size:8px
+    }
+    .status-box strong{display:inline;font-size:14px}
     .submission-meta{font-size:10px;color:#64748b;line-height:1.35}
     #submissionList{
       display:grid;
@@ -236,18 +252,34 @@
 
     .assignment-overview-grid{
       display:grid;
-      grid-template-columns:minmax(0,1.7fr) minmax(300px,.9fr);
-      gap:9px;
+      grid-template-columns:minmax(0,1.3fr) minmax(300px,.7fr);
+      gap:8px;
       align-items:start
     }
     .assignment-overview-card,.criteria-summary-card{
       border:1px solid #dbeafe;
-      border-radius:11px;
+      border-radius:10px;
       background:#f8fafc;
-      padding:10px;
+      padding:8px;
       min-width:0
     }
-    .assignment-overview-card .panel-card-header{margin-bottom:6px}
+    .assignment-overview-card .panel-card-header{
+      margin-bottom:2px;
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:8px
+    }
+    .assignment-overview-card .panel-card-header h3{
+      margin:0;
+      font-size:17px;
+      line-height:1.15
+    }
+    .assignment-overview-card .submission-meta{
+      margin-top:2px;
+      font-size:9px;
+      line-height:1.2
+    }
     .criteria-summary-head{
       display:flex;
       align-items:center;
@@ -319,13 +351,33 @@
 
 
     .ai-sync-bar{
-      display:flex;flex-wrap:wrap;align-items:center;gap:6px;
-      padding:7px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:9px
+      display:flex;
+      flex-wrap:wrap;
+      align-items:center;
+      gap:5px;
+      margin-top:5px;
+      padding:0;
+      background:transparent;
+      border:0
     }
-    .ai-sync-bar label{font-size:10px;font-weight:900;color:#475569}
-    .ai-sync-bar select{padding:5px 7px;border:1px solid #cbd5e1;border-radius:7px;font-size:10px;background:#fff}
-    .ai-sync-bar button{padding:6px 9px;font-size:10px}
-    .ai-sync-status{font-size:10px;font-weight:800;color:#64748b}
+    .ai-sync-bar label{font-size:9px;font-weight:900;color:#475569}
+    .ai-sync-bar select{
+      width:auto;
+      max-width:155px;
+      padding:4px 6px;
+      border:1px solid #cbd5e1;
+      border-radius:7px;
+      font-size:9px;
+      background:#fff
+    }
+    .ai-sync-bar button{padding:5px 7px;font-size:9px}
+    .ai-sync-status{font-size:9px;font-weight:800;color:#64748b}
+    .assignment-overview-card #driveStatus{
+      margin-top:4px;
+      font-size:8px;
+      line-height:1.2;
+      color:#64748b
+    }
     .ai-candidate-chip{
       display:inline-flex;margin-top:3px;padding:3px 5px;border-radius:999px;
       background:#ede9fe;color:#6d28d9;font-size:9px;font-weight:900
@@ -577,6 +629,10 @@
                       <h3 id="detailTitle">Assignment</h3>
                       <div id="detailMeta" class="submission-meta"></div>
                     </div>
+                    <div class="toolbar">
+                      <button id="openDriveFolderBtn" disabled>Drive</button>
+                      <button id="toggleAssignmentBtn">Close</button>
+                    </div>
                   </div>
 
                   <div class="status-strip">
@@ -585,19 +641,14 @@
                     <div class="status-box"><span>Missing</span><strong id="missingCount">0</strong></div>
                   </div>
 
-                  <div class="toolbar">
-                    <button id="openDriveFolderBtn" disabled>Open Drive Folder</button>
-                    <button id="toggleAssignmentBtn">Close Assignment</button>
-                  </div>
-
                   <div class="ai-sync-bar">
-                    <label for="aiConflictMode">AI grade conflicts</label>
+                    <label for="aiConflictMode">AI conflicts</label>
                     <select id="aiConflictMode">
                       <option value="keep-manual">Keep Manual</option>
                       <option value="replace-manual">Replace with AI</option>
                       <option value="compare">Compare</option>
                     </select>
-                    <button id="syncAiGradesBtn" type="button">Sync AI Grades</button>
+                    <button id="syncAiGradesBtn" type="button">Sync AI</button>
                     <span id="aiSyncStatus" class="ai-sync-status"></span>
                   </div>
 
@@ -681,7 +732,7 @@
     </main>
   </div>
 
-  <script type="module" src="teacher-assignments.js?v=student-card-grading-20260914"></script>
+  <script type="module" src="teacher-assignments.js?v=compact-overview-20260914"></script>
   <script defer src="shared-ui-fixes.js?v=assignments-20260914"></script>
 </body>
 </html>
