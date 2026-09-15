@@ -8,12 +8,55 @@
   <style>
     *{box-sizing:border-box}
     [hidden]{display:none!important}
-    .main-content{min-width:0}
-    .assignments-page{display:grid;gap:12px}
+    .main-content{
+      min-width:0;
+      padding:8px 10px!important
+    }
+    .topbar{
+      min-height:0!important;
+      margin:0 0 6px!important;
+      padding:4px 6px!important;
+      display:flex!important;
+      align-items:center!important;
+      gap:8px!important
+    }
+    .topbar>div:first-child{
+      min-width:0;
+      display:flex;
+      align-items:baseline;
+      gap:9px
+    }
+    .topbar h2{
+      margin:0!important;
+      font-size:20px!important;
+      line-height:1!important;
+      white-space:nowrap
+    }
+    .topbar p{
+      margin:0!important;
+      font-size:10px!important;
+      line-height:1.1!important;
+      color:#64748b!important;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis
+    }
+    .topbar-right{margin-left:auto!important}
+    .topbar .teacher-identity{
+      padding:5px 8px!important;
+      border-radius:8px!important;
+      font-size:10px!important;
+      line-height:1!important
+    }
+    .assignments-page{display:grid;gap:6px}
     .panel-card{min-width:0}
 
 
-    .assignments-header-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+    .assignments-header-row{
+      display:flex;align-items:center;justify-content:space-between;gap:6px;
+      margin-bottom:5px!important
+    }
+    .assignments-header-row h3{margin:0!important;font-size:15px!important}
     .assignment-actions-menu{position:relative}
     .assignment-actions-menu>summary{
       list-style:none;cursor:pointer;padding:6px 10px;border:1px solid #cbd5e1;
@@ -116,8 +159,8 @@
     .rubric-footer textarea{min-height:44px;resize:vertical}
 
     /* Assignment cards */
-    .assignment-layout{display:grid;grid-template-columns:1fr;gap:10px;align-items:start}
-    .assignment-layout>section{padding:11px!important}
+    .assignment-layout{display:grid;grid-template-columns:1fr;gap:6px;align-items:start}
+    .assignment-layout>section{padding:7px!important}
     .assignment-list{
       display:grid;
       grid-template-columns:repeat(6,minmax(0,1fr));
@@ -196,15 +239,15 @@
       display:flex;
       align-items:center;
       justify-content:space-between;
-      gap:8px;
-      min-width:96px;
+      gap:5px;
+      min-width:78px;
       background:#eff6ff;
-      border-radius:8px;
-      padding:4px 7px;
+      border-radius:7px;
+      padding:3px 6px;
       text-align:left;
-      font-size:8px
+      font-size:7.5px
     }
-    .status-box strong{display:inline;font-size:14px}
+    .status-box strong{display:inline;font-size:12px}
     .submission-meta{font-size:10px;color:#64748b;line-height:1.35}
     #submissionList{
       display:grid;
@@ -252,15 +295,15 @@
 
     .assignment-overview-grid{
       display:grid;
-      grid-template-columns:minmax(0,1.3fr) minmax(300px,.7fr);
-      gap:8px;
+      grid-template-columns:minmax(0,1.25fr) minmax(300px,.75fr);
+      gap:6px;
       align-items:start
     }
     .assignment-overview-card,.criteria-summary-card{
       border:1px solid #dbeafe;
-      border-radius:10px;
+      border-radius:9px;
       background:#f8fafc;
-      padding:8px;
+      padding:6px;
       min-width:0
     }
     .assignment-overview-card .panel-card-header{
@@ -284,14 +327,14 @@
       display:flex;
       align-items:center;
       justify-content:space-between;
-      gap:8px;
-      margin-bottom:6px
+      gap:6px;
+      margin-bottom:4px
     }
-    .criteria-summary-head h4{margin:0;font-size:13px;color:#0f172a}
+    .criteria-summary-head h4{margin:0;font-size:11px;color:#0f172a}
     .criteria-summary-head button{
       flex:0 0 auto;
-      padding:6px 9px;
-      font-size:10px;
+      padding:4px 7px;
+      font-size:8px;
       font-weight:900
     }
     .criteria-compact-list{display:grid;gap:4px}
@@ -299,12 +342,12 @@
       display:flex;
       justify-content:space-between;
       gap:8px;
-      padding:5px 6px;
+      padding:3px 5px;
       border:1px solid #e2e8f0;
-      border-radius:7px;
+      border-radius:6px;
       background:#fff;
-      font-size:9px;
-      line-height:1.2
+      font-size:8px;
+      line-height:1.15
     }
     .criteria-compact-item strong{
       min-width:0;
@@ -315,21 +358,21 @@
     }
     .criteria-compact-item span{flex:0 0 auto;font-weight:900;color:#0f172a}
     .criteria-compact-notes{
-      margin-top:5px;
-      padding:5px 6px;
+      margin-top:4px;
+      padding:4px 5px;
       border-radius:7px;
       background:#fff7ed;
       color:#9a3412;
-      font-size:8px;
-      line-height:1.25;
+      font-size:7.5px;
+      line-height:1.2;
       display:-webkit-box;
       -webkit-line-clamp:2;
       -webkit-box-orient:vertical;
       overflow:hidden
     }
     .criteria-compact-total{
-      margin-top:5px;
-      font-size:10px;
+      margin-top:4px;
+      font-size:9px;
       font-weight:900;
       color:#334155
     }
@@ -360,23 +403,32 @@
       background:transparent;
       border:0
     }
-    .ai-sync-bar label{font-size:9px;font-weight:900;color:#475569}
+    .ai-sync-bar label{font-size:8px;font-weight:900;color:#475569}
     .ai-sync-bar select{
       width:auto;
-      max-width:155px;
-      padding:4px 6px;
+      max-width:130px;
+      padding:3px 5px;
       border:1px solid #cbd5e1;
-      border-radius:7px;
-      font-size:9px;
+      border-radius:6px;
+      font-size:8px;
       background:#fff
     }
-    .ai-sync-bar button{padding:5px 7px;font-size:9px}
-    .ai-sync-status{font-size:9px;font-weight:800;color:#64748b}
+    .ai-sync-bar button{padding:4px 6px;font-size:8px}
+    .ai-sync-status{font-size:8px;font-weight:800;color:#64748b}
+    .overview-control-row{
+      display:flex;
+      flex-wrap:wrap;
+      align-items:center;
+      gap:5px;
+      margin-top:4px
+    }
+    .overview-control-row .status-strip{margin-top:0}
+    .overview-control-row .ai-sync-bar{margin-top:0}
     .assignment-overview-card #driveStatus{
-      margin-top:4px;
-      font-size:8px;
-      line-height:1.2;
-      color:#64748b
+      margin-top:3px;
+      font-size:7.5px;
+      line-height:1.15;
+      color:#94a3b8
     }
     .ai-candidate-chip{
       display:inline-flex;margin-top:3px;padding:3px 5px;border-radius:999px;
@@ -496,6 +548,8 @@
       #submissionList{grid-template-columns:repeat(3,minmax(0,1fr))}
     }
     @media(max-width:650px){
+      .topbar p{display:none}
+      .topbar h2{font-size:18px!important}
       .create-grid{grid-template-columns:1fr}
       .title-field,.instructions-field,.create-action-field{grid-column:auto}
       .preset-grid{grid-template-columns:1fr}
@@ -535,7 +589,7 @@
       <header class="topbar">
         <div>
           <h2>Assignments</h2>
-          <p>Create PDF assignments, set grading criteria, and review submissions stored in Google Drive.</p>
+          <p>PDF assignments · grading · submissions</p>
         </div>
         <div class="topbar-right"><span id="teacherIdentity" class="teacher-identity">Teacher</span></div>
       </header>
@@ -670,21 +724,23 @@
                     </div>
                   </div>
 
-                  <div class="status-strip">
-                    <div class="status-box"><span>Students</span><strong id="eligibleCount">0</strong></div>
-                    <div class="status-box"><span>Submitted</span><strong id="submittedCount">0</strong></div>
-                    <div class="status-box"><span>Missing</span><strong id="missingCount">0</strong></div>
-                  </div>
+                  <div class="overview-control-row">
+                    <div class="status-strip">
+                      <div class="status-box"><span>Students</span><strong id="eligibleCount">0</strong></div>
+                      <div class="status-box"><span>Submitted</span><strong id="submittedCount">0</strong></div>
+                      <div class="status-box"><span>Missing</span><strong id="missingCount">0</strong></div>
+                    </div>
 
-                  <div class="ai-sync-bar">
-                    <label for="aiConflictMode">AI conflicts</label>
-                    <select id="aiConflictMode">
-                      <option value="keep-manual">Keep Manual</option>
-                      <option value="replace-manual">Replace with AI</option>
-                      <option value="compare">Compare</option>
-                    </select>
-                    <button id="syncAiGradesBtn" type="button">Sync AI</button>
-                    <span id="aiSyncStatus" class="ai-sync-status"></span>
+                    <div class="ai-sync-bar">
+                      <label for="aiConflictMode">AI conflicts</label>
+                      <select id="aiConflictMode">
+                        <option value="keep-manual">Keep Manual</option>
+                        <option value="replace-manual">Replace with AI</option>
+                        <option value="compare">Compare</option>
+                      </select>
+                      <button id="syncAiGradesBtn" type="button">Sync AI</button>
+                      <span id="aiSyncStatus" class="ai-sync-status"></span>
+                    </div>
                   </div>
 
                   <div id="driveStatus" class="status-text">The Drive folder is created automatically with the first PDF submission.</div>
@@ -767,7 +823,7 @@
     </main>
   </div>
 
-  <script type="module" src="teacher-assignments.js?v=compact-missing-20260914"></script>
+  <script type="module" src="teacher-assignments.js?v=ultra-compact-layout-20260914"></script>
   <script defer src="shared-ui-fixes.js?v=assignments-20260914"></script>
 </body>
 </html>
