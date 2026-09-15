@@ -56,6 +56,7 @@ const assignmentCode = document.getElementById("assignmentCode");
 const assignmentType = document.getElementById("assignmentType");
 const assignmentOtherTypeField = document.getElementById("assignmentOtherTypeField");
 const assignmentOtherType = document.getElementById("assignmentOtherType");
+const taskCodeStatus = document.getElementById("taskCodeStatus");
 const assignmentTitle = document.getElementById("assignmentTitle");
 const assignmentGroup = document.getElementById("assignmentGroup");
 const assignmentInstructions = document.getElementById("assignmentInstructions");
@@ -132,51 +133,110 @@ function slugCode(value, fallback = "ITEM") {
 }
 
 function dateCode(value) {
-  const date = value ? new Date(value) : new Date();
+  if (!value) return "";
+  const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
-  const yyyy = date.getFullYear();
-  const mm = String(date.getMonth() + 1).padStart(2, "0");
   const dd = String(date.getDate()).padStart(2, "0");
-  return `${yyyy}${mm}${dd}`;
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const yy = String(date.getFullYear()).slice(-2);
+  return `${dd}${mm}${yy}`;
+}
+
+function compactInitials(value, max = 3) {
+  const words = String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, " ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (!words.length) return "";
+  if (words.length === 1) return words[0].slice(0, max);
+
+  const initials = words.map((word) => word[0]).join("").slice(0, max);
+  return initials || words[0].slice(0, max);
+}
+
+function compactTitleCode(value) {
+  const words = String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, " ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (!words.length) return "";
+  if (words.length === 1) return words[0].slice(0, 6);
+  return words.slice(0, 2).map((word) => word.slice(0, 3)).join("").slice(0, 6);
+}
+
+function compactGroupCode(value) {
+  const tokens = String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .split(/[^A-Z0-9]+/)
+    .filter(Boolean);
+
+  if (!tokens.length) return "";
+  const withDigit = tokens.find((token) => /\d/.test(token));
+  return (withDigit || tokens[0]).slice(0, 8);
+}
+
+function selectedAssignmentTypeCode() {
+  if (assignmentType.value !== "OTHER") return assignmentType.value;
+  return compactInitials(assignmentOtherType.value, 3) || "OT";
 }
 
 function selectedAssignmentTypeLabel() {
-  const selected = String(assignmentType.value || "TASK");
-  if (selected === "OTHER") {
-    return assignmentOtherType.value.trim() || "OTHER";
+  if (assignmentType.value === "OTHER") {
+    return assignmentOtherType.value.trim() || "Other";
   }
   const option = assignmentType.options[assignmentType.selectedIndex];
-  return option?.textContent?.trim() || selected;
+  return option?.textContent?.replace(/\s*\([^)]*\)\s*$/, "").trim() || assignmentType.value;
 }
 
 function taskCodeBase() {
-  const typePart = slugCode(selectedAssignmentTypeLabel(), "TASK");
-  const titlePart = slugCode(assignmentTitle.value, "UNTITLED");
-  const groupPart = slugCode(assignmentGroup.value || "ALL", "ALL");
+  const typePart = selectedAssignmentTypeCode();
+  const titlePart = compactTitleCode(assignmentTitle.value);
+  const groupPart = compactGroupCode(assignmentGroup.value);
   const datePart = dateCode(assignmentDueAt.value);
-  return [typePart, titlePart, groupPart, datePart].filter(Boolean).join("-");
+
+  if (!typePart || !titlePart || !groupPart || !datePart) return "";
+  return [typePart, titlePart, groupPart, datePart].join("-");
 }
 
-function uniqueTaskCode(baseCode) {
-  const used = new Set(
-    Object.values(assignmentsCache || {})
-      .map((assignment) => String(assignment?.code || "").trim().toUpperCase())
-      .filter(Boolean)
-  );
-
-  if (!used.has(baseCode)) return baseCode;
-
-  let suffix = 2;
-  while (used.has(`${baseCode}-${String(suffix).padStart(2, "0")}`)) {
-    suffix += 1;
-  }
-  return `${baseCode}-${String(suffix).padStart(2, "0")}`;
+function taskCodeExists(code, excludeAssignmentId = "") {
+  const target = String(code || "").trim().toUpperCase();
+  return Object.entries(assignmentsCache || {}).some(([id, assignment]) => {
+    if (excludeAssignmentId && id === excludeAssignmentId) return false;
+    return String(assignment?.code || "").trim().toUpperCase() === target;
+  });
 }
 
 function refreshAutomaticTaskCode() {
   assignmentOtherTypeField.hidden = assignmentType.value !== "OTHER";
   const base = taskCodeBase();
-  assignmentCode.value = base ? uniqueTaskCode(base) : "";
+  assignmentCode.value = base;
+
+  if (!base) {
+    taskCodeStatus.textContent = "Complete type, title, group, and due date to generate the code.";
+    taskCodeStatus.style.color = "#64748b";
+    return;
+  }
+
+  if (taskCodeExists(base)) {
+    taskCodeStatus.textContent = "This task code already exists. Change the title, group, date, or type.";
+    taskCodeStatus.style.color = "#b91c1c";
+    return;
+  }
+
+  taskCodeStatus.textContent = "Available task code.";
+  taskCodeStatus.style.color = "#166534";
 }
 
 function encodeRubricMetadata(value) {
@@ -677,9 +737,8 @@ function renderDetail() {
 async function createAssignment() {
   refreshAutomaticTaskCode();
   const code = assignmentCode.value.trim().toUpperCase();
-  const typeValue = assignmentType.value === "OTHER"
-    ? assignmentOtherType.value.trim()
-    : assignmentType.options[assignmentType.selectedIndex]?.textContent?.trim() || assignmentType.value;
+  const typeValue = selectedAssignmentTypeLabel();
+  const typeCode = selectedAssignmentTypeCode();
   const title = assignmentTitle.value.trim();
   const groupName = assignmentGroup.value || "ALL";
   const instructions = assignmentInstructions.value.trim();
@@ -720,8 +779,20 @@ async function createAssignment() {
     return;
   }
 
+  if (!assignmentDueAt.value) {
+    createAssignmentStatus.textContent = "Select the due date.";
+    createAssignmentStatus.className = "status-text bad";
+    return;
+  }
+
   if (!code) {
-    createAssignmentStatus.textContent = "Could not generate the task code.";
+    createAssignmentStatus.textContent = "Complete type, title, group, and due date to generate the task code.";
+    createAssignmentStatus.className = "status-text bad";
+    return;
+  }
+
+  if (taskCodeExists(code)) {
+    createAssignmentStatus.textContent = "That activity already exists. Change the title, group, date, or type.";
     createAssignmentStatus.className = "status-text bad";
     return;
   }
@@ -735,6 +806,7 @@ async function createAssignment() {
     const storedInstructions = buildStoredInstructions(instructions, {
       schemaVersion: 1,
       assignmentType: typeValue,
+      assignmentTypeCode: typeCode,
       criteria: rubricResult.criteria,
       distribution: evaluationDistribution,
       notes: evaluationNotes,
@@ -754,7 +826,7 @@ async function createAssignment() {
     });
 
     selectedAssignmentId = target.key;
-    assignmentType.value = "TASK";
+    assignmentType.value = "CT";
     assignmentOtherType.value = "";
     assignmentOtherTypeField.hidden = true;
     assignmentCode.value = "";
