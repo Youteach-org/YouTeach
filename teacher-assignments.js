@@ -98,6 +98,9 @@ const manualGradingPanel = document.getElementById("manualGradingPanel");
 const manualGradingTitle = document.getElementById("manualGradingTitle");
 const manualGradingList = document.getElementById("manualGradingList");
 const closeManualGradingBtn = document.getElementById("closeManualGradingBtn");
+const aiConflictMode = document.getElementById("aiConflictMode");
+const syncAiGradesBtn = document.getElementById("syncAiGradesBtn");
+const aiSyncStatus = document.getElementById("aiSyncStatus");
 const logoutBtn = document.getElementById("logoutBtn");
 const teacherIdentity = document.getElementById("teacherIdentity");
 
@@ -672,15 +675,51 @@ function buildChatGPTGradingPrompt(assignmentId) {
     `Califica la actividad de YouTeach con Task Code: ${code}.`,
     `Título: ${title}. Grupo: ${group}.`,
     "",
-    "Usa mi conexión de Google Drive. En la carpeta YouTeach Assignments/" + code + ":",
-    "1. Abre y lee el archivo " + code + "--evaluation-criteria.json.",
+    "Usa mi conexión de Google Drive. Trabaja ÚNICAMENTE dentro de la carpeta YouTeach Assignments/" + code + ".",
+    "",
+    "1. Abre y lee " + code + "--evaluation-criteria.json.",
     "2. Revisa todos los PDFs de estudiantes dentro de esa carpeta.",
     "3. Evalúa cada entrega sobre 100 usando exactamente los criterios, puntos y notas del archivo JSON.",
-    "4. Verifica la identidad comparando el nombre esperado del alumno con el nombre visible o escrito dentro del PDF. Si falta, no se puede leer o no coincide, marca MANUAL REVIEW y no inventes la identidad.",
-    "5. No uses material fuera de esa carpeta salvo que yo lo pida.",
-    "6. Devuélveme una tabla por alumno con: calificación /100, estado de identidad, desglose por criterio y feedback breve.",
+    "4. Verifica la identidad comparando el nombre esperado del alumno (derivado del nombre del archivo de YouTeach) con el nombre visible o escrito dentro del PDF.",
+    "5. Si el nombre falta, es ilegible o no coincide, usa identityStatus = \"manual-review\" o \"mismatch\". Nunca inventes la identidad.",
+    "6. Si un criterio no puede evaluarse con la evidencia disponible (por ejemplo pronunciación sin audio), NO pongas 0. Usa status = \"not-gradable\", score = null y explica el motivo.",
+    "7. Devuélveme en el chat una tabla por alumno con calificación /100 cuando sea calculable, estado de identidad, desglose por criterio y feedback breve.",
     "",
-    "Si alguna parte no puede evaluarse con la evidencia disponible (por ejemplo pronunciación sin audio), indícalo claramente y no inventes una puntuación."
+    "8. OBLIGATORIO: al terminar, crea o reemplaza dentro de ESTA MISMA carpeta el archivo:",
+    code + "--grading-results.json",
+    "",
+    "El JSON debe seguir exactamente esta estructura:",
+    "{",
+    '  "schemaVersion": 1,',
+    '  "source": "ChatGPT",',
+    '  "taskCode": "' + code + '",',
+    '  "gradedAt": 0,',
+    '  "results": [',
+    "    {",
+    '      "driveFileName": "NOMBRE-DEL-ARCHIVO.pdf",',
+    '      "expectedStudentName": "Nombre esperado por YouTeach",',
+    '      "studentNumber": "",',
+    '      "identityStatus": "verified | manual-review | mismatch",',
+    '      "criterionScores": [',
+    "        {",
+    '          "criterionId": "ID exacto del criterio del evaluation-criteria.json",',
+    '          "title": "Título exacto del criterio",',
+    '          "score": 0,',
+    '          "status": "graded | not-gradable",',
+    '          "note": ""',
+    "        }",
+    "      ],",
+    '      "totalScore": 0,',
+    '      "feedback": "",',
+    '      "notes": ""',
+    "    }",
+    "  ]",
+    "}",
+    "",
+    "Para criterios not-gradable usa score:null. Si existe al menos un criterio not-gradable, usa totalScore:null; no extrapoles ni reescales la calificación.",
+    "gradedAt debe ser un timestamp en milisegundos.",
+    "No modifiques ni borres los PDFs ni el archivo evaluation-criteria.json.",
+    "Después de crear el archivo de resultados, confirma en el chat que quedó guardado en Drive."
   ].join("\n");
 }
 
@@ -695,8 +734,61 @@ function openChatGPTGrading(assignmentId) {
 }
 
 function gradingTotalForSubmission(submission) {
-  const total = Number(submission?.grading?.totalScore);
+  const raw = submission?.grading?.totalScore;
+  if (raw === null || raw === undefined || raw === "") return null;
+  const total = Number(raw);
   return Number.isFinite(total) ? total : null;
+}
+
+function identityStatusLabel(status) {
+  const value = String(status || "pending");
+  if (value === "verified") return "Identity verified";
+  if (value === "mismatch") return "Identity mismatch";
+  if (value === "manual-review") return "Identity manual review";
+  return "Identity pending review";
+}
+
+async function syncAiGrades() {
+  const assignment = assignmentsCache[selectedAssignmentId];
+  if (!assignment) return;
+
+  syncAiGradesBtn.disabled = true;
+  aiSyncStatus.textContent = "Syncing AI grades...";
+  aiSyncStatus.style.color = "#64748b";
+
+  try {
+    const response = await fetch("/api/sync-ai-grades", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        assignmentId: selectedAssignmentId,
+        conflictMode: aiConflictMode.value
+      })
+    });
+
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.ok) {
+      throw new Error(result.error || "Could not sync AI grades.");
+    }
+
+    const parts = [
+      `${result.imported || 0} imported`,
+      `${result.compared || 0} compared`,
+      `${result.skippedManual || 0} manual kept`
+    ];
+    if (result.unmatched?.length) parts.push(`${result.unmatched.length} unmatched`);
+    if (result.errors?.length) parts.push(`${result.errors.length} errors`);
+
+    aiSyncStatus.textContent = parts.join(" · ");
+    aiSyncStatus.style.color =
+      result.errors?.length || result.unmatched?.length ? "#b45309" : "#166534";
+  } catch (error) {
+    console.error(error);
+    aiSyncStatus.textContent = error?.message || "Could not sync AI grades.";
+    aiSyncStatus.style.color = "#b91c1c";
+  } finally {
+    syncAiGradesBtn.disabled = false;
+  }
 }
 
 function renderManualGrading() {
@@ -1031,10 +1123,16 @@ function renderDetail() {
             ${Math.max(1, Math.round(Number(submission.size || 0) / 1024))} KB ·
             ${escapeHtml(formatDate(submission.updatedAt || submission.submittedAt))}
           </div>
-          <div class="review-chip">${escapeHtml(submission.identityReviewStatus === "verified" ? "Identity verified" : "Identity pending review")}</div>
+          <div class="review-chip">${escapeHtml(identityStatusLabel(submission.identityReviewStatus))}</div>
           ${gradingTotalForSubmission(submission) === null
-            ? ""
+            ? (submission?.grading?.mode === "ai"
+              ? '<div class="saved-grade-chip">AI reviewed · score pending manual review</div>'
+              : "")
             : `<div class="saved-grade-chip">Grade: ${escapeHtml(Number(gradingTotalForSubmission(submission).toFixed(2)))} / 100 · ${escapeHtml(submission?.grading?.mode || "manual")}</div>`
+          }
+          ${submission?.aiGradingCandidate
+            ? '<div class="ai-candidate-chip">AI comparison available</div>'
+            : ""
           }<br>
           <a class="pdf-link" href="${escapeHtml(submission.driveFileUrl || "#")}" target="_blank" rel="noopener">
             Open submitted PDF →
@@ -1342,6 +1440,8 @@ manualGradingList.addEventListener("click", (event) => {
 closeManualGradingBtn.addEventListener("click", () => {
   manualGradingPanel.hidden = true;
 });
+
+syncAiGradesBtn.addEventListener("click", syncAiGrades);
 
 openDriveFolderBtn.addEventListener("click", () => {
   if (selectedDriveFolderUrl) window.open(selectedDriveFolderUrl, "_blank", "noopener");
