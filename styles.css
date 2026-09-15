@@ -867,3 +867,20 @@ body.sidebar-lock {
   }
 }
 /* ===== MENU MOBILE FINAL CLEAN END ===== */
+
+
+/* ===== HAMBURGER SAFE ZONE START =====
+   Reserve layout space for the fixed menu button so page content can never sit underneath it.
+   Pages should not add their own hamburger offsets. */
+@media (min-width: 769px) {
+  .hamburger-btn + .menu-shell .main-content {
+    padding-left: 88px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .hamburger-btn + .menu-shell .main-content {
+    padding-top: 92px !important;
+  }
+}
+/* ===== HAMBURGER SAFE ZONE END ===== */
