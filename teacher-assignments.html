@@ -177,6 +177,20 @@
     .criteria-points{font-weight:900;color:#0f172a}
 
 
+
+    .ai-sync-bar{
+      display:flex;flex-wrap:wrap;align-items:center;gap:6px;
+      padding:7px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:9px
+    }
+    .ai-sync-bar label{font-size:10px;font-weight:900;color:#475569}
+    .ai-sync-bar select{padding:5px 7px;border:1px solid #cbd5e1;border-radius:7px;font-size:10px;background:#fff}
+    .ai-sync-bar button{padding:6px 9px;font-size:10px}
+    .ai-sync-status{font-size:10px;font-weight:800;color:#64748b}
+    .ai-candidate-chip{
+      display:inline-flex;margin-top:3px;padding:3px 5px;border-radius:999px;
+      background:#ede9fe;color:#6d28d9;font-size:9px;font-weight:900
+    }
+
     .manual-grading-panel{background:#f8fafc!important}
     .manual-grading-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
     .manual-grading-head h4{margin:0;font-size:15px;color:#0f172a}
@@ -416,6 +430,16 @@
                   <button id="openDriveFolderBtn" disabled>Open Drive Folder</button>
                   <button id="toggleAssignmentBtn">Close Assignment</button>
                 </div>
+                <div class="ai-sync-bar">
+                  <label for="aiConflictMode">AI grade conflicts</label>
+                  <select id="aiConflictMode">
+                    <option value="keep-manual">Keep Manual</option>
+                    <option value="replace-manual">Replace with AI</option>
+                    <option value="compare">Compare</option>
+                  </select>
+                  <button id="syncAiGradesBtn" type="button">Sync AI Grades</button>
+                  <span id="aiSyncStatus" class="ai-sync-status"></span>
+                </div>
                 <div id="driveStatus" class="status-text">The Drive folder is created automatically with the first PDF submission.</div>
               </div>
 
@@ -495,7 +519,7 @@
     </main>
   </div>
 
-  <script type="module" src="teacher-assignments.js?v=ai-manual-grading-20260914"></script>
+  <script type="module" src="teacher-assignments.js?v=ai-grade-sync-20260914"></script>
   <script defer src="shared-ui-fixes.js?v=assignments-20260914"></script>
 </body>
 </html>
