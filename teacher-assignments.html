@@ -843,6 +843,21 @@
       white-space:nowrap
     }
 
+  
+    /* Keep the fixed hamburger clear of the page title */
+    @media (min-width:769px){
+      .topbar{
+        margin-left:78px!important;
+        width:calc(100% - 78px)!important;
+      }
+    }
+    @media (max-width:768px){
+      .topbar{
+        margin-left:0!important;
+        width:100%!important;
+      }
+    }
+
   </style>
 </head>
 <body>
