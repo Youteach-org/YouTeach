@@ -111,7 +111,22 @@
     }
     .assignment-item:hover{border-color:#93c5fd;background:#f8fbff}
     .assignment-item.active{border-color:#2563eb;box-shadow:0 0 0 2px #dbeafe;background:#eff6ff}
-    .assignment-code{font-size:10px;font-weight:900;color:#2563eb;overflow-wrap:anywhere}
+    .assignment-code-row{display:flex;align-items:flex-start;justify-content:space-between;gap:5px}
+    .assignment-code{font-size:10px;font-weight:900;color:#2563eb;overflow-wrap:anywhere;min-width:0}
+    .grade-chatgpt-btn{
+      flex:0 0 auto;
+      border:1px solid #a7f3d0;
+      background:#ecfdf5;
+      color:#047857;
+      border-radius:7px;
+      padding:3px 6px;
+      font-size:9px;
+      font-weight:900;
+      line-height:1.1;
+      cursor:pointer
+    }
+    .grade-chatgpt-btn:hover{background:#d1fae5}
+    .grade-chatgpt-btn:disabled{opacity:.45;cursor:not-allowed}
     .assignment-item strong{
       display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
       font-size:13px;line-height:1.15;color:#0f172a;min-height:30px
@@ -416,7 +431,7 @@
     </main>
   </div>
 
-  <script type="module" src="teacher-assignments.js?v=compact-cards-20260914"></script>
+  <script type="module" src="teacher-assignments.js?v=chatgpt-grading-link-20260914"></script>
   <script defer src="shared-ui-fixes.js?v=assignments-20260914"></script>
 </body>
 </html>
