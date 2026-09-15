@@ -880,15 +880,17 @@
     }
 
   
-    /* Assignment Browser */
-    .assignment-browser-heading{
-      display:flex;
+    /* Assignment Browser — compact toolbar + horizontal tray */
+    .assignment-browser-toolbar{
+      display:grid;
+      grid-template-columns:auto auto minmax(180px,1fr) 150px 180px auto auto;
+      gap:6px;
       align-items:center;
-      gap:7px;
-      min-width:0
+      min-width:0;
+      margin-bottom:5px
     }
     .assignment-browser-title{
-      font-size:15px;
+      font-size:14px;
       font-weight:900;
       color:#0f172a;
       white-space:nowrap
@@ -902,56 +904,81 @@
       font-weight:800;
       white-space:nowrap
     }
-    .assignment-filter-row{
-      display:grid;
-      grid-template-columns:minmax(150px,1fr) 145px 170px auto;
-      gap:6px;
-      align-items:end;
-      margin-bottom:6px
-    }
     .assignment-filter-field{
-      display:grid;
-      gap:2px;
+      position:relative;
       min-width:0
     }
-    .assignment-filter-field span{
+    .assignment-filter-field::before{
+      position:absolute;
+      left:8px;
+      top:50%;
+      transform:translateY(-50%);
+      z-index:1;
       font-size:8px;
       font-weight:900;
-      color:#64748b
+      color:#64748b;
+      pointer-events:none
     }
+    .assignment-filter-field.code::before{content:"Code"}
+    .assignment-filter-field.date::before{content:"Date"}
+    .assignment-filter-field.group::before{content:"Group"}
     .assignment-filter-field input,
     .assignment-filter-field select{
+      width:100%;
       min-width:0;
-      height:30px;
-      padding:5px 7px;
+      height:32px;
+      padding:5px 8px 5px 42px;
       border:1px solid #cbd5e1;
       border-radius:8px;
       background:#fff;
       font-size:10px
     }
-    .assignment-filter-clear{
-      height:30px;
+    .assignment-filter-field.date input{padding-left:40px}
+    .assignment-filter-field.group select{padding-left:45px}
+    .assignment-filter-clear,
+    .assignment-actions-menu>summary{
+      height:32px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
       padding:5px 9px;
-      font-size:9px
-    }
-    .assignment-carousel-shell{
-      display:grid;
-      grid-template-columns:28px minmax(0,1fr) 28px;
-      gap:5px;
-      align-items:stretch;
-      min-width:0
-    }
-    .assignment-scroll-btn{
-      width:28px;
-      min-width:28px;
-      padding:0;
-      border-radius:8px;
-      font-size:20px;
+      font-size:9px;
       font-weight:900;
-      background:#e2e8f0;
+      border-radius:8px;
+      white-space:nowrap
+    }
+    .assignment-actions-menu{
+      position:relative;
+      margin:0
+    }
+    .assignment-actions-menu>summary{
+      list-style:none;
+      cursor:pointer;
+      border:1px solid #cbd5e1;
+      background:#fff;
       color:#334155
     }
-    .assignment-scroll-btn:hover{background:#cbd5e1;color:#0f172a}
+    .assignment-actions-menu>summary::-webkit-details-marker{display:none}
+    .assignment-actions-menu[open] .assignment-actions-popover{display:grid}
+    .assignment-actions-popover{
+      display:none;
+      position:absolute;
+      right:0;
+      top:calc(100% + 4px);
+      z-index:30;
+      min-width:170px;
+      padding:6px;
+      border:1px solid #dbeafe;
+      border-radius:9px;
+      background:#fff;
+      box-shadow:0 10px 24px rgba(15,23,42,.12)
+    }
+    .assignment-actions-popover button{width:100%;padding:7px 9px;font-size:10px}
+
+    .assignment-carousel-shell{
+      position:relative;
+      min-width:0
+    }
     .assignment-list{
       display:flex!important;
       grid-template-columns:none!important;
@@ -962,58 +989,87 @@
       scroll-snap-type:x proximity;
       overscroll-behavior-x:contain;
       -webkit-overflow-scrolling:touch;
-      padding:2px 2px 7px;
+      padding:2px 34px 7px;
       scrollbar-width:thin;
       scrollbar-color:#94a3b8 #e2e8f0
     }
-    .assignment-list::-webkit-scrollbar{height:7px}
+    .assignment-list::-webkit-scrollbar{height:6px}
     .assignment-list::-webkit-scrollbar-track{background:#e2e8f0;border-radius:999px}
     .assignment-list::-webkit-scrollbar-thumb{background:#94a3b8;border-radius:999px}
     .assignment-list .assignment-item{
-      flex:0 0 320px;
-      width:320px;
+      flex:0 0 300px;
+      width:300px;
       scroll-snap-align:start
     }
-    .assignments-header-row{
-      min-height:28px;
-      justify-content:space-between!important;
-      margin-bottom:5px!important
+    .assignment-scroll-btn{
+      position:absolute;
+      top:50%;
+      transform:translateY(-50%);
+      z-index:5;
+      width:26px;
+      height:46px;
+      min-width:26px;
+      padding:0;
+      border:1px solid #cbd5e1;
+      border-radius:999px;
+      font-size:19px;
+      font-weight:900;
+      background:rgba(255,255,255,.94);
+      color:#334155;
+      box-shadow:0 2px 8px rgba(15,23,42,.08)
     }
-    .assignment-actions-menu{margin-left:0}
-    @media (min-width:769px){
-      .assignments-header-row{
-        padding-left:78px;
-      }
-    }
-    @media (max-width:768px){
-      .main-content{
-        padding-top:92px!important;
-      }
-      .assignment-filter-row{
-        grid-template-columns:1fr 1fr;
-      }
-      .assignment-filter-clear{
-        width:100%
-      }
-      .assignment-carousel-shell{
-        grid-template-columns:24px minmax(0,1fr) 24px
-      }
-      .assignment-scroll-btn{
-        width:24px;
-        min-width:24px
+    #assignmentScrollLeftBtn{left:3px}
+    #assignmentScrollRightBtn{right:3px}
+    .assignment-scroll-btn:hover{background:#eff6ff;color:#1d4ed8}
+
+    @media (max-width:1150px){
+      .assignment-browser-toolbar{
+        grid-template-columns:auto auto minmax(150px,1fr) 135px 155px auto auto
       }
       .assignment-list .assignment-item{
-        flex-basis:290px;
-        width:290px
+        flex-basis:285px;
+        width:285px
+      }
+    }
+    @media (max-width:900px){
+      .assignment-browser-toolbar{
+        grid-template-columns:auto auto minmax(150px,1fr) 135px;
+      }
+      .assignment-filter-field.group{grid-column:3}
+      .assignment-filter-clear{grid-column:4}
+      .assignment-actions-menu{grid-column:4;grid-row:1}
+    }
+    @media (max-width:768px){
+      .main-content{padding-top:92px!important}
+      .assignment-browser-toolbar{
+        grid-template-columns:auto auto minmax(120px,1fr);
+        gap:5px
+      }
+      .assignment-browser-title{font-size:13px}
+      .assignment-filter-field.code{grid-column:1 / -1}
+      .assignment-filter-field.date{grid-column:1 / 2}
+      .assignment-filter-field.group{grid-column:2 / 3}
+      .assignment-filter-clear{grid-column:3 / 4}
+      .assignment-actions-menu{grid-column:3 / 4;grid-row:1}
+      .assignment-list .assignment-item{
+        flex-basis:280px;
+        width:280px
       }
     }
     @media (max-width:520px){
-      .assignment-filter-row{
-        grid-template-columns:1fr
+      .assignment-browser-toolbar{
+        grid-template-columns:auto auto 1fr
       }
+      .assignment-browser-title{grid-column:1 / 2}
+      .assignment-browser-count{grid-column:2 / 3}
+      .assignment-actions-menu{grid-column:3 / 4;grid-row:1}
+      .assignment-filter-field.code{grid-column:1 / -1}
+      .assignment-filter-field.date{grid-column:1 / -1}
+      .assignment-filter-field.group{grid-column:1 / 3}
+      .assignment-filter-clear{grid-column:3 / 4}
       .assignment-list .assignment-item{
-        flex-basis:calc(100vw - 90px);
-        width:calc(100vw - 90px)
+        flex-basis:calc(100vw - 92px);
+        width:calc(100vw - 92px)
       }
     }
 
@@ -1149,35 +1205,32 @@
 
         <div class="assignment-layout">
           <section class="panel-card">
-            <div class="panel-card-header assignments-header-row">
-              <div class="assignment-browser-heading">
-                <div class="assignment-browser-title">Assignment Browser</div>
-                <span id="assignmentBrowserCount" class="assignment-browser-count">0 shown</span>
-              </div>
+            <div class="assignment-browser-toolbar" aria-label="Assignment browser and filters">
+              <div class="assignment-browser-title">Assignment Browser</div>
+              <span id="assignmentBrowserCount" class="assignment-browser-count">0 shown</span>
+
+              <label class="assignment-filter-field code">
+                <input id="assignmentFilterCode" type="search" placeholder="Search task code" aria-label="Filter by task code">
+              </label>
+
+              <label class="assignment-filter-field date">
+                <input id="assignmentFilterDate" type="date" aria-label="Filter by date">
+              </label>
+
+              <label class="assignment-filter-field group">
+                <select id="assignmentFilterGroup" aria-label="Filter by group">
+                  <option value="ALL">All groups</option>
+                </select>
+              </label>
+
+              <button id="clearAssignmentFiltersBtn" class="assignment-filter-clear" type="button">Clear</button>
+
               <details id="assignmentActionsMenu" class="assignment-actions-menu">
                 <summary>Actions</summary>
                 <div class="assignment-actions-popover">
                   <button id="showCreateAssignmentBtn" type="button">+ Create Assignment</button>
                 </div>
               </details>
-            </div>
-
-            <div class="assignment-filter-row" aria-label="Assignment filters">
-              <label class="assignment-filter-field">
-                <span>Code</span>
-                <input id="assignmentFilterCode" type="search" placeholder="Search task code">
-              </label>
-              <label class="assignment-filter-field">
-                <span>Date</span>
-                <input id="assignmentFilterDate" type="date">
-              </label>
-              <label class="assignment-filter-field">
-                <span>Group</span>
-                <select id="assignmentFilterGroup">
-                  <option value="ALL">All groups</option>
-                </select>
-              </label>
-              <button id="clearAssignmentFiltersBtn" class="assignment-filter-clear" type="button">Clear</button>
             </div>
 
             <div class="assignment-carousel-shell">
@@ -1303,7 +1356,7 @@
     </main>
   </div>
 
-  <script type="module" src="teacher-assignments.js?v=assignment-browser-filters-20260915"></script>
+  <script type="module" src="teacher-assignments.js?v=assignment-browser-compact-20260915"></script>
   <script defer src="shared-ui-fixes.js?v=assignments-20260914"></script>
 </body>
 </html>
