@@ -1,7 +1,7 @@
 import { db } from "./firebase.js";
 import { ref, get, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireStudentSession, clearStudentSession, saveLeaveLog } from "./student-auth.js";
-import { uploadAssignmentPdf, validateAssignmentPdf } from "./assignment-storage.js";
+import { uploadAssignmentPdf, undoAssignmentPdf, validateAssignmentPdf } from "./assignment-storage.js";
 
 const session = requireStudentSession();
 if (!session) throw new Error("Student session required.");
@@ -69,6 +69,10 @@ function submissionRow(submission) {
   `;
 }
 
+function hasSubmittedBefore(submission) {
+  return Boolean(submission?.submittedAt || submission?.withdrawnAt);
+}
+
 function renderAssignments() {
   if (!currentStudent) return;
 
@@ -84,7 +88,12 @@ function renderAssignments() {
   assignmentList.innerHTML = entries.map(([assignmentId, assignment]) => {
     const submission = submissionCache[assignmentId];
     const hasPdf = Boolean(submission?.driveFileId);
+    const submittedBefore = hasSubmittedBefore(submission);
     const closed = isClosed(assignment);
+    const statusText = hasPdf
+      ? "Submitted · identity pending review"
+      : (submittedBefore ? "Submission undone · ready to submit again" : "Not submitted yet");
+    const statusClass = hasPdf ? "ok" : (submittedBefore ? "warning" : "pending");
 
     return `
       <article class="assignment-card">
@@ -101,23 +110,30 @@ function renderAssignments() {
 
         ${submissionRow(submission)}
 
-        <div class="assignment-status ${hasPdf ? "ok" : ""}" id="status-${assignmentId}">
-          ${hasPdf ? "Submitted · identity pending review" : "Not submitted yet"}
+        <div class="assignment-status ${statusClass}" id="status-${assignmentId}">
+          ${statusText}
         </div>
 
         <div class="upload-box">
-          <strong>${hasPdf ? "Replace submitted PDF" : "Attach PDF"}</strong>
+          <strong>${hasPdf ? "PDF submitted" : (submittedBefore ? "Submit a replacement PDF" : "Attach PDF")}</strong>
           <input
             id="file-${assignmentId}"
             type="file"
             accept="application/pdf,.pdf"
-            ${closed ? "disabled" : ""}
+            ${(closed || hasPdf) ? "disabled" : ""}
           >
           <button
             class="upload-btn"
             data-upload-assignment="${assignmentId}"
-            ${closed ? "disabled" : ""}
-          >${hasPdf ? "Replace PDF" : "Submit PDF"}</button>
+            ${(closed || hasPdf) ? "disabled" : ""}
+          >${submittedBefore ? "Submit Again" : "Submit PDF"}</button>
+          ${hasPdf ? `
+            <button
+              class="undo-submission-btn"
+              data-undo-assignment="${assignmentId}"
+              ${closed ? "disabled" : ""}
+            >Undo Submission</button>
+          ` : ""}
           <div id="progress-${assignmentId}" style="margin-top:8px;color:#475569;font-size:13px"></div>
         </div>
       </article>
@@ -178,23 +194,6 @@ async function handleUpload(assignmentId) {
       }
     });
 
-    const previous = submissionCache[assignmentId] || {};
-    await update(ref(db, `assignmentSubmissions/${assignmentId}/${studentKey}`), {
-      studentKey,
-      studentName: currentStudent.fullName || currentStudent.name || currentStudent.nickname || "Student",
-      nickname: currentStudent.nickname || "",
-      studentNumber: currentStudent.studentNumber || currentStudent.id || "",
-      groupName: currentStudent.groupName || "GENERAL",
-      assignmentId,
-      assignmentCode: assignment.code || "",
-      assignmentTitle: assignment.title || "Assignment",
-      submittedAt: previous.submittedAt || Date.now(),
-      updatedAt: Date.now(),
-      reviewStatus: "pending",
-      identityReviewStatus: "pending",
-      ...uploaded
-    });
-
     input.value = "";
     status.textContent = "PDF submitted. Identity is pending review.";
     status.className = "assignment-status ok";
@@ -209,10 +208,53 @@ async function handleUpload(assignmentId) {
   }
 }
 
+async function handleUndoSubmission(assignmentId) {
+  const assignment = assignmentsCache[assignmentId];
+  const button = document.querySelector(`[data-undo-assignment="${assignmentId}"]`);
+  const status = document.getElementById(`status-${assignmentId}`);
+  const progress = document.getElementById(`progress-${assignmentId}`);
+
+  if (!assignment || !button || !currentStudent) return;
+  if (isClosed(assignment)) {
+    status.textContent = "This assignment is closed.";
+    status.className = "assignment-status bad";
+    return;
+  }
+
+  button.disabled = true;
+  progress.textContent = "Undoing submission...";
+
+  try {
+    await undoAssignmentPdf({
+      assignmentId,
+      studentKey,
+      externalId
+    });
+
+    progress.textContent = "";
+    status.textContent = "Submission undone. You can submit again.";
+    status.className = "assignment-status warning";
+    await refreshAssignments();
+  } catch (error) {
+    console.error(error);
+    progress.textContent = "";
+    status.textContent = error?.message || "Could not undo the submission.";
+    status.className = "assignment-status bad";
+    button.disabled = false;
+  }
+}
+
 assignmentList.addEventListener("click", (event) => {
-  const button = event.target.closest("[data-upload-assignment]");
-  if (!button) return;
-  handleUpload(button.dataset.uploadAssignment);
+  const uploadButton = event.target.closest("[data-upload-assignment]");
+  if (uploadButton) {
+    handleUpload(uploadButton.dataset.uploadAssignment);
+    return;
+  }
+
+  const undoButton = event.target.closest("[data-undo-assignment]");
+  if (undoButton) {
+    handleUndoSubmission(undoButton.dataset.undoAssignment);
+  }
 });
 
 logoutBtn.addEventListener("click", async () => {
