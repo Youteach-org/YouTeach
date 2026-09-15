@@ -1,5 +1,5 @@
 import { db } from "./firebase.js";
-import { ref, get, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { ref, get, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireStudentSession, clearStudentSession, saveLeaveLog } from "./student-auth.js";
 import { uploadAssignmentPdf, undoAssignmentPdf, validateAssignmentPdf } from "./assignment-storage.js";
 
@@ -28,6 +28,17 @@ function formatDate(timestamp) {
   const value = Number(timestamp || 0);
   if (!value) return "No due date";
   return new Date(value).toLocaleString();
+}
+
+function formatCompactDate(timestamp) {
+  const value = Number(timestamp || 0);
+  if (!value) return "No due date";
+  const date = new Date(value);
+  return date.toLocaleDateString(undefined, {
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit"
+  });
 }
 
 function visibleAssignmentInstructions(value) {
@@ -97,14 +108,17 @@ function renderAssignments() {
 
     return `
       <article class="assignment-card">
-        <h3>${escapeHtml(assignment.code || "")} · ${escapeHtml(assignment.title || "Assignment")}</h3>
+        <div class="assignment-code">${escapeHtml(assignment.code || "")}</div>
+        <h3 title="${escapeHtml(assignment.title || "Assignment")}">${escapeHtml(assignment.title || "Assignment")}</h3>
+
         <div class="assignment-meta">
-          <span class="assignment-chip">Group: ${escapeHtml(assignment.groupName || "ALL")}</span>
-          <span class="assignment-chip">Due: ${escapeHtml(formatDate(assignment.dueAt))}</span>
+          <span class="assignment-chip">Due ${escapeHtml(formatCompactDate(assignment.dueAt))}</span>
           <span class="assignment-chip">${closed ? "Closed" : "Open"}</span>
         </div>
 
-        <div class="assignment-instructions">${escapeHtml(
+        <div class="assignment-instructions" title="${escapeHtml(
+          visibleAssignmentInstructions(assignment.instructions) || "Upload your completed work as one PDF file."
+        )}">${escapeHtml(
           visibleAssignmentInstructions(assignment.instructions) || "Upload your completed work as one PDF file."
         )}</div>
 
@@ -115,18 +129,30 @@ function renderAssignments() {
         </div>
 
         <div class="upload-box">
-          <strong>${hasPdf ? "PDF submitted" : (submittedBefore ? "Submit a replacement PDF" : "Attach PDF")}</strong>
-          <input
-            id="file-${assignmentId}"
-            type="file"
-            accept="application/pdf,.pdf"
-            ${(closed || hasPdf) ? "disabled" : ""}
-          >
-          <button
-            class="upload-btn"
-            data-upload-assignment="${assignmentId}"
-            ${(closed || hasPdf) ? "disabled" : ""}
-          >${submittedBefore ? "Submit Again" : "Submit PDF"}</button>
+          <strong>${hasPdf ? "PDF submitted" : (submittedBefore ? "Submit replacement" : "Attach PDF")}</strong>
+
+          ${!hasPdf ? `
+            <div class="file-picker">
+              <input
+                id="file-${assignmentId}"
+                type="file"
+                accept="application/pdf,.pdf"
+                ${closed ? "disabled" : ""}
+              >
+              <label
+                class="file-picker-label ${closed ? "disabled" : ""}"
+                for="file-${assignmentId}"
+              >Choose PDF</label>
+              <span class="file-name" id="file-name-${assignmentId}">No file</span>
+            </div>
+
+            <button
+              class="upload-btn"
+              data-upload-assignment="${assignmentId}"
+              ${closed ? "disabled" : ""}
+            >${submittedBefore ? "Submit Again" : "Submit PDF"}</button>
+          ` : ""}
+
           ${hasPdf ? `
             <button
               class="undo-submission-btn"
@@ -134,7 +160,8 @@ function renderAssignments() {
               ${closed ? "disabled" : ""}
             >Undo Submission</button>
           ` : ""}
-          <div id="progress-${assignmentId}" style="margin-top:8px;color:#475569;font-size:13px"></div>
+
+          <div id="progress-${assignmentId}" class="progress-text"></div>
         </div>
       </article>
     `;
@@ -243,6 +270,14 @@ async function handleUndoSubmission(assignmentId) {
     button.disabled = false;
   }
 }
+
+assignmentList.addEventListener("change", (event) => {
+  const input = event.target.closest('input[type="file"][id^="file-"]');
+  if (!input) return;
+  const assignmentId = input.id.replace(/^file-/, "");
+  const fileName = document.getElementById(`file-name-${assignmentId}`);
+  if (fileName) fileName.textContent = input.files?.[0]?.name || "No file";
+});
 
 assignmentList.addEventListener("click", (event) => {
   const uploadButton = event.target.closest("[data-upload-assignment]");
