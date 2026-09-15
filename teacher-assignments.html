@@ -113,20 +113,21 @@
     .assignment-item.active{border-color:#2563eb;box-shadow:0 0 0 2px #dbeafe;background:#eff6ff}
     .assignment-code-row{display:flex;align-items:flex-start;justify-content:space-between;gap:5px}
     .assignment-code{font-size:10px;font-weight:900;color:#2563eb;overflow-wrap:anywhere;min-width:0}
-    .grade-chatgpt-btn{
-      flex:0 0 auto;
-      border:1px solid #a7f3d0;
-      background:#ecfdf5;
-      color:#047857;
+    .grading-actions{display:flex;gap:3px;flex:0 0 auto}
+    .ai-grading-btn,.manual-grading-btn{
       border-radius:7px;
-      padding:3px 6px;
-      font-size:9px;
+      padding:3px 5px;
+      font-size:8px;
       font-weight:900;
       line-height:1.1;
-      cursor:pointer
+      cursor:pointer;
+      white-space:nowrap
     }
-    .grade-chatgpt-btn:hover{background:#d1fae5}
-    .grade-chatgpt-btn:disabled{opacity:.45;cursor:not-allowed}
+    .ai-grading-btn{border:1px solid #a7f3d0;background:#ecfdf5;color:#047857}
+    .ai-grading-btn:hover{background:#d1fae5}
+    .manual-grading-btn{border:1px solid #bfdbfe;background:#eff6ff;color:#1d4ed8}
+    .manual-grading-btn:hover{background:#dbeafe}
+    .ai-grading-btn:disabled,.manual-grading-btn:disabled{opacity:.45;cursor:not-allowed}
     .assignment-item strong{
       display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
       font-size:13px;line-height:1.15;color:#0f172a;min-height:30px
@@ -175,6 +176,57 @@
     .criteria-view-item span{display:block;margin-top:2px;color:#64748b;font-size:9px;line-height:1.3}
     .criteria-points{font-weight:900;color:#0f172a}
 
+
+    .manual-grading-panel{background:#f8fafc!important}
+    .manual-grading-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+    .manual-grading-head h4{margin:0;font-size:15px;color:#0f172a}
+    .manual-grading-head p{margin:3px 0 0;font-size:10px;color:#64748b}
+    .manual-grading-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:8px}
+    .manual-grade-card{background:#fff;border:1px solid #dbeafe;border-radius:10px;padding:9px;min-width:0}
+    .manual-grade-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:7px}
+    .manual-grade-card-head h5{margin:0;font-size:12px;color:#0f172a}
+    .manual-grade-total{font-size:14px;font-weight:900;color:#1d4ed8;white-space:nowrap}
+    .manual-grade-meta{font-size:9px;color:#64748b;margin-top:2px}
+    .manual-criterion-list{display:grid;gap:5px}
+    .manual-criterion-row{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) 62px 45px;
+      gap:6px;
+      align-items:center;
+      padding:5px 0;
+      border-bottom:1px solid #f1f5f9
+    }
+    .manual-criterion-row:last-child{border-bottom:0}
+    .manual-criterion-name{font-size:10px;font-weight:800;color:#334155;min-width:0}
+    .manual-criterion-row input{
+      width:100%;
+      min-width:0;
+      padding:5px 6px;
+      border:1px solid #cbd5e1;
+      border-radius:7px;
+      font-size:10px;
+      text-align:center
+    }
+    .manual-criterion-max{font-size:9px;font-weight:800;color:#64748b}
+    .manual-grade-feedback{
+      width:100%;
+      min-height:54px;
+      margin-top:7px;
+      padding:6px 7px;
+      border:1px solid #cbd5e1;
+      border-radius:8px;
+      resize:vertical;
+      font:inherit;
+      font-size:10px
+    }
+    .manual-grade-actions{display:flex;align-items:center;justify-content:space-between;gap:7px;margin-top:7px}
+    .manual-grade-actions button{padding:6px 8px;font-size:10px}
+    .manual-grade-status{font-size:9px;font-weight:800;color:#64748b}
+    .saved-grade-chip{
+      display:inline-flex;margin-top:3px;padding:3px 5px;border-radius:999px;
+      background:#dbeafe;color:#1d4ed8;font-size:9px;font-weight:900
+    }
+
     @media(max-width:1400px){
       .assignment-list{grid-template-columns:repeat(5,minmax(0,1fr))}
       #submissionList{grid-template-columns:repeat(4,minmax(0,1fr))}
@@ -187,6 +239,7 @@
       .assignment-list{grid-template-columns:repeat(4,minmax(0,1fr))}
     }
     @media(max-width:900px){
+      .manual-grading-list{grid-template-columns:1fr}
       .create-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
       .title-field,.instructions-field,.create-action-field{grid-column:span 2}
       .rubric-columns{grid-template-columns:1fr}
@@ -420,6 +473,17 @@
 
               <div id="submissionList"></div>
 
+              <section id="manualGradingPanel" class="panel-card manual-grading-panel" hidden>
+                <div class="manual-grading-head">
+                  <div>
+                    <h4 id="manualGradingTitle">Manual Grading</h4>
+                    <p>Score each student using the assignment criteria. Totals are calculated automatically out of 100.</p>
+                  </div>
+                  <button id="closeManualGradingBtn" type="button">Close</button>
+                </div>
+                <div id="manualGradingList" class="manual-grading-list"></div>
+              </section>
+
               <div class="panel-card" style="background:#f8fafc">
                 <h4 style="margin-top:0">Missing submissions</h4>
                 <div id="missingList" class="submission-meta">None</div>
@@ -431,7 +495,7 @@
     </main>
   </div>
 
-  <script type="module" src="teacher-assignments.js?v=chatgpt-grading-link-20260914"></script>
+  <script type="module" src="teacher-assignments.js?v=ai-manual-grading-20260914"></script>
   <script defer src="shared-ui-fixes.js?v=assignments-20260914"></script>
 </body>
 </html>
