@@ -759,6 +759,57 @@
       .overview-actions-stack{height:auto;grid-template-rows:auto auto}
     }
 
+  
+    /* Criteria: two compact vertical columns, preserving text size */
+    .criteria-summary-card{
+      display:grid!important;
+      grid-template-columns:auto minmax(0,1fr) auto;
+      align-items:center!important;
+      gap:5px!important;
+      overflow:hidden
+    }
+    .criteria-summary-card #criteriaReadOnly{
+      min-width:0;
+      display:grid!important;
+      grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;
+      grid-template-rows:auto auto;
+      gap:3px 5px!important;
+      align-items:center;
+      overflow:hidden
+    }
+    .criteria-summary-card .criteria-compact-list{
+      grid-column:1 / 3;
+      grid-row:1 / 3;
+      min-width:0;
+      display:grid!important;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:3px 5px!important;
+      align-items:center;
+      overflow:visible
+    }
+    .criteria-summary-card .criteria-compact-item{
+      max-width:none!important;
+      width:100%;
+      min-width:0;
+      padding:3px 5px!important;
+      font-size:7.5px!important;
+      line-height:1!important
+    }
+    .criteria-summary-card .criteria-compact-notes{
+      grid-column:3;
+      grid-row:1;
+      max-width:170px;
+      min-width:95px;
+      margin:0!important;
+      font-size:7px!important
+    }
+    .criteria-summary-card .criteria-compact-total{
+      grid-column:3;
+      grid-row:2;
+      margin:0!important;
+      font-size:8px!important
+    }
+
   </style>
 </head>
 <body>
@@ -1017,7 +1068,7 @@
     </main>
   </div>
 
-  <script type="module" src="teacher-assignments.js?v=stacked-ai-controls-20260914"></script>
+  <script type="module" src="teacher-assignments.js?v=criteria-two-columns-20260914"></script>
   <script defer src="shared-ui-fixes.js?v=assignments-20260914"></script>
 </body>
 </html>
