@@ -729,8 +729,20 @@ function renderDetail() {
   eligibleCount.textContent = students.length;
   submittedCount.textContent = validSubmissionEntries.length;
   missingCount.textContent = missing.length;
+  const lockedBySubmissions = assignmentHasSubmissions(selectedAssignmentId);
   toggleAssignmentBtn.textContent = assignment.active ? "Close Assignment" : "Reopen Assignment";
+  editCriteriaBtn.disabled = lockedBySubmissions;
+  editCriteriaBtn.title = lockedBySubmissions
+    ? "This assignment already has submissions and its definition is locked."
+    : "Edit evaluation criteria";
   renderEvaluationCriteria(assignment);
+
+  if (lockedBySubmissions) {
+    criteriaReadOnly.insertAdjacentHTML(
+      "afterbegin",
+      '<div class="status-text">Assignment definition locked after the first submission. Type, title, group, due date, instructions, task code, and grading criteria can no longer be changed.</div>'
+    );
+  }
 
   submissionList.innerHTML = validSubmissionEntries.length
     ? validSubmissionEntries.map(([, submission]) => `
@@ -890,6 +902,12 @@ async function toggleAssignment() {
 function beginCriteriaEdit() {
   const assignment = assignmentsCache[selectedAssignmentId];
   if (!assignment) return;
+  if (assignmentHasSubmissions(selectedAssignmentId)) {
+    criteriaSaveStatus.textContent = "This assignment already has submissions and can no longer be modified.";
+    criteriaSaveStatus.className = "status-text bad";
+    criteriaEditPanel.hidden = true;
+    return;
+  }
   const rubric = getAssignmentRubric(assignment);
   fillRubricEditor(
     editPresetCriteria,
@@ -912,6 +930,12 @@ function cancelCriteriaEdit() {
 async function saveEvaluationCriteria() {
   const assignment = assignmentsCache[selectedAssignmentId];
   if (!assignment) return;
+  if (assignmentHasSubmissions(selectedAssignmentId)) {
+    criteriaSaveStatus.textContent = "This assignment already has submissions and can no longer be modified.";
+    criteriaSaveStatus.className = "status-text bad";
+    criteriaEditPanel.hidden = true;
+    return;
+  }
 
   refreshDistribution(editPresetCriteria, editCriteriaRows, editCriteriaTotal, editDistributionRadios);
   const result = collectRubric(editPresetCriteria, editCriteriaRows);
