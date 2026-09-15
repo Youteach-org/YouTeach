@@ -114,6 +114,7 @@ let studentsCache = {};
 let groupsCache = {};
 let selectedAssignmentId = "";
 let selectedDriveFolderUrl = "";
+let selectedManualStudentKey = "";
 
 teacherIdentity.textContent = getTeacherName();
 
@@ -629,25 +630,33 @@ function renderCriteriaGroup(title, criteria) {
 function renderEvaluationCriteria(assignment) {
   const rubric = getAssignmentRubric(assignment);
   const criteria = rubric.criteria;
-  const presets = criteria.filter((criterion) => criterion.type === "preset");
-  const custom = criteria.filter((criterion) => criterion.type !== "preset");
   const notes = String(rubric.notes || "").trim();
   const total = criteria.reduce((sum, criterion) => sum + Number(criterion.maxPoints || 0), 0);
 
   if (!criteria.length && !notes) {
-    criteriaReadOnly.innerHTML = '<div class="status-text">No evaluation criteria have been set.</div>';
+    criteriaReadOnly.innerHTML = '<div class="status-text">No evaluation criteria.</div>';
     return;
   }
 
-  const notesBlock = notes
-    ? `<div class="criteria-view-item"><strong>Teacher grading notes</strong><span>${escapeHtml(notes)}</span></div>`
+  const criteriaHtml = criteria.length
+    ? `<div class="criteria-compact-list">
+        ${criteria.map((criterion) => `
+          <div class="criteria-compact-item" title="${escapeHtml(criterion.description || criterion.title)}">
+            <strong>${escapeHtml(criterion.title)}</strong>
+            <span>${escapeHtml(Number(Number(criterion.maxPoints || 0).toFixed(2)))} pts</span>
+          </div>
+        `).join("")}
+      </div>`
+    : "";
+
+  const notesHtml = notes
+    ? `<div class="criteria-compact-notes" title="${escapeHtml(notes)}">Notes: ${escapeHtml(notes)}</div>`
     : "";
 
   criteriaReadOnly.innerHTML = `
-    ${renderCriteriaGroup("Preset criteria", presets)}
-    ${renderCriteriaGroup("Custom criteria", custom)}
-    ${notesBlock}
-    <div class="criteria-total">${Number(total.toFixed(2))} / 100 points</div>
+    ${criteriaHtml}
+    ${notesHtml}
+    <div class="criteria-compact-total">${Number(total.toFixed(2))} / 100 points</div>
   `;
 }
 
@@ -832,88 +841,100 @@ function renderManualGrading() {
 
   const rubric = getAssignmentRubric(assignment);
   const criteria = rubric.criteria;
-  const submissions = Object.entries(assignmentSubmissions(selectedAssignmentId))
+  const allSubmissions = Object.entries(assignmentSubmissions(selectedAssignmentId))
     .filter(([, submission]) => submission?.driveFileId)
-    .sort((a, b) => String(a[1]?.studentName || "").localeCompare(String(b[1]?.studentName || "")));
-
-  manualGradingTitle.textContent = `Manual Grading · ${assignment.code || ""}`;
+    .sort((a, b) => {
+      const aGraded = submissionIsGraded(a[1]);
+      const bGraded = submissionIsGraded(b[1]);
+      if (aGraded !== bGraded) return aGraded ? 1 : -1;
+      return String(a[1]?.studentName || "").localeCompare(String(b[1]?.studentName || ""));
+    });
 
   if (!criteria.length) {
+    manualGradingTitle.textContent = `Manual Grading · ${assignment.code || ""}`;
     manualGradingList.innerHTML =
       '<div class="status-text bad">This assignment has no evaluation criteria. Manual grading requires a rubric.</div>';
     return;
   }
 
-  if (!submissions.length) {
+  if (!allSubmissions.length) {
+    manualGradingTitle.textContent = `Manual Grading · ${assignment.code || ""}`;
     manualGradingList.innerHTML =
       '<div class="status-text">No submitted PDFs are available to grade.</div>';
     return;
   }
 
-  manualGradingList.innerHTML = submissions.map(([studentKey, submission]) => {
-    const savedScores = submission?.grading?.criterionScores || {};
-    const savedFeedback = String(submission?.grading?.feedback || "");
-    const savedTotal = gradingTotalForSubmission(submission);
+  let selectedEntry = allSubmissions.find(([studentKey]) => studentKey === selectedManualStudentKey);
+  if (!selectedEntry) {
+    selectedEntry = allSubmissions.find(([, submission]) => !submissionIsGraded(submission)) || allSubmissions[0];
+    selectedManualStudentKey = selectedEntry[0];
+  }
 
-    return `
-      <article class="manual-grade-card" data-manual-grade-card="${escapeHtml(studentKey)}">
-        <div class="manual-grade-card-head">
-          <div>
-            <h5>${escapeHtml(submission.studentName || "Student")}</h5>
-            <div class="manual-grade-meta">
-              ${escapeHtml(submission.studentNumber || "No ID")} ·
-              ${escapeHtml(submission.groupName || "")}
-            </div>
+  const [studentKey, submission] = selectedEntry;
+  const savedScores = submission?.grading?.criterionScores || {};
+  const savedFeedback = String(submission?.grading?.feedback || "");
+  const savedTotal = gradingTotalForSubmission(submission);
+
+  manualGradingTitle.textContent = `Manual Grading · ${submission.studentName || "Student"}`;
+
+  manualGradingList.innerHTML = `
+    <article class="manual-grade-card" data-manual-grade-card="${escapeHtml(studentKey)}">
+      <div class="manual-grade-card-head">
+        <div>
+          <h5>${escapeHtml(submission.studentName || "Student")}</h5>
+          <div class="manual-grade-meta">
+            ${escapeHtml(submission.studentNumber || "No ID")} ·
+            ${escapeHtml(submission.groupName || "")}
           </div>
-          <div class="manual-grade-total" data-manual-total>
-            ${savedTotal === null ? "0" : Number(savedTotal.toFixed(2))} / 100
-          </div>
         </div>
+        <div class="manual-grade-total" data-manual-total>
+          ${savedTotal === null ? "0" : Number(savedTotal.toFixed(2))} / 100
+        </div>
+      </div>
 
-        <div class="manual-criterion-list">
-          ${criteria.map((criterion) => {
-            const rawScore = savedScores?.[criterion.id];
-            const value = Number.isFinite(Number(rawScore)) ? Number(rawScore) : "";
-            return `
-              <label class="manual-criterion-row">
-                <span class="manual-criterion-name" title="${escapeHtml(criterion.description || criterion.title)}">
-                  ${escapeHtml(criterion.title)}
-                </span>
-                <input
-                  type="number"
-                  min="0"
-                  max="${escapeHtml(criterion.maxPoints)}"
-                  step="0.01"
-                  value="${escapeHtml(value)}"
-                  data-manual-score
-                  data-criterion-id="${escapeHtml(criterion.id)}"
-                  data-max-points="${escapeHtml(criterion.maxPoints)}"
-                  aria-label="${escapeHtml(criterion.title)} score"
-                >
-                <span class="manual-criterion-max">/ ${escapeHtml(criterion.maxPoints)}</span>
-              </label>
-            `;
-          }).join("")}
-        </div>
+      <div class="manual-criterion-list">
+        ${criteria.map((criterion) => {
+          const rawScore = savedScores?.[criterion.id];
+          const value = Number.isFinite(Number(rawScore)) ? Number(rawScore) : "";
+          return `
+            <label class="manual-criterion-row">
+              <span class="manual-criterion-name" title="${escapeHtml(criterion.description || criterion.title)}">
+                ${escapeHtml(criterion.title)}
+              </span>
+              <input
+                type="number"
+                min="0"
+                max="${escapeHtml(criterion.maxPoints)}"
+                step="0.01"
+                value="${escapeHtml(value)}"
+                data-manual-score
+                data-criterion-id="${escapeHtml(criterion.id)}"
+                data-max-points="${escapeHtml(criterion.maxPoints)}"
+                aria-label="${escapeHtml(criterion.title)} score"
+              >
+              <span class="manual-criterion-max">/ ${escapeHtml(criterion.maxPoints)}</span>
+            </label>
+          `;
+        }).join("")}
+      </div>
 
-        <textarea
-          class="manual-grade-feedback"
-          data-manual-feedback
-          placeholder="Feedback for this student..."
-        >${escapeHtml(savedFeedback)}</textarea>
+      <textarea
+        class="manual-grade-feedback"
+        data-manual-feedback
+        placeholder="Feedback for this student..."
+      >${escapeHtml(savedFeedback)}</textarea>
 
-        <div class="manual-grade-actions">
-          <a class="pdf-link" href="${escapeHtml(submission.driveFileUrl || "#")}" target="_blank" rel="noopener">
-            Open PDF
-          </a>
-          <button type="button" data-save-manual-grade="${escapeHtml(studentKey)}">Save Grade</button>
-        </div>
-        <div class="manual-grade-status" data-manual-grade-status>
-          ${savedTotal === null ? "" : "Saved manual grade"}
-        </div>
-      </article>
-    `;
-  }).join("");
+      <div class="manual-grade-actions">
+        <a class="pdf-link" href="${escapeHtml(submission.driveFileUrl || "#")}" target="_blank" rel="noopener">
+          Open PDF
+        </a>
+        <button type="button" data-save-manual-grade="${escapeHtml(studentKey)}">Save Grade</button>
+      </div>
+      <div class="manual-grade-status" data-manual-grade-status>
+        ${savedTotal === null ? "" : "Saved manual grade"}
+      </div>
+    </article>
+  `;
 }
 
 function updateManualCardTotal(card) {
@@ -927,12 +948,14 @@ function updateManualCardTotal(card) {
   if (totalElement) totalElement.textContent = `${Number(total.toFixed(2))} / 100`;
 }
 
-function openManualGrading(assignmentId) {
+function openManualGrading(assignmentId, studentKey = "") {
   selectedAssignmentId = assignmentId;
+  selectedManualStudentKey = studentKey;
   renderAssignmentList();
   manualGradingPanel.hidden = false;
   renderManualGrading();
-  setTimeout(() => manualGradingPanel.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
+  renderDetail();
+  setTimeout(() => manualGradingPanel.scrollIntoView({ behavior: "smooth", block: "nearest" }), 0);
 }
 
 async function saveManualGrade(studentKey) {
@@ -1160,10 +1183,7 @@ function renderDetail() {
   renderEvaluationCriteria(assignment);
 
   if (lockedBySubmissions) {
-    criteriaReadOnly.insertAdjacentHTML(
-      "afterbegin",
-      '<div class="status-text">Assignment definition locked after the first submission. Type, title, group, due date, instructions, task code, and grading criteria can no longer be changed.</div>'
-    );
+    editCriteriaBtn.title = "Criteria locked after the first submission.";
   }
 
   submissionList.innerHTML = validSubmissionEntries.length
@@ -1490,8 +1510,16 @@ teacherAssignmentList.addEventListener("click", (event) => {
   const card = event.target.closest("[data-assignment-select]");
   if (!card) return;
   manualGradingPanel.hidden = true;
+  selectedManualStudentKey = "";
   selectedAssignmentId = card.dataset.assignmentSelect;
   renderAssignmentList();
+});
+
+submissionList.addEventListener("click", (event) => {
+  if (event.target.closest("a,button")) return;
+  const card = event.target.closest("[data-submission-student-key]");
+  if (!card) return;
+  openManualGrading(selectedAssignmentId, card.dataset.submissionStudentKey);
 });
 
 manualGradingList.addEventListener("input", (event) => {
@@ -1507,6 +1535,8 @@ manualGradingList.addEventListener("click", (event) => {
 
 closeManualGradingBtn.addEventListener("click", () => {
   manualGradingPanel.hidden = true;
+  selectedManualStudentKey = "";
+  renderDetail();
 });
 
 syncAiGradesBtn.addEventListener("click", syncAiGrades);
