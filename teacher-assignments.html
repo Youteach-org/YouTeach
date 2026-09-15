@@ -137,18 +137,20 @@
             <div class="field">
               <label for="assignmentType">Assignment type</label>
               <select id="assignmentType">
-                <option value="TASK">Task</option>
-                <option value="EXAM">Exam</option>
-                <option value="PROJECT">Project</option>
-                <option value="PRACTICE">Practice</option>
-                <option value="RESEARCH">Research</option>
-                <option value="PRESENTATION">Presentation</option>
+                <option value="CT">Classroom Task (CT)</option>
+                <option value="HW">Homework (HW)</option>
+                <option value="EX">Exam (EX)</option>
+                <option value="PJ">Project (PJ)</option>
+                <option value="PC">Practice (PC)</option>
+                <option value="RS">Research (RS)</option>
+                <option value="PT">Presentation (PT)</option>
                 <option value="OTHER">Other</option>
               </select>
             </div>
             <div class="field" id="assignmentOtherTypeField" hidden>
               <label for="assignmentOtherType">Specify other type</label>
               <input id="assignmentOtherType" placeholder="e.g. Lab, Portfolio, Case study">
+              <div class="field-help">YouTeach will create a short prefix automatically from this type.</div>
             </div>
             <div class="field">
               <label for="assignmentTitle">Assignment title</label>
@@ -160,13 +162,13 @@
             </div>
             <div class="field">
               <label for="assignmentDueAt">Due date</label>
-              <input id="assignmentDueAt" type="datetime-local">
-              <div class="field-help">If left empty, today's date is used in the task code.</div>
+              <input id="assignmentDueAt" type="datetime-local" required>
+              <div class="field-help">Required. The code uses DDMMYY.</div>
             </div>
             <div class="field">
               <label for="assignmentCode">Task code</label>
               <input id="assignmentCode" readonly aria-readonly="true" placeholder="Generated automatically">
-              <div class="field-help">Generated from type, title, group, and date.</div>
+              <div id="taskCodeStatus" class="field-help">Format: TYPE-TITLE-GROUP-DDMMYY.</div>
             </div>
             <div class="field full">
               <label for="assignmentInstructions">Instructions for students</label>
@@ -317,7 +319,7 @@
     </main>
   </div>
 
-  <script type="module" src="teacher-assignments.js?v=automatic-task-code-20260914"></script>
+  <script type="module" src="teacher-assignments.js?v=compact-task-code-20260914"></script>
   <script defer src="shared-ui-fixes.js?v=assignments-20260914"></script>
 </body>
 </html>
