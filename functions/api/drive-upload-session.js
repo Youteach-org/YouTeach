@@ -64,6 +64,18 @@ async function firebaseGet(path) {
   return response.json();
 }
 
+async function firebasePatch(path, value) {
+  const response = await fetch(`${DATABASE_URL}/${path}.json`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(value || {})
+  });
+  if (!response.ok) {
+    throw new Error(`Firebase write failed: ${response.status}`);
+  }
+  return response.json().catch(() => null);
+}
+
 async function getAccessToken(env) {
   const clientId = env.GOOGLE_DRIVE_CLIENT_ID;
   const clientSecret = env.GOOGLE_DRIVE_CLIENT_SECRET;
@@ -577,6 +589,24 @@ export async function onRequest(context) {
 
     if (action === "undo") {
       await deleteDriveFile(accessToken, existingFile?.id || "");
+
+      const submissionPath =
+        `assignmentSubmissions/${encodeURIComponent(assignmentId)}/${encodeURIComponent(studentKey)}`;
+
+      await firebasePatch(submissionPath, {
+        withdrawn: true,
+        withdrawnAt: Date.now(),
+        updatedAt: Date.now(),
+        reviewStatus: "withdrawn",
+        identityReviewStatus: "withdrawn",
+        driveFileId: null,
+        driveFileName: null,
+        driveFileUrl: null,
+        mimeType: null,
+        size: null,
+        uploadedAt: null
+      });
+
       return json(200, {
         ok: true,
         action: "undo",
@@ -619,18 +649,51 @@ export async function onRequest(context) {
       }
 
       const driveFile = await completeResumableUpload(sessionUrl, uploadBytes);
+      const now = Date.now();
+      const driveFileName = driveFile.name || fileName;
+      const driveFileUrl =
+        driveFile.webViewLink ||
+        `https://drive.google.com/file/d/${driveFile.id}/view`;
+
+      const submissionPath =
+        `assignmentSubmissions/${encodeURIComponent(assignmentId)}/${encodeURIComponent(studentKey)}`;
+
+      await firebasePatch(submissionPath, {
+        studentKey,
+        studentName: student.fullName || student.name || student.nickname || "Student",
+        nickname: student.nickname || "",
+        studentNumber: student.studentNumber || student.id || "",
+        groupName: student.groupName || "GENERAL",
+        assignmentId,
+        assignmentCode: assignment.code || "",
+        assignmentTitle: assignment.title || "Assignment",
+        submittedAt: Number(submission?.submittedAt || now),
+        updatedAt: now,
+        withdrawn: false,
+        withdrawnAt: null,
+        reviewStatus: "pending",
+        identityReviewStatus: "pending",
+        driveFileId: driveFile.id,
+        driveFileName,
+        driveFileUrl,
+        driveFolderId: folder.id,
+        driveFolderUrl: folder.url,
+        mimeType: "application/pdf",
+        size: Number(driveFile.size || numericSize || 0),
+        uploadedAt: now
+      });
 
       return json(200, {
         ok: true,
         action: "upload",
         driveFileId: driveFile.id,
-        driveFileName: driveFile.name || fileName,
-        driveFileUrl: driveFile.webViewLink || `https://drive.google.com/file/d/${driveFile.id}/view`,
+        driveFileName,
+        driveFileUrl,
         driveFolderId: folder.id,
         driveFolderUrl: folder.url,
         mimeType: "application/pdf",
         size: Number(driveFile.size || numericSize || 0),
-        uploadedAt: Date.now(),
+        uploadedAt: now,
         taskCode
       });
     }
