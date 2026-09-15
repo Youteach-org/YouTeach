@@ -304,6 +304,109 @@ async function ensureEvaluationRubricFile({
   };
 }
 
+async function findExistingStudentFile(accessToken, folderId, fileName) {
+  const query = [
+    `'${escapeDriveQuery(folderId)}' in parents`,
+    `name = '${escapeDriveQuery(fileName)}'`,
+    "mimeType = 'application/pdf'",
+    "trashed = false"
+  ].join(" and ");
+
+  const url = new URL("https://www.googleapis.com/drive/v3/files");
+  url.searchParams.set("q", query);
+  url.searchParams.set("fields", "files(id,name,size,webViewLink,parents)");
+  url.searchParams.set("pageSize", "10");
+
+  const response = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error?.message || "Could not search for an existing student PDF.");
+  }
+  return data.files?.[0] || null;
+}
+
+async function ensureFileInFolder(accessToken, fileId, folderId) {
+  if (!fileId) return;
+
+  const metaResponse = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?fields=parents`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  if (!metaResponse.ok) return;
+
+  const meta = await metaResponse.json();
+  const parents = Array.isArray(meta.parents) ? meta.parents : [];
+  if (parents.includes(folderId)) return;
+
+  const url = new URL(
+    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}`
+  );
+  url.searchParams.set("addParents", folderId);
+  if (parents.length) url.searchParams.set("removeParents", parents.join(","));
+  url.searchParams.set("fields", "id,parents");
+
+  const moveResponse = await fetch(url, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json"
+    },
+    body: "{}"
+  });
+
+  if (!moveResponse.ok) {
+    let message = "Could not move the PDF into the task folder.";
+    try {
+      const body = await moveResponse.json();
+      message = body.error?.message || message;
+    } catch (_) {}
+    throw new Error(message);
+  }
+}
+
+async function completeResumableUpload(sessionUrl, bytes) {
+  const response = await fetch(sessionUrl, {
+    method: "PUT",
+    headers: { "Content-Type": "application/pdf" },
+    body: bytes
+  });
+
+  if (!response.ok) {
+    let message = `Google Drive upload failed (HTTP ${response.status}).`;
+    try {
+      const body = await response.json();
+      message = body.error?.message || message;
+    } catch (_) {}
+    throw new Error(message);
+  }
+
+  const data = await response.json();
+  if (!data?.id) throw new Error("Google Drive did not return the uploaded file ID.");
+  return data;
+}
+
+async function deleteDriveFile(accessToken, fileId) {
+  if (!fileId) return;
+  const response = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}`,
+    {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${accessToken}` }
+    }
+  );
+
+  if (!response.ok && response.status !== 404) {
+    let message = "Could not remove the submitted PDF from Google Drive.";
+    try {
+      const body = await response.json();
+      message = body.error?.message || message;
+    } catch (_) {}
+    throw new Error(message);
+  }
+}
+
 async function beginResumableUpload({
   accessToken,
   fileId,
@@ -381,12 +484,31 @@ export async function onRequest(context) {
   }
 
   try {
+    const contentType = String(request.headers.get("content-type") || "").toLowerCase();
     let body = {};
-    try {
-      body = await request.json();
-    } catch (_) {}
+    let uploadBytes = null;
+
+    if (contentType.startsWith("application/pdf")) {
+      body = {
+        action: "upload",
+        assignmentId: request.headers.get("x-assignment-id") || "",
+        studentKey: request.headers.get("x-student-key") || "",
+        externalId: request.headers.get("x-external-id") || "",
+        fileSize: Number(request.headers.get("x-file-size") || 0),
+        mimeType: "application/pdf"
+      };
+      uploadBytes = await request.arrayBuffer();
+      if (!body.fileSize) body.fileSize = uploadBytes.byteLength;
+    } else {
+      try {
+        body = await request.json();
+      } catch (_) {
+        body = {};
+      }
+    }
 
     const {
+      action = "prepare",
       assignmentId,
       studentKey,
       externalId,
@@ -399,7 +521,7 @@ export async function onRequest(context) {
     }
 
     const numericSize = Number(fileSize || 0);
-    if (mimeType !== "application/pdf" || !numericSize || numericSize > MAX_PDF_BYTES) {
+    if (action !== "undo" && (mimeType !== "application/pdf" || !numericSize || numericSize > MAX_PDF_BYTES)) {
       return json(400, { ok: false, error: "Only PDF files up to 15 MB are accepted." });
     }
 
@@ -418,13 +540,15 @@ export async function onRequest(context) {
       return json(403, { ok: false, error: "Student identity does not match this session." });
     }
 
-    if (!assignment.active) {
-      return json(403, { ok: false, error: "This assignment is closed." });
-    }
+    if (action !== "undo") {
+      if (!assignment.active) {
+        return json(403, { ok: false, error: "This assignment is closed." });
+      }
 
-    const dueAt = Number(assignment.dueAt || 0);
-    if (dueAt && Date.now() > dueAt) {
-      return json(403, { ok: false, error: "The due date for this assignment has passed." });
+      const dueAt = Number(assignment.dueAt || 0);
+      if (dueAt && Date.now() > dueAt) {
+        return json(403, { ok: false, error: "The due date for this assignment has passed." });
+      }
     }
 
     const studentGroup = String(student.groupName || "GENERAL");
@@ -438,20 +562,49 @@ export async function onRequest(context) {
     const studentName = student.fullName || student.name || student.nickname || expectedExternalId;
     const fileName = `${safeSegment(studentName, "Student")}--${taskCode}.pdf`;
 
-    const folder = submission?.driveFolderId
-      ? {
-          id: submission.driveFolderId,
-          url: submission.driveFolderUrl || `https://drive.google.com/drive/folders/${submission.driveFolderId}`
-        }
-      : await findOrCreateTaskFolder(
-          accessToken,
-          taskCode,
-          env.GOOGLE_DRIVE_ROOT_FOLDER_ID || ""
-        );
+    const folder = await findOrCreateTaskFolder(
+      accessToken,
+      taskCode,
+      env.GOOGLE_DRIVE_ROOT_FOLDER_ID || ""
+    );
+
+    let existingFile = null;
+    if (submission?.driveFileId) {
+      existingFile = { id: submission.driveFileId };
+    } else {
+      existingFile = await findExistingStudentFile(accessToken, folder.id, fileName);
+    }
+
+    if (action === "undo") {
+      await deleteDriveFile(accessToken, existingFile?.id || "");
+      return json(200, {
+        ok: true,
+        action: "undo",
+        taskCode,
+        folderId: folder.id,
+        folderUrl: folder.url
+      });
+    }
+
+    try {
+      await ensureEvaluationRubricFile({
+        accessToken,
+        folderId: folder.id,
+        assignment,
+        assignmentId,
+        taskCode
+      });
+    } catch (rubricError) {
+      console.warn("Could not sync evaluation rubric to Drive:", rubricError);
+    }
+
+    if (existingFile?.id) {
+      await ensureFileInFolder(accessToken, existingFile.id, folder.id);
+    }
 
     const sessionUrl = await beginResumableUpload({
       accessToken,
-      fileId: submission?.driveFileId || "",
+      fileId: existingFile?.id || "",
       fileName,
       folderId: folder.id,
       fileSize: numericSize,
@@ -460,8 +613,31 @@ export async function onRequest(context) {
       taskCode
     });
 
+    if (action === "upload") {
+      if (!uploadBytes) {
+        return json(400, { ok: false, error: "Missing PDF upload data." });
+      }
+
+      const driveFile = await completeResumableUpload(sessionUrl, uploadBytes);
+
+      return json(200, {
+        ok: true,
+        action: "upload",
+        driveFileId: driveFile.id,
+        driveFileName: driveFile.name || fileName,
+        driveFileUrl: driveFile.webViewLink || `https://drive.google.com/file/d/${driveFile.id}/view`,
+        driveFolderId: folder.id,
+        driveFolderUrl: folder.url,
+        mimeType: "application/pdf",
+        size: Number(driveFile.size || numericSize || 0),
+        uploadedAt: Date.now(),
+        taskCode
+      });
+    }
+
     return json(200, {
       ok: true,
+      action: "prepare",
       sessionUrl,
       fileName,
       folderId: folder.id,
@@ -473,7 +649,7 @@ export async function onRequest(context) {
     const status = error?.code === "DRIVE_NOT_CONFIGURED" ? 503 : 500;
     return json(status, {
       ok: false,
-      error: error?.message || "Could not prepare the Drive upload."
+      error: error?.message || "Could not process the assignment file."
     });
   }
 }
