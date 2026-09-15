@@ -16,6 +16,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Run YouTeach regression tests
+        run: node --test tests/*.test.mjs
+
       - name: Build Pages output
         run: sh build-pages.sh
 
