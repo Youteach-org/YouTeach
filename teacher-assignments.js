@@ -655,8 +655,10 @@ function renderEvaluationCriteria(assignment) {
 
   criteriaReadOnly.innerHTML = `
     ${criteriaHtml}
-    ${notesHtml}
-    <div class="criteria-compact-total">${Number(total.toFixed(2))} / 100 points</div>
+    <div class="criteria-compact-footer">
+      ${notesHtml}
+      <div class="criteria-compact-total">${Number(total.toFixed(2))} / 100 points</div>
+    </div>
   `;
 }
 
