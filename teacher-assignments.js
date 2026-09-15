@@ -94,6 +94,10 @@ const addEditCriterionBtn = document.getElementById("addEditCriterionBtn");
 const saveCriteriaBtn = document.getElementById("saveCriteriaBtn");
 const cancelCriteriaBtn = document.getElementById("cancelCriteriaBtn");
 const criteriaSaveStatus = document.getElementById("criteriaSaveStatus");
+const manualGradingPanel = document.getElementById("manualGradingPanel");
+const manualGradingTitle = document.getElementById("manualGradingTitle");
+const manualGradingList = document.getElementById("manualGradingList");
+const closeManualGradingBtn = document.getElementById("closeManualGradingBtn");
 const logoutBtn = document.getElementById("logoutBtn");
 const teacherIdentity = document.getElementById("teacherIdentity");
 
@@ -684,11 +688,201 @@ function openChatGPTGrading(assignmentId) {
   const prompt = buildChatGPTGradingPrompt(assignmentId);
   if (!prompt) return;
 
-  // Keep the prompt on the clipboard as a fallback if ChatGPT does not prefill it.
   navigator.clipboard?.writeText(prompt).catch(() => {});
 
   const url = `https://chatgpt.com/?prompt=${encodeURIComponent(prompt)}`;
   window.open(url, "_blank", "noopener");
+}
+
+function gradingTotalForSubmission(submission) {
+  const total = Number(submission?.grading?.totalScore);
+  return Number.isFinite(total) ? total : null;
+}
+
+function renderManualGrading() {
+  const assignment = assignmentsCache[selectedAssignmentId];
+  if (!assignment || manualGradingPanel.hidden) return;
+
+  const rubric = getAssignmentRubric(assignment);
+  const criteria = rubric.criteria;
+  const submissions = Object.entries(assignmentSubmissions(selectedAssignmentId))
+    .filter(([, submission]) => submission?.driveFileId)
+    .sort((a, b) => String(a[1]?.studentName || "").localeCompare(String(b[1]?.studentName || "")));
+
+  manualGradingTitle.textContent = `Manual Grading · ${assignment.code || ""}`;
+
+  if (!criteria.length) {
+    manualGradingList.innerHTML =
+      '<div class="status-text bad">This assignment has no evaluation criteria. Manual grading requires a rubric.</div>';
+    return;
+  }
+
+  if (!submissions.length) {
+    manualGradingList.innerHTML =
+      '<div class="status-text">No submitted PDFs are available to grade.</div>';
+    return;
+  }
+
+  manualGradingList.innerHTML = submissions.map(([studentKey, submission]) => {
+    const savedScores = submission?.grading?.criterionScores || {};
+    const savedFeedback = String(submission?.grading?.feedback || "");
+    const savedTotal = gradingTotalForSubmission(submission);
+
+    return `
+      <article class="manual-grade-card" data-manual-grade-card="${escapeHtml(studentKey)}">
+        <div class="manual-grade-card-head">
+          <div>
+            <h5>${escapeHtml(submission.studentName || "Student")}</h5>
+            <div class="manual-grade-meta">
+              ${escapeHtml(submission.studentNumber || "No ID")} ·
+              ${escapeHtml(submission.groupName || "")}
+            </div>
+          </div>
+          <div class="manual-grade-total" data-manual-total>
+            ${savedTotal === null ? "0" : Number(savedTotal.toFixed(2))} / 100
+          </div>
+        </div>
+
+        <div class="manual-criterion-list">
+          ${criteria.map((criterion) => {
+            const rawScore = savedScores?.[criterion.id];
+            const value = Number.isFinite(Number(rawScore)) ? Number(rawScore) : "";
+            return `
+              <label class="manual-criterion-row">
+                <span class="manual-criterion-name" title="${escapeHtml(criterion.description || criterion.title)}">
+                  ${escapeHtml(criterion.title)}
+                </span>
+                <input
+                  type="number"
+                  min="0"
+                  max="${escapeHtml(criterion.maxPoints)}"
+                  step="0.01"
+                  value="${escapeHtml(value)}"
+                  data-manual-score
+                  data-criterion-id="${escapeHtml(criterion.id)}"
+                  data-max-points="${escapeHtml(criterion.maxPoints)}"
+                  aria-label="${escapeHtml(criterion.title)} score"
+                >
+                <span class="manual-criterion-max">/ ${escapeHtml(criterion.maxPoints)}</span>
+              </label>
+            `;
+          }).join("")}
+        </div>
+
+        <textarea
+          class="manual-grade-feedback"
+          data-manual-feedback
+          placeholder="Feedback for this student..."
+        >${escapeHtml(savedFeedback)}</textarea>
+
+        <div class="manual-grade-actions">
+          <a class="pdf-link" href="${escapeHtml(submission.driveFileUrl || "#")}" target="_blank" rel="noopener">
+            Open PDF
+          </a>
+          <button type="button" data-save-manual-grade="${escapeHtml(studentKey)}">Save Grade</button>
+        </div>
+        <div class="manual-grade-status" data-manual-grade-status>
+          ${savedTotal === null ? "" : "Saved manual grade"}
+        </div>
+      </article>
+    `;
+  }).join("");
+}
+
+function updateManualCardTotal(card) {
+  if (!card) return;
+  const inputs = [...card.querySelectorAll("[data-manual-score]")];
+  const total = inputs.reduce((sum, input) => {
+    const value = Number(input.value);
+    return sum + (Number.isFinite(value) ? Math.max(0, value) : 0);
+  }, 0);
+  const totalElement = card.querySelector("[data-manual-total]");
+  if (totalElement) totalElement.textContent = `${Number(total.toFixed(2))} / 100`;
+}
+
+function openManualGrading(assignmentId) {
+  selectedAssignmentId = assignmentId;
+  renderAssignmentList();
+  manualGradingPanel.hidden = false;
+  renderManualGrading();
+  setTimeout(() => manualGradingPanel.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
+}
+
+async function saveManualGrade(studentKey) {
+  const assignment = assignmentsCache[selectedAssignmentId];
+  const card = manualGradingList.querySelector(
+    `[data-manual-grade-card="${CSS.escape(studentKey)}"]`
+  );
+  if (!assignment || !card) return;
+
+  const rubric = getAssignmentRubric(assignment);
+  const criteria = rubric.criteria;
+  const inputs = [...card.querySelectorAll("[data-manual-score]")];
+  const status = card.querySelector("[data-manual-grade-status]");
+  const saveButton = card.querySelector("[data-save-manual-grade]");
+  const criterionScores = {};
+  let totalScore = 0;
+
+  for (const input of inputs) {
+    const valueText = input.value.trim();
+    const maxPoints = Number(input.dataset.maxPoints || 0);
+    const criterionId = String(input.dataset.criterionId || "");
+
+    if (valueText === "") {
+      status.textContent = "Enter a score for every criterion.";
+      status.style.color = "#b91c1c";
+      return;
+    }
+
+    const value = Number(valueText);
+    if (!Number.isFinite(value) || value < 0 || value > maxPoints) {
+      status.textContent = `Each score must be between 0 and its criterion maximum.`;
+      status.style.color = "#b91c1c";
+      return;
+    }
+
+    criterionScores[criterionId] = Number(value.toFixed(2));
+    totalScore += value;
+  }
+
+  if (totalScore > 100.01) {
+    status.textContent = "Total score cannot exceed 100.";
+    status.style.color = "#b91c1c";
+    return;
+  }
+
+  saveButton.disabled = true;
+  status.textContent = "Saving...";
+  status.style.color = "#64748b";
+
+  try {
+    const feedback = card.querySelector("[data-manual-feedback]")?.value.trim() || "";
+    await update(
+      ref(db, `assignmentSubmissions/${selectedAssignmentId}/${studentKey}`),
+      {
+        grading: {
+          mode: "manual",
+          criterionScores,
+          totalScore: Number(totalScore.toFixed(2)),
+          rubricTotal: Number(criteria.reduce((sum, criterion) => sum + Number(criterion.maxPoints || 0), 0).toFixed(2)),
+          feedback,
+          gradedAt: Date.now(),
+          gradedBy: getTeacherName()
+        },
+        reviewStatus: "graded",
+        updatedAt: Date.now()
+      }
+    );
+
+    status.textContent = `Saved · ${Number(totalScore.toFixed(2))} / 100`;
+    status.style.color = "#166534";
+  } catch (error) {
+    console.error(error);
+    status.textContent = "Could not save the grade.";
+    status.style.color = "#b91c1c";
+  } finally {
+    saveButton.disabled = false;
+  }
 }
 
 function renderGroupOptions() {
@@ -737,13 +931,22 @@ function renderAssignmentList() {
       >
         <div class="assignment-code-row">
           <span class="assignment-code">${escapeHtml(assignment.code || "")}</span>
-          <button
-            type="button"
-            class="grade-chatgpt-btn"
-            data-grade-assignment="${id}"
-            ${count ? "" : "disabled"}
-            title="${count ? "Open ChatGPT to grade this activity" : "No submissions to grade yet"}"
-          >Grade</button>
+          <span class="grading-actions">
+            <button
+              type="button"
+              class="ai-grading-btn"
+              data-grade-assignment="${id}"
+              ${count ? "" : "disabled"}
+              title="${count ? "Open ChatGPT to grade this activity" : "No submissions to grade yet"}"
+            >AI Grading</button>
+            <button
+              type="button"
+              class="manual-grading-btn"
+              data-manual-grade-assignment="${id}"
+              ${count ? "" : "disabled"}
+              title="${count ? "Grade this activity manually" : "No submissions to grade yet"}"
+            >Manual Grading</button>
+          </span>
         </div>
 
         <strong>${escapeHtml(assignment.title || "Assignment")}</strong>
@@ -828,7 +1031,11 @@ function renderDetail() {
             ${Math.max(1, Math.round(Number(submission.size || 0) / 1024))} KB ·
             ${escapeHtml(formatDate(submission.updatedAt || submission.submittedAt))}
           </div>
-          <div class="review-chip">Identity pending review</div><br>
+          <div class="review-chip">${escapeHtml(submission.identityReviewStatus === "verified" ? "Identity verified" : "Identity pending review")}</div>
+          ${gradingTotalForSubmission(submission) === null
+            ? ""
+            : `<div class="saved-grade-chip">Grade: ${escapeHtml(Number(gradingTotalForSubmission(submission).toFixed(2)))} / 100 · ${escapeHtml(submission?.grading?.mode || "manual")}</div>`
+          }<br>
           <a class="pdf-link" href="${escapeHtml(submission.driveFileUrl || "#")}" target="_blank" rel="noopener">
             Open submitted PDF →
           </a>
@@ -839,6 +1046,8 @@ function renderDetail() {
   missingList.textContent = missing.length
     ? missing.map(([, student]) => student.fullName || student.name || student.nickname || "Student").join(", ")
     : "None";
+
+  if (!manualGradingPanel.hidden) renderManualGrading();
 }
 
 async function createAssignment() {
@@ -1106,10 +1315,32 @@ teacherAssignmentList.addEventListener("click", (event) => {
     return;
   }
 
+  const manualButton = event.target.closest("[data-manual-grade-assignment]");
+  if (manualButton) {
+    if (!manualButton.disabled) openManualGrading(manualButton.dataset.manualGradeAssignment);
+    return;
+  }
+
   const card = event.target.closest("[data-assignment-select]");
   if (!card) return;
+  manualGradingPanel.hidden = true;
   selectedAssignmentId = card.dataset.assignmentSelect;
   renderAssignmentList();
+});
+
+manualGradingList.addEventListener("input", (event) => {
+  if (!event.target.matches("[data-manual-score]")) return;
+  updateManualCardTotal(event.target.closest("[data-manual-grade-card]"));
+});
+
+manualGradingList.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-save-manual-grade]");
+  if (!button) return;
+  saveManualGrade(button.dataset.saveManualGrade);
+});
+
+closeManualGradingBtn.addEventListener("click", () => {
+  manualGradingPanel.hidden = true;
 });
 
 openDriveFolderBtn.addEventListener("click", () => {
