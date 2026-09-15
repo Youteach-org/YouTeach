@@ -69,6 +69,10 @@ const addCreateCriterionBtn = document.getElementById("addCreateCriterionBtn");
 const assignmentEvaluationNotes = document.getElementById("assignmentEvaluationNotes");
 const createAssignmentBtn = document.getElementById("createAssignmentBtn");
 const createAssignmentStatus = document.getElementById("createAssignmentStatus");
+const createAssignmentPanel = document.getElementById("createAssignmentPanel");
+const showCreateAssignmentBtn = document.getElementById("showCreateAssignmentBtn");
+const hideCreateAssignmentBtn = document.getElementById("hideCreateAssignmentBtn");
+const assignmentActionsMenu = document.getElementById("assignmentActionsMenu");
 const teacherAssignmentList = document.getElementById("teacherAssignmentList");
 const assignmentDetailEmpty = document.getElementById("assignmentDetailEmpty");
 const assignmentDetail = document.getElementById("assignmentDetail");
@@ -663,6 +667,29 @@ function assignmentHasSubmissions(assignmentId) {
     .some((submission) => Boolean(submission?.driveFileId));
 }
 
+function assignmentEvaluationState(assignmentId, assignment) {
+  const submissions = Object.values(assignmentSubmissions(assignmentId))
+    .filter((submission) => submission?.driveFileId);
+
+  const submitted = submissions.length;
+  const graded = submissions.filter((submission) =>
+    submission?.reviewStatus === "graded" &&
+    submission?.grading &&
+    submission?.grading?.totalScore !== null &&
+    submission?.grading?.totalScore !== undefined
+  ).length;
+
+  const totalStudents = assignmentStudents(assignment).length;
+  const missing = Math.max(0, totalStudents - submitted);
+
+  const complete =
+    submitted > 0 &&
+    graded === submitted &&
+    (!assignment?.active || missing === 0);
+
+  return { submitted, graded, totalStudents, missing, complete };
+}
+
 function buildChatGPTGradingPrompt(assignmentId) {
   const assignment = assignmentsCache[assignmentId];
   if (!assignment) return "";
@@ -996,7 +1023,17 @@ function renderGroupOptions() {
 
 function renderAssignmentList() {
   const entries = Object.entries(assignmentsCache || {})
-    .sort((a, b) => Number(b[1]?.createdAt || 0) - Number(a[1]?.createdAt || 0));
+    .map(([id, assignment]) => ({
+      id,
+      assignment,
+      evaluation: assignmentEvaluationState(id, assignment)
+    }))
+    .sort((a, b) => {
+      if (a.evaluation.complete !== b.evaluation.complete) {
+        return a.evaluation.complete ? 1 : -1;
+      }
+      return Number(b.assignment?.createdAt || 0) - Number(a.assignment?.createdAt || 0);
+    });
 
   if (!entries.length) {
     teacherAssignmentList.innerHTML = '<div class="status-text">No assignments yet.</div>';
@@ -1006,39 +1043,40 @@ function renderAssignmentList() {
   }
 
   if (!selectedAssignmentId || !assignmentsCache[selectedAssignmentId]) {
-    selectedAssignmentId = entries[0][0];
+    selectedAssignmentId = entries[0].id;
   }
 
-  teacherAssignmentList.innerHTML = entries.map(([id, assignment]) => {
-    const submissions = assignmentSubmissions(id);
-    const count = Object.values(submissions).filter((submission) => submission?.driveFileId).length;
-    const total = assignmentStudents(assignment).length;
-    const missing = Math.max(0, total - count);
+  teacherAssignmentList.innerHTML = entries.map(({ id, assignment, evaluation }) => {
+    const count = evaluation.submitted;
+    const total = evaluation.totalStudents;
+    const missing = evaluation.missing;
+    const evaluatedClass = evaluation.complete ? "evaluated" : "";
 
     return `
       <article
-        class="assignment-item ${id === selectedAssignmentId ? "active" : ""}"
+        class="assignment-item ${id === selectedAssignmentId ? "active" : ""} ${evaluatedClass}"
         data-assignment-select="${id}"
         title="${escapeHtml(assignment.title || "Assignment")}"
       >
+        <div class="grading-actions">
+          <button
+            type="button"
+            class="ai-grading-btn"
+            data-grade-assignment="${id}"
+            ${count ? "" : "disabled"}
+            title="${count ? "Open ChatGPT to grade this activity" : "No submissions to grade yet"}"
+          >AI Grading</button>
+          <button
+            type="button"
+            class="manual-grading-btn"
+            data-manual-grade-assignment="${id}"
+            ${count ? "" : "disabled"}
+            title="${count ? "Grade this activity manually" : "No submissions to grade yet"}"
+          >Manual Grading</button>
+        </div>
+
         <div class="assignment-code-row">
           <span class="assignment-code">${escapeHtml(assignment.code || "")}</span>
-          <span class="grading-actions">
-            <button
-              type="button"
-              class="ai-grading-btn"
-              data-grade-assignment="${id}"
-              ${count ? "" : "disabled"}
-              title="${count ? "Open ChatGPT to grade this activity" : "No submissions to grade yet"}"
-            >AI Grading</button>
-            <button
-              type="button"
-              class="manual-grading-btn"
-              data-manual-grade-assignment="${id}"
-              ${count ? "" : "disabled"}
-              title="${count ? "Grade this activity manually" : "No submissions to grade yet"}"
-            >Manual Grading</button>
-          </span>
         </div>
 
         <strong>${escapeHtml(assignment.title || "Assignment")}</strong>
@@ -1049,10 +1087,11 @@ function renderAssignmentList() {
           <span class="assignment-mini-chip ${assignment.active ? "open" : "closed"}">
             ${assignment.active ? "Open" : "Closed"}
           </span>
+          ${evaluation.complete ? '<span class="evaluated-chip">Evaluated</span>' : ""}
         </span>
 
         <span class="assignment-progress">
-          ${count}/${total} submitted · ${missing} missing
+          ${count}/${total} submitted · ${evaluation.graded}/${count || 0} graded · ${missing} missing
         </span>
       </article>
     `;
@@ -1259,6 +1298,8 @@ async function createAssignment() {
     refreshAutomaticTaskCode();
     createAssignmentStatus.textContent = "Assignment created.";
     createAssignmentStatus.className = "status-text ok";
+    createAssignmentPanel.hidden = true;
+    assignmentActionsMenu.open = false;
   } catch (error) {
     console.error(error);
     const code = String(error?.code || "").replace(/^database\//, "");
@@ -1452,6 +1493,16 @@ assignmentOtherType.addEventListener("input", refreshAutomaticTaskCode);
 assignmentTitle.addEventListener("input", refreshAutomaticTaskCode);
 assignmentGroup.addEventListener("change", refreshAutomaticTaskCode);
 assignmentDueAt.addEventListener("input", refreshAutomaticTaskCode);
+
+showCreateAssignmentBtn.addEventListener("click", () => {
+  createAssignmentPanel.hidden = false;
+  assignmentActionsMenu.open = false;
+  createAssignmentPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+});
+
+hideCreateAssignmentBtn.addEventListener("click", () => {
+  createAssignmentPanel.hidden = true;
+});
 
 createAssignmentBtn.addEventListener("click", createAssignment);
 toggleAssignmentBtn.addEventListener("click", toggleAssignment);
