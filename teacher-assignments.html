@@ -199,6 +199,25 @@
       min-width:0;background:#fff;border:1px solid #e2e8f0;border-radius:10px;
       padding:9px;margin:0;display:flex;flex-direction:column;gap:4px
     }
+    .submission-card.graded{
+      background:#f0fdf4;
+      border-color:#86efac;
+      opacity:.9
+    }
+    .submission-card.graded:hover{
+      background:#ecfdf5;
+      border-color:#4ade80
+    }
+    .submission-card.pending-grade{
+      background:#fff;
+      border-color:#bfdbfe
+    }
+    .grading-state-chip{
+      display:inline-flex;margin-top:2px;padding:3px 5px;border-radius:999px;
+      font-size:9px;font-weight:900
+    }
+    .grading-state-chip.pending{background:#dbeafe;color:#1d4ed8}
+    .grading-state-chip.graded{background:#dcfce7;color:#166534}
     .submission-card h4{
       margin:0;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis
     }
@@ -572,7 +591,7 @@
     </main>
   </div>
 
-  <script type="module" src="teacher-assignments.js?v=compact-grading-status-20260914"></script>
+  <script type="module" src="teacher-assignments.js?v=submission-grading-order-20260914"></script>
   <script defer src="shared-ui-fixes.js?v=assignments-20260914"></script>
 </body>
 </html>
