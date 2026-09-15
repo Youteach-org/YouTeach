@@ -875,6 +875,7 @@ async function createAssignment() {
       createDistributionRadios,
       "equal"
     );
+    refreshAutomaticTaskCode();
     createAssignmentStatus.textContent = "Assignment created.";
     createAssignmentStatus.className = "status-text ok";
   } catch (error) {
