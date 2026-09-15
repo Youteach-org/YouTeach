@@ -32,48 +32,56 @@ export async function uploadAssignmentPdf({
 
   if (typeof onProgress === "function") onProgress(0.05);
 
-  const sessionResponse = await fetch("/api/drive-upload-session", {
+  const response = await fetch("/api/drive-upload-session", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      assignmentId,
-      studentKey,
-      externalId,
-      fileSize: file.size,
-      mimeType: "application/pdf"
-    })
-  });
-
-  const session = await sessionResponse.json().catch(() => ({}));
-  if (!sessionResponse.ok || !session.ok || !session.sessionUrl) {
-    throw new Error(session.error || "Could not connect YouTeach to Google Drive.");
-  }
-
-  if (typeof onProgress === "function") onProgress(0.2);
-
-  const uploadResponse = await fetch(session.sessionUrl, {
-    method: "PUT",
-    headers: { "Content-Type": "application/pdf" },
+    headers: {
+      "Content-Type": "application/pdf",
+      "X-Assignment-Id": assignmentId,
+      "X-Student-Key": studentKey,
+      "X-External-Id": externalId,
+      "X-File-Size": String(file.size)
+    },
     body: file
   });
 
-  if (!uploadResponse.ok) {
-    throw new Error(`Google Drive upload failed (HTTP ${uploadResponse.status}).`);
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || !result.ok || !result.driveFileId) {
+    throw new Error(result.error || "Could not upload the PDF to Google Drive.");
   }
-
-  const driveFile = await uploadResponse.json();
-  if (!driveFile?.id) throw new Error("Google Drive did not return the uploaded file ID.");
 
   if (typeof onProgress === "function") onProgress(1);
 
   return {
-    driveFileId: driveFile.id,
-    driveFileName: driveFile.name || session.fileName,
-    driveFileUrl: driveFile.webViewLink || `https://drive.google.com/file/d/${driveFile.id}/view`,
-    driveFolderId: session.folderId,
-    driveFolderUrl: session.folderUrl,
+    driveFileId: result.driveFileId,
+    driveFileName: result.driveFileName,
+    driveFileUrl: result.driveFileUrl,
+    driveFolderId: result.driveFolderId,
+    driveFolderUrl: result.driveFolderUrl,
     mimeType: "application/pdf",
-    size: Number(driveFile.size || file.size || 0),
-    uploadedAt: Date.now()
+    size: Number(result.size || file.size || 0),
+    uploadedAt: Number(result.uploadedAt || Date.now())
   };
+}
+
+export async function undoAssignmentPdf({
+  assignmentId,
+  studentKey,
+  externalId
+}) {
+  const response = await fetch("/api/drive-upload-session", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      action: "undo",
+      assignmentId,
+      studentKey,
+      externalId
+    })
+  });
+
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || !result.ok) {
+    throw new Error(result.error || "Could not undo the submission.");
+  }
+  return result;
 }
