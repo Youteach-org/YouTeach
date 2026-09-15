@@ -183,8 +183,21 @@ function compactGroupCode(value) {
     .filter(Boolean);
 
   if (!tokens.length) return "";
+
+  if (tokens.length === 1) {
+    const token = tokens[0];
+
+    // Keep already-compact alphanumeric/numeric group keys such as E6C or 533.
+    if (token.length <= 3 || /\d/.test(token)) return token.slice(0, 6);
+
+    // Reduce a single long word to a compact 3-character group key.
+    return token.slice(0, 3);
+  }
+
   const withDigit = tokens.find((token) => /\d/.test(token));
-  return (withDigit || tokens[0]).slice(0, 8);
+  if (withDigit) return withDigit.slice(0, 6);
+
+  return tokens.map((token) => token[0]).join("").slice(0, 4);
 }
 
 function selectedAssignmentTypeCode() {
