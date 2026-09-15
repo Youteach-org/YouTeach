@@ -74,6 +74,13 @@ const showCreateAssignmentBtn = document.getElementById("showCreateAssignmentBtn
 const hideCreateAssignmentBtn = document.getElementById("hideCreateAssignmentBtn");
 const assignmentActionsMenu = document.getElementById("assignmentActionsMenu");
 const teacherAssignmentList = document.getElementById("teacherAssignmentList");
+const assignmentBrowserCount = document.getElementById("assignmentBrowserCount");
+const assignmentFilterCode = document.getElementById("assignmentFilterCode");
+const assignmentFilterDate = document.getElementById("assignmentFilterDate");
+const assignmentFilterGroup = document.getElementById("assignmentFilterGroup");
+const clearAssignmentFiltersBtn = document.getElementById("clearAssignmentFiltersBtn");
+const assignmentScrollLeftBtn = document.getElementById("assignmentScrollLeftBtn");
+const assignmentScrollRightBtn = document.getElementById("assignmentScrollRightBtn");
 const assignmentDetailEmpty = document.getElementById("assignmentDetailEmpty");
 const assignmentDetail = document.getElementById("assignmentDetail");
 const detailTitle = document.getElementById("detailTitle");
@@ -112,9 +119,12 @@ let assignmentsCache = {};
 let submissionsCache = {};
 let studentsCache = {};
 let groupsCache = {};
+const WORKING_GROUP_KEY = "youteachWorkingGroup";
+
 let selectedAssignmentId = "";
 let selectedDriveFolderUrl = "";
 let selectedManualStudentKey = "";
+let assignmentFilterGroupTouched = false;
 
 teacherIdentity.textContent = getTeacherName();
 
@@ -1054,8 +1064,92 @@ function renderGroupOptions() {
   refreshAutomaticTaskCode();
 }
 
+function dateFilterKey(timestamp) {
+  const value = Number(timestamp || 0);
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0")
+  ].join("-");
+}
+
+function getWorkingGroup() {
+  return String(
+    sessionStorage.getItem(WORKING_GROUP_KEY) ||
+    localStorage.getItem(WORKING_GROUP_KEY) ||
+    ""
+  ).trim();
+}
+
+function availableAssignmentGroups() {
+  const names = new Set();
+
+  Object.values(groupsCache || {}).forEach((group) => {
+    const name = String(group?.name || "").trim();
+    if (name) names.add(name);
+  });
+
+  Object.keys(groupsCache || {}).forEach((key) => {
+    const clean = String(key || "").trim();
+    if (clean && clean !== "ALL") names.add(clean);
+  });
+
+  Object.values(assignmentsCache || {}).forEach((assignment) => {
+    const name = String(assignment?.groupName || "").trim();
+    if (name && name !== "ALL") names.add(name);
+  });
+
+  return [...names].sort((a, b) => a.localeCompare(b));
+}
+
+function renderAssignmentFilterOptions() {
+  const groups = availableAssignmentGroups();
+  const previous = assignmentFilterGroup.value;
+  const workingGroup = getWorkingGroup();
+
+  assignmentFilterGroup.innerHTML =
+    '<option value="ALL">All groups</option>' +
+    groups.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("");
+
+  const optionValues = new Set([...assignmentFilterGroup.options].map((option) => option.value));
+
+  if (assignmentFilterGroupTouched && optionValues.has(previous)) {
+    assignmentFilterGroup.value = previous;
+    return;
+  }
+
+  if (!assignmentFilterGroupTouched && workingGroup && optionValues.has(workingGroup)) {
+    assignmentFilterGroup.value = workingGroup;
+    return;
+  }
+
+  if (optionValues.has(previous)) {
+    assignmentFilterGroup.value = previous;
+  } else {
+    assignmentFilterGroup.value = "ALL";
+  }
+}
+
+function assignmentMatchesFilters(assignment) {
+  const codeQuery = String(assignmentFilterCode.value || "").trim().toUpperCase();
+  const dateQuery = String(assignmentFilterDate.value || "").trim();
+  const groupQuery = String(assignmentFilterGroup.value || "ALL").trim();
+
+  const code = String(assignment?.code || "").toUpperCase();
+  const group = String(assignment?.groupName || "ALL").trim();
+
+  if (codeQuery && !code.includes(codeQuery)) return false;
+  if (dateQuery && dateFilterKey(assignment?.dueAt) !== dateQuery) return false;
+  if (groupQuery !== "ALL" && group !== groupQuery) return false;
+
+  return true;
+}
+
 function renderAssignmentList() {
-  const entries = Object.entries(assignmentsCache || {})
+  const allEntries = Object.entries(assignmentsCache || {})
     .map(([id, assignment]) => ({
       id,
       assignment,
@@ -1068,14 +1162,18 @@ function renderAssignmentList() {
       return Number(b.assignment?.createdAt || 0) - Number(a.assignment?.createdAt || 0);
     });
 
+  const entries = allEntries.filter(({ assignment }) => assignmentMatchesFilters(assignment));
+
+  assignmentBrowserCount.textContent = `${entries.length} shown`;
+
   if (!entries.length) {
-    teacherAssignmentList.innerHTML = '<div class="status-text">No assignments yet.</div>';
+    teacherAssignmentList.innerHTML = '<div class="status-text">No assignments match these filters.</div>';
     selectedAssignmentId = "";
     renderDetail();
     return;
   }
 
-  if (!selectedAssignmentId || !assignmentsCache[selectedAssignmentId]) {
+  if (!entries.some(({ id }) => id === selectedAssignmentId)) {
     selectedAssignmentId = entries[0].id;
   }
 
@@ -1563,6 +1661,35 @@ hideCreateAssignmentBtn.addEventListener("click", () => {
   createAssignmentPanel.hidden = true;
 });
 
+assignmentFilterCode.addEventListener("input", renderAssignmentList);
+assignmentFilterDate.addEventListener("change", renderAssignmentList);
+assignmentFilterGroup.addEventListener("change", () => {
+  assignmentFilterGroupTouched = true;
+  renderAssignmentList();
+});
+
+clearAssignmentFiltersBtn.addEventListener("click", () => {
+  assignmentFilterCode.value = "";
+  assignmentFilterDate.value = "";
+  assignmentFilterGroupTouched = true;
+  assignmentFilterGroup.value = "ALL";
+  renderAssignmentList();
+});
+
+assignmentScrollLeftBtn.addEventListener("click", () => {
+  teacherAssignmentList.scrollBy({
+    left: -Math.max(300, teacherAssignmentList.clientWidth * 0.8),
+    behavior: "smooth"
+  });
+});
+
+assignmentScrollRightBtn.addEventListener("click", () => {
+  teacherAssignmentList.scrollBy({
+    left: Math.max(300, teacherAssignmentList.clientWidth * 0.8),
+    behavior: "smooth"
+  });
+});
+
 createAssignmentBtn.addEventListener("click", createAssignment);
 toggleAssignmentBtn.addEventListener("click", toggleAssignment);
 addCreateCriterionBtn.addEventListener("click", () => {
@@ -1594,6 +1721,8 @@ logoutBtn.addEventListener("click", logoutTeacher);
 onValue(ref(db, "groups"), (snapshot) => {
   groupsCache = snapshot.val() || {};
   renderGroupOptions();
+  renderAssignmentFilterOptions();
+  renderAssignmentList();
 });
 
 onValue(ref(db, "students"), (snapshot) => {
@@ -1603,6 +1732,7 @@ onValue(ref(db, "students"), (snapshot) => {
 
 onValue(ref(db, "assignments"), (snapshot) => {
   assignmentsCache = snapshot.val() || {};
+  renderAssignmentFilterOptions();
   renderAssignmentList();
   refreshAutomaticTaskCode();
 });
