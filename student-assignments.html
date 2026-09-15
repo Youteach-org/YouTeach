@@ -6,25 +6,210 @@
   <title>YouTeach - My Assignments</title>
   <link rel="stylesheet" href="styles.css">
   <style>
-    .assignment-grid{display:grid;gap:16px}
-    .assignment-card{background:#fff;border:1px solid #dbeafe;border-radius:18px;padding:18px;box-shadow:0 8px 22px rgba(15,23,42,.06)}
-    .assignment-card h3{margin:0 0 6px}
-    .assignment-meta{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px;color:#475569;font-size:13px}
-    .assignment-chip{background:#eff6ff;border-radius:999px;padding:5px 9px}
-    .assignment-instructions{white-space:pre-wrap;color:#334155;line-height:1.5}
-    .upload-box{margin-top:14px;padding:14px;border:2px dashed #93c5fd;border-radius:14px;background:#f8fbff}
-    .upload-box input{width:100%;margin:8px 0}
-    .upload-btn{width:100%;margin-top:8px}
-    .submission-row{display:flex;justify-content:space-between;gap:10px;margin-top:12px;padding:10px;background:#f1f5f9;border-radius:10px;font-size:13px}
-    .assignment-status{margin-top:14px;padding:10px 12px;border-radius:10px;font-size:16px;font-weight:900;line-height:1.35}
+    *{box-sizing:border-box}
+    .main-content{min-width:0}
+    .topbar{align-items:center}
+    .student-top-identity{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:7px 10px;
+      border:1px solid #dbeafe;
+      border-radius:12px;
+      background:#f8fafc;
+      min-width:0
+    }
+    .student-top-identity strong{
+      font-size:14px;
+      color:#0f172a;
+      white-space:nowrap
+    }
+    .student-top-identity span{
+      font-size:12px;
+      color:#64748b;
+      white-space:nowrap
+    }
+
+    .assignment-grid{
+      display:grid;
+      grid-template-columns:repeat(6,minmax(0,1fr));
+      gap:10px;
+      align-items:start
+    }
+    .assignment-card{
+      min-width:0;
+      display:flex;
+      flex-direction:column;
+      gap:7px;
+      background:#fff;
+      border:1px solid #dbeafe;
+      border-radius:14px;
+      padding:11px;
+      box-shadow:0 3px 12px rgba(15,23,42,.05)
+    }
+    .assignment-code{
+      font-size:11px;
+      font-weight:900;
+      color:#2563eb;
+      line-height:1.2;
+      overflow-wrap:anywhere
+    }
+    .assignment-card h3{
+      margin:0;
+      font-size:15px;
+      line-height:1.2;
+      color:#0f172a;
+      display:-webkit-box;
+      -webkit-line-clamp:2;
+      -webkit-box-orient:vertical;
+      overflow:hidden;
+      min-height:36px
+    }
+    .assignment-meta{
+      display:flex;
+      flex-wrap:wrap;
+      gap:4px;
+      margin:0;
+      color:#475569;
+      font-size:10px
+    }
+    .assignment-chip{
+      background:#eff6ff;
+      border-radius:999px;
+      padding:3px 6px;
+      white-space:nowrap
+    }
+    .assignment-instructions{
+      color:#334155;
+      font-size:11px;
+      line-height:1.35;
+      display:-webkit-box;
+      -webkit-line-clamp:2;
+      -webkit-box-orient:vertical;
+      overflow:hidden;
+      min-height:30px
+    }
+    .submission-row{
+      display:grid;
+      gap:2px;
+      margin:0;
+      padding:7px;
+      background:#f1f5f9;
+      border-radius:8px;
+      font-size:10px;
+      min-width:0
+    }
+    .submission-row span{
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap
+    }
+    .assignment-status{
+      margin:0;
+      padding:7px 8px;
+      border-radius:8px;
+      font-size:11px;
+      font-weight:900;
+      line-height:1.25
+    }
     .assignment-status.ok{color:#166534;background:#dcfce7;border:1px solid #86efac}
     .assignment-status.bad{color:#991b1b;background:#fee2e2;border:1px solid #fca5a5}
     .assignment-status.pending{color:#854d0e;background:#fef9c3;border:1px solid #fde047}
     .assignment-status.warning{color:#9a3412;background:#ffedd5;border:1px solid #fdba74}
-    .undo-submission-btn{width:100%;margin-top:8px;background:#fff;border:1px solid #dc2626;color:#b91c1c;font-weight:800}
+
+    .upload-box{
+      margin-top:auto;
+      padding:8px;
+      border:1px dashed #93c5fd;
+      border-radius:10px;
+      background:#f8fbff;
+      min-width:0
+    }
+    .upload-box strong{
+      display:block;
+      margin-bottom:6px;
+      font-size:11px;
+      color:#0f172a
+    }
+    .file-picker{
+      display:flex;
+      align-items:center;
+      gap:6px;
+      min-width:0
+    }
+    .file-picker input[type="file"]{
+      position:absolute;
+      width:1px;
+      height:1px;
+      opacity:0;
+      pointer-events:none
+    }
+    .file-picker-label{
+      flex:0 0 auto;
+      padding:6px 7px;
+      border:1px solid #cbd5e1;
+      border-radius:7px;
+      background:#fff;
+      font-size:10px;
+      font-weight:800;
+      cursor:pointer
+    }
+    .file-picker-label.disabled{
+      opacity:.5;
+      cursor:not-allowed
+    }
+    .file-name{
+      min-width:0;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+      font-size:10px;
+      color:#64748b
+    }
+    .upload-btn,.undo-submission-btn{
+      width:100%;
+      margin-top:6px;
+      min-height:32px;
+      padding:6px 8px;
+      font-size:11px;
+      font-weight:800
+    }
+    .undo-submission-btn{
+      background:#fff;
+      border:1px solid #dc2626;
+      color:#b91c1c
+    }
     .undo-submission-btn:hover{background:#fef2f2}
-    .upload-btn:disabled{opacity:.55;cursor:not-allowed}
-    .empty-state{padding:28px;text-align:center;color:#64748b}
+    .upload-btn:disabled,.undo-submission-btn:disabled{opacity:.55;cursor:not-allowed}
+    .progress-text{
+      margin-top:5px;
+      color:#475569;
+      font-size:10px;
+      line-height:1.25
+    }
+    .empty-state{
+      grid-column:1/-1;
+      padding:28px;
+      text-align:center;
+      color:#64748b
+    }
+
+    @media(max-width:1500px){
+      .assignment-grid{grid-template-columns:repeat(5,minmax(0,1fr))}
+    }
+    @media(max-width:1280px){
+      .assignment-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+    }
+    @media(max-width:1050px){
+      .assignment-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+    }
+    @media(max-width:760px){
+      .assignment-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .student-top-identity{align-items:flex-start;flex-direction:column;gap:2px}
+    }
+    @media(max-width:520px){
+      .assignment-grid{grid-template-columns:1fr}
+    }
   </style>
 </head>
 <body>
@@ -50,15 +235,13 @@
           <h2>My Assignments</h2>
           <p>Attach one PDF for each assignment.</p>
         </div>
-        <div class="topbar-right"><span id="studentIdentity" class="teacher-identity">Student</span></div>
-      </header>
-
-      <div class="panel-card" style="margin-bottom:16px">
-        <strong id="studentAssignmentIdentity">Loading student...</strong>
-        <div style="margin-top:6px;color:#64748b;font-size:13px">
-          PDF only · maximum 15 MB · submitting again replaces the previous PDF.
+        <div class="topbar-right">
+          <div class="student-top-identity">
+            <strong id="studentIdentity">Student</strong>
+            <span id="studentAssignmentIdentity">Loading student...</span>
+          </div>
         </div>
-      </div>
+      </header>
 
       <div id="assignmentList" class="assignment-grid">
         <div class="empty-state">Loading assignments...</div>
@@ -66,7 +249,7 @@
     </main>
   </div>
 
-  <script type="module" src="student-assignments.js?v=undo-resubmit-20260914"></script>
+  <script type="module" src="student-assignments.js?v=compact-six-card-grid-20260914"></script>
   <script defer src="shared-ui-fixes.js?v=assignments-20260914"></script>
 </body>
 </html>
