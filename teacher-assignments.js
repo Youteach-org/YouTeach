@@ -869,9 +869,23 @@ function gradingTotalFromGrade(grading) {
 }
 
 function gradeHistoryEntries(submission) {
-  return Object.entries(submission?.gradingHistory || {})
+  const stored = Object.entries(submission?.gradingHistory || {})
     .map(([id, event]) => ({ id, ...(event || {}) }))
     .sort((a, b) => Number(b?.timestamp || 0) - Number(a?.timestamp || 0));
+
+  if (stored.length || !submission?.grading) return stored;
+
+  return [{
+    id: "current-grade-baseline",
+    action: "current-grade-baseline",
+    timestamp: Number(submission?.grading?.gradedAt || submission?.updatedAt || 0),
+    actor: String(submission?.grading?.gradedBy || "YouTeach"),
+    from: { grading: null, published: false },
+    to: {
+      grading: submission.grading,
+      published: Boolean(submission?.gradePublished)
+    }
+  }];
 }
 
 function gradeHistoryActionLabel(action) {
@@ -881,6 +895,7 @@ function gradeHistoryActionLabel(action) {
   if (value === "grade-published") return "Grade published";
   if (value === "grade-unpublished") return "Grade unpublished";
   if (value === "grade-cleared") return "Grade cleared";
+  if (value === "current-grade-baseline") return "Current grade";
   return "Grade updated";
 }
 
