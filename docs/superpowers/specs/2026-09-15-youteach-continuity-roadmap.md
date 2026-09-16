@@ -287,67 +287,25 @@ Important:
 - historical student evidence/grades are not copied into a new assignment when reusing a template;
 - course-program recommendations are a later feature and must be derived from teacher-owned historical data, not generic assumptions.
 
-## 11. Exam ecosystem: question bank, Exam Creator, Answer Sheet Creator
+## 11. Exam Bank
 
-Priority 5 after the current assignment grading loop and core lifecycle are stable.
+Priority 5 after the current assignment grading loop, responsive validation, and core assignment lifecycle are stable.
 
-The existing **Exam** assignment type becomes the entry point for a reusable assessment ecosystem.
+The approved exam-library feature is a **manual Exam Bank**.
 
-### 11.1 Question Bank
+Approved behavior:
+- exams are added manually only;
+- one uploaded file equals one independent Exam Bank entry;
+- preserve the original file unchanged;
+- metadata includes title, subject/course, unit/topic, exam type, date, version, and free-form tags;
+- support upload, classification, search/filter, retrieval, and download;
+- do not parse files into questions/sections;
+- do not maintain an internal Question Bank;
+- do not provide an internal Exam Creator;
+- do not provide internal AI generation/rearrangement;
+- do not provide an internal "use as base for a new exam" workflow.
 
-Exam questions should be stored as reusable bank items rather than existing only inside one exam.
-
-Each question bank item should be able to store:
-- subject/course;
-- unit/topic/subtopic;
-- question type;
-- prompt;
-- answer options where applicable;
-- correct answer / answer key;
-- points or weighting metadata;
-- difficulty metadata where teacher-defined;
-- source/notes when the teacher chooses to store them;
-- status such as active/archived;
-- usage history;
-- performance statistics when the question has been used.
-
-Question types should be extensible and include at least the types already used by the teacher, such as:
-- multiple choice;
-- true/false;
-- matching/correspondence;
-- open response.
-
-### 11.2 Exam Creator
-
-Create a new main section named **Exam Creator**.
-
-Exam Creator should:
-- build a new exam from Question Bank items;
-- filter questions by course, unit, topic, type, and other supported metadata;
-- allow manual selection and later intelligent/statistical selection;
-- support reusable exam templates;
-- support generating new exam instances from an existing template;
-- support Versions A/B and other versions later;
-- preserve the teacher's selected order and section structure;
-- create an answer key tied to the exact exam version;
-- eventually support analysis of question performance after grading.
-
-An exam template must be separate from an exam administration/assigned instance, for the same reason Assignment Templates are separate from student submissions.
-
-### 11.3 Answer Sheet Creator
-
-Create a companion main section named **Answer Sheet Creator**.
-
-Answer Sheet Creator should:
-- generate a student answer sheet from the exact structure of a selected exam/version;
-- generate a teacher answer key;
-- stay synchronized with question numbering and sections;
-- support the teacher's established answer-sheet formatting rules;
-- support different response areas depending on question type;
-- allow regeneration if an exam is changed before it is locked/used.
-
-Long-term direction:
-- Exam Creator + Answer Sheet Creator should reuse the same exam schema, not maintain two independent copies of question numbering/answers.
+Any AI that reads prior exams, rearranges them, or creates a new exam is external to the Exam Bank and must be designed separately.
 
 ## 12. Administration section
 
@@ -363,9 +321,7 @@ Admin should be able to see, at minimum:
 - assignment templates;
 - assigned instances;
 - submissions and grading status;
-- exam templates;
-- question banks;
-- exam instances;
+- Exam Bank entries/files;
 - storage/integration status;
 - relevant activity/audit information.
 
@@ -421,20 +377,27 @@ Pending follow-up:
 
 Do not add another large feature first.
 
-Next action is:
-**run and fix the complete AI grading round-trip on one real task until it works end-to-end.**
+Current implementation status:
+- AI grading -> teacher review -> explicit publish is implemented on `main`, pending field validation;
+- published grades/student details are implemented;
+- grading history/audit is implemented;
+- Project checkpoints/evidence are implemented;
+- exam PDF annotation is implemented;
+- the provisional internal Question Bank / Exam Creator / Answer Sheet Creator are unapproved and must not be extended.
 
-After that:
-1. finish the simplified AI-grade -> teacher review -> publish workflow;
-2. strengthen AI grading prompts and grading ledger/idempotency;
-3. add student-side expanded assignment details and published grades;
-4. cross-device UI verification;
-5. add Project progress checkpoints with photo/video/document evidence;
-6. assignment lifecycle + reusable Assignment Library;
-7. course/topic analytics foundation;
-8. Question Bank foundation;
-9. Exam Creator + annotated grading outputs;
-10. Answer Sheet Creator;
-11. Administration section;
-12. authentication hardening;
-13. deployment cleanup.
+Next action:
+**field-validate the implemented grading/publication workflow on real tasks and fix any production issues found.**
+
+After that, continue in this order:
+1. cross-device UI verification and fixes;
+2. Assignment Template / Assigned Instance lifecycle;
+3. reusable Assignment Library;
+4. Course -> Unit -> Topic -> Subtopic metadata;
+5. course/topic analytics foundation;
+6. manual Exam Bank;
+7. Administration section;
+8. authentication hardening;
+9. Cloudflare/deployment cleanup;
+10. Course Intelligence / Program Builder when enough historical data exists.
+
+The next **large product feature** after validation/responsive work is the Assignment Template / Assigned Instance lifecycle and Assignment Library.
