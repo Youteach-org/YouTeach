@@ -303,9 +303,8 @@ export async function onRequestPost(context) {
   try {
     const body = await request.json().catch(() => ({}));
     const assignmentId = String(body?.assignmentId || "").trim();
-    const conflictMode = ["keep-manual", "replace-manual", "compare"].includes(body?.conflictMode)
-      ? body.conflictMode
-      : "keep-manual";
+    const minimumResultsModifiedTime = Number(body?.minimumResultsModifiedTime || 0);
+    const forceRegrade = Boolean(body?.forceRegrade);
 
     if (!assignmentId) return json(400, { ok: false, error: "Missing assignment ID." });
 
@@ -340,6 +339,19 @@ export async function onRequestPost(context) {
       });
     }
 
+    if (
+      minimumResultsModifiedTime &&
+      Date.parse(String(resultsFile.modifiedTime || "")) < minimumResultsModifiedTime
+    ) {
+      return json(202, {
+        ok: false,
+        pending: true,
+        taskCode,
+        resultsFileName,
+        resultsFileModifiedTime: resultsFile.modifiedTime || null
+      });
+    }
+
     const gradingDocument = await downloadJson(accessToken, resultsFile.id);
     if (String(gradingDocument?.taskCode || "").trim() !== taskCode) {
       return json(400, { ok: false, error: "AI grading file Task Code does not match this assignment." });
@@ -356,7 +368,7 @@ export async function onRequestPost(context) {
     const lookup = submissionLookup(submissions || {});
     const summary = {
       imported: 0,
-      compared: 0,
+      skippedAlready: 0,
       skippedManual: 0,
       unmatched: [],
       errors: []
@@ -375,39 +387,26 @@ export async function onRequestPost(context) {
 
       try {
         const aiGrade = normalizeAiGrade(result, criteria);
-        const hasManualGrade = submission?.grading?.mode === "manual";
         const currentIdentity = String(submission?.identityReviewStatus || "pending");
+        const sourceRevision = Number(submission?.updatedAt || submission?.submittedAt || 0);
+        const sameSubmissionRevision =
+          Number(submission?.gradingSourceSubmissionUpdatedAt || 0) === sourceRevision &&
+          String(submission?.gradingSourceDriveFileId || "") === String(submission?.driveFileId || "");
+        const sameResultsRevision =
+          String(submission?.aiGradingResultsFileModifiedTime || "") === String(resultsFile.modifiedTime || "");
 
         const identityUpdate =
           ["", "pending", "withdrawn"].includes(currentIdentity)
             ? aiGrade.identityStatus
             : currentIdentity;
 
-        if (hasManualGrade && conflictMode === "keep-manual") {
-          await firebasePatch(
-            `assignmentSubmissions/${encodeURIComponent(assignmentId)}/${encodeURIComponent(studentKey)}`,
-            {
-              aiGradingCandidate: aiGrade,
-              aiGradingCandidateState: "kept-manual",
-              identityReviewStatus: identityUpdate,
-              aiGradingSyncedAt: Date.now()
-            }
-          );
-          summary.skippedManual += 1;
+        if (!forceRegrade && sameSubmissionRevision && sameResultsRevision) {
+          summary.skippedAlready += 1;
           continue;
         }
 
-        if (hasManualGrade && conflictMode === "compare") {
-          await firebasePatch(
-            `assignmentSubmissions/${encodeURIComponent(assignmentId)}/${encodeURIComponent(studentKey)}`,
-            {
-              aiGradingCandidate: aiGrade,
-              aiGradingCandidateState: "compare",
-              identityReviewStatus: identityUpdate,
-              aiGradingSyncedAt: Date.now()
-            }
-          );
-          summary.compared += 1;
+        if (!forceRegrade && submission?.grading?.mode === "manual" && sameSubmissionRevision) {
+          summary.skippedManual += 1;
           continue;
         }
 
@@ -418,7 +417,14 @@ export async function onRequestPost(context) {
             aiGradingCandidate: null,
             aiGradingCandidateState: null,
             identityReviewStatus: identityUpdate,
-            reviewStatus: aiGrade.totalScore === null ? "manual-review" : "graded",
+            reviewStatus: aiGrade.totalScore === null ? "manual-review" : "ai-graded",
+            teacherReviewStatus: aiGrade.totalScore === null ? "manual-review" : "pending",
+            gradePublished: false,
+            gradePublishedAt: null,
+            gradePublishedBy: null,
+            gradingSourceSubmissionUpdatedAt: sourceRevision,
+            gradingSourceDriveFileId: String(submission?.driveFileId || ""),
+            aiGradingResultsFileModifiedTime: resultsFile.modifiedTime || "",
             aiGradingSyncedAt: Date.now(),
             updatedAt: Date.now()
           }
@@ -437,7 +443,7 @@ export async function onRequestPost(context) {
       taskCode,
       resultsFileName,
       resultsFileId: resultsFile.id,
-      conflictMode,
+      resultsFileModifiedTime: resultsFile.modifiedTime || null,
       ...summary
     });
   } catch (error) {
