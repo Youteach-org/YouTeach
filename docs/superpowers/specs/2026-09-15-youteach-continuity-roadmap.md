@@ -82,9 +82,17 @@ Two grading paths coexist:
 - YouTeach imports that file with Sync AI Grades.
 
 Conflict modes:
+- Compare first (default/safest when a manual grade already exists)
 - Keep Manual
 - Replace with AI
-- Compare
+
+Sync/Import rules:
+- importing AI results never deletes the `{TASK-CODE}--grading-results.json` source file in Drive;
+- the conflict choice only matters when a manual grade already exists;
+- Compare preserves the manual grade and stores the AI result side-by-side for review;
+- Keep Manual preserves the manual grade and saves the AI result as a candidate;
+- Replace with AI requires explicit confirmation before overwriting the saved manual grade;
+- the UI must show the saved AI candidate score so it is clear that the AI result still exists.
 
 A manual grade must never be silently overwritten by AI.
 
