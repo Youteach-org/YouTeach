@@ -181,6 +181,66 @@ async function downloadJson(accessToken, fileId) {
   }
 }
 
+async function createGradingResultsPlaceholder(accessToken, folderId, assignmentId, taskCode, fileName) {
+  const createResponse = await fetch(
+    "https://www.googleapis.com/drive/v3/files?fields=id,name,mimeType,modifiedTime,webViewLink",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        name: fileName,
+        mimeType: "application/json",
+        parents: [folderId],
+        appProperties: {
+          source: "youteach",
+          kind: "ai-grading-results",
+          assignmentId: String(assignmentId),
+          taskCode: String(taskCode)
+        }
+      })
+    }
+  );
+
+  const created = await createResponse.json();
+  if (!createResponse.ok || !created?.id) {
+    throw new Error(created?.error?.message || "Could not create the AI grading results placeholder.");
+  }
+
+  const placeholder = {
+    schemaVersion: 2,
+    source: "YouTeach",
+    taskCode: String(taskCode),
+    gradedAt: null,
+    results: []
+  };
+
+  const uploadResponse = await fetch(
+    `https://www.googleapis.com/upload/drive/v3/files/${encodeURIComponent(created.id)}?uploadType=media`,
+    {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json; charset=UTF-8"
+      },
+      body: JSON.stringify(placeholder, null, 2)
+    }
+  );
+
+  if (!uploadResponse.ok) {
+    throw new Error("Could not initialize the AI grading results placeholder.");
+  }
+
+  return {
+    id: created.id,
+    name: fileName,
+    modifiedTime: created.modifiedTime || null,
+    webViewLink: created.webViewLink || `https://drive.google.com/file/d/${created.id}/view`
+  };
+}
+
 function submissionLookup(submissions) {
   const entries = Object.entries(submissions || {}).filter(([, submission]) => submission?.driveFileId);
   const byFile = new Map();
@@ -331,19 +391,24 @@ export async function onRequestPost(context) {
     );
 
     const resultsFileName = `${taskCode}--grading-results.json`;
-    const resultsFile = await findJsonFile(accessToken, folder.id, resultsFileName);
+    let resultsFile = await findJsonFile(accessToken, folder.id, resultsFileName);
     if (!resultsFile) {
-      if (minimumResultsModifiedTime) {
-        return json(202, {
-          ok: false,
-          pending: true,
-          taskCode,
-          resultsFileName
-        });
-      }
-      return json(404, {
+      resultsFile = await createGradingResultsPlaceholder(
+        accessToken,
+        folder.id,
+        assignmentId,
+        taskCode,
+        resultsFileName
+      );
+
+      return json(202, {
         ok: false,
-        error: `${resultsFileName} was not found. Run AI Grading first.`
+        pending: true,
+        placeholderCreated: true,
+        taskCode,
+        resultsFileName,
+        resultsFileId: resultsFile.id,
+        message: "YouTeach created the grading results file. Run AI Grading again so ChatGPT updates this existing file."
       });
     }
 
