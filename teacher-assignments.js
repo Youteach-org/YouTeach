@@ -694,12 +694,7 @@ function assignmentEvaluationState(assignmentId, assignment) {
     .filter((submission) => submission?.driveFileId);
 
   const submitted = submissions.length;
-  const graded = submissions.filter((submission) =>
-    submission?.reviewStatus === "graded" &&
-    submission?.grading &&
-    submission?.grading?.totalScore !== null &&
-    submission?.grading?.totalScore !== undefined
-  ).length;
+  const graded = submissions.filter((submission) => submissionIsGraded(submission)).length;
 
   const totalStudents = assignmentStudents(assignment).length;
   const missing = Math.max(0, totalStudents - submitted);
