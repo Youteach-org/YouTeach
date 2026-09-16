@@ -53,3 +53,26 @@ test('legacy AI conflict labels are not rendered in the current teacher workflow
   assert.doesNotMatch(teacherJs, /Compare · Manual:/);
   assert.doesNotMatch(teacherJs, /Manual kept · AI suggestion:/);
 });
+
+
+test('grading actions append audit history instead of overwriting prior events', () => {
+  assert.match(teacherJs, /gradingHistory\/\$\{historyKey\}/);
+  assert.match(teacherJs, /"manual-grade-saved"/);
+  assert.match(teacherJs, /"grade-cleared"/);
+  assert.match(teacherJs, /"grade-published" : "grade-unpublished"/);
+  assert.match(syncFn, /"ai-grade-applied"/);
+  assert.match(syncFn, /gradingHistory\/\$\{historyKey\}/);
+});
+
+test('teacher cards can render history and baseline pre-history grades', () => {
+  assert.match(teacherJs, /function gradeHistoryHtml\(submission\)/);
+  assert.match(teacherJs, /current-grade-baseline/);
+  assert.match(teacherJs, /Grade history \(\$\{entries\.length\}\)/);
+});
+
+test('grade history records source submission revision metadata', () => {
+  assert.match(teacherJs, /sourceDriveFileId:/);
+  assert.match(teacherJs, /sourceSubmissionUpdatedAt:/);
+  assert.match(syncFn, /aiResultsFileModifiedTime:/);
+  assert.match(syncFn, /aiActionStartedAt:/);
+});
