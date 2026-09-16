@@ -6,11 +6,11 @@ Status: implemented
 
 ## Decision
 
-A teacher can reset a saved manual grade from the student's Manual Grading card.
+A teacher can reset a saved manual grade directly from the student's submitted-work card or from the student's Manual Grading panel.
 
 Behavior:
-- the control is named **Clear Grade**;
-- it appears only when the current saved grading mode is manual;
+- the control is named **Clear grade**;
+- it is visible directly on the submitted-work card and inside Manual Grading when the current saved grading mode is manual;
 - confirmation is required before applying it;
 - the student's submitted file remains unchanged;
 - the current manual score and feedback are cleared;
