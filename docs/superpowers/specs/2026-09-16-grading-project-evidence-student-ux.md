@@ -37,9 +37,9 @@ The normal workflow is intentionally simple.
    `{TASK-CODE}--grading-results.json`
 4. The AI grade is applied internally to YouTeach and appears in the teacher submission card.
 5. The result is **not published to the student automatically**.
-6. Teacher reviews the AI result.
-7. If correct, teacher publishes/releases it.
-8. If incorrect, teacher opens that student's card and enters a manual grade; the manual grade becomes the current internal grade.
+6. Teacher reviews the AI result directly on the student's submitted-work card, where the numeric AI grade must be clearly visible.
+7. If correct, the teacher may leave the AI grade as the current internal grade and publish/release it when ready.
+8. If incorrect, the teacher opens Manual Grading from that same card and takes control of the score; saving the manual grade becomes the current internal grade.
 9. Teacher then publishes when satisfied.
 
 There is no normal Keep Manual / Compare / Replace decision before importing AI results. That selector created unnecessary ambiguity and is deprecated.
@@ -256,7 +256,14 @@ Teacher cards should distinguish at least:
 - Manual review required
 - Identity mismatch/manual review
 
-The card should make the current grade visible to the teacher even when unpublished.
+The card should make the current grade prominently visible to the teacher even when unpublished.
+
+Teacher-card interaction rule:
+- clicking a submitted-student card opens its Manual Grading panel;
+- clicking the same card again hides that panel;
+- do not add a separate Close button for card-expanded/detail panels;
+- when the current grade is AI, the card should expose a clear Manual Grading takeover action;
+- returning to/focusing Teacher Assignments should automatically check for the latest AI results so a completed AI grade appears on the card without requiring a separate sync workflow.
 
 ## 10. Implementation sequence
 
