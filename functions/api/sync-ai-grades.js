@@ -420,8 +420,16 @@ export async function onRequestPost(context) {
         }
 
         if (!forceRegrade && submission?.grading?.mode === "manual" && sameSubmissionRevision) {
-          summary.skippedManual += 1;
-          continue;
+          const manualGradedAt = Number(submission?.grading?.gradedAt || 0);
+          const aiResultsModifiedAt = Date.parse(String(resultsFile.modifiedTime || "")) || 0;
+
+          // The latest grading action owns the current internal grade.
+          // A newer explicit AI result may replace an older manual grade;
+          // a manual grade saved after that AI result remains in control.
+          if (manualGradedAt >= aiResultsModifiedAt) {
+            summary.skippedManual += 1;
+            continue;
+          }
         }
 
         await firebasePatch(
