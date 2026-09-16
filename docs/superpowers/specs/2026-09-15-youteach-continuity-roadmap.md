@@ -255,7 +255,8 @@ Foundation status — 2026-09-16:
 - Teacher Assignments can save the selected activity as a template and load a template into the existing Create Assignment form;
 - creating from a template atomically writes the new assigned instance plus template usage metadata;
 - group/due date and Project checkpoint dates remain run-specific;
-- dedicated library browse/search/filter/archive UX is still deferred.
+- dedicated library browse/search/filter/archive UX is implemented on `feature/assignment-library-management`, pending merge;
+- the management panel supports active/archived status, archive/restore, usage filtering, metadata filters, and loading active templates without changing historical instances.
 
 Remaining lifecycle decisions / implementation:
 - archive old assigned instances without deleting reusable templates;
