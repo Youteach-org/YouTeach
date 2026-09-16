@@ -542,7 +542,7 @@
 
 
     .missing-submissions-details{
-      width:max-content;
+      width:100%;
       max-width:100%;
       border:1px solid #e2e8f0;
       border-radius:8px;
@@ -550,6 +550,8 @@
       overflow:hidden
     }
     .missing-submissions-details>summary{
+      width:max-content;
+      max-width:100%;
       list-style:none;
       cursor:pointer;
       padding:6px 9px;
@@ -567,12 +569,80 @@
     }
     .missing-submissions-details[open]>summary::after{content:"Hide"}
     .missing-submissions-details #missingList{
-      max-width:760px;
-      padding:7px 9px;
-      border-top:1px solid #e2e8f0;
-      font-size:9px;
-      line-height:1.3;
+      width:100%;
+      padding:8px;
+      border-top:1px solid #e2e8f0
+    }
+    .missing-student-grid{
+      display:grid;
+      grid-template-columns:repeat(5,minmax(0,1fr));
+      gap:7px
+    }
+    .missing-student-card{
+      min-width:0;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:6px;
+      padding:8px;
+      border:1px solid #fecaca;
+      border-radius:9px;
+      background:#fff7f7
+    }
+    .missing-student-main{min-width:0}
+    .missing-student-main strong{
+      display:block;
+      min-width:0;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+      font-size:10px;
+      color:#0f172a
+    }
+    .missing-student-main span{
+      display:block;
+      margin-top:2px;
+      min-width:0;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+      font-size:8px;
       color:#64748b
+    }
+    .missing-student-chip{
+      flex:0 0 auto;
+      padding:3px 5px;
+      border-radius:999px;
+      background:#fee2e2;
+      color:#991b1b;
+      font-size:8px;
+      font-weight:900;
+      white-space:nowrap
+    }
+    .missing-empty-state{
+      grid-column:1/-1;
+      padding:5px;
+      font-size:9px;
+      color:#64748b
+    }
+    .submission-grade-actions{
+      display:flex;
+      align-items:center;
+      gap:5px;
+      flex-wrap:wrap;
+      justify-content:flex-end
+    }
+    @media(max-width:1180px){
+      .missing-student-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+    }
+    @media(max-width:900px){
+      .missing-student-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+    }
+    @media(max-width:650px){
+      .missing-student-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+    }
+    @media(max-width:450px){
+      .missing-student-grid{grid-template-columns:1fr}
     }
 
     .manual-grading-panel{
@@ -1358,8 +1428,10 @@
               </section>
 
               <details class="missing-submissions-details">
-                <summary>Missing submissions</summary>
-                <div id="missingList">None</div>
+                <summary id="missingSummary">Missing submissions (0)</summary>
+                <div id="missingList" class="missing-student-grid">
+                  <div class="missing-empty-state">No missing submissions.</div>
+                </div>
               </details>
             </div>
           </section>
@@ -1368,7 +1440,7 @@
     </main>
   </div>
 
-  <script type="module" src="teacher-assignments.js?v=clear-manual-grade-20260916"></script>
+  <script type="module" src="teacher-assignments.js?v=missing-cards-clear-grade-20260916"></script>
   <script defer src="shared-ui-fixes.js?v=titlebar-hamburger-20260916"></script>
 </body>
 </html>
