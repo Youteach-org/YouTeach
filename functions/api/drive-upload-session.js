@@ -727,6 +727,13 @@ export async function onRequest(context) {
 
     if (action === "undo") {
       await deleteDriveFile(accessToken, existingFile?.id || "");
+      if (submission?.examAnnotatedDriveFileId) {
+        try {
+          await deleteDriveFile(accessToken, submission.examAnnotatedDriveFileId);
+        } catch (annotationDeleteError) {
+          console.warn("Could not remove annotated exam copy during withdrawal:", annotationDeleteError);
+        }
+      }
 
       const submissionPath =
         `assignmentSubmissions/${encodeURIComponent(assignmentId)}/${encodeURIComponent(studentKey)}`;
