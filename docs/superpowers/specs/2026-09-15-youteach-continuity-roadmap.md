@@ -81,20 +81,17 @@ Two grading paths coexist:
   `{TASK-CODE}--grading-results.json`
 - YouTeach imports that file with Sync AI Grades.
 
-Conflict modes:
-- Compare first (default/safest when a manual grade already exists)
-- Keep Manual
-- Replace with AI
+Canonical AI grading workflow:
+- choosing AI Grading starts AI evaluation for the selected assignment;
+- once the AI result is available, the grade is applied to YouTeach internally and appears on the teacher submission cards;
+- AI grades are **unpublished by default** and are not visible to the student yet;
+- the teacher is notified that AI grading is complete and can review each result;
+- if the teacher disagrees, opening the student card and saving a manual grade replaces the internal AI grade for that submission;
+- publication is a separate teacher decision; only published grades appear on the student side;
+- the previous Keep Manual / Compare / Replace selector is deprecated by this workflow and should be removed from the normal grading path;
+- importing/applying AI results never deletes the `{TASK-CODE}--grading-results.json` source file in Drive.
 
-Sync/Import rules:
-- importing AI results never deletes the `{TASK-CODE}--grading-results.json` source file in Drive;
-- the conflict choice only matters when a manual grade already exists;
-- Compare preserves the manual grade and stores the AI result side-by-side for review;
-- Keep Manual preserves the manual grade and saves the AI result as a candidate;
-- Replace with AI requires explicit confirmation before overwriting the saved manual grade;
-- the UI must show the saved AI candidate score so it is clear that the AI result still exists.
-
-A manual grade must never be silently overwritten by AI.
+A manual grade must never be silently overwritten by a later AI rerun unless the teacher explicitly starts a regrade for that changed/new submission.
 
 ### 3.5 Grading order / visual states
 - Ungraded student submissions appear first.
@@ -162,13 +159,13 @@ Test with real existing assignment submissions:
    - graded last;
    - distinct graded color;
    - correct displayed total.
-8. Test all three conflict modes:
-   - Keep Manual;
-   - Replace with AI;
-   - Compare.
-9. Confirm no PDF, rubric, or manual grade is deleted unintentionally.
+8. Verify AI grades are applied internally but remain unpublished.
+9. Verify teacher cards clearly show AI-graded/unpublished state.
+10. Verify the teacher can replace an AI grade by entering a manual grade on the student card.
+11. Verify publishing is explicit and student-side grade visibility depends only on publication status.
+12. Confirm no PDF, rubric, grading-results JSON, or prior historical grade record is deleted unintentionally.
 
-Acceptance: one complete real task can be graded from ChatGPT and synchronized back into YouTeach without copying grades manually.
+Acceptance: one complete real task can be graded by AI, applied to YouTeach automatically/with no conflict-choice ambiguity, reviewed by the teacher, optionally corrected manually, and published to the student only when the teacher decides.
 
 ## 8. Next milestone: cross-device UI validation
 
@@ -200,13 +197,14 @@ Acceptance:
 
 Priority 3, after teacher-side grading is verified.
 
-Planned behavior:
+Accepted behavior:
+- AI/manual grades can exist internally before publication.
+- Student sees a grade only when the teacher publishes/releases it.
 - Student can see grade /100 when released.
-- Student can see criterion breakdown and teacher/AI feedback.
-- Identity/manual-review warnings are teacher-side unless a deliberate student-facing message is defined.
-- Teacher controls release/publication of grades.
-
-This milestone still needs explicit UX decisions before implementation.
+- Student can see criterion breakdown and teacher/AI feedback when released.
+- Identity/manual-review warnings remain teacher-side unless a deliberate student-facing message is defined.
+- Teacher controls publication per submission; bulk publication may be added for an assignment.
+- An unpublished grade must never leak to the student side.
 
 ## 10. Next milestone: assignment lifecycle + reusable assignment library
 
@@ -415,13 +413,16 @@ Next action is:
 **run and fix the complete AI grading round-trip on one real task until it works end-to-end.**
 
 After that:
-1. cross-device UI verification;
-2. student-visible grade release design;
-3. assignment lifecycle + reusable Assignment Library;
-4. course/topic analytics foundation;
-5. Question Bank foundation;
-6. Exam Creator;
-7. Answer Sheet Creator;
-8. Administration section;
-9. authentication hardening;
-10. deployment cleanup.
+1. finish the simplified AI-grade -> teacher review -> publish workflow;
+2. strengthen AI grading prompts and grading ledger/idempotency;
+3. add student-side expanded assignment details and published grades;
+4. cross-device UI verification;
+5. add Project progress checkpoints with photo/video/document evidence;
+6. assignment lifecycle + reusable Assignment Library;
+7. course/topic analytics foundation;
+8. Question Bank foundation;
+9. Exam Creator + annotated grading outputs;
+10. Answer Sheet Creator;
+11. Administration section;
+12. authentication hardening;
+13. deployment cleanup.
