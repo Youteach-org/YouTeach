@@ -7,6 +7,155 @@
     }
   }
 
+  function ensureGlobalResponsiveLayout() {
+    if (document.getElementById("youteach-global-responsive-layout")) return;
+
+    const style = document.createElement("style");
+    style.id = "youteach-global-responsive-layout";
+    style.textContent = `
+      /* Global YouTeach tablet/mobile layout guard.
+         Hidden fixed sidebars must never reserve a desktop grid column. */
+      @media (min-width:769px) and (max-width:1100px),
+             (orientation:portrait) and (min-width:769px) and (max-width:1200px) {
+        html,
+        body {
+          width:100% !important;
+          max-width:100% !important;
+        }
+
+        body {
+          overflow-x:hidden !important;
+        }
+
+        .menu-shell {
+          display:block !important;
+          grid-template-columns:1fr !important;
+          width:100% !important;
+          max-width:none !important;
+          min-width:0 !important;
+        }
+
+        .main-content,
+        .hamburger-btn + .menu-shell .main-content {
+          width:100% !important;
+          max-width:none !important;
+          min-width:0 !important;
+          margin:0 !important;
+          padding-top:22px !important;
+          padding-left:88px !important;
+          padding-right:24px !important;
+        }
+
+        .main-content > * {
+          min-width:0 !important;
+          max-width:100% !important;
+        }
+
+        .topbar,
+        .main-content .topbar {
+          width:100% !important;
+          max-width:100% !important;
+          min-width:0 !important;
+          margin-left:0 !important;
+          margin-right:0 !important;
+        }
+
+        .topbar > *,
+        .topbar-right {
+          min-width:0 !important;
+        }
+
+        .summary-grid {
+          grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+        }
+
+        .landing-grid,
+        .two-home-cards,
+        .student-info-grid,
+        .two-columns {
+          grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+        }
+
+        .panel-card,
+        .summary-card,
+        .info-card,
+        .landing-card,
+        .auth-card {
+          min-width:0 !important;
+          max-width:100% !important;
+        }
+
+        .table-wrap {
+          width:100% !important;
+          max-width:100% !important;
+          overflow-x:auto !important;
+        }
+
+        img,
+        video,
+        canvas,
+        iframe {
+          max-width:100%;
+        }
+
+        .summary-card strong,
+        .landing-link-card h2,
+        .panel-card h2,
+        .panel-card h3 {
+          word-break:normal !important;
+          overflow-wrap:break-word !important;
+        }
+      }
+
+      @media (max-width:768px) {
+        html,
+        body,
+        .menu-shell,
+        .main-content {
+          width:100% !important;
+          max-width:100% !important;
+          min-width:0 !important;
+        }
+
+        .menu-shell {
+          display:block !important;
+          grid-template-columns:1fr !important;
+        }
+
+        .main-content,
+        .hamburger-btn + .menu-shell .main-content {
+          margin:0 !important;
+          padding-top:92px !important;
+          padding-left:16px !important;
+          padding-right:16px !important;
+        }
+
+        .topbar,
+        .main-content .topbar {
+          width:100% !important;
+          max-width:100% !important;
+          margin-left:0 !important;
+          margin-right:0 !important;
+        }
+
+        .main-content > * {
+          min-width:0 !important;
+          max-width:100% !important;
+        }
+
+        .panel-card,
+        .summary-card,
+        .info-card,
+        .landing-card,
+        .auth-card {
+          min-width:0 !important;
+          max-width:100% !important;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
   function getBestIdentityText() {
     const sources = [
       document.getElementById("studentIdentity"),
@@ -24,6 +173,8 @@
   }
 
   ready(() => {
+    ensureGlobalResponsiveLayout();
+
     const sidebar = document.getElementById("sidebar");
     const menuToggle = document.getElementById("menuToggle");
     const sidebarIdentity = document.getElementById("sidebarIdentity");
