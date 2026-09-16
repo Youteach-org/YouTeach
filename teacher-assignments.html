@@ -901,6 +901,143 @@
       color:#475569;
       white-space:nowrap
     }
+    .exam-annotation-panel{
+      display:grid;
+      gap:7px;
+      background:#f8fafc!important;
+      padding:9px!important
+    }
+    .exam-annotation-head{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px
+    }
+    .exam-annotation-head h4{margin:0;font-size:15px;color:#0f172a}
+    .exam-annotation-head p{margin:2px 0 0;font-size:9px;color:#64748b}
+    .exam-page-controls{display:flex;align-items:center;gap:5px;font-size:9px;font-weight:900;color:#475569}
+    .exam-page-controls button{padding:4px 7px;font-size:10px}
+    .exam-annotation-toolbar{
+      display:grid;
+      grid-template-columns:auto 100px 90px minmax(180px,1fr) auto auto;
+      gap:6px;
+      align-items:end;
+      padding:7px;
+      border:1px solid #dbeafe;
+      border-radius:9px;
+      background:#fff
+    }
+    .exam-tool-group{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+    .exam-tool-label{font-size:8px;font-weight:900;color:#64748b}
+    .exam-tool-group button{
+      padding:5px 7px;
+      border:1px solid #cbd5e1;
+      background:#fff;
+      color:#334155;
+      font-size:9px;
+      font-weight:900
+    }
+    .exam-tool-group button.active{
+      border-color:#2563eb;
+      background:#dbeafe;
+      color:#1d4ed8
+    }
+    .exam-annotation-toolbar label{display:grid;gap:3px;min-width:0}
+    .exam-annotation-toolbar label>span{font-size:8px;font-weight:900;color:#64748b}
+    .exam-annotation-toolbar input{
+      width:100%;
+      min-width:0;
+      padding:5px 6px;
+      border:1px solid #cbd5e1;
+      border-radius:7px;
+      font-size:9px
+    }
+    .exam-annotation-toolbar>button{padding:5px 7px;font-size:9px}
+    .exam-annotation-workspace{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) 240px;
+      gap:8px;
+      align-items:start
+    }
+    .exam-canvas-shell{
+      position:relative;
+      width:max-content;
+      max-width:100%;
+      margin:0 auto;
+      border:1px solid #cbd5e1;
+      border-radius:8px;
+      background:#e2e8f0;
+      overflow:auto
+    }
+    #examPdfCanvas{display:block;max-width:none;background:#fff}
+    .exam-annotation-overlay{
+      position:absolute;
+      inset:0;
+      cursor:crosshair;
+      pointer-events:auto
+    }
+    .exam-overlay-mark{
+      position:absolute;
+      transform:translate(-50%,-50%);
+      display:grid;
+      gap:1px;
+      min-width:24px;
+      max-width:160px;
+      padding:2px 4px;
+      border-radius:5px;
+      background:rgba(255,255,255,.9);
+      border:1px solid rgba(15,23,42,.15);
+      box-shadow:0 1px 3px rgba(15,23,42,.15);
+      pointer-events:none
+    }
+    .exam-overlay-mark strong{font-size:17px;line-height:1}
+    .exam-overlay-mark.correct strong{color:#16a34a}
+    .exam-overlay-mark.wrong strong{color:#dc2626}
+    .exam-overlay-mark.note strong{color:#2563eb;font-size:11px}
+    .exam-overlay-mark small{
+      font-size:7px;
+      color:#334155;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis
+    }
+    .exam-annotation-sidebar{
+      display:grid;
+      gap:6px;
+      min-width:0;
+      padding:7px;
+      border:1px solid #dbeafe;
+      border-radius:9px;
+      background:#fff
+    }
+    .exam-annotation-summary{display:flex;justify-content:space-between;align-items:center;font-size:10px}
+    .exam-annotation-list{display:grid;gap:4px;max-height:420px;overflow:auto}
+    .exam-annotation-item{
+      display:grid;
+      gap:2px;
+      padding:5px;
+      border:1px solid #e2e8f0;
+      border-radius:7px;
+      background:#f8fafc
+    }
+    .exam-annotation-item-head{display:flex;justify-content:space-between;gap:5px;align-items:center}
+    .exam-annotation-item-head strong{font-size:8px;color:#0f172a}
+    .exam-annotation-item-head button{
+      padding:2px 4px;
+      border:1px solid #fecaca;
+      background:#fff;
+      color:#b91c1c;
+      font-size:7px
+    }
+    .exam-annotation-item span,.exam-annotation-item small{font-size:7px;color:#64748b}
+    .exam-annotation-actions{display:flex;flex-wrap:wrap;align-items:center;gap:5px}
+    .exam-annotation-actions button{padding:6px 8px;font-size:9px;font-weight:900}
+    @media(max-width:1050px){
+      .exam-annotation-toolbar{grid-template-columns:repeat(3,minmax(0,1fr))}
+      .exam-tool-group{grid-column:1/-1}
+      .exam-annotation-workspace{grid-template-columns:1fr}
+      .exam-annotation-sidebar{grid-template-columns:1fr}
+    }
 
     @media(max-width:1400px){
       .assignment-list{grid-template-columns:repeat(5,minmax(0,1fr))}
@@ -1617,6 +1754,67 @@
                 </div>
                 <div id="manualGradingList" class="manual-grading-list"></div>
               </section>
+              <section id="examAnnotationPanel" class="panel-card exam-annotation-panel" hidden>
+                <div class="exam-annotation-head">
+                  <div>
+                    <h4 id="examAnnotationTitle">Exam annotations</h4>
+                    <p>Mark the submitted PDF directly. The original file remains unchanged.</p>
+                  </div>
+                  <div class="exam-page-controls">
+                    <button id="examPrevPageBtn" type="button">‹</button>
+                    <span id="examPageLabel">Page 1 / 1</span>
+                    <button id="examNextPageBtn" type="button">›</button>
+                  </div>
+                </div>
+
+                <div class="exam-annotation-toolbar">
+                  <div class="exam-tool-group">
+                    <span class="exam-tool-label">Mark</span>
+                    <button type="button" data-exam-tool="correct">✓ Correct</button>
+                    <button type="button" data-exam-tool="wrong">✗ Wrong</button>
+                    <button type="button" data-exam-tool="note">Note</button>
+                  </div>
+
+                  <label>
+                    <span>Question</span>
+                    <input id="examQuestionNumber" type="text" inputmode="numeric" placeholder="e.g. 12">
+                  </label>
+
+                  <label>
+                    <span>Points</span>
+                    <input id="examQuestionPoints" type="number" step="0.25" min="0" placeholder="0">
+                  </label>
+
+                  <label class="exam-comment-field">
+                    <span>Comment</span>
+                    <input id="examQuestionComment" type="text" placeholder="Optional comment">
+                  </label>
+
+                  <button id="examUndoMarkBtn" type="button">Undo last</button>
+                  <button id="examClearPageBtn" type="button">Clear page</button>
+                </div>
+
+                <div class="exam-annotation-workspace">
+                  <div id="examCanvasShell" class="exam-canvas-shell">
+                    <canvas id="examPdfCanvas"></canvas>
+                    <div id="examAnnotationOverlay" class="exam-annotation-overlay"></div>
+                  </div>
+
+                  <aside class="exam-annotation-sidebar">
+                    <div class="exam-annotation-summary">
+                      <strong>Marks</strong>
+                      <span id="examAnnotationCount">0</span>
+                    </div>
+                    <div id="examAnnotationList" class="exam-annotation-list"></div>
+                    <div class="exam-annotation-actions">
+                      <button id="examSaveAnnotatedPdfBtn" type="button">Save annotated PDF</button>
+                      <a id="examOpenAnnotatedPdfLink" class="pdf-link" href="#" target="_blank" rel="noopener" hidden>Open graded PDF</a>
+                    </div>
+                    <div id="examAnnotationStatus" class="status-text"></div>
+                  </aside>
+                </div>
+              </section>
+
 
               <details class="missing-submissions-details">
                 <summary id="missingSummary">Missing submissions (0)</summary>
@@ -1631,7 +1829,9 @@
     </main>
   </div>
 
-  <script type="module" src="teacher-assignments.js?v=project-checkpoints-20260916"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <script type="module" src="teacher-assignments.js?v=exam-annotations-20260916"></script>
   <script defer src="shared-ui-fixes.js?v=titlebar-hamburger-20260916"></script>
 </body>
 </html>
