@@ -8,6 +8,7 @@ if (!session) throw new Error("Student session required.");
 
 const { studentKey, externalId } = session;
 const RUBRIC_MARKER = "\n\n[[YOUTEACH_RUBRIC_V1:";
+const RUBRIC_END = "]]";
 const assignmentList = document.getElementById("assignmentList");
 const studentIdentity = document.getElementById("studentIdentity");
 const studentAssignmentIdentity = document.getElementById("studentAssignmentIdentity");
@@ -17,6 +18,7 @@ let currentStudent = null;
 let assignmentsCache = {};
 let submissionCache = {};
 let renderingToken = 0;
+let expandedAssignmentId = "";
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, (char) => ({
@@ -45,6 +47,64 @@ function visibleAssignmentInstructions(value) {
   const raw = String(value || "");
   const markerIndex = raw.lastIndexOf(RUBRIC_MARKER);
   return (markerIndex >= 0 ? raw.slice(0, markerIndex) : raw).trim();
+}
+
+function decodeRubricMetadata(value) {
+  try {
+    const binary = atob(String(value || ""));
+    const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+    return JSON.parse(new TextDecoder().decode(bytes));
+  } catch (_) {
+    return {};
+  }
+}
+
+function assignmentRubricCriteria(assignment) {
+  const raw = String(assignment?.instructions || "");
+  const markerIndex = raw.lastIndexOf(RUBRIC_MARKER);
+  if (markerIndex < 0) return [];
+
+  const encodedStart = markerIndex + RUBRIC_MARKER.length;
+  const endIndex = raw.indexOf(RUBRIC_END, encodedStart);
+  if (endIndex < 0) return [];
+
+  const rubric = decodeRubricMetadata(raw.slice(encodedStart, endIndex));
+  const criteria = Array.isArray(rubric?.criteria) ? rubric.criteria : Object.values(rubric?.criteria || {});
+  return criteria.filter(Boolean);
+}
+
+function publishedGradeHtml(assignment, submission, expanded) {
+  const totalRaw = submission?.grading?.totalScore;
+  const total = Number(totalRaw);
+  if (!submission?.gradePublished || !Number.isFinite(total)) return "";
+
+  const criteria = assignmentRubricCriteria(assignment);
+  const scores = submission?.grading?.criterionScores || {};
+  const feedback = String(submission?.grading?.feedback || "").trim();
+
+  return `
+    <div class="published-grade ${expanded ? "expanded" : ""}">
+      <div class="published-grade-total">Grade: ${escapeHtml(Number(total.toFixed(2)))} / 100</div>
+      ${expanded && criteria.length ? `
+        <div class="published-grade-breakdown">
+          ${criteria.map((criterion, index) => {
+            const id = String(criterion?.id || `criterion-${index + 1}`);
+            const title = String(criterion?.title || criterion?.name || `Criterion ${index + 1}`);
+            const max = Number(criterion?.maxPoints || criterion?.points || 0);
+            const rawScore = scores?.[id];
+            const score = Number(rawScore);
+            return `
+              <div class="published-grade-row">
+                <span>${escapeHtml(title)}</span>
+                <strong>${Number.isFinite(score) ? escapeHtml(Number(score.toFixed(2))) : "—"} / ${escapeHtml(max)}</strong>
+              </div>
+            `;
+          }).join("")}
+        </div>
+      ` : ""}
+      ${expanded && feedback ? `<div class="published-grade-feedback"><strong>Feedback:</strong> ${escapeHtml(feedback)}</div>` : ""}
+    </div>
+  `;
 }
 
 function assignmentApplies(assignment) {
@@ -101,13 +161,18 @@ function renderAssignments() {
     const hasPdf = Boolean(submission?.driveFileId);
     const submittedBefore = hasSubmittedBefore(submission);
     const closed = isClosed(assignment);
+    const expanded = expandedAssignmentId === assignmentId;
+    const publishedTotal = Number(submission?.grading?.totalScore);
+    const hasInternalGrade = Number.isFinite(publishedTotal);
     const statusText = hasPdf
-      ? "Submitted · identity pending review"
+      ? (submission?.gradePublished && hasInternalGrade
+        ? `Grade released · ${Number(publishedTotal.toFixed(2))} / 100`
+        : (hasInternalGrade ? "Reviewed · grade not released yet" : "Submitted · pending review"))
       : (submittedBefore ? "Submission undone · ready to submit again" : "Not submitted yet");
     const statusClass = hasPdf ? "ok" : (submittedBefore ? "warning" : "pending");
 
     return `
-      <article class="assignment-card">
+      <article class="assignment-card ${expanded ? "expanded" : ""}" data-assignment-expand="${assignmentId}">
         <div class="assignment-code">${escapeHtml(assignment.code || "")}</div>
         <h3 title="${escapeHtml(assignment.title || "Assignment")}">${escapeHtml(assignment.title || "Assignment")}</h3>
 
@@ -121,6 +186,8 @@ function renderAssignments() {
         )}">${escapeHtml(
           visibleAssignmentInstructions(assignment.instructions) || "Upload your completed work as one PDF file."
         )}</div>
+
+        ${publishedGradeHtml(assignment, submission, expanded)}
 
         ${submissionRow(submission)}
 
@@ -289,7 +356,19 @@ assignmentList.addEventListener("click", (event) => {
   const undoButton = event.target.closest("[data-undo-assignment]");
   if (undoButton) {
     handleUndoSubmission(undoButton.dataset.undoAssignment);
+    return;
   }
+
+  if (event.target.closest("a,button,input,label,textarea,select")) return;
+
+  const card = event.target.closest("[data-assignment-expand]");
+  if (!card) return;
+
+  expandedAssignmentId =
+    expandedAssignmentId === card.dataset.assignmentExpand
+      ? ""
+      : card.dataset.assignmentExpand;
+  renderAssignments();
 });
 
 logoutBtn.addEventListener("click", async () => {
