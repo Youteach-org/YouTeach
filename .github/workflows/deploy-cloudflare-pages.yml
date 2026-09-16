@@ -1,6 +1,9 @@
 name: Deploy YouTeach to Cloudflare Pages
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - main
@@ -24,6 +27,7 @@ jobs:
         run: sh build-pages.sh
 
       - name: Deploy to Cloudflare Pages
+        if: github.event_name == 'push'
         run: npx wrangler@4 pages deploy dist --project-name=youteach --branch=${{ github.ref_name == 'main' && 'main' || 'cog-youteach-assignments-phase1' }} --commit-hash=${{ github.sha }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
