@@ -40,7 +40,12 @@ GitHub is the source of truth. Chat memory is secondary.
    - manual points/percentage grading;
    - published student grades.
 
-4. Relevant implementation files and recent commits on `main`.
+4. `docs/superpowers/specs/2026-09-16-clear-manual-grade.md`
+   - direct Clear grade behavior;
+   - grade reset without deleting the student's submission;
+   - regrading after reset.
+
+5. Relevant implementation files and recent commits on `main`.
    - UI micro-decisions that are already implemented are authoritative in code/commit history even when not repeated word-for-word in a spec.
 
 ## Continuity rules
@@ -78,7 +83,7 @@ GitHub is the source of truth. Chat memory is secondary.
 When asked to continue YouTeach:
 
 1. Read this file.
-2. Read the two current specs above.
+2. Read the current specs above.
 3. Inspect recent commits on `main`.
 4. Check the current implementation before proposing duplicate work.
 5. Continue from the roadmap's "Current next action".
