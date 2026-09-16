@@ -18,10 +18,10 @@ Implemented on `main`, pending field validation:
 - student side shows only published numeric grades/feedback;
 - student assignment cards expand in the grid to show full instructions/details;
 - student grade display refreshes live after teacher publication;
-- manual grading supports linked criterion points and percentages, with points constrained by criterion maximum.
+- manual grading supports linked criterion points and percentages, with points constrained by criterion maximum;
+- grading-history/audit trail across revisions, including AI application, manual correction, publication/unpublication, grade clearing, source submission revision metadata, and a baseline view for grades that predate the history feature.
 
 Planned, not yet implemented:
-- full grading-history/audit trail across revisions;
 - Project review checkpoints with photo/video/document evidence uploads;
 - exam PDF/image annotation with ✓/✗ and per-question marks;
 - richer grading ledger fingerprinting using Drive modified-time/size through all layers;
@@ -73,6 +73,23 @@ Manual correction should:
 - replace the current internal grade;
 - preserve grading history/audit information;
 - remain unpublished until teacher publication unless a future explicit setting says otherwise.
+
+
+### 1.1 Grading history / audit trail
+
+Each submission keeps an append-only `gradingHistory` map. A history event records:
+- action type (`ai-grade-applied`, `manual-grade-saved`, `grade-published`, `grade-unpublished`, or `grade-cleared`);
+- timestamp and actor;
+- previous and next grading snapshots;
+- previous and next publication state;
+- source Drive file ID and source submission upload timestamp;
+- for AI events, grading-results modified time and explicit AI action start time.
+
+The current `grading` object remains the active grade. History does not control the current grade; it is an audit record.
+
+Teacher submission cards expose the history in a collapsible `Grade history` section. Existing grades created before this feature are shown as a non-destructive current-grade baseline until the first stored history event exists.
+
+Grade mutation and its history event must be written in one Firebase multi-location update so they cannot diverge.
 
 ## 2. AI grading prompt rules
 
