@@ -1,7 +1,13 @@
 import { db } from "./firebase.js";
 import { ref, get, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireStudentSession, clearStudentSession, saveLeaveLog } from "./student-auth.js";
-import { uploadAssignmentPdf, undoAssignmentPdf, validateAssignmentPdf } from "./assignment-storage.js";
+import {
+  uploadAssignmentPdf,
+  undoAssignmentPdf,
+  validateAssignmentPdf,
+  uploadProjectEvidence,
+  validateProjectEvidence
+} from "./assignment-storage.js";
 
 const session = requireStudentSession();
 if (!session) throw new Error("Student session required.");
@@ -17,9 +23,11 @@ const logoutBtn = document.getElementById("logoutBtn");
 let currentStudent = null;
 let assignmentsCache = {};
 let submissionCache = {};
+let projectEvidenceCache = {};
 let renderingToken = 0;
 let expandedAssignmentId = "";
 const submissionUnsubscribers = new Map();
+const evidenceUnsubscribers = new Map();
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, (char) => ({
@@ -50,6 +58,19 @@ function visibleAssignmentInstructions(value) {
   return (markerIndex >= 0 ? raw.slice(0, markerIndex) : raw).trim();
 }
 
+function splitStoredInstructions(value) {
+  const raw = String(value || "");
+  const markerIndex = raw.lastIndexOf(RUBRIC_MARKER);
+  if (markerIndex < 0) return { visibleInstructions: raw, rubric: {} };
+  const encodedStart = markerIndex + RUBRIC_MARKER.length;
+  const endIndex = raw.indexOf(RUBRIC_END, encodedStart);
+  if (endIndex < 0) return { visibleInstructions: raw, rubric: {} };
+  return {
+    visibleInstructions: raw.slice(0, markerIndex).trimEnd(),
+    rubric: decodeRubricMetadata(raw.slice(encodedStart, endIndex))
+  };
+}
+
 function decodeRubricMetadata(value) {
   try {
     const binary = atob(String(value || ""));
@@ -72,6 +93,158 @@ function assignmentRubricCriteria(assignment) {
   const rubric = decodeRubricMetadata(raw.slice(encodedStart, endIndex));
   const criteria = Array.isArray(rubric?.criteria) ? rubric.criteria : Object.values(rubric?.criteria || {});
   return criteria.filter(Boolean);
+}
+
+function assignmentTypeCodeFor(assignment) {
+  const embedded = splitStoredInstructions(assignment?.instructions).rubric || {};
+  return String(
+    assignment?.assignmentTypeCode ||
+    embedded.assignmentTypeCode ||
+    ""
+  ).trim().toUpperCase();
+}
+
+function isProjectAssignment(assignment) {
+  return assignmentTypeCodeFor(assignment) === "PJ" ||
+    String(assignment?.code || "").toUpperCase().startsWith("PJ-");
+}
+
+function normalizeProjectCheckpoints(assignment) {
+  return Object.entries(assignment?.projectCheckpoints || {})
+    .map(([id, checkpoint]) => ({
+      id,
+      title: String(checkpoint?.title || "Checkpoint"),
+      dueAt: Number(checkpoint?.dueAt || 0),
+      instructions: String(checkpoint?.instructions || ""),
+      requiredEvidenceTypes: Array.isArray(checkpoint?.requiredEvidenceTypes)
+        ? checkpoint.requiredEvidenceTypes.map((value) => String(value))
+        : Object.keys(checkpoint?.requiredEvidenceTypes || {}).filter((key) => checkpoint.requiredEvidenceTypes[key])
+    }))
+    .sort((a, b) => Number(a.dueAt || 0) - Number(b.dueAt || 0));
+}
+
+function evidenceTypeLabel(type) {
+  if (type === "image") return "Photo";
+  if (type === "video") return "Video";
+  if (type === "document") return "Document";
+  return "Evidence";
+}
+
+function checkpointAccept(types) {
+  const accept = [];
+  const set = new Set(types || []);
+  if (set.has("image")) accept.push("image/*");
+  if (set.has("video")) accept.push("video/*");
+  if (set.has("document")) {
+    accept.push(
+      "application/pdf",
+      ".doc",
+      ".docx",
+      ".ppt",
+      ".pptx",
+      ".xls",
+      ".xlsx",
+      ".txt"
+    );
+  }
+  return accept.join(",");
+}
+
+function projectEvidenceEntries(assignmentId, checkpointId) {
+  return Object.entries(projectEvidenceCache?.[assignmentId]?.[checkpointId] || {})
+    .map(([id, evidence]) => ({ id, ...(evidence || {}) }))
+    .sort((a, b) => Number(a.uploadedAt || 0) - Number(b.uploadedAt || 0));
+}
+
+function checkpointClosed(assignment, checkpoint) {
+  if (isClosed(assignment)) return true;
+  const dueAt = Number(checkpoint?.dueAt || 0);
+  return dueAt > 0 && Date.now() > dueAt;
+}
+
+function projectProgressHtml(assignmentId, assignment, expanded) {
+  if (!isProjectAssignment(assignment)) return "";
+
+  const checkpoints = normalizeProjectCheckpoints(assignment);
+  if (!checkpoints.length) {
+    return expanded
+      ? '<div class="project-progress-empty">No project checkpoints have been configured.</div>'
+      : "";
+  }
+
+  const completed = checkpoints.filter((checkpoint) =>
+    projectEvidenceEntries(assignmentId, checkpoint.id).length > 0
+  ).length;
+
+  if (!expanded) {
+    return `<div class="project-progress-summary">Project progress · ${completed}/${checkpoints.length} checkpoints with evidence</div>`;
+  }
+
+  return `
+    <section class="student-project-progress">
+      <div class="student-project-progress-head">
+        <strong>Project progress checkpoints</strong>
+        <span>${completed}/${checkpoints.length} with evidence</span>
+      </div>
+      <div class="student-project-checkpoints">
+        ${checkpoints.map((checkpoint) => {
+          const evidence = projectEvidenceEntries(assignmentId, checkpoint.id);
+          const closed = checkpointClosed(assignment, checkpoint);
+          const typeText = checkpoint.requiredEvidenceTypes.map(evidenceTypeLabel).join(", ");
+          return `
+            <article class="student-project-checkpoint">
+              <div class="student-project-checkpoint-head">
+                <div>
+                  <strong>${escapeHtml(checkpoint.title)}</strong>
+                  <span>Due ${escapeHtml(formatDate(checkpoint.dueAt))} · ${escapeHtml(typeText)}</span>
+                </div>
+                <span class="checkpoint-state ${closed ? "closed" : "open"}">${closed ? "Closed" : "Open"}</span>
+              </div>
+              ${checkpoint.instructions ? `<div class="student-project-checkpoint-instructions">${escapeHtml(checkpoint.instructions)}</div>` : ""}
+              <div class="student-project-evidence-list">
+                ${evidence.length
+                  ? evidence.map((item, index) => `
+                      <div class="student-project-evidence">
+                        <a href="${escapeHtml(item.driveFileUrl || "#")}" target="_blank" rel="noopener">
+                          ${escapeHtml(item.originalFileName || `Evidence ${index + 1}`)}
+                        </a>
+                        <span>${escapeHtml(evidenceTypeLabel(item.evidenceType))} · ${item.reviewStatus === "reviewed" ? "Reviewed" : "Pending review"}</span>
+                        ${item.teacherNote ? `<small>Teacher: ${escapeHtml(item.teacherNote)}</small>` : ""}
+                      </div>
+                    `).join("")
+                  : '<div class="student-project-evidence-empty">No evidence uploaded yet.</div>'
+                }
+              </div>
+              <div class="student-project-upload">
+                <input
+                  id="project-file-${assignmentId}-${checkpoint.id}"
+                  type="file"
+                  accept="${escapeHtml(checkpointAccept(checkpoint.requiredEvidenceTypes))}"
+                  data-project-evidence-file
+                  data-assignment-id="${escapeHtml(assignmentId)}"
+                  data-checkpoint-id="${escapeHtml(checkpoint.id)}"
+                  ${closed ? "disabled" : ""}
+                >
+                <label
+                  class="file-picker-label ${closed ? "disabled" : ""}"
+                  for="project-file-${assignmentId}-${checkpoint.id}"
+                >Choose evidence</label>
+                <span class="file-name" id="project-file-name-${assignmentId}-${checkpoint.id}">No file</span>
+                <button
+                  type="button"
+                  data-upload-project-evidence
+                  data-assignment-id="${escapeHtml(assignmentId)}"
+                  data-checkpoint-id="${escapeHtml(checkpoint.id)}"
+                  ${closed ? "disabled" : ""}
+                >Upload evidence</button>
+                <div class="progress-text" id="project-progress-${assignmentId}-${checkpoint.id}"></div>
+              </div>
+            </article>
+          `;
+        }).join("")}
+      </div>
+    </section>
+  `;
 }
 
 function gradingTotalForSubmission(submission) {
@@ -169,6 +342,38 @@ function wireOwnSubmissionListeners() {
   }
 }
 
+function wireOwnEvidenceListeners() {
+  if (!currentStudent) return;
+
+  const projectIds = new Set(
+    Object.entries(assignmentsCache || {})
+      .filter(([, assignment]) => assignmentApplies(assignment) && isProjectAssignment(assignment))
+      .map(([assignmentId]) => assignmentId)
+  );
+
+  for (const [assignmentId, unsubscribe] of evidenceUnsubscribers.entries()) {
+    if (!projectIds.has(assignmentId)) {
+      unsubscribe();
+      evidenceUnsubscribers.delete(assignmentId);
+      delete projectEvidenceCache[assignmentId];
+    }
+  }
+
+  for (const assignmentId of projectIds) {
+    if (evidenceUnsubscribers.has(assignmentId)) continue;
+
+    const unsubscribe = onValue(
+      ref(db, `assignmentProjectEvidence/${assignmentId}/${studentKey}`),
+      (snapshot) => {
+        projectEvidenceCache[assignmentId] = snapshot.val() || {};
+        renderAssignments();
+      }
+    );
+
+    evidenceUnsubscribers.set(assignmentId, unsubscribe);
+  }
+}
+
 function submissionRow(submission) {
   if (!submission?.driveFileId) return "";
 
@@ -232,6 +437,8 @@ function renderAssignments() {
         )}">${escapeHtml(
           visibleAssignmentInstructions(assignment.instructions) || "Upload your completed work as one PDF file."
         )}</div>
+
+        ${projectProgressHtml(assignmentId, assignment, expanded)}
 
         ${publishedGradeHtml(assignment, submission, expanded)}
 
@@ -348,6 +555,63 @@ async function handleUpload(assignmentId) {
   }
 }
 
+async function handleProjectEvidenceUpload(assignmentId, checkpointId) {
+  const assignment = assignmentsCache[assignmentId];
+  const checkpoint = normalizeProjectCheckpoints(assignment).find((item) => item.id === checkpointId);
+  const input = document.getElementById(`project-file-${assignmentId}-${checkpointId}`);
+  const button = document.querySelector(
+    `[data-upload-project-evidence][data-assignment-id="${CSS.escape(assignmentId)}"][data-checkpoint-id="${CSS.escape(checkpointId)}"]`
+  );
+  const progress = document.getElementById(`project-progress-${assignmentId}-${checkpointId}`);
+
+  if (!assignment || !checkpoint || !input || !button || !currentStudent) return;
+  if (checkpointClosed(assignment, checkpoint)) {
+    if (progress) progress.textContent = "This checkpoint is closed.";
+    return;
+  }
+
+  const file = input.files?.[0];
+  if (!file) {
+    if (progress) progress.textContent = "Choose an evidence file first.";
+    return;
+  }
+
+  try {
+    validateProjectEvidence(file, checkpoint.requiredEvidenceTypes);
+  } catch (error) {
+    if (progress) progress.textContent = error.message;
+    return;
+  }
+
+  button.disabled = true;
+  if (progress) progress.textContent = "Uploading evidence...";
+
+  try {
+    await uploadProjectEvidence({
+      assignmentId,
+      studentKey,
+      externalId,
+      checkpointId,
+      file,
+      allowedTypes: checkpoint.requiredEvidenceTypes,
+      onProgress: (ratio) => {
+        if (!progress) return;
+        progress.textContent = ratio >= 1
+          ? "Evidence uploaded."
+          : `Uploading evidence... ${Math.round(ratio * 100)}%`;
+      }
+    });
+    input.value = "";
+    const fileName = document.getElementById(`project-file-name-${assignmentId}-${checkpointId}`);
+    if (fileName) fileName.textContent = "No file";
+  } catch (error) {
+    console.error(error);
+    if (progress) progress.textContent = error?.message || "Could not upload project evidence.";
+  } finally {
+    button.disabled = false;
+  }
+}
+
 async function handleUndoSubmission(assignmentId) {
   const assignment = assignmentsCache[assignmentId];
   const button = document.querySelector(`[data-undo-assignment="${assignmentId}"]`);
@@ -385,6 +649,15 @@ async function handleUndoSubmission(assignmentId) {
 }
 
 assignmentList.addEventListener("change", (event) => {
+  const projectInput = event.target.closest("[data-project-evidence-file]");
+  if (projectInput) {
+    const assignmentId = String(projectInput.dataset.assignmentId || "");
+    const checkpointId = String(projectInput.dataset.checkpointId || "");
+    const fileName = document.getElementById(`project-file-name-${assignmentId}-${checkpointId}`);
+    if (fileName) fileName.textContent = projectInput.files?.[0]?.name || "No file";
+    return;
+  }
+
   const input = event.target.closest('input[type="file"][id^="file-"]');
   if (!input) return;
   const assignmentId = input.id.replace(/^file-/, "");
@@ -393,6 +666,15 @@ assignmentList.addEventListener("change", (event) => {
 });
 
 assignmentList.addEventListener("click", (event) => {
+  const projectUploadButton = event.target.closest("[data-upload-project-evidence]");
+  if (projectUploadButton) {
+    handleProjectEvidenceUpload(
+      projectUploadButton.dataset.assignmentId,
+      projectUploadButton.dataset.checkpointId
+    );
+    return;
+  }
+
   const uploadButton = event.target.closest("[data-upload-assignment]");
   if (uploadButton) {
     handleUpload(uploadButton.dataset.uploadAssignment);
@@ -436,11 +718,13 @@ onValue(ref(db, `students/${studentKey}`), async (snapshot) => {
   studentIdentity.textContent = currentStudent.nickname || displayName.split(" ")[0];
   studentAssignmentIdentity.textContent = `${displayName} · ${currentStudent.groupName || "GENERAL"}`;
   wireOwnSubmissionListeners();
+  wireOwnEvidenceListeners();
   await refreshAssignments();
 });
 
 onValue(ref(db, "assignments"), async (snapshot) => {
   assignmentsCache = snapshot.val() || {};
   wireOwnSubmissionListeners();
+  wireOwnEvidenceListeners();
   await refreshAssignments();
 });
