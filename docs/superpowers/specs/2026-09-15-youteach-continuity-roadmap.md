@@ -200,23 +200,173 @@ Planned behavior:
 
 This milestone still needs explicit UX decisions before implementation.
 
-## 10. Next milestone: assignment lifecycle
+## 10. Next milestone: assignment lifecycle + reusable assignment library
 
 Priority 4.
 
-Remaining decisions / implementation:
-- archive old assignments;
-- reopen vs permanently close;
+Assignments are not disposable records. Many activities are reused when a teacher teaches the same subject/course again.
+
+Accepted direction:
+- separate a reusable **Assignment Template** from a specific **Assigned Instance**;
+- the template stores reusable academic content:
+  - type;
+  - title;
+  - instructions;
+  - evaluation criteria;
+  - teacher grading notes;
+  - subject/course association;
+  - topic/unit tags;
+  - reusable resources/metadata;
+- the assigned instance stores run-specific data:
+  - Task Code;
+  - group;
+  - due date;
+  - active/closed state;
+  - submissions;
+  - grades;
+  - release status;
+- a teacher can create a new assignment from a saved template without carrying over old submissions or grades;
+- historical assigned instances remain available for analytics and comparison.
+
+Remaining lifecycle decisions / implementation:
+- archive old assigned instances without deleting reusable templates;
+- duplicate/reuse an assignment template for a new group/date;
+- reopen vs permanently close an assigned instance;
 - whether closed tasks accept teacher-authorized late submission;
 - grade release status;
 - optional due-date exception per student;
 - grading history / audit trail if a grade changes.
 
-Do not implement these without confirming the desired behavior.
+### 10.1 Course intelligence from reusable assignments
 
-## 11. Next milestone: authentication hardening
+Long-term goal:
+YouTeach should use accumulated assignment/exam history to help characterize a course and support creation of a teacher's own program based on real class statistics.
 
-Priority 5.
+The data model should support:
+- subject/course;
+- unit;
+- topic;
+- subtopic where useful;
+- assignment/exam type;
+- criteria used;
+- participation/completion;
+- score distributions;
+- common weak areas;
+- historical performance by topic;
+- reuse frequency;
+- group/cohort comparisons over time.
+
+This analytics layer should make it possible later to:
+- identify topics that consistently need reinforcement;
+- identify content that students master quickly;
+- estimate how much class/practice time a topic tends to require;
+- compare activities used for the same topic;
+- suggest future sequencing based on the teacher's own historical data;
+- help draft a course program/syllabus using the teacher's actual teaching history and statistics.
+
+Important:
+- analytics must preserve the distinction between reusable templates and historical assigned instances;
+- historical student evidence/grades are not copied into a new assignment when reusing a template;
+- course-program recommendations are a later feature and must be derived from teacher-owned historical data, not generic assumptions.
+
+## 11. Exam ecosystem: question bank, Exam Creator, Answer Sheet Creator
+
+Priority 5 after the current assignment grading loop and core lifecycle are stable.
+
+The existing **Exam** assignment type becomes the entry point for a reusable assessment ecosystem.
+
+### 11.1 Question Bank
+
+Exam questions should be stored as reusable bank items rather than existing only inside one exam.
+
+Each question bank item should be able to store:
+- subject/course;
+- unit/topic/subtopic;
+- question type;
+- prompt;
+- answer options where applicable;
+- correct answer / answer key;
+- points or weighting metadata;
+- difficulty metadata where teacher-defined;
+- source/notes when the teacher chooses to store them;
+- status such as active/archived;
+- usage history;
+- performance statistics when the question has been used.
+
+Question types should be extensible and include at least the types already used by the teacher, such as:
+- multiple choice;
+- true/false;
+- matching/correspondence;
+- open response.
+
+### 11.2 Exam Creator
+
+Create a new main section named **Exam Creator**.
+
+Exam Creator should:
+- build a new exam from Question Bank items;
+- filter questions by course, unit, topic, type, and other supported metadata;
+- allow manual selection and later intelligent/statistical selection;
+- support reusable exam templates;
+- support generating new exam instances from an existing template;
+- support Versions A/B and other versions later;
+- preserve the teacher's selected order and section structure;
+- create an answer key tied to the exact exam version;
+- eventually support analysis of question performance after grading.
+
+An exam template must be separate from an exam administration/assigned instance, for the same reason Assignment Templates are separate from student submissions.
+
+### 11.3 Answer Sheet Creator
+
+Create a companion main section named **Answer Sheet Creator**.
+
+Answer Sheet Creator should:
+- generate a student answer sheet from the exact structure of a selected exam/version;
+- generate a teacher answer key;
+- stay synchronized with question numbering and sections;
+- support the teacher's established answer-sheet formatting rules;
+- support different response areas depending on question type;
+- allow regeneration if an exam is changed before it is locked/used.
+
+Long-term direction:
+- Exam Creator + Answer Sheet Creator should reuse the same exam schema, not maintain two independent copies of question numbering/answers.
+
+## 12. Administration section
+
+Priority 6.
+
+Create a dedicated **Administration** section with system-wide visibility.
+
+Admin should be able to see, at minimum:
+- teachers/accounts/roles;
+- students;
+- groups;
+- courses/subjects;
+- assignment templates;
+- assigned instances;
+- submissions and grading status;
+- exam templates;
+- question banks;
+- exam instances;
+- storage/integration status;
+- relevant activity/audit information.
+
+Admin permissions must be broader than Teacher permissions, but destructive actions should be explicit and auditable.
+
+Administration should eventually support:
+- account/role management;
+- global search;
+- cross-group visibility;
+- archive/recovery workflows;
+- data consistency checks;
+- integration health (Firebase, Drive, Cloudflare-related app status where practical);
+- audit/history for sensitive changes.
+
+The Administration UX must not be mixed into normal Teacher pages; it is a separate role-aware section.
+
+## 13. Next milestone: authentication hardening
+
+Priority 7.
 
 Current teacher login still contains simple built-in credentials. Before wider real-world deployment, replace this with a proper authentication/authorization model while preserving teacher/admin roles.
 
@@ -228,7 +378,7 @@ Requirements to decide:
 - session duration;
 - permission model.
 
-## 12. Cloudflare / deployment cleanup
+## 14. Cloudflare / deployment cleanup
 
 After the Cloudflare production path is confirmed stable:
 - remove obsolete Vercel-only deployment assumptions;
@@ -237,7 +387,7 @@ After the Cloudflare production path is confirmed stable:
 - verify no hard-coded production links still point to Vercel;
 - keep GitHub -> Cloudflare as the canonical deployment path.
 
-## 13. COG / Verb Runner integration boundary
+## 15. COG / Verb Runner integration boundary
 
 YouTeach remains the source of student identity/credentials/session context.
 Classroom Online Games remains a separate repository.
@@ -249,7 +399,7 @@ Pending follow-up:
 - verify Teacher Monitor sees free-mode students as well as session students;
 - preserve nickname/identity uniqueness.
 
-## 14. Current next action
+## 16. Current next action
 
 Do not add another large feature first.
 
@@ -259,6 +409,11 @@ Next action is:
 After that:
 1. cross-device UI verification;
 2. student-visible grade release design;
-3. assignment lifecycle;
-4. authentication hardening;
-5. deployment cleanup.
+3. assignment lifecycle + reusable Assignment Library;
+4. course/topic analytics foundation;
+5. Question Bank foundation;
+6. Exam Creator;
+7. Answer Sheet Creator;
+8. Administration section;
+9. authentication hardening;
+10. deployment cleanup.
