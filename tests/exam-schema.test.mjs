@@ -116,3 +116,15 @@ test('Teacher Home exposes the new exam tools',()=>{
   assert.match(teacherHome,/exam-creator\.html/);
   assert.match(teacherHome,/answer-sheet-creator\.html/);
 });
+
+
+test('browser exam tool modules are syntactically valid after import stripping',()=>{
+  for(const [name,source] of [
+    ['Question Bank',bankJs],
+    ['Exam Creator',creatorJs],
+    ['Answer Sheet Creator',answerJs]
+  ]){
+    const stripped=source.replace(/^import\s+[\s\S]*?from\s+["'][^"']+["'];\s*$/gm,'');
+    assert.doesNotThrow(()=>new Function(stripped), `${name} should parse`);
+  }
+});
