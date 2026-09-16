@@ -27,13 +27,3 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-
-      - name: TEMP diagnose AI grading sync for PJ-CIRMAY-FAN-151026
-        run: |
-          sleep 5
-          echo "Calling production AI sync endpoint..."
-          curl --fail-with-body -sS \
-            -X POST "https://youteach.pages.dev/api/sync-ai-grades" \
-            -H "Content-Type: application/json" \
-            --data '{"assignmentId":"-P1cfon183isjeJE5D8r","forceRegrade":true}'
-          echo
