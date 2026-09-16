@@ -125,6 +125,11 @@ The AI must not:
 
 ## 3. Grading ledger / avoiding duplicate grading
 
+Critical idempotency rule:
+- Never treat an AI result as already applied when the submission has no current AI grade.
+- Source/revision markers alone are not enough to skip import; a valid current AI grade must also exist.
+- Passive/automatic AI sync errors must be visible to the teacher instead of failing silently.
+
 Do not rename student submission files just to mark them graded.
 
 The grading-results JSON should act as the durable grading ledger.
