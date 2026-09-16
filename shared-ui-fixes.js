@@ -13,8 +13,48 @@
     const style = document.createElement("style");
     style.id = "youteach-global-responsive-layout";
     style.textContent = `
-      /* Global YouTeach tablet/mobile layout guard.
-         Hidden fixed sidebars must never reserve a desktop grid column. */
+      /* Hamburger space belongs only to the title bar.
+         Everything below the title uses the full page width. */
+      .hamburger-btn {
+        top:8px !important;
+        left:8px !important;
+        width:44px !important;
+        height:44px !important;
+      }
+
+      .hamburger-btn + .menu-shell {
+        display:block !important;
+        grid-template-columns:1fr !important;
+        width:100% !important;
+        min-width:0 !important;
+      }
+
+      .hamburger-btn + .menu-shell .main-content {
+        width:100% !important;
+        max-width:none !important;
+        min-width:0 !important;
+        margin:0 !important;
+        padding-top:8px !important;
+        padding-left:16px !important;
+        padding-right:16px !important;
+      }
+
+      .hamburger-btn + .menu-shell .main-content > .topbar,
+      .hamburger-btn + .menu-shell .main-content .topbar {
+        width:100% !important;
+        max-width:100% !important;
+        min-width:0 !important;
+        margin-left:0 !important;
+        margin-right:0 !important;
+        padding-left:58px !important;
+        min-height:52px !important;
+      }
+
+      .hamburger-btn + .menu-shell .main-content > .topbar + *,
+      .hamburger-btn + .menu-shell .main-content .topbar + * {
+        margin-left:0 !important;
+      }
+
       @media (min-width:769px) and (max-width:1100px),
              (orientation:portrait) and (min-width:769px) and (max-width:1200px) {
         html,
@@ -27,42 +67,9 @@
           overflow-x:hidden !important;
         }
 
-        .menu-shell {
-          display:block !important;
-          grid-template-columns:1fr !important;
-          width:100% !important;
-          max-width:none !important;
-          min-width:0 !important;
-        }
-
-        .main-content,
-        .hamburger-btn + .menu-shell .main-content {
-          width:100% !important;
-          max-width:none !important;
-          min-width:0 !important;
-          margin:0 !important;
-          padding-top:22px !important;
-          padding-left:88px !important;
-          padding-right:24px !important;
-        }
-
         .main-content > * {
           min-width:0 !important;
           max-width:100% !important;
-        }
-
-        .topbar,
-        .main-content .topbar {
-          width:100% !important;
-          max-width:100% !important;
-          min-width:0 !important;
-          margin-left:0 !important;
-          margin-right:0 !important;
-        }
-
-        .topbar > *,
-        .topbar-right {
-          min-width:0 !important;
         }
 
         .summary-grid {
@@ -117,25 +124,16 @@
           min-width:0 !important;
         }
 
-        .menu-shell {
-          display:block !important;
-          grid-template-columns:1fr !important;
-        }
-
-        .main-content,
         .hamburger-btn + .menu-shell .main-content {
-          margin:0 !important;
-          padding-top:92px !important;
-          padding-left:16px !important;
-          padding-right:16px !important;
+          padding-top:8px !important;
+          padding-left:12px !important;
+          padding-right:12px !important;
         }
 
-        .topbar,
-        .main-content .topbar {
-          width:100% !important;
-          max-width:100% !important;
-          margin-left:0 !important;
-          margin-right:0 !important;
+        .hamburger-btn + .menu-shell .main-content > .topbar,
+        .hamburger-btn + .menu-shell .main-content .topbar {
+          padding-left:54px !important;
+          min-height:50px !important;
         }
 
         .main-content > * {
@@ -218,7 +216,7 @@
 
       const width = sidebar.getBoundingClientRect().width || 320;
       menuToggle.style.left = Math.max(14, width - 66) + "px";
-      menuToggle.style.top = "16px";
+      menuToggle.style.top = "8px";
       menuToggle.style.zIndex = "2400";
     }
 
