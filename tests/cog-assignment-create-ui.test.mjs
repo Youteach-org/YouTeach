@@ -14,6 +14,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
 const html = readFileSync(join(root, 'teacher-assignments.html'), 'utf8');
 const js = readFileSync(join(root, 'teacher-assignments.js'), 'utf8');
+const buildScript = readFileSync(join(root, 'build-pages.sh'), 'utf8');
 
 test('COG catalog exposes only explicitly certified assignable games', () => {
   assert.ok(COG_ASSIGNMENT_GAMES.length >= 1);
@@ -82,4 +83,9 @@ test('teacher assignment creation persists COG configuration and does not use Dr
 
 test('COG configuration panel appears only for COG assignment type', () => {
   assert.match(js, /cogActivityConfigPanel\.hidden = assignmentType\.value !== "COG"/);
+});
+
+
+test('Cloudflare build ships COG ES modules used by assignment pages', () => {
+  assert.match(buildScript, /\*\.mjs/);
 });
