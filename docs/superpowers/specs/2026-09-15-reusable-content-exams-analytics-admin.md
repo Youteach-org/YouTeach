@@ -78,7 +78,7 @@ Future optional capability:
 
 ### 3.1 Foundation implementation status — 2026-09-16
 
-Implemented on `feature/assignment-library-foundation`, pending merge:
+Foundation merged into `main`; management extension implemented on `feature/assignment-library-management`, pending merge:
 - `assignment-library-model.js` defines the pure reusable-content boundary;
 - reusable content is copied through an explicit allowlist rather than copying the whole assigned instance;
 - Task Code, group, due date, active state, submissions, grades, grade-publication state, and other run-specific data are not part of template content;
@@ -92,16 +92,24 @@ Implemented on `feature/assignment-library-foundation`, pending merge:
 - creating from a loaded template writes the new `assignments/{assignmentId}` instance and template usage metadata atomically with one Firebase multi-location update;
 - Project checkpoint template rows reload without old review dates so the new run requires new dates.
 
+Management extension implemented on the feature branch:
+- dedicated Assignment Library panel inside Teacher Assignments;
+- text search across title/type/course/subject/unit/topic/subtopic/tags;
+- filters for type, course, subject, unit, topic, tags, usage, and archive status;
+- active templates can be loaded or archived;
+- archived templates can be restored;
+- archive/restore changes metadata only and does not rewrite historical assigned instances;
+- historical usage count is visible on each template card.
+
 Still deferred:
-- dedicated Assignment Library browsing/search/filter/archive UI;
 - editing an existing template as a first-class library workflow;
 - template duplication/variants;
 - aggregate performance statistics beyond the current usage counter.
 
 Current continuation:
-1. merge/field-test this foundation;
-2. then add library search/filter/archive behavior without changing historical instances;
-3. keep current Teacher Assignments grading/submission workflows unchanged.
+1. merge/field-test the management extension;
+2. preserve current Teacher Assignments grading/submission workflows unchanged;
+3. then continue with course/unit/topic/subtopic metadata and analytics.
 
 ## 4. Course/topic analytics foundation
 
