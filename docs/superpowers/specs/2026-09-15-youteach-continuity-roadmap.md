@@ -246,6 +246,13 @@ Accepted direction:
 - a teacher can create a new assignment from a saved template without carrying over old submissions or grades;
 - historical assigned instances remain available for analytics and comparison.
 
+Foundation status — 2026-09-16:
+- pure Template vs Assigned Instance model implemented on `feature/assignment-library-foundation`, pending merge;
+- reusable content extraction explicitly excludes group/date/submission/grade/publication state;
+- new instances keep a frozen `templateSnapshot` plus `templateId` / `templateVersion`;
+- Firebase `assignmentTemplates` persistence and teacher-facing Assignment Library actions are the next integration slice;
+- no new Assignment Library layout has been approved yet.
+
 Remaining lifecycle decisions / implementation:
 - archive old assigned instances without deleting reusable templates;
 - duplicate/reuse an assignment template for a new group/date;
