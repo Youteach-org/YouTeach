@@ -109,6 +109,11 @@ function isProjectAssignment(assignment) {
     String(assignment?.code || "").toUpperCase().startsWith("PJ-");
 }
 
+function isExamAssignment(assignment) {
+  return assignmentTypeCodeFor(assignment) === "EX" ||
+    String(assignment?.code || "").toUpperCase().startsWith("EX-");
+}
+
 function normalizeProjectCheckpoints(assignment) {
   return Object.entries(assignment?.projectCheckpoints || {})
     .map(([id, checkpoint]) => ({
@@ -254,7 +259,7 @@ function gradingTotalForSubmission(submission) {
   return Number.isFinite(total) ? total : null;
 }
 
-function publishedGradeHtml(assignment, submission, expanded) {
+function publishedGradeHtml(assignmentId, assignment, submission, expanded) {
   const total = gradingTotalForSubmission(submission);
   if (!submission?.gradePublished || total === null) return "";
 
@@ -283,6 +288,14 @@ function publishedGradeHtml(assignment, submission, expanded) {
         </div>
       ` : ""}
       ${expanded && feedback ? `<div class="published-grade-feedback"><strong>Feedback:</strong> ${escapeHtml(feedback)}</div>` : ""}
+      ${expanded && isExamAssignment(assignment) && submission?.examAnnotatedDriveFileId
+        ? `<button
+             type="button"
+             class="open-graded-exam-btn"
+             data-open-graded-exam="${escapeHtml(assignmentId)}"
+           >Open graded exam PDF</button>`
+        : ""
+      }
     </div>
   `;
 }
@@ -440,7 +453,7 @@ function renderAssignments() {
 
         ${projectProgressHtml(assignmentId, assignment, expanded)}
 
-        ${publishedGradeHtml(assignment, submission, expanded)}
+        ${publishedGradeHtml(assignmentId, assignment, submission, expanded)}
 
         ${submissionRow(submission)}
 
@@ -666,6 +679,37 @@ assignmentList.addEventListener("change", (event) => {
 });
 
 assignmentList.addEventListener("click", (event) => {
+  const gradedExamButton = event.target.closest("[data-open-graded-exam]");
+  if (gradedExamButton) {
+    const assignmentId = gradedExamButton.dataset.openGradedExam;
+    gradedExamButton.disabled = true;
+    fetch("/api/exam-annotated-pdf-source", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ assignmentId, studentKey, externalId })
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          throw new Error(data.error || "Could not open the graded exam.");
+        }
+        return response.blob();
+      })
+      .then((blob) => {
+        const url = URL.createObjectURL(blob);
+        window.open(url, "_blank", "noopener");
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+      })
+      .catch((error) => {
+        console.error(error);
+        alert(error?.message || "Could not open the graded exam.");
+      })
+      .finally(() => {
+        gradedExamButton.disabled = false;
+      });
+    return;
+  }
+
   const projectUploadButton = event.target.closest("[data-upload-project-evidence]");
   if (projectUploadButton) {
     handleProjectEvidenceUpload(
