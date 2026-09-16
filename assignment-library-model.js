@@ -54,3 +54,29 @@ export function extractReusableAssignmentContent(assignment = {}) {
 
   return reusable;
 }
+
+export function buildAssignmentTemplateRecord({ id, assignment, now = Date.now(), actor = '' } = {}) {
+  const templateId = String(id || '').trim();
+  if (!templateId) throw new Error('Assignment template id is required.');
+
+  const content = extractReusableAssignmentContent(assignment);
+  if (!String(content.title || '').trim()) {
+    throw new Error('Assignment template title is required.');
+  }
+
+  const timestamp = Number(now);
+  const by = String(actor || '').trim();
+
+  return {
+    id: templateId,
+    schemaVersion: 1,
+    version: 1,
+    archived: false,
+    usageCount: 0,
+    content: clone(content),
+    createdAt: Number.isFinite(timestamp) ? timestamp : Date.now(),
+    updatedAt: Number.isFinite(timestamp) ? timestamp : Date.now(),
+    createdBy: by,
+    updatedBy: by
+  };
+}
