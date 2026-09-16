@@ -1,6 +1,10 @@
 import { db } from "./firebase.js";
 import { ref, onValue, push, set, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
+import {
+  buildAssignmentTemplateRecord,
+  buildAssignedInstanceFromTemplate
+} from "./assignment-library-model.js";
 
 if (!requireTeacherAuth()) throw new Error("Teacher authentication required.");
 
@@ -67,6 +71,10 @@ const createCriteriaTotal = document.getElementById("createCriteriaTotal");
 const createDistributionRadios = document.querySelectorAll('input[name="createDistribution"]');
 const addCreateCriterionBtn = document.getElementById("addCreateCriterionBtn");
 const assignmentEvaluationNotes = document.getElementById("assignmentEvaluationNotes");
+const assignmentTemplateSource = document.getElementById("assignmentTemplateSource");
+const loadAssignmentTemplateBtn = document.getElementById("loadAssignmentTemplateBtn");
+const saveSelectedTemplateBtn = document.getElementById("saveSelectedTemplateBtn");
+const assignmentTemplateStatus = document.getElementById("assignmentTemplateStatus");
 const createAssignmentBtn = document.getElementById("createAssignmentBtn");
 const createAssignmentStatus = document.getElementById("createAssignmentStatus");
 const createAssignmentPanel = document.getElementById("createAssignmentPanel");
@@ -137,10 +145,12 @@ const logoutBtn = document.getElementById("logoutBtn");
 const teacherIdentity = document.getElementById("teacherIdentity");
 
 let assignmentsCache = {};
+let assignmentTemplatesCache = {};
 let submissionsCache = {};
 let studentsCache = {};
 let groupsCache = {};
 let projectEvidenceCache = {};
+let loadedAssignmentTemplateId = "";
 const WORKING_GROUP_KEY = "youteachWorkingGroup";
 
 let selectedAssignmentId = "";
@@ -2279,6 +2289,7 @@ function renderDetail() {
     assignmentDetail.hidden = true;
     assignmentDetailEmpty.hidden = false;
     selectedDriveFolderUrl = "";
+    saveSelectedTemplateBtn.disabled = true;
     return;
   }
 
@@ -2317,6 +2328,7 @@ function renderDetail() {
   submittedCount.textContent = validSubmissionEntries.length;
   missingCount.textContent = missing.length;
   const lockedBySubmissions = assignmentHasSubmissions(selectedAssignmentId);
+  saveSelectedTemplateBtn.disabled = false;
   toggleAssignmentBtn.textContent = assignment.active ? "Close Assignment" : "Reopen Assignment";
   editCriteriaBtn.disabled = lockedBySubmissions;
   editCriteriaBtn.title = lockedBySubmissions
@@ -2426,6 +2438,118 @@ function renderDetail() {
   if (!manualGradingPanel.hidden) renderManualGrading();
 }
 
+function renderAssignmentTemplateOptions() {
+  const previous = assignmentTemplateSource.value;
+  const templates = Object.entries(assignmentTemplatesCache || {})
+    .filter(([, template]) => !template?.archived)
+    .sort((a, b) => {
+      const aTitle = String(a[1]?.content?.title || "");
+      const bTitle = String(b[1]?.content?.title || "");
+      return aTitle.localeCompare(bTitle);
+    });
+
+  assignmentTemplateSource.innerHTML =
+    '<option value="">Start from scratch</option>' +
+    templates.map(([id, template]) => {
+      const title = String(template?.content?.title || "Untitled template");
+      const type = String(template?.content?.assignmentTypeCode || "");
+      const uses = Number(template?.usageCount || 0);
+      return `<option value="${escapeHtml(id)}">${escapeHtml(title)}${type ? ` · ${escapeHtml(type)}` : ""} · ${uses} use${uses === 1 ? "" : "s"}</option>`;
+    }).join("");
+
+  if (previous && assignmentTemplatesCache[previous] && !assignmentTemplatesCache[previous]?.archived) {
+    assignmentTemplateSource.value = previous;
+  }
+  loadAssignmentTemplateBtn.disabled = !assignmentTemplateSource.value;
+}
+
+async function saveSelectedAssignmentAsTemplate() {
+  const assignment = assignmentsCache[selectedAssignmentId];
+  if (!assignment) {
+    assignmentTemplateStatus.textContent = "Select an assignment first.";
+    assignmentTemplateStatus.className = "status-text bad";
+    return;
+  }
+
+  saveSelectedTemplateBtn.disabled = true;
+  assignmentTemplateStatus.textContent = "Saving template...";
+  assignmentTemplateStatus.className = "status-text";
+
+  try {
+    const rubric = getAssignmentRubric(assignment);
+    const target = push(ref(db, "assignmentTemplates"));
+    const template = buildAssignmentTemplateRecord({
+      id: target.key,
+      assignment: {
+        ...assignment,
+        evaluationCriteria: rubric.criteria,
+        evaluationDistribution: rubric.distribution,
+        evaluationNotes: rubric.notes
+      },
+      now: Date.now(),
+      actor: getTeacherName()
+    });
+    await set(target, template);
+    assignmentTemplateStatus.textContent = "Template saved.";
+    assignmentTemplateStatus.className = "status-text ok";
+    assignmentActionsMenu.open = false;
+  } catch (error) {
+    console.error(error);
+    assignmentTemplateStatus.textContent = error?.message || "Could not save the template.";
+    assignmentTemplateStatus.className = "status-text bad";
+  } finally {
+    saveSelectedTemplateBtn.disabled = !assignmentsCache[selectedAssignmentId];
+  }
+}
+
+function loadSelectedAssignmentTemplate() {
+  const templateId = String(assignmentTemplateSource.value || "");
+  const template = assignmentTemplatesCache[templateId];
+  if (!template?.content) return;
+
+  const content = template.content;
+  const typeCode = String(content.assignmentTypeCode || "").trim().toUpperCase();
+  const standardTypeCodes = new Set(["CT", "HW", "EX", "PJ", "PC", "RS", "PT"]);
+  if (standardTypeCodes.has(typeCode)) {
+    assignmentType.value = typeCode;
+    assignmentOtherType.value = "";
+  } else {
+    assignmentType.value = "OTHER";
+    assignmentOtherType.value = String(content.assignmentType || typeCode || "");
+  }
+  assignmentOtherTypeField.hidden = assignmentType.value !== "OTHER";
+
+  assignmentTitle.value = String(content.title || "");
+  assignmentInstructions.value = splitStoredInstructions(content.instructions).visibleInstructions;
+  const rubric = getAssignmentRubric(content);
+  assignmentEvaluationNotes.value = rubric.notes || "";
+  fillRubricEditor(
+    createPresetCriteria,
+    createCriteriaRows,
+    createCriteriaTotal,
+    rubric.criteria,
+    createDistributionRadios,
+    rubric.distribution || "equal"
+  );
+
+  assignmentDueAt.value = "";
+  projectCheckpointRows.innerHTML = "";
+  if (typeCode === "PJ") {
+    Object.entries(content.projectCheckpoints || {}).forEach(([id, checkpoint]) => {
+      addProjectCheckpointRow({ id, ...(checkpoint || {}), dueAt: null });
+    });
+  }
+  refreshProjectCheckpointBuilder();
+
+  loadedAssignmentTemplateId = templateId;
+  createAssignmentPanel.hidden = false;
+  assignmentActionsMenu.open = false;
+  createAssignmentStatus.textContent = "Template loaded. Choose group and dates for this assignment.";
+  createAssignmentStatus.className = "status-text ok";
+  refreshAutomaticTaskCode();
+  createAssignmentPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 async function createAssignment() {
   refreshAutomaticTaskCode();
   const code = assignmentCode.value.trim().toUpperCase();
@@ -2502,6 +2626,7 @@ async function createAssignment() {
 
   try {
     const target = push(ref(db, "assignments"));
+    const now = Date.now();
     const storedInstructions = buildStoredInstructions(instructions, {
       schemaVersion: 1,
       assignmentType: typeValue,
@@ -2509,23 +2634,57 @@ async function createAssignment() {
       criteria: rubricResult.criteria,
       distribution: evaluationDistribution,
       notes: evaluationNotes,
-      updatedAt: Date.now()
+      updatedAt: now
     });
 
-    await set(target, {
-      code,
+    const reusableAssignment = {
       title,
-      groupName,
       instructions: storedInstructions,
       assignmentType: typeValue,
       assignmentTypeCode: typeCode,
-      projectCheckpoints: typeCode === "PJ" ? projectResult.checkpoints : null,
-      dueAt,
-      active: true,
-      storageProvider: "google-drive",
-      createdAt: Date.now(),
-      createdBy: getTeacherName()
-    });
+      evaluationCriteria: rubricResult.criteria,
+      evaluationDistribution,
+      evaluationNotes,
+      projectCheckpoints: typeCode === "PJ" ? projectResult.checkpoints : null
+    };
+
+    const sourceTemplate = loadedAssignmentTemplateId
+      ? assignmentTemplatesCache[loadedAssignmentTemplateId]
+      : null;
+
+    let assignmentPayload;
+    if (loadedAssignmentTemplateId) {
+      if (!sourceTemplate) throw new Error("The selected template is no longer available.");
+      assignmentPayload = buildAssignedInstanceFromTemplate({
+        template: { ...sourceTemplate, content: reusableAssignment },
+        code,
+        groupName,
+        dueAt,
+        now,
+        actor: getTeacherName()
+      });
+      const templateSnapshot = assignmentPayload.templateSnapshot;
+      if (!templateSnapshot) throw new Error("Could not freeze the template snapshot.");
+
+      const multiLocationUpdates = {};
+      multiLocationUpdates[`assignments/${target.key}`] = assignmentPayload;
+      multiLocationUpdates[`assignmentTemplates/${loadedAssignmentTemplateId}/usageCount`] =
+        Number(sourceTemplate.usageCount || 0) + 1;
+      multiLocationUpdates[`assignmentTemplates/${loadedAssignmentTemplateId}/lastUsedAt`] = now;
+      await update(ref(db), multiLocationUpdates);
+    } else {
+      assignmentPayload = {
+        code,
+        ...reusableAssignment,
+        groupName,
+        dueAt,
+        active: true,
+        storageProvider: "google-drive",
+        createdAt: now,
+        createdBy: getTeacherName()
+      };
+      await set(target, assignmentPayload);
+    }
 
     selectedAssignmentId = target.key;
     assignmentType.value = "CT";
@@ -2536,6 +2695,9 @@ async function createAssignment() {
     assignmentInstructions.value = "";
     assignmentEvaluationNotes.value = "";
     assignmentDueAt.value = "";
+    loadedAssignmentTemplateId = "";
+    assignmentTemplateSource.value = "";
+    loadAssignmentTemplateBtn.disabled = true;
     projectCheckpointRows.innerHTML = "";
     refreshProjectCheckpointBuilder();
     fillRubricEditor(
@@ -2957,6 +3119,12 @@ assignmentScrollRightBtn.addEventListener("click", () => {
 });
 
 createAssignmentBtn.addEventListener("click", createAssignment);
+saveSelectedTemplateBtn.addEventListener("click", saveSelectedAssignmentAsTemplate);
+assignmentTemplateSource.addEventListener("change", () => {
+  loadAssignmentTemplateBtn.disabled = !assignmentTemplateSource.value;
+  if (!assignmentTemplateSource.value) loadedAssignmentTemplateId = "";
+});
+loadAssignmentTemplateBtn.addEventListener("click", loadSelectedAssignmentTemplate);
 toggleAssignmentBtn.addEventListener("click", toggleAssignment);
 addProjectCheckpointBtn.addEventListener("click", () => addProjectCheckpointRow());
 projectCheckpointRows.addEventListener("click", (event) => {
@@ -2989,6 +3157,8 @@ fillRubricEditor(
 );
 refreshAutomaticTaskCode();
 refreshProjectCheckpointBuilder();
+renderAssignmentTemplateOptions();
+saveSelectedTemplateBtn.disabled = true;
 
 logoutBtn.addEventListener("click", logoutTeacher);
 
@@ -3010,6 +3180,11 @@ onValue(ref(db, "assignments"), (snapshot) => {
   renderAssignmentList();
   refreshAutomaticTaskCode();
   requestInitialAiSync();
+});
+
+onValue(ref(db, "assignmentTemplates"), (snapshot) => {
+  assignmentTemplatesCache = snapshot.val() || {};
+  renderAssignmentTemplateOptions();
 });
 
 onValue(ref(db, "assignmentSubmissions"), (snapshot) => {
