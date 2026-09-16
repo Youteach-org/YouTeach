@@ -133,156 +133,51 @@ Important:
 - the teacher remains the final editor;
 - recommendations should distinguish measured historical evidence from AI inference.
 
-## 6. Exam Question Bank
+## 6. Exam Bank — approved scope 2026-09-16
 
-A provisional first implementation exists on `main` as of 2026-09-16, but its detailed UX and workflow have NOT been approved by the user.
+The previously proposed internal Question Bank, Exam Creator, Exam Template/Instance workflow, and Answer Sheet Creator are **not part of the approved scope**.
 
-The accepted requirement is that the existing Exam assignment type becomes connected to a reusable Question Bank.
+The approved exam feature is a simple **Exam Bank** whose purpose is to preserve and retrieve existing exam files.
 
-### 6.1 Bank item model
+### 6.1 Core behavior
 
-A question bank item should support:
-- unique question ID;
-- course/subject;
-- unit;
-- topic;
-- subtopic;
-- question type;
-- prompt;
-- answer options when applicable;
-- correct answer / answer key;
-- teacher explanation or rationale (optional);
-- point value or weighting metadata;
-- difficulty metadata (teacher-defined initially);
-- tags;
-- source/reference notes (optional);
-- active/archived status;
-- created/updated timestamps;
-- historical usage count;
-- historical performance statistics.
+- Exams are added **manually only**.
+- One uploaded file equals one independent Exam Bank entry.
+- YouTeach stores the **original file unchanged**.
+- YouTeach does **not** parse the file into questions or sections.
+- YouTeach does **not** extract or maintain a reusable internal Question Bank.
+- YouTeach does **not** generate, rearrange, combine, or rewrite exams.
+- YouTeach does **not** provide an internal Exam Creator.
+- YouTeach does **not** provide internal AI for exam creation.
+- YouTeach does **not** provide an internal "use as base for a new exam" workflow.
+- The Exam Bank is a repository for upload, classification, search/filter, retrieval, and download.
 
-### 6.2 Initial supported question types
+### 6.2 Metadata
 
-At minimum:
-- multiple choice;
-- true/false;
-- matching/correspondence;
-- open response.
+Each manually uploaded Exam Bank entry stores:
+- title;
+- subject/course;
+- unit/topic;
+- exam type;
+- date;
+- version (for example A/B when applicable);
+- free-form tags;
+- original file reference;
+- created/updated timestamps as required by implementation.
 
-Architecture must remain extensible for future types.
+File-format details and secondary UX choices remain implementation details and are not product requirements yet.
 
-### 6.3 Question history
+### 6.3 External AI boundary
 
-Using the same bank item in multiple exams should preserve one reusable source item plus per-exam snapshots/version references sufficient to protect historical exams from later edits.
+Any AI that reads prior exams, rearranges content, or creates a new exam is **external to YouTeach's Exam Bank**.
 
-Historical performance may include:
-- percentage correct;
-- blank-response rate;
-- common distractor selection;
-- average open-response score;
-- use count;
-- course/topic association.
+The Exam Bank's responsibility is only to preserve and expose the manually uploaded source files and their metadata. Any future external-AI integration must be designed separately and must not cause the Exam Bank itself to infer, parse, transform, or silently generate exam content.
 
-## 7. Exam Creator
+### 6.4 Provisional code status
 
-A provisional first implementation exists on `main` as of 2026-09-16, but it must NOT be treated as the accepted product design.
+Provisional Question Bank, Exam Creator, exam-schema, and Answer Sheet Creator code created before this decision is **not an approved product requirement** and must not be extended on the assumption that it represents the desired workflow.
 
-The accepted requirement is a new main section: **Exam Creator**.
-
-Accepted high-level capabilities:
-- create an exam template;
-- pull questions from Question Bank;
-- filter bank items;
-- allow manual selection;
-- organize questions into sections;
-- preserve teacher-defined order;
-- assign section/question point values;
-- support versions such as A/B;
-- generate an exact answer key for each version from the same version builder;
-- save the result as a reusable exam template under `examTemplates`;
-- create a concrete exam instance for a group/date under `examInstances`;
-- create a matching YouTeach `EX` assignment linked through `examTemplateId`, `examInstanceId`, and `examVersion`;
-- freeze question snapshots inside templates/instances so later Question Bank edits do not rewrite historical exam versions.
-
-Important unresolved product decisions:
-- the exact A/B transformation rules are NOT approved;
-- reversing question order within sections was an assistant-made provisional choice and must not be treated as a requirement;
-- the exact Exam Creator layout, controls, defaults, section workflow, points workflow, assignment-creation flow, and teacher interactions remain to be defined with the user before further implementation.
-
-Future intelligent functions:
-- suggest questions based on course/topic coverage;
-- balance question types;
-- balance teacher-defined difficulty;
-- avoid recently reused questions if requested;
-- select questions using historical item statistics.
-
-No intelligent selection should silently modify the teacher's final exam.
-
-## 8. Answer Sheet Creator
-
-A provisional first implementation exists on `main` as of 2026-09-16, but its detailed output layout and workflow have NOT been approved by the user.
-
-The accepted requirement is that **Answer Sheet Creator** consumes the exact exam/version schema from Exam Creator.
-
-Accepted outputs:
-- student answer sheet;
-- teacher answer key.
-
-Requirements:
-- numbering exactly matches selected exam version;
-- response areas adapt to question type;
-- section structure is preserved;
-- changing the exam before lock allows regeneration;
-- once an exam instance has been used, historical answer sheets/keys remain tied to that version.
-
-The system does not maintain an independent manually duplicated answer key data source.
-
-Provisional implementation details currently present in code:
-- responsive browser preview;
-- print-ready student answer sheet;
-- print-ready teacher answer key;
-- browser Print / Save PDF workflow;
-- multiple-choice bubbles;
-- True/False controls;
-- matching response lines;
-- configurable open-response lines;
-- a provisional shared `exam-schema.js`;
-- provisional Firebase nodes `examQuestionBank`, `examTemplates`, and `examInstances`.
-
-These details are implementation experiments, not accepted requirements. Future work must first define the actual teacher workflow, version-generation rules, visual layout, answer-sheet format, exam-instance behavior, and any automatic assignment integration with the user.
-
-## 8.1 Approval status correction — 2026-09-16
-
-The detailed Exam Creator / Answer Sheet Creator implementation created on 2026-09-16 was produced from a high-level architecture specification without enough user-defined product detail. It is therefore **provisional / unapproved**.
-
-Rules for continuation:
-- do not infer detailed product behavior from the existence of the provisional code;
-- do not treat provisional defaults as user requirements;
-- do not extend the current Exam Creator UX until the teacher workflow is explicitly defined;
-- preserve only the previously accepted architectural constraints: Question Bank, Exam Template, Exam Instance, shared exam/version schema, matching version-specific answer key, and historical snapshots;
-- any new UX, defaults, A/B transformation rules, points logic, answer-sheet layout, or assignment integration must be explicitly agreed before implementation.
-
-## 9. Exam reuse lifecycle
-
-Separate:
-- Question Bank item;
-- Exam Template;
-- Exam Instance.
-
-Question Bank item:
-reusable source question.
-
-Exam Template:
-reusable structured exam composition.
-
-Exam Instance:
-specific use with date/group/version and eventually student results.
-
-This separation allows:
-- reusing the same exam next semester;
-- generating a new version;
-- preserving past statistics;
-- avoiding contamination between cohorts.
+A later implementation plan may remove, disable, or replace that provisional UI/code after the approved Exam Bank design is finalized.
 
 ## 10. Administration
 
@@ -300,9 +195,7 @@ Admin can inspect:
 - Assignment Instances;
 - submissions;
 - grading state;
-- Question Bank;
-- Exam Templates;
-- Exam Instances;
+- Exam Bank entries and files;
 - grade-release state;
 - archive state;
 - integration/storage health;
@@ -334,9 +227,7 @@ Teacher:
 - Groups / Import
 - Assignments
 - Assignment Library
-- Exam Creator
-- Question Bank
-- Answer Sheet Creator
+- Exam Bank
 - Points / Export
 - History
 
@@ -347,8 +238,7 @@ Admin:
 - Groups
 - Courses
 - Assignment Library / Instances
-- Question Bank
-- Exams
+- Exam Bank
 - Submissions / Grades
 - System / Integrations
 - Audit
@@ -366,11 +256,9 @@ Recommended sequence:
 4. add reusable Assignment Library;
 5. add topic/course metadata;
 6. establish analytics event/data schema;
-7. build Question Bank;
-8. build Exam Creator;
-9. build Answer Sheet Creator;
-10. build Administration;
-11. build advanced course intelligence / Program Builder.
+7. build the manual Exam Bank;
+8. build Administration;
+9. build advanced course intelligence / Program Builder.
 
 ## 13. Continuity rule
 
@@ -378,8 +266,10 @@ This specification is part of the canonical project record.
 
 Future ChatGPT instances should preserve these distinctions:
 - Template != Instance
-- Question Bank Item != Exam Template != Exam Instance
+- the approved exam feature is the manual Exam Bank, not an internal Question Bank or Exam Creator
+- one manually uploaded exam file equals one Exam Bank entry
+- Exam Bank files remain original and unparsed
+- external AI exam creation/rearrangement is outside the Exam Bank scope
 - historical student data never copies into reused content
 - analytics accumulate from historical instances
-- Exam Creator and Answer Sheet Creator share one exam schema
 - Admin is a separate role-aware section
