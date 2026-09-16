@@ -235,6 +235,99 @@
     }
     .assignment-card.expanded .submission-row{font-size:11px}
     .assignment-card.expanded .upload-box{margin-top:4px}
+    .project-progress-summary{
+      padding:6px 7px;
+      border:1px solid #ddd6fe;
+      border-radius:8px;
+      background:#f5f3ff;
+      color:#6d28d9;
+      font-size:10px;
+      font-weight:900
+    }
+    .project-progress-empty{
+      padding:7px;
+      border:1px solid #e2e8f0;
+      border-radius:8px;
+      background:#f8fafc;
+      color:#64748b;
+      font-size:10px
+    }
+    .student-project-progress{
+      display:grid;
+      gap:7px;
+      padding:8px;
+      border:1px solid #ddd6fe;
+      border-radius:10px;
+      background:#faf5ff
+    }
+    .student-project-progress-head{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:8px
+    }
+    .student-project-progress-head strong{font-size:12px;color:#5b21b6}
+    .student-project-progress-head span{font-size:9px;color:#7c3aed;font-weight:800}
+    .student-project-checkpoints{display:grid;gap:7px}
+    .student-project-checkpoint{
+      display:grid;
+      gap:6px;
+      padding:8px;
+      border:1px solid #e9d5ff;
+      border-radius:9px;
+      background:#fff
+    }
+    .student-project-checkpoint-head{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:8px
+    }
+    .student-project-checkpoint-head>div{min-width:0}
+    .student-project-checkpoint-head strong{display:block;font-size:11px;color:#0f172a}
+    .student-project-checkpoint-head span{display:block;margin-top:2px;font-size:9px;color:#64748b}
+    .checkpoint-state{
+      flex:0 0 auto;
+      padding:3px 5px;
+      border-radius:999px;
+      font-size:8px!important;
+      font-weight:900
+    }
+    .checkpoint-state.open{background:#dcfce7;color:#166534!important}
+    .checkpoint-state.closed{background:#fee2e2;color:#991b1b!important}
+    .student-project-checkpoint-instructions{font-size:10px;line-height:1.35;color:#334155}
+    .student-project-evidence-list{display:grid;gap:4px}
+    .student-project-evidence{
+      display:grid;
+      gap:2px;
+      padding:5px 6px;
+      border:1px solid #e2e8f0;
+      border-radius:7px;
+      background:#f8fafc
+    }
+    .student-project-evidence a{font-size:9px;font-weight:900}
+    .student-project-evidence span,.student-project-evidence small{font-size:8px;color:#64748b}
+    .student-project-evidence-empty{font-size:9px;color:#94a3b8}
+    .student-project-upload{
+      display:grid;
+      grid-template-columns:auto minmax(0,1fr) auto;
+      gap:5px;
+      align-items:center
+    }
+    .student-project-upload input[type="file"]{
+      position:absolute;
+      width:1px;
+      height:1px;
+      opacity:0;
+      pointer-events:none
+    }
+    .student-project-upload button{
+      padding:6px 8px;
+      font-size:9px;
+      font-weight:900;
+      white-space:nowrap
+    }
+    .student-project-upload .progress-text{grid-column:1/-1;margin:0}
 
     .empty-state{
       grid-column:1/-1;
@@ -283,7 +376,7 @@
       <header class="topbar">
         <div>
           <h2>My Assignments</h2>
-          <p>Attach one PDF for each assignment.</p>
+          <p>Final PDFs · project progress evidence · published grades</p>
         </div>
         <div class="topbar-right">
           <div class="student-top-identity">
@@ -299,7 +392,7 @@
     </main>
   </div>
 
-  <script type="module" src="student-assignments.js?v=expanded-grades-20260916"></script>
+  <script type="module" src="student-assignments.js?v=project-checkpoints-20260916"></script>
   <script defer src="shared-ui-fixes.js?v=titlebar-hamburger-20260916"></script>
 </body>
 </html>
