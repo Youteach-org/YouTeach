@@ -70,6 +70,9 @@ Two grading paths coexist:
 - Scores are entered per criterion.
 - Total is calculated out of 100.
 - Teacher feedback is stored with the submission.
+- A saved manual grade can be cleared without deleting the student's submitted file.
+- **Clear grade** is available directly from the submitted-student card and from the Manual Grading panel when the current grade mode is manual.
+- Clearing a manual grade unpublishes it and returns that submission to pending grading so it can be graded again manually or by AI.
 
 #### AI grading
 - AI Grading opens ChatGPT for the selected Task Code.
@@ -110,6 +113,9 @@ A manual grade must never be silently overwritten by a later AI rerun unless the
 - Criteria are arranged efficiently rather than occupying large vertical panels.
 - Manual grading opens from a student submission card.
 - Missing submissions remain secondary/collapsible.
+- The **Missing submissions** control stays collapsed by default.
+- When opened, it shows compact student cards for every eligible student who has not submitted, including name/ID/group and a visible Not submitted state.
+- Missing-student cards must remain completely hidden until the teacher opens the Missing submissions control.
 - Student submission cards are the primary content.
 - Avoid wasting vertical space.
 - Hamburger menu must reserve a safe zone so it never covers page titles.
