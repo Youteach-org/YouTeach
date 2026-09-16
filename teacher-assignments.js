@@ -71,7 +71,6 @@ const createAssignmentBtn = document.getElementById("createAssignmentBtn");
 const createAssignmentStatus = document.getElementById("createAssignmentStatus");
 const createAssignmentPanel = document.getElementById("createAssignmentPanel");
 const showCreateAssignmentBtn = document.getElementById("showCreateAssignmentBtn");
-const hideCreateAssignmentBtn = document.getElementById("hideCreateAssignmentBtn");
 const assignmentActionsMenu = document.getElementById("assignmentActionsMenu");
 const teacherAssignmentList = document.getElementById("teacherAssignmentList");
 const assignmentBrowserCount = document.getElementById("assignmentBrowserCount");
@@ -2000,13 +1999,13 @@ assignmentGroup.addEventListener("change", refreshAutomaticTaskCode);
 assignmentDueAt.addEventListener("input", refreshAutomaticTaskCode);
 
 showCreateAssignmentBtn.addEventListener("click", () => {
-  createAssignmentPanel.hidden = false;
+  const opening = createAssignmentPanel.hidden;
+  createAssignmentPanel.hidden = !opening;
   assignmentActionsMenu.open = false;
-  createAssignmentPanel.scrollIntoView({ behavior: "smooth", block: "start" });
-});
 
-hideCreateAssignmentBtn.addEventListener("click", () => {
-  createAssignmentPanel.hidden = true;
+  if (opening) {
+    createAssignmentPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 });
 
 assignmentFilterCode.addEventListener("input", renderAssignmentList);
