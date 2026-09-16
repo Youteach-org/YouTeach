@@ -356,6 +356,41 @@ function normalizeAiGrade(result, criteria) {
     gradedBy: "ChatGPT"
   };
 }
+function gradingTotalFromGrade(grading) {
+  const raw = grading?.totalScore;
+  if (raw === null || raw === undefined || raw === "") return null;
+  const total = Number(raw);
+  return Number.isFinite(total) ? total : null;
+}
+
+function gradeHistoryUpdate(submission, action, nextGrading, nextPublished, options = {}) {
+  const timestamp = Number(options.timestamp || Date.now());
+  const randomPart = typeof crypto?.randomUUID === "function"
+    ? crypto.randomUUID().replace(/-/g, "").slice(0, 12)
+    : Math.random().toString(36).slice(2, 14);
+  const historyKey = `event-${timestamp}-${randomPart}`;
+
+  return {
+    [`gradingHistory/${historyKey}`]: {
+      action,
+      timestamp,
+      actor: String(options.actor || "YouTeach"),
+      from: {
+        grading: submission?.grading || null,
+        published: Boolean(submission?.gradePublished)
+      },
+      to: {
+        grading: nextGrading || null,
+        published: Boolean(nextPublished)
+      },
+      sourceDriveFileId: String(submission?.driveFileId || ""),
+      sourceSubmissionUpdatedAt: Number(submission?.uploadedAt || submission?.submittedAt || 0),
+      aiResultsFileModifiedTime: String(options.aiResultsFileModifiedTime || ""),
+      aiActionStartedAt: Number(options.aiActionStartedAt || 0)
+    }
+  };
+}
+
 
 export async function onRequestPost(context) {
   const { request, env } = context;
@@ -508,6 +543,12 @@ export async function onRequestPost(context) {
           }
         }
 
+        const now = Date.now();
+        const aiResultsModifiedAt = Date.parse(String(resultsFile.modifiedTime || "")) || 0;
+        const aiActionStartedAt = minimumResultsModifiedTime > 0
+          ? minimumResultsModifiedTime
+          : aiResultsModifiedAt;
+
         await firebasePatch(
           `assignmentSubmissions/${encodeURIComponent(assignmentId)}/${encodeURIComponent(studentKey)}`,
           {
@@ -523,8 +564,14 @@ export async function onRequestPost(context) {
             gradingSourceSubmissionUpdatedAt: sourceRevision,
             gradingSourceDriveFileId: String(submission?.driveFileId || ""),
             aiGradingResultsFileModifiedTime: resultsFile.modifiedTime || "",
-            aiGradingSyncedAt: Date.now(),
-            updatedAt: Date.now()
+            aiGradingSyncedAt: now,
+            updatedAt: now,
+            ...gradeHistoryUpdate(submission, "ai-grade-applied", aiGrade, false, {
+              timestamp: now,
+              actor: "ChatGPT",
+              aiResultsFileModifiedTime: resultsFile.modifiedTime || "",
+              aiActionStartedAt
+            })
           }
         );
         summary.imported += 1;
