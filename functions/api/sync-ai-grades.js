@@ -333,6 +333,14 @@ export async function onRequestPost(context) {
     const resultsFileName = `${taskCode}--grading-results.json`;
     const resultsFile = await findJsonFile(accessToken, folder.id, resultsFileName);
     if (!resultsFile) {
+      if (minimumResultsModifiedTime) {
+        return json(202, {
+          ok: false,
+          pending: true,
+          taskCode,
+          resultsFileName
+        });
+      }
       return json(404, {
         ok: false,
         error: `${resultsFileName} was not found. Run AI Grading first.`
