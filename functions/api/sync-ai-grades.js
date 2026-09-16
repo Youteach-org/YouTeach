@@ -388,6 +388,7 @@ export async function onRequestPost(context) {
             `assignmentSubmissions/${encodeURIComponent(assignmentId)}/${encodeURIComponent(studentKey)}`,
             {
               aiGradingCandidate: aiGrade,
+              aiGradingCandidateState: "kept-manual",
               identityReviewStatus: identityUpdate,
               aiGradingSyncedAt: Date.now()
             }
@@ -401,6 +402,7 @@ export async function onRequestPost(context) {
             `assignmentSubmissions/${encodeURIComponent(assignmentId)}/${encodeURIComponent(studentKey)}`,
             {
               aiGradingCandidate: aiGrade,
+              aiGradingCandidateState: "compare",
               identityReviewStatus: identityUpdate,
               aiGradingSyncedAt: Date.now()
             }
@@ -414,6 +416,7 @@ export async function onRequestPost(context) {
           {
             grading: aiGrade,
             aiGradingCandidate: null,
+            aiGradingCandidateState: null,
             identityReviewStatus: identityUpdate,
             reviewStatus: aiGrade.totalScore === null ? "manual-review" : "graded",
             aiGradingSyncedAt: Date.now(),
