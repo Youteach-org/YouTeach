@@ -13,7 +13,7 @@ Implemented on `main`, pending field validation:
 - AI grades saved internally as unpublished;
 - conflict selector removed from the normal workflow;
 - idempotent import protection for already-applied result/submission revisions;
-- manual grades preserved when the same submission revision is already manually graded;
+- current-grade ownership follows the latest deliberate grading action: a newer AI result may replace an older manual grade, while a later manual correction takes control again;
 - teacher Publish / Unpublish control on submission cards;
 - student side shows only published numeric grades/feedback;
 - student assignment cards expand in the grid to show full instructions/details;
@@ -62,6 +62,12 @@ AI grading should default to:
 - internal grade saved;
 - teacherReviewStatus = pending;
 - gradePublished = false.
+
+Current-grade ownership:
+- AI Grading is an explicit teacher action; when its new result is newer than the current manual grade, that AI result becomes the current internal grade;
+- if the teacher then opens Manual Grading and saves a correction, the newer manual grade becomes the current internal grade;
+- returning to Teacher Assignments must automatically apply a pending explicit AI run once its fresh grading-results file appears;
+- this avoids a hidden older manual grade blocking a newly requested AI evaluation.
 
 Manual correction should:
 - replace the current internal grade;
