@@ -1127,7 +1127,13 @@ async function saveManualGrade(studentKey) {
           gradedAt: Date.now(),
           gradedBy: getTeacherName()
         },
-        reviewStatus: "graded",
+        reviewStatus: "manual-graded",
+        teacherReviewStatus: "accepted",
+        gradePublished: false,
+        gradePublishedAt: null,
+        gradePublishedBy: null,
+        gradingSourceSubmissionUpdatedAt: Number(submissionsCache?.[selectedAssignmentId]?.[studentKey]?.updatedAt || submissionsCache?.[selectedAssignmentId]?.[studentKey]?.submittedAt || 0),
+        gradingSourceDriveFileId: String(submissionsCache?.[selectedAssignmentId]?.[studentKey]?.driveFileId || ""),
         updatedAt: Date.now()
       }
     );
@@ -1141,6 +1147,32 @@ async function saveManualGrade(studentKey) {
   } finally {
     saveButton.disabled = false;
   }
+}
+
+async function toggleGradePublication(studentKey) {
+  const submission = submissionsCache?.[selectedAssignmentId]?.[studentKey];
+  const total = gradingTotalForSubmission(submission);
+  if (!submission || total === null) return;
+
+  const publish = !Boolean(submission.gradePublished);
+
+  await update(
+    ref(db, `assignmentSubmissions/${selectedAssignmentId}/${studentKey}`),
+    publish
+      ? {
+          gradePublished: true,
+          gradePublishedAt: Date.now(),
+          gradePublishedBy: getTeacherName(),
+          teacherReviewStatus: "accepted",
+          updatedAt: Date.now()
+        }
+      : {
+          gradePublished: false,
+          gradePublishedAt: null,
+          gradePublishedBy: null,
+          updatedAt: Date.now()
+        }
+  );
 }
 
 function renderGroupOptions() {
@@ -1383,9 +1415,16 @@ function renderDetail() {
   }
 
   submissionList.innerHTML = validSubmissionEntries.length
-    ? validSubmissionEntries.map(([, submission]) => {
+    ? validSubmissionEntries.map(([studentKey, submission]) => {
         const graded = submissionIsGraded(submission);
         const gradeTotal = gradingTotalForSubmission(submission);
+        const published = Boolean(submission?.gradePublished && gradeTotal !== null);
+        const gradingMode = String(submission?.grading?.mode || "");
+        const gradingStateLabel = gradeTotal === null
+          ? (gradingMode === "ai" ? "AI reviewed · manual review needed" : "Pending grading")
+          : (published
+            ? "Published"
+            : (gradingMode === "ai" ? "AI graded · teacher review pending" : "Manual grade · unpublished"));
         const aiCandidateTotal = aiCandidateTotalForSubmission(submission);
         const aiCandidateState = String(submission?.aiGradingCandidateState || "");
         const aiCandidateLabel = submission?.aiGradingCandidate
@@ -1395,7 +1434,7 @@ function renderDetail() {
           : "";
 
         return `
-          <article class="submission-card ${graded ? "graded" : "pending-grade"}">
+          <article class="submission-card ${graded ? "graded" : "pending-grade"}" data-submission-student-key="${escapeHtml(studentKey)}">
             <h4>${escapeHtml(submission.studentName || "Student")}</h4>
             <div class="submission-meta">
               ${escapeHtml(submission.studentNumber || "No ID")} ·
@@ -1404,8 +1443,8 @@ function renderDetail() {
               ${escapeHtml(formatDate(submission.updatedAt || submission.submittedAt))}
             </div>
 
-            <div class="grading-state-chip ${graded ? "graded" : "pending"}">
-              ${graded ? "Graded" : "Pending grading"}
+            <div class="grading-state-chip ${published ? "graded" : (graded ? "pending" : "pending")}">
+              ${escapeHtml(gradingStateLabel)}
             </div>
 
             <div class="review-chip">${escapeHtml(identityStatusLabel(submission.identityReviewStatus))}</div>
@@ -1422,9 +1461,15 @@ function renderDetail() {
               : ""
             }
 
-            <a class="pdf-link" href="${escapeHtml(submission.driveFileUrl || "#")}" target="_blank" rel="noopener">
-              Open submitted PDF →
-            </a>
+            <div class="submission-card-actions">
+              <a class="pdf-link" href="${escapeHtml(submission.driveFileUrl || "#")}" target="_blank" rel="noopener">
+                Open submitted PDF →
+              </a>
+              ${gradeTotal !== null
+                ? `<button type="button" class="publish-grade-btn" data-publish-grade="${escapeHtml(studentKey)}">${published ? "Unpublish" : "Publish grade"}</button>`
+                : ""
+              }
+            </div>
           </article>
         `;
       }).join("")
@@ -1719,6 +1764,16 @@ teacherAssignmentList.addEventListener("click", (event) => {
 });
 
 submissionList.addEventListener("click", (event) => {
+  const publishButton = event.target.closest("[data-publish-grade]");
+  if (publishButton) {
+    toggleGradePublication(publishButton.dataset.publishGrade).catch((error) => {
+      console.error(error);
+      aiSyncStatus.textContent = "Could not change grade publication.";
+      aiSyncStatus.style.color = "#b91c1c";
+    });
+    return;
+  }
+
   if (event.target.closest("a,button")) return;
   const card = event.target.closest("[data-submission-student-key]");
   if (!card) return;
