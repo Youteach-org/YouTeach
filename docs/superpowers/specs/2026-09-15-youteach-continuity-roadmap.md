@@ -247,7 +247,8 @@ Accepted direction:
 - historical assigned instances remain available for analytics and comparison.
 
 Foundation status — 2026-09-16:
-- pure Template vs Assigned Instance model implemented on `feature/assignment-library-foundation`, pending merge;
+- Assignment Library foundation and Firebase integration merged into `main`;
+- pure Template vs Assigned Instance model is now part of the canonical branch;
 - reusable content extraction explicitly excludes group/date/submission/grade/publication state;
 - new instances keep a frozen `templateSnapshot` plus `templateId` / `templateVersion`;
 - Firebase persistence under `assignmentTemplates` is implemented on the feature branch;
