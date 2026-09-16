@@ -58,3 +58,18 @@ test('teacher uses PDF.js for viewing and pdf-lib for derivative generation', ()
   assert.match(teacherJs, /window\.pdfjsLib\.getDocument/);
   assert.match(teacherJs, /PDFDocument\.load/);
 });
+
+
+test('submission resubmission resets current grade while preserving an audit event', () => {
+  assert.match(uploadFn, /function revisionGradeResetPatch/);
+  assert.match(uploadFn, /"submission-resubmitted"/);
+  assert.match(uploadFn, /"submission-withdrawn"/);
+  assert.match(uploadFn, /grading: null/);
+  assert.match(uploadFn, /gradePublished: false/);
+  assert.match(uploadFn, /gradingHistory\/\$\{historyKey\}/);
+});
+
+test('withdrawal removes both original submission and annotated derivative', () => {
+  assert.match(uploadFn, /deleteDriveFile\(accessToken, existingFile\?\.id \|\| ""\)/);
+  assert.match(uploadFn, /deleteDriveFile\(accessToken, submission\.examAnnotatedDriveFileId\)/);
+});
