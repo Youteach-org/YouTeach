@@ -19,6 +19,7 @@ let assignmentsCache = {};
 let submissionCache = {};
 let renderingToken = 0;
 let expandedAssignmentId = "";
+const submissionUnsubscribers = new Map();
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, (char) => ({
@@ -128,6 +129,38 @@ async function loadOwnSubmissions(assignments, token) {
     if (token !== renderingToken) return;
   }
   submissionCache = next;
+}
+
+function wireOwnSubmissionListeners() {
+  if (!currentStudent) return;
+
+  const applicableIds = new Set(
+    Object.entries(assignmentsCache || {})
+      .filter(([, assignment]) => assignmentApplies(assignment))
+      .map(([assignmentId]) => assignmentId)
+  );
+
+  for (const [assignmentId, unsubscribe] of submissionUnsubscribers.entries()) {
+    if (!applicableIds.has(assignmentId)) {
+      unsubscribe();
+      submissionUnsubscribers.delete(assignmentId);
+      delete submissionCache[assignmentId];
+    }
+  }
+
+  for (const assignmentId of applicableIds) {
+    if (submissionUnsubscribers.has(assignmentId)) continue;
+
+    const unsubscribe = onValue(
+      ref(db, `assignmentSubmissions/${assignmentId}/${studentKey}`),
+      (snapshot) => {
+        submissionCache[assignmentId] = snapshot.val() || null;
+        renderAssignments();
+      }
+    );
+
+    submissionUnsubscribers.set(assignmentId, unsubscribe);
+  }
 }
 
 function submissionRow(submission) {
@@ -389,10 +422,12 @@ onValue(ref(db, `students/${studentKey}`), async (snapshot) => {
   const displayName = currentStudent.fullName || currentStudent.name || currentStudent.nickname || "Student";
   studentIdentity.textContent = currentStudent.nickname || displayName.split(" ")[0];
   studentAssignmentIdentity.textContent = `${displayName} · ${currentStudent.groupName || "GENERAL"}`;
+  wireOwnSubmissionListeners();
   await refreshAssignments();
 });
 
 onValue(ref(db, "assignments"), async (snapshot) => {
   assignmentsCache = snapshot.val() || {};
+  wireOwnSubmissionListeners();
   await refreshAssignments();
 });
