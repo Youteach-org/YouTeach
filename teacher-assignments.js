@@ -794,11 +794,57 @@ function buildChatGPTGradingPrompt(assignmentId) {
   ].filter(Boolean).join("\n");
 }
 
+function stopAiAutoSync(assignmentId) {
+  const timer = aiAutoSyncTimers.get(assignmentId);
+  if (timer) clearInterval(timer);
+  aiAutoSyncTimers.delete(assignmentId);
+}
+
+function startAiAutoSync(assignmentId, startedAt) {
+  stopAiAutoSync(assignmentId);
+  let attempts = 0;
+  const maxAttempts = 180;
+
+  const check = async () => {
+    attempts += 1;
+    const result = await syncAiGrades({
+      assignmentId,
+      minimumResultsModifiedTime: startedAt,
+      silentPending: true
+    });
+
+    if (result?.ok) {
+      stopAiAutoSync(assignmentId);
+      return;
+    }
+
+    if (attempts >= maxAttempts) {
+      stopAiAutoSync(assignmentId);
+      if (selectedAssignmentId === assignmentId) {
+        aiSyncStatus.textContent = "AI result not detected yet. Use Check AI Results later.";
+        aiSyncStatus.style.color = "#b45309";
+      }
+    }
+  };
+
+  const timer = setInterval(check, 10000);
+  aiAutoSyncTimers.set(assignmentId, timer);
+  setTimeout(check, 5000);
+}
+
 function openChatGPTGrading(assignmentId) {
   const prompt = buildChatGPTGradingPrompt(assignmentId);
   if (!prompt) return;
 
+  selectedAssignmentId = assignmentId;
+  renderAssignmentList();
+
   navigator.clipboard?.writeText(prompt).catch(() => {});
+
+  const startedAt = Date.now();
+  aiSyncStatus.textContent = "Waiting for AI results...";
+  aiSyncStatus.style.color = "#64748b";
+  startAiAutoSync(assignmentId, startedAt);
 
   const url = `https://chatgpt.com/?prompt=${encodeURIComponent(prompt)}`;
   window.open(url, "_blank", "noopener");
@@ -819,11 +865,8 @@ function aiCandidateTotalForSubmission(submission) {
 }
 
 function submissionIsGraded(submission) {
-  return (
-    submission?.reviewStatus === "graded" &&
-    submission?.grading &&
-    gradingTotalForSubmission(submission) !== null
-  );
+  if (!submission?.grading || gradingTotalForSubmission(submission) === null) return false;
+  return ["graded", "ai-graded", "manual-graded"].includes(String(submission?.reviewStatus || ""));
 }
 
 function identityStatusLabel(status) {
@@ -834,53 +877,69 @@ function identityStatusLabel(status) {
   return "Identity pending review";
 }
 
-async function syncAiGrades() {
-  const assignment = assignmentsCache[selectedAssignmentId];
-  if (!assignment) return;
+async function syncAiGrades(options = {}) {
+  const assignmentId = String(options.assignmentId || selectedAssignmentId || "");
+  const assignment = assignmentsCache[assignmentId];
+  if (!assignment) return { ok: false };
 
-  if (aiConflictMode.value === "replace-manual") {
-    const confirmed = window.confirm(
-      "Replace existing manual grades with AI grades where both exist? This changes the saved grade in YouTeach, but it does not delete the AI results file in Drive."
-    );
-    if (!confirmed) return;
+  const isSelected = assignmentId === selectedAssignmentId;
+  if (isSelected) {
+    syncAiGradesBtn.disabled = true;
+    if (!options.silentPending) {
+      aiSyncStatus.textContent = "Checking AI results...";
+      aiSyncStatus.style.color = "#64748b";
+    }
   }
-
-  syncAiGradesBtn.disabled = true;
-  aiSyncStatus.textContent = "Importing AI results from Drive...";
-  aiSyncStatus.style.color = "#64748b";
 
   try {
     const response = await fetch("/api/sync-ai-grades", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        assignmentId: selectedAssignmentId,
-        conflictMode: aiConflictMode.value
+        assignmentId,
+        minimumResultsModifiedTime: Number(options.minimumResultsModifiedTime || 0),
+        forceRegrade: Boolean(options.forceRegrade)
       })
     });
 
     const result = await response.json().catch(() => ({}));
+
+    if (response.status === 202 && result.pending) {
+      if (isSelected && !options.silentPending) {
+        aiSyncStatus.textContent = "AI results are not ready yet.";
+        aiSyncStatus.style.color = "#64748b";
+      }
+      return { ok: false, pending: true };
+    }
+
     if (!response.ok || !result.ok) {
-      throw new Error(result.error || "Could not sync AI grades.");
+      throw new Error(result.error || "Could not apply AI grades.");
     }
 
     const parts = [];
     if (result.imported) parts.push(`${result.imported} AI grade${result.imported === 1 ? "" : "s"} applied`);
-    if (result.compared) parts.push(`${result.compared} ready to compare`);
-    if (result.skippedManual) parts.push(`${result.skippedManual} manual grade${result.skippedManual === 1 ? "" : "s"} kept; AI saved`);
-    if (!parts.length) parts.push("No grade changes");
+    if (result.skippedAlready) parts.push(`${result.skippedAlready} already applied`);
+    if (result.skippedManual) parts.push(`${result.skippedManual} manual grade${result.skippedManual === 1 ? "" : "s"} preserved`);
+    if (!parts.length) parts.push("AI results checked");
     if (result.unmatched?.length) parts.push(`${result.unmatched.length} unmatched`);
     if (result.errors?.length) parts.push(`${result.errors.length} errors`);
 
-    aiSyncStatus.textContent = parts.join(" · ");
-    aiSyncStatus.style.color =
-      result.errors?.length || result.unmatched?.length ? "#b45309" : "#166534";
+    if (isSelected) {
+      aiSyncStatus.textContent = parts.join(" · ");
+      aiSyncStatus.style.color =
+        result.errors?.length || result.unmatched?.length ? "#b45309" : "#166534";
+    }
+
+    return result;
   } catch (error) {
     console.error(error);
-    aiSyncStatus.textContent = error?.message || "Could not sync AI grades.";
-    aiSyncStatus.style.color = "#b91c1c";
+    if (isSelected && !options.silentPending) {
+      aiSyncStatus.textContent = error?.message || "Could not apply AI grades.";
+      aiSyncStatus.style.color = "#b91c1c";
+    }
+    return { ok: false, error: error?.message || "Could not apply AI grades." };
   } finally {
-    syncAiGradesBtn.disabled = false;
+    if (isSelected) syncAiGradesBtn.disabled = false;
   }
 }
 
