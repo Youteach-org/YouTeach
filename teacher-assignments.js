@@ -788,6 +788,13 @@ function gradingTotalForSubmission(submission) {
   return Number.isFinite(total) ? total : null;
 }
 
+function aiCandidateTotalForSubmission(submission) {
+  const raw = submission?.aiGradingCandidate?.totalScore;
+  if (raw === null || raw === undefined || raw === "") return null;
+  const total = Number(raw);
+  return Number.isFinite(total) ? total : null;
+}
+
 function submissionIsGraded(submission) {
   return (
     submission?.reviewStatus === "graded" &&
