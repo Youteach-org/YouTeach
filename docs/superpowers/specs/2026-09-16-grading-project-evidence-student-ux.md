@@ -4,6 +4,29 @@ Date: 2026-09-16
 Repository: youteachtk/YouTeach
 Status: accepted product decisions
 
+## 0. Implementation status
+
+Implemented on `main`, pending field validation:
+- stronger evidence-first AI grading prompt;
+- grading-results JSON schema v2 prompt with Drive source metadata;
+- automatic polling/import of fresh AI grading results after launching AI Grading;
+- AI grades saved internally as unpublished;
+- conflict selector removed from the normal workflow;
+- idempotent import protection for already-applied result/submission revisions;
+- manual grades preserved when the same submission revision is already manually graded;
+- teacher Publish / Unpublish control on submission cards;
+- student side shows only published numeric grades/feedback;
+- student assignment cards expand in the grid to show full instructions/details;
+- student grade display refreshes live after teacher publication;
+- manual grading supports linked criterion points and percentages, with points constrained by criterion maximum.
+
+Planned, not yet implemented:
+- full grading-history/audit trail across revisions;
+- Project review checkpoints with photo/video/document evidence uploads;
+- exam PDF/image annotation with ✓/✗ and per-question marks;
+- richer grading ledger fingerprinting using Drive modified-time/size through all layers;
+- bulk grade publication controls.
+
 ## 1. Canonical grading workflow
 
 The normal workflow is intentionally simple.
