@@ -396,7 +396,13 @@ export async function onRequestPost(context) {
       try {
         const aiGrade = normalizeAiGrade(result, criteria);
         const currentIdentity = String(submission?.identityReviewStatus || "pending");
-        const sourceRevision = Number(submission?.updatedAt || submission?.submittedAt || 0);
+        // Use the upload revision, not submission.updatedAt. Grading/publication updates
+        // also change updatedAt and must not make the same file look newly submitted.
+        const sourceRevision = Number(
+          submission?.uploadedAt ||
+          submission?.submittedAt ||
+          0
+        );
         const sameSubmissionRevision =
           Number(submission?.gradingSourceSubmissionUpdatedAt || 0) === sourceRevision &&
           String(submission?.gradingSourceDriveFileId || "") === String(submission?.driveFileId || "");
