@@ -75,6 +75,34 @@ Capabilities:
 Future optional capability:
 - duplicate a template to create a variant while preserving the original.
 
+
+### 3.1 Foundation implementation status — 2026-09-16
+
+Implemented on `feature/assignment-library-foundation`, pending merge:
+- `assignment-library-model.js` defines the pure reusable-content boundary;
+- reusable content is copied through an explicit allowlist rather than copying the whole assigned instance;
+- Task Code, group, due date, active state, submissions, grades, grade-publication state, and other run-specific data are not part of template content;
+- reusable Project checkpoint content keeps title/instructions/evidence types while absolute run-specific checkpoint dates are excluded;
+- `buildAssignmentTemplateRecord(...)` creates a schema-versioned reusable template record;
+- `buildAssignedInstanceFromTemplate(...)` creates a clean runtime assignment payload compatible with the existing `assignments` node;
+- each new instance carries `templateId`, `templateVersion`, and a deep-cloned `templateSnapshot` so later template edits cannot rewrite historical instances.
+
+Not yet implemented in this foundation slice:
+- Firebase persistence under `assignmentTemplates`;
+- teacher actions to save an assignment as a template;
+- Assignment Library browsing/search/filter/archive UI;
+- creating a new assigned instance from the Library UI;
+- usage-count/statistics aggregation.
+
+Next integration slice:
+1. persist reusable templates under `assignmentTemplates/{templateId}`;
+2. create assigned instances in the existing `assignments` node from a selected template;
+3. increment template usage only after successful instance creation;
+4. add the minimum teacher actions required to save/reuse a template;
+5. preserve the current Teacher Assignments grading/submission workflows unchanged.
+
+No Assignment Library visual layout should be invented from the provisional foundation; UI behavior still requires explicit product review.
+
 ## 4. Course/topic analytics foundation
 
 Every reusable academic item should be taggable to the teacher's course structure.
