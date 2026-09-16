@@ -711,6 +711,54 @@
       display:inline-flex;margin-top:3px;padding:3px 5px;border-radius:999px;
       background:#dbeafe;color:#1d4ed8;font-size:9px;font-weight:900
     }
+    .grade-display{
+      display:grid;
+      grid-template-columns:auto 1fr auto;
+      align-items:center;
+      gap:6px;
+      margin-top:3px;
+      padding:6px 7px;
+      border-radius:8px;
+      border:1px solid #bfdbfe;
+      background:#eff6ff
+    }
+    .grade-display span{
+      font-size:8px;
+      font-weight:900;
+      color:#475569;
+      text-transform:uppercase;
+      letter-spacing:.02em
+    }
+    .grade-display strong{
+      min-height:0!important;
+      display:block!important;
+      overflow:visible!important;
+      font-size:15px!important;
+      line-height:1!important;
+      color:#1d4ed8!important;
+      white-space:nowrap
+    }
+    .grade-display small{
+      font-size:8px;
+      font-weight:900;
+      color:#64748b;
+      white-space:nowrap
+    }
+    .grade-display.manual{
+      border-color:#c4b5fd;
+      background:#f5f3ff
+    }
+    .grade-display.manual strong{color:#6d28d9!important}
+    .grade-display.needs-review{
+      grid-template-columns:auto 1fr;
+      border-color:#fed7aa;
+      background:#fff7ed
+    }
+    .grade-display.needs-review strong{
+      color:#c2410c!important;
+      font-size:10px!important;
+      white-space:normal
+    }
     .submission-card-actions{
       display:flex;
       align-items:center;
@@ -726,6 +774,16 @@
       background:#16a34a
     }
     .publish-grade-btn:hover{background:#15803d}
+    .manual-takeover-btn{
+      padding:5px 7px;
+      border-radius:7px;
+      border:1px solid #bfdbfe;
+      background:#eff6ff;
+      color:#1d4ed8;
+      font-size:9px;
+      font-weight:900
+    }
+    .manual-takeover-btn:hover{background:#dbeafe}
     .ai-sync-note{
       font-size:8px;
       font-weight:900;
@@ -1196,7 +1254,6 @@
         <section id="createAssignmentPanel" class="panel-card create-card" hidden>
           <div class="panel-card-header">
             <h3>Create Assignment</h3>
-            <button id="hideCreateAssignmentBtn" type="button">Close</button>
           </div>
           <div class="create-grid">
             <div class="field">
@@ -1420,9 +1477,8 @@
                 <div class="manual-grading-head">
                   <div>
                     <h4 id="manualGradingTitle">Manual Grading</h4>
-                    <p>Score this student using the assignment criteria.</p>
+                    <p>Click the selected student card again to hide this panel.</p>
                   </div>
-                  <button id="closeManualGradingBtn" type="button">Close</button>
                 </div>
                 <div id="manualGradingList" class="manual-grading-list"></div>
               </section>
@@ -1440,7 +1496,7 @@
     </main>
   </div>
 
-  <script type="module" src="teacher-assignments.js?v=missing-cards-clear-grade-v2-20260916"></script>
+  <script type="module" src="teacher-assignments.js?v=ai-grade-card-toggle-20260916"></script>
   <script defer src="shared-ui-fixes.js?v=titlebar-hamburger-20260916"></script>
 </body>
 </html>
