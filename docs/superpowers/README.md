@@ -25,9 +25,7 @@ GitHub is the source of truth. Chat memory is secondary.
    - Assignment Library;
    - course/topic analytics;
    - Course Intelligence / Program Builder direction;
-   - Question Bank;
-   - Exam Creator;
-   - Answer Sheet Creator;
+   - manual Exam Bank;
    - Administration.
 
 3. `docs/superpowers/specs/2026-09-16-grading-project-evidence-student-ux.md`
@@ -58,25 +56,24 @@ GitHub is the source of truth. Chat memory is secondary.
 6. GitHub changes happen first; Cloudflare deploys from GitHub.
 7. Keep YouTeach and Classroom Online Games as separate repositories. Integrate through explicit contracts.
 8. Reusable content must remain separate from historical student instances/data.
-9. Never copy prior submissions/grades into a reused Assignment or Exam instance.
-10. Exam Creator and Answer Sheet Creator must share the same exam/version schema.
-11. Admin is a separate role-aware section from Teacher.
-12. Current project terminology should stay consistent with the specs.
+9. Never copy prior submissions/grades into a reused Assignment instance.
+10. The approved exam-library feature is the manual Exam Bank; internal Question Bank / Exam Creator / Answer Sheet Creator are not approved scope.
+11. External AI exam creation/rearrangement is outside the Exam Bank and must be designed separately.
+12. Admin is a separate role-aware section from Teacher.
+13. Current project terminology should stay consistent with the specs.
 
 ## Current high-level sequence
 
-1. Finish AI grading round-trip end-to-end.
+1. Field-validate AI grading -> teacher review -> publish on real tasks.
 2. Stabilize responsive behavior across desktop/tablet/mobile.
 3. Add Assignment Template / Assigned Instance model.
 4. Build Assignment Library.
 5. Add Course -> Unit -> Topic -> Subtopic metadata.
 6. Add analytics foundation.
-7. Build Question Bank.
-8. Build Exam Creator.
-9. Build Answer Sheet Creator.
-10. Build Administration.
-11. Build Course Intelligence / Program Builder.
-12. Harden authentication and finish infrastructure cleanup.
+7. Build the manual Exam Bank.
+8. Build Administration.
+9. Harden authentication and finish Cloudflare/infrastructure cleanup.
+10. Build Course Intelligence / Program Builder when historical data is sufficient.
 
 ## How another instance should continue
 
