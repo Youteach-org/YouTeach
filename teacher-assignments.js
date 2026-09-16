@@ -3,7 +3,9 @@ import { ref, onValue, push, set, update } from "https://www.gstatic.com/firebas
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
 import {
   buildAssignmentTemplateRecord,
-  buildAssignedInstanceFromTemplate
+  buildAssignedInstanceFromTemplate,
+  filterAssignmentTemplates,
+  buildAssignmentTemplateArchivePatch
 } from "./assignment-library-model.js";
 
 if (!requireTeacherAuth()) throw new Error("Teacher authentication required.");
@@ -75,6 +77,20 @@ const assignmentTemplateSource = document.getElementById("assignmentTemplateSour
 const loadAssignmentTemplateBtn = document.getElementById("loadAssignmentTemplateBtn");
 const saveSelectedTemplateBtn = document.getElementById("saveSelectedTemplateBtn");
 const assignmentTemplateStatus = document.getElementById("assignmentTemplateStatus");
+const assignmentLibraryPanel = document.getElementById("assignmentLibraryPanel");
+const assignmentLibrarySearch = document.getElementById("assignmentLibrarySearch");
+const assignmentLibraryTypeFilter = document.getElementById("assignmentLibraryTypeFilter");
+const assignmentLibraryCourseFilter = document.getElementById("assignmentLibraryCourseFilter");
+const assignmentLibrarySubjectFilter = document.getElementById("assignmentLibrarySubjectFilter");
+const assignmentLibraryUnitFilter = document.getElementById("assignmentLibraryUnitFilter");
+const assignmentLibraryTopicFilter = document.getElementById("assignmentLibraryTopicFilter");
+const assignmentLibraryTagFilter = document.getElementById("assignmentLibraryTagFilter");
+const assignmentLibraryUsageFilter = document.getElementById("assignmentLibraryUsageFilter");
+const assignmentLibraryStatusFilter = document.getElementById("assignmentLibraryStatusFilter");
+const clearAssignmentLibraryFiltersBtn = document.getElementById("clearAssignmentLibraryFiltersBtn");
+const assignmentLibraryList = document.getElementById("assignmentLibraryList");
+const assignmentLibraryCount = document.getElementById("assignmentLibraryCount");
+const assignmentLibraryStatus = document.getElementById("assignmentLibraryStatus");
 const createAssignmentBtn = document.getElementById("createAssignmentBtn");
 const createAssignmentStatus = document.getElementById("createAssignmentStatus");
 const createAssignmentPanel = document.getElementById("createAssignmentPanel");
@@ -2438,6 +2454,145 @@ function renderDetail() {
   if (!manualGradingPanel.hidden) renderManualGrading();
 }
 
+function replaceAssignmentLibraryFilterOptions(select, values, allLabel) {
+  const previous = select.value;
+  const unique = [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b));
+  select.innerHTML =
+    `<option value="">${escapeHtml(allLabel)}</option>` +
+    unique.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("");
+  if (unique.includes(previous)) select.value = previous;
+  select.disabled = unique.length === 0;
+}
+
+function renderAssignmentLibraryFilterOptions() {
+  const templates = Object.values(assignmentTemplatesCache || {});
+  const contents = templates.map((template) => template?.content || {});
+  replaceAssignmentLibraryFilterOptions(
+    assignmentLibraryTypeFilter,
+    contents.map((content) => content.assignmentTypeCode || content.assignmentType),
+    "All types"
+  );
+  replaceAssignmentLibraryFilterOptions(
+    assignmentLibraryCourseFilter,
+    contents.map((content) => content.course),
+    "All courses"
+  );
+  replaceAssignmentLibraryFilterOptions(
+    assignmentLibrarySubjectFilter,
+    contents.map((content) => content.subject),
+    "All subjects"
+  );
+  replaceAssignmentLibraryFilterOptions(
+    assignmentLibraryUnitFilter,
+    contents.map((content) => content.unit),
+    "All units"
+  );
+  replaceAssignmentLibraryFilterOptions(
+    assignmentLibraryTopicFilter,
+    contents.map((content) => content.topic),
+    "All topics"
+  );
+  replaceAssignmentLibraryFilterOptions(
+    assignmentLibraryTagFilter,
+    contents.flatMap((content) => Array.isArray(content.tags) ? content.tags : []),
+    "All tags"
+  );
+}
+
+function assignmentLibraryFilters() {
+  return {
+    query: assignmentLibrarySearch.value,
+    type: assignmentLibraryTypeFilter.value,
+    course: assignmentLibraryCourseFilter.value,
+    subject: assignmentLibrarySubjectFilter.value,
+    unit: assignmentLibraryUnitFilter.value,
+    topic: assignmentLibraryTopicFilter.value,
+    tag: assignmentLibraryTagFilter.value,
+    usage: assignmentLibraryUsageFilter.value,
+    status: assignmentLibraryStatusFilter.value
+  };
+}
+
+function renderAssignmentLibrary() {
+  const templates = filterAssignmentTemplates(assignmentTemplatesCache, assignmentLibraryFilters());
+  assignmentLibraryCount.textContent = `${templates.length} template${templates.length === 1 ? "" : "s"}`;
+
+  if (!templates.length) {
+    assignmentLibraryList.innerHTML =
+      '<div class="assignment-library-empty">No templates match these filters.</div>';
+    return;
+  }
+
+  assignmentLibraryList.innerHTML = templates.map(([id, template]) => {
+    const content = template?.content || {};
+    const archived = Boolean(template?.archived);
+    const type = String(content.assignmentTypeCode || content.assignmentType || "Template");
+    const uses = Number(template?.usageCount || 0);
+    const meta = [content.course, content.subject, content.unit, content.topic]
+      .map((value) => String(value || "").trim())
+      .filter(Boolean);
+    const tags = Array.isArray(content.tags) ? content.tags.filter(Boolean) : [];
+
+    return `
+      <article class="assignment-template-card${archived ? " archived" : ""}" data-template-id="${escapeHtml(id)}">
+        <div class="assignment-template-card-head">
+          <h4>${escapeHtml(content.title || "Untitled template")}</h4>
+          <span class="assignment-template-type">${escapeHtml(type)}</span>
+        </div>
+        <div class="assignment-template-meta">
+          ${meta.length ? `${meta.map(escapeHtml).join(" · ")}<br>` : ""}
+          ${uses} historical use${uses === 1 ? "" : "s"}${archived ? " · Archived" : ""}
+        </div>
+        ${tags.length ? `
+          <div class="assignment-template-tags">
+            ${tags.map((tag) => `<span class="assignment-template-tag">${escapeHtml(tag)}</span>`).join("")}
+          </div>
+        ` : ""}
+        <div class="assignment-template-actions">
+          ${archived
+            ? `<button type="button" data-template-action="restore" data-template-id="${escapeHtml(id)}">Restore</button>`
+            : `
+              <button type="button" data-template-action="load" data-template-id="${escapeHtml(id)}">Load</button>
+              <button type="button" data-template-action="archive" data-template-id="${escapeHtml(id)}">Archive</button>
+            `}
+        </div>
+      </article>
+    `;
+  }).join("");
+}
+
+async function setAssignmentTemplateArchived(templateId, archived) {
+  const template = assignmentTemplatesCache[templateId];
+  if (!template) return;
+
+  assignmentLibraryStatus.textContent = archived ? "Archiving..." : "Restoring...";
+  assignmentLibraryStatus.className = "status-text";
+
+  try {
+    const patch = buildAssignmentTemplateArchivePatch({
+      template,
+      archived,
+      now: Date.now(),
+      actor: getTeacherName()
+    });
+    await update(ref(db, `assignmentTemplates/${templateId}`), patch);
+
+    if (archived && loadedAssignmentTemplateId === templateId) {
+      loadedAssignmentTemplateId = "";
+      assignmentTemplateSource.value = "";
+      loadAssignmentTemplateBtn.disabled = true;
+    }
+
+    assignmentLibraryStatus.textContent = archived ? "Template archived." : "Template restored.";
+    assignmentLibraryStatus.className = "status-text ok";
+  } catch (error) {
+    console.error(error);
+    assignmentLibraryStatus.textContent = error?.message || "Could not update the template.";
+    assignmentLibraryStatus.className = "status-text bad";
+  }
+}
+
 function renderAssignmentTemplateOptions() {
   const previous = assignmentTemplateSource.value;
   const templates = Object.entries(assignmentTemplatesCache || {})
@@ -3120,6 +3275,54 @@ assignmentScrollRightBtn.addEventListener("click", () => {
 
 createAssignmentBtn.addEventListener("click", createAssignment);
 saveSelectedTemplateBtn.addEventListener("click", saveSelectedAssignmentAsTemplate);
+
+assignmentLibrarySearch.addEventListener("input", renderAssignmentLibrary);
+[
+  assignmentLibraryTypeFilter,
+  assignmentLibraryCourseFilter,
+  assignmentLibrarySubjectFilter,
+  assignmentLibraryUnitFilter,
+  assignmentLibraryTopicFilter,
+  assignmentLibraryTagFilter,
+  assignmentLibraryUsageFilter,
+  assignmentLibraryStatusFilter
+].forEach((select) => select.addEventListener("change", renderAssignmentLibrary));
+
+clearAssignmentLibraryFiltersBtn.addEventListener("click", () => {
+  assignmentLibrarySearch.value = "";
+  assignmentLibraryTypeFilter.value = "";
+  assignmentLibraryCourseFilter.value = "";
+  assignmentLibrarySubjectFilter.value = "";
+  assignmentLibraryUnitFilter.value = "";
+  assignmentLibraryTopicFilter.value = "";
+  assignmentLibraryTagFilter.value = "";
+  assignmentLibraryUsageFilter.value = "all";
+  assignmentLibraryStatusFilter.value = "active";
+  renderAssignmentLibrary();
+});
+
+assignmentLibraryList.addEventListener("click", async (event) => {
+  const button = event.target.closest("[data-template-action][data-template-id]");
+  if (!button) return;
+
+  const templateId = String(button.dataset.templateId || "");
+  const action = String(button.dataset.templateAction || "");
+  if (!templateId || !assignmentTemplatesCache[templateId]) return;
+
+  if (action === "load") {
+    assignmentTemplateSource.value = templateId;
+    loadAssignmentTemplateBtn.disabled = false;
+    loadSelectedAssignmentTemplate();
+    return;
+  }
+
+  if (action === "archive" || action === "restore") {
+    button.disabled = true;
+    await setAssignmentTemplateArchived(templateId, action === "archive");
+  }
+});
+
+
 assignmentTemplateSource.addEventListener("change", () => {
   loadAssignmentTemplateBtn.disabled = !assignmentTemplateSource.value;
   if (!assignmentTemplateSource.value) loadedAssignmentTemplateId = "";
@@ -3158,6 +3361,8 @@ fillRubricEditor(
 refreshAutomaticTaskCode();
 refreshProjectCheckpointBuilder();
 renderAssignmentTemplateOptions();
+renderAssignmentLibraryFilterOptions();
+renderAssignmentLibrary();
 saveSelectedTemplateBtn.disabled = true;
 
 logoutBtn.addEventListener("click", logoutTeacher);
@@ -3185,6 +3390,8 @@ onValue(ref(db, "assignments"), (snapshot) => {
 onValue(ref(db, "assignmentTemplates"), (snapshot) => {
   assignmentTemplatesCache = snapshot.val() || {};
   renderAssignmentTemplateOptions();
+  renderAssignmentLibraryFilterOptions();
+  renderAssignmentLibrary();
 });
 
 onValue(ref(db, "assignmentSubmissions"), (snapshot) => {
