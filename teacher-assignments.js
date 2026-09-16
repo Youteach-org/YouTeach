@@ -105,6 +105,11 @@ const addEditCriterionBtn = document.getElementById("addEditCriterionBtn");
 const saveCriteriaBtn = document.getElementById("saveCriteriaBtn");
 const cancelCriteriaBtn = document.getElementById("cancelCriteriaBtn");
 const criteriaSaveStatus = document.getElementById("criteriaSaveStatus");
+const projectCheckpointBuilder = document.getElementById("projectCheckpointBuilder");
+const projectCheckpointRows = document.getElementById("projectCheckpointRows");
+const addProjectCheckpointBtn = document.getElementById("addProjectCheckpointBtn");
+const projectProgressPanel = document.getElementById("projectProgressPanel");
+const projectProgressTimeline = document.getElementById("projectProgressTimeline");
 const manualGradingPanel = document.getElementById("manualGradingPanel");
 const manualGradingTitle = document.getElementById("manualGradingTitle");
 const manualGradingList = document.getElementById("manualGradingList");
@@ -117,6 +122,7 @@ let assignmentsCache = {};
 let submissionsCache = {};
 let studentsCache = {};
 let groupsCache = {};
+let projectEvidenceCache = {};
 const WORKING_GROUP_KEY = "youteachWorkingGroup";
 
 let selectedAssignmentId = "";
@@ -347,6 +353,225 @@ function getAssignmentRubric(assignment) {
       ""
     )
   };
+}
+
+function assignmentTypeCodeFor(assignment) {
+  const embedded = splitStoredInstructions(assignment?.instructions).rubric || {};
+  return String(
+    assignment?.assignmentTypeCode ||
+    embedded.assignmentTypeCode ||
+    ""
+  ).trim().toUpperCase();
+}
+
+function isProjectAssignment(assignment) {
+  return assignmentTypeCodeFor(assignment) === "PJ";
+}
+
+function normalizeProjectCheckpoints(assignment) {
+  return Object.entries(assignment?.projectCheckpoints || {})
+    .map(([id, checkpoint]) => ({
+      id,
+      title: String(checkpoint?.title || "Checkpoint"),
+      dueAt: Number(checkpoint?.dueAt || 0),
+      instructions: String(checkpoint?.instructions || ""),
+      requiredEvidenceTypes: Array.isArray(checkpoint?.requiredEvidenceTypes)
+        ? checkpoint.requiredEvidenceTypes.map((value) => String(value))
+        : Object.keys(checkpoint?.requiredEvidenceTypes || {}).filter((key) => checkpoint.requiredEvidenceTypes[key]),
+      createdAt: Number(checkpoint?.createdAt || 0)
+    }))
+    .sort((a, b) => Number(a.dueAt || 0) - Number(b.dueAt || 0));
+}
+
+function makeCheckpointId() {
+  return `checkpoint-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function checkpointRowHtml(checkpoint = {}) {
+  const evidence = new Set(
+    Array.isArray(checkpoint.requiredEvidenceTypes)
+      ? checkpoint.requiredEvidenceTypes
+      : ["image"]
+  );
+  const dueValue = checkpoint.dueAt
+    ? new Date(Number(checkpoint.dueAt)).toISOString().slice(0, 16)
+    : "";
+
+  return `
+    <div class="project-checkpoint-row" data-project-checkpoint-row data-checkpoint-id="${escapeHtml(checkpoint.id || makeCheckpointId())}">
+      <input type="text" data-checkpoint-title placeholder="Checkpoint title" value="${escapeHtml(checkpoint.title || "")}">
+      <input type="datetime-local" data-checkpoint-due value="${escapeHtml(dueValue)}">
+      <textarea data-checkpoint-instructions placeholder="What progress should the student show?">${escapeHtml(checkpoint.instructions || "")}</textarea>
+      <div class="checkpoint-evidence-types" aria-label="Required evidence types">
+        <label><input type="checkbox" data-checkpoint-evidence="image" ${evidence.has("image") ? "checked" : ""}> Photo</label>
+        <label><input type="checkbox" data-checkpoint-evidence="video" ${evidence.has("video") ? "checked" : ""}> Video</label>
+        <label><input type="checkbox" data-checkpoint-evidence="document" ${evidence.has("document") ? "checked" : ""}> Document</label>
+      </div>
+      <button type="button" class="remove-checkpoint-btn" data-remove-checkpoint>Remove</button>
+    </div>
+  `;
+}
+
+function addProjectCheckpointRow(checkpoint = {}) {
+  projectCheckpointRows.insertAdjacentHTML("beforeend", checkpointRowHtml(checkpoint));
+}
+
+function refreshProjectCheckpointBuilder() {
+  const projectSelected = assignmentType.value === "PJ";
+  projectCheckpointBuilder.hidden = !projectSelected;
+  if (projectSelected && !projectCheckpointRows.querySelector("[data-project-checkpoint-row]")) {
+    addProjectCheckpointRow();
+  }
+}
+
+function collectProjectCheckpoints(finalDueAt) {
+  if (assignmentType.value !== "PJ") return { checkpoints: {}, error: "" };
+
+  const rows = [...projectCheckpointRows.querySelectorAll("[data-project-checkpoint-row]")];
+  const checkpoints = {};
+
+  for (const [index, row] of rows.entries()) {
+    const id = String(row.dataset.checkpointId || makeCheckpointId());
+    const title = row.querySelector("[data-checkpoint-title]")?.value.trim() || "";
+    const dueValue = row.querySelector("[data-checkpoint-due]")?.value || "";
+    const dueAt = dueValue ? new Date(dueValue).getTime() : 0;
+    const instructions = row.querySelector("[data-checkpoint-instructions]")?.value.trim() || "";
+    const requiredEvidenceTypes = [...row.querySelectorAll("[data-checkpoint-evidence]:checked")]
+      .map((input) => String(input.dataset.checkpointEvidence || ""))
+      .filter(Boolean);
+
+    if (!title) return { checkpoints: {}, error: `Checkpoint ${index + 1} needs a title.` };
+    if (!dueAt || Number.isNaN(dueAt)) return { checkpoints: {}, error: `Checkpoint ${index + 1} needs a review date.` };
+    if (finalDueAt && dueAt > finalDueAt) {
+      return { checkpoints: {}, error: `Checkpoint ${index + 1} cannot be later than the final project due date.` };
+    }
+    if (!requiredEvidenceTypes.length) {
+      return { checkpoints: {}, error: `Checkpoint ${index + 1} needs at least one evidence type.` };
+    }
+
+    checkpoints[id] = {
+      title,
+      dueAt,
+      instructions,
+      requiredEvidenceTypes,
+      createdAt: Date.now()
+    };
+  }
+
+  return { checkpoints, error: "" };
+}
+
+function projectEvidenceEntries(assignmentId, studentKey, checkpointId) {
+  return Object.entries(
+    projectEvidenceCache?.[assignmentId]?.[studentKey]?.[checkpointId] || {}
+  )
+    .map(([id, evidence]) => ({ id, ...(evidence || {}) }))
+    .sort((a, b) => Number(a.uploadedAt || 0) - Number(b.uploadedAt || 0));
+}
+
+function evidenceTypeLabel(type) {
+  if (type === "image") return "Photo";
+  if (type === "video") return "Video";
+  if (type === "document") return "Document";
+  return "Evidence";
+}
+
+function renderProjectProgress(assignment) {
+  if (!isProjectAssignment(assignment)) {
+    projectProgressPanel.hidden = true;
+    projectProgressTimeline.innerHTML = "";
+    return;
+  }
+
+  projectProgressPanel.hidden = false;
+  const checkpoints = normalizeProjectCheckpoints(assignment);
+  if (!checkpoints.length) {
+    projectProgressTimeline.innerHTML = '<div class="status-text">No progress checkpoints were configured for this project.</div>';
+    return;
+  }
+
+  const students = assignmentStudents(assignment);
+  projectProgressTimeline.innerHTML = checkpoints.map((checkpoint) => {
+    const typeText = checkpoint.requiredEvidenceTypes.map(evidenceTypeLabel).join(", ");
+    return `
+      <section class="teacher-checkpoint">
+        <div class="teacher-checkpoint-head">
+          <div>
+            <strong>${escapeHtml(checkpoint.title)}</strong>
+            <div class="teacher-checkpoint-instructions">${escapeHtml(checkpoint.instructions || "No additional instructions.")}</div>
+          </div>
+          <span>${escapeHtml(formatDate(checkpoint.dueAt))} · ${escapeHtml(typeText)}</span>
+        </div>
+        <div class="teacher-checkpoint-students">
+          ${students.map(([studentKey, student]) => {
+            const evidence = projectEvidenceEntries(selectedAssignmentId, studentKey, checkpoint.id);
+            const reviewed = evidence.length > 0 && evidence.every((item) => item.reviewStatus === "reviewed");
+            return `
+              <article class="teacher-checkpoint-student">
+                <strong>${escapeHtml(student.fullName || student.name || student.nickname || "Student")}</strong>
+                <span>${evidence.length ? `${evidence.length} evidence file${evidence.length === 1 ? "" : "s"} · ${reviewed ? "Reviewed" : "Pending review"}` : "No evidence yet"}</span>
+                ${evidence.length ? `
+                  <div class="teacher-evidence-links">
+                    ${evidence.map((item, evidenceIndex) => `
+                      <a href="${escapeHtml(item.driveFileUrl || "#")}" target="_blank" rel="noopener">
+                        ${escapeHtml(item.originalFileName || `Evidence ${evidenceIndex + 1}`)}
+                      </a>
+                    `).join("")}
+                  </div>
+                  <div class="teacher-evidence-actions">
+                    ${evidence.map((item) => `
+                      <button
+                        type="button"
+                        data-review-project-evidence
+                        data-student-key="${escapeHtml(studentKey)}"
+                        data-checkpoint-id="${escapeHtml(checkpoint.id)}"
+                        data-evidence-id="${escapeHtml(item.id)}"
+                      >${item.reviewStatus === "reviewed" ? "Reopen" : "Mark reviewed"}</button>
+                    `).join("")}
+                  </div>
+                ` : ""}
+              </article>
+            `;
+          }).join("")}
+        </div>
+      </section>
+    `;
+  }).join("");
+}
+
+async function toggleProjectEvidenceReview(button) {
+  const studentKey = String(button.dataset.studentKey || "");
+  const checkpointId = String(button.dataset.checkpointId || "");
+  const evidenceId = String(button.dataset.evidenceId || "");
+  const evidence = projectEvidenceCache?.[selectedAssignmentId]?.[studentKey]?.[checkpointId]?.[evidenceId];
+  if (!evidence) return;
+
+  const reviewed = evidence.reviewStatus === "reviewed";
+  let note = String(evidence.teacherNote || "");
+  if (!reviewed) {
+    const entered = prompt("Teacher note for this evidence (optional):", note);
+    if (entered === null) return;
+    note = entered.trim();
+  }
+
+  const now = Date.now();
+  await update(
+    ref(db, `assignmentProjectEvidence/${selectedAssignmentId}/${studentKey}/${checkpointId}/${evidenceId}`),
+    reviewed
+      ? {
+          reviewStatus: "pending",
+          reviewedAt: null,
+          reviewedBy: null,
+          updatedAt: now
+        }
+      : {
+          reviewStatus: "reviewed",
+          teacherNote: note,
+          reviewedAt: now,
+          reviewedBy: getTeacherName(),
+          updatedAt: now
+        }
+  );
 }
 
 function makeCriterionId() {
@@ -1654,6 +1879,7 @@ function renderDetail() {
     ? "This assignment already has submissions and its definition is locked."
     : "Edit evaluation criteria";
   renderEvaluationCriteria(assignment);
+  renderProjectProgress(assignment);
 
   if (lockedBySubmissions) {
     editCriteriaBtn.title = "Criteria locked after the first submission.";
@@ -1799,6 +2025,13 @@ async function createAssignment() {
     return;
   }
 
+  const projectResult = collectProjectCheckpoints(dueAt);
+  if (projectResult.error) {
+    createAssignmentStatus.textContent = projectResult.error;
+    createAssignmentStatus.className = "status-text bad";
+    return;
+  }
+
   if (!code) {
     createAssignmentStatus.textContent = "Complete type, title, group, and due date to generate the task code.";
     createAssignmentStatus.className = "status-text bad";
@@ -1832,6 +2065,9 @@ async function createAssignment() {
       title,
       groupName,
       instructions: storedInstructions,
+      assignmentType: typeValue,
+      assignmentTypeCode: typeCode,
+      projectCheckpoints: typeCode === "PJ" ? projectResult.checkpoints : null,
       dueAt,
       active: true,
       storageProvider: "google-drive",
@@ -1848,6 +2084,8 @@ async function createAssignment() {
     assignmentInstructions.value = "";
     assignmentEvaluationNotes.value = "";
     assignmentDueAt.value = "";
+    projectCheckpointRows.innerHTML = "";
+    refreshProjectCheckpointBuilder();
     fillRubricEditor(
       createPresetCriteria,
       createCriteriaRows,
@@ -2063,6 +2301,21 @@ submissionList.addEventListener("click", (event) => {
   openManualGrading(selectedAssignmentId, card.dataset.submissionStudentKey);
 });
 
+projectProgressTimeline.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-review-project-evidence]");
+  if (!button) return;
+  button.disabled = true;
+  toggleProjectEvidenceReview(button)
+    .catch((error) => {
+      console.error(error);
+      aiSyncStatus.textContent = "Could not update project evidence review.";
+      aiSyncStatus.style.color = "#b91c1c";
+    })
+    .finally(() => {
+      button.disabled = false;
+    });
+});
+
 manualGradingList.addEventListener("input", (event) => {
   if (!event.target.matches("[data-manual-score],[data-manual-percent]")) return;
   syncManualCriterionInputs(event.target);
@@ -2142,7 +2395,10 @@ openDriveFolderBtn.addEventListener("click", () => {
   if (selectedDriveFolderUrl) window.open(selectedDriveFolderUrl, "_blank", "noopener");
 });
 
-assignmentType.addEventListener("change", refreshAutomaticTaskCode);
+assignmentType.addEventListener("change", () => {
+  refreshAutomaticTaskCode();
+  refreshProjectCheckpointBuilder();
+});
 assignmentOtherType.addEventListener("input", refreshAutomaticTaskCode);
 assignmentTitle.addEventListener("input", refreshAutomaticTaskCode);
 assignmentGroup.addEventListener("change", refreshAutomaticTaskCode);
@@ -2189,6 +2445,13 @@ assignmentScrollRightBtn.addEventListener("click", () => {
 
 createAssignmentBtn.addEventListener("click", createAssignment);
 toggleAssignmentBtn.addEventListener("click", toggleAssignment);
+addProjectCheckpointBtn.addEventListener("click", () => addProjectCheckpointRow());
+projectCheckpointRows.addEventListener("click", (event) => {
+  const removeButton = event.target.closest("[data-remove-checkpoint]");
+  if (!removeButton) return;
+  removeButton.closest("[data-project-checkpoint-row]")?.remove();
+  if (!projectCheckpointRows.querySelector("[data-project-checkpoint-row]")) addProjectCheckpointRow();
+});
 addCreateCriterionBtn.addEventListener("click", () => {
   addCustomCriterionRow(createCriteriaRows);
   refreshDistribution(createPresetCriteria, createCriteriaRows, createCriteriaTotal, createDistributionRadios);
@@ -2212,6 +2475,7 @@ fillRubricEditor(
   "equal"
 );
 refreshAutomaticTaskCode();
+refreshProjectCheckpointBuilder();
 
 logoutBtn.addEventListener("click", logoutTeacher);
 
@@ -2239,4 +2503,9 @@ onValue(ref(db, "assignmentSubmissions"), (snapshot) => {
   submissionsCache = snapshot.val() || {};
   renderAssignmentList();
   requestInitialAiSync();
+});
+
+onValue(ref(db, "assignmentProjectEvidence"), (snapshot) => {
+  projectEvidenceCache = snapshot.val() || {};
+  renderDetail();
 });
