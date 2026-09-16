@@ -491,14 +491,18 @@ export async function onRequestPost(context) {
           continue;
         }
 
-        if (!forceRegrade && submission?.grading?.mode === "manual" && sameSubmissionRevision) {
+        if (submission?.grading?.mode === "manual" && sameSubmissionRevision) {
           const manualGradedAt = Number(submission?.grading?.gradedAt || 0);
           const aiResultsModifiedAt = Date.parse(String(resultsFile.modifiedTime || "")) || 0;
+          const aiActionStartedAt = minimumResultsModifiedTime > 0
+            ? minimumResultsModifiedTime
+            : aiResultsModifiedAt;
 
-          // The latest grading action owns the current internal grade.
-          // A newer explicit AI result may replace an older manual grade;
-          // a manual grade saved after that AI result remains in control.
-          if (manualGradedAt >= aiResultsModifiedAt) {
+          // The latest deliberate grading action owns the current internal grade.
+          // For an explicit AI run, ownership starts when the teacher launches AI Grading,
+          // not when ChatGPT eventually finishes writing the results file. This prevents
+          // an in-flight AI run from overwriting a manual correction saved afterward.
+          if (manualGradedAt >= aiActionStartedAt) {
             summary.skippedManual += 1;
             continue;
           }
