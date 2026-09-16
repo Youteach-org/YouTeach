@@ -20,10 +20,10 @@ Implemented on `main`, pending field validation:
 - student grade display refreshes live after teacher publication;
 - manual grading supports linked criterion points and percentages, with points constrained by criterion maximum;
 - grading-history/audit trail across revisions, including AI application, manual correction, publication/unpublication, grade clearing, source submission revision metadata, and a baseline view for grades that predate the history feature;
-- Project review checkpoints with photo/video/document evidence uploads, additive Drive storage, student progress view, and teacher review state.
+- Project review checkpoints with photo/video/document evidence uploads, additive Drive storage, student progress view, and teacher review state;
+- exam PDF annotation first version for EX assignments: page-level ✓/✗/note marks, question/points/comments, persistent annotation metadata, separate --graded.pdf derivative in Drive, student access gated by grade publication, and annotation invalidation on resubmission.
 
 Planned, not yet implemented:
-- exam PDF/image annotation with ✓/✗ and per-question marks;
 - richer grading ledger fingerprinting using Drive modified-time/size through all layers;
 - bulk grade publication controls.
 
@@ -189,22 +189,43 @@ Firebase/YouTeach should also store which submission revision the current grade 
 
 ## 4. Exam grading annotations
 
-For exams, the teacher should be able to see visually which parts were correct or incorrect inside an annotated derivative of the submitted PDF/image.
+Implemented first version on `main` for assignment type `EX`.
 
-Accepted direction:
-- preserve the original submission unchanged;
-- generate a separate annotated copy;
-- use clear marks such as ✓ and ✗;
-- where useful include points/comments;
-- keep annotation data tied to question number/page;
-- store the annotated file in Drive alongside the original or in a clearly defined grading-output location.
+Teacher workflow:
+- open **Annotate exam** from a submitted-student card;
+- render the original submitted PDF in YouTeach with PDF.js;
+- choose ✓ Correct, ✗ Wrong, or Note;
+- click the page to place a mark;
+- optionally attach question number, points, and a short comment;
+- navigate pages, undo the last mark, clear one page, or remove individual marks;
+- save the annotated derivative.
 
-Suggested naming:
-`{original-base}--graded.pdf`
+Data model:
+- annotation metadata is stored on the submission under `examAnnotations`;
+- each annotation stores page, normalized x/y coordinates, type, question, points, comment, timestamp, and teacher;
+- `examAnnotationPointsTotal` stores the sum of entered per-question points for reference;
+- annotation points do not silently replace the current grading object.
 
-For exams produced by Exam Creator / Answer Sheet Creator, the system should know exact question/response regions, making annotation more reliable.
+PDF handling:
+- the original Drive submission is read through a YouTeach Cloudflare endpoint and is never modified;
+- pdf-lib generates a derivative copy;
+- Drive naming uses `{original-base}--graded.pdf`;
+- a later save updates the derivative rather than the original submission;
+- the teacher card links to the graded derivative.
 
-The grading JSON should eventually support per-question annotation metadata so the visual graded copy and numeric score come from the same grading record.
+Publication:
+- the student cannot retrieve the annotated derivative before `gradePublished=true`;
+- once the teacher publishes a numeric grade, the expanded student assignment card exposes **Open graded exam PDF**;
+- the student endpoint revalidates student identity and publication state before streaming the derivative.
+
+Revision safety:
+- a replacement submission invalidates/removes stale exam annotation metadata and the prior derivative;
+- a resubmission or withdrawal clears the current grade/publication state and records the prior grade in grading history as a previous revision;
+- Undo Submission removes both the original submitted file and any annotated derivative.
+
+Current first-version limitation:
+- annotations are manually positioned because Exam Creator / Answer Sheet Creator regions are not implemented yet;
+- when that shared exam schema exists, question/response coordinates should replace manual positioning where possible.
 
 ## 5. Project assignments with progress tracking
 
