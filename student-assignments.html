@@ -187,6 +187,55 @@
       font-size:10px;
       line-height:1.25
     }
+    .published-grade{
+      padding:7px 8px;
+      border:1px solid #86efac;
+      border-radius:9px;
+      background:#f0fdf4;
+      color:#166534
+    }
+    .published-grade-total{font-size:12px;font-weight:900}
+    .published-grade-breakdown{display:grid;gap:4px;margin-top:7px}
+    .published-grade-row{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding-top:4px;
+      border-top:1px solid #dcfce7;
+      font-size:11px
+    }
+    .published-grade-feedback{
+      margin-top:8px;
+      padding-top:7px;
+      border-top:1px solid #dcfce7;
+      font-size:11px;
+      line-height:1.4;
+      color:#14532d
+    }
+    .assignment-card.expanded{
+      grid-column:span 3;
+      min-height:0;
+      box-shadow:0 10px 28px rgba(15,23,42,.12);
+      border-color:#93c5fd
+    }
+    .assignment-card.expanded h3{
+      display:block;
+      min-height:0;
+      font-size:20px
+    }
+    .assignment-card.expanded .assignment-instructions{
+      display:block;
+      -webkit-line-clamp:unset;
+      overflow:visible;
+      min-height:0;
+      white-space:pre-wrap;
+      font-size:13px;
+      line-height:1.5
+    }
+    .assignment-card.expanded .submission-row{font-size:11px}
+    .assignment-card.expanded .upload-box{margin-top:4px}
+
     .empty-state{
       grid-column:1/-1;
       padding:28px;
@@ -196,16 +245,20 @@
 
     @media(max-width:1199px){
       .assignment-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+      .assignment-card.expanded{grid-column:span 4}
     }
     @media(max-width:900px){
       .assignment-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+      .assignment-card.expanded{grid-column:span 3}
     }
     @media(max-width:680px){
       .assignment-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .assignment-card.expanded{grid-column:span 2}
       .student-top-identity{align-items:flex-start;flex-direction:column;gap:2px}
     }
     @media(max-width:480px){
       .assignment-grid{grid-template-columns:1fr}
+      .assignment-card.expanded{grid-column:span 1}
     }
   </style>
 </head>
@@ -246,7 +299,7 @@
     </main>
   </div>
 
-  <script type="module" src="student-assignments.js?v=compact-six-card-grid-20260914b"></script>
+  <script type="module" src="student-assignments.js?v=expanded-grades-20260916"></script>
   <script defer src="shared-ui-fixes.js?v=assignments-20260914"></script>
 </body>
 </html>
