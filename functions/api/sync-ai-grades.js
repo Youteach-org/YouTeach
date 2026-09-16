@@ -414,7 +414,14 @@ export async function onRequestPost(context) {
             ? aiGrade.identityStatus
             : currentIdentity;
 
-        if (!forceRegrade && sameSubmissionRevision && sameResultsRevision) {
+        if (
+          !forceRegrade &&
+          sameSubmissionRevision &&
+          sameResultsRevision &&
+          submission?.grading?.mode === "ai" &&
+          submission?.grading?.totalScore !== null &&
+          submission?.grading?.totalScore !== undefined
+        ) {
           summary.skippedAlready += 1;
           continue;
         }
