@@ -316,6 +316,100 @@ async function ensureEvaluationRubricFile({
   };
 }
 
+async function ensureGradingResultsFile({
+  accessToken,
+  folderId,
+  assignmentId,
+  taskCode
+}) {
+  const fileName = `${taskCode}--grading-results.json`;
+  const query = [
+    `'${escapeDriveQuery(folderId)}' in parents`,
+    `name = '${escapeDriveQuery(fileName)}'`,
+    "trashed = false"
+  ].join(" and ");
+
+  const searchUrl = new URL("https://www.googleapis.com/drive/v3/files");
+  searchUrl.searchParams.set("q", query);
+  searchUrl.searchParams.set("fields", "files(id,name,webViewLink)");
+  searchUrl.searchParams.set("pageSize", "10");
+
+  const searchResponse = await fetch(searchUrl, {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
+  const searchData = await searchResponse.json();
+  if (!searchResponse.ok) {
+    throw new Error(searchData.error?.message || "Could not search the AI grading results file.");
+  }
+
+  let file = searchData.files?.[0] || null;
+  let created = false;
+
+  if (!file) {
+    const createResponse = await fetch(
+      "https://www.googleapis.com/drive/v3/files?fields=id,name,webViewLink",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          name: fileName,
+          mimeType: "application/json",
+          parents: [folderId],
+          appProperties: {
+            source: "youteach",
+            kind: "ai-grading-results",
+            assignmentId: String(assignmentId),
+            taskCode: String(taskCode)
+          }
+        })
+      }
+    );
+
+    const createdFile = await createResponse.json();
+    if (!createResponse.ok || !createdFile?.id) {
+      throw new Error(createdFile.error?.message || "Could not create the AI grading results file.");
+    }
+
+    file = createdFile;
+    created = true;
+  }
+
+  if (created) {
+    const placeholder = {
+      schemaVersion: 2,
+      source: "YouTeach",
+      taskCode: String(taskCode),
+      gradedAt: null,
+      results: []
+    };
+
+    const uploadResponse = await fetch(
+      `https://www.googleapis.com/upload/drive/v3/files/${encodeURIComponent(file.id)}?uploadType=media`,
+      {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json; charset=UTF-8"
+        },
+        body: JSON.stringify(placeholder, null, 2)
+      }
+    );
+
+    if (!uploadResponse.ok) {
+      throw new Error("Could not initialize the AI grading results file.");
+    }
+  }
+
+  return {
+    id: file.id,
+    name: fileName,
+    url: file.webViewLink || `https://drive.google.com/file/d/${file.id}/view`
+  };
+}
+
 async function findExistingStudentFile(accessToken, folderId, fileName) {
   const query = [
     `'${escapeDriveQuery(folderId)}' in parents`,
@@ -624,8 +718,15 @@ export async function onRequest(context) {
         assignmentId,
         taskCode
       });
+
+      await ensureGradingResultsFile({
+        accessToken,
+        folderId: folder.id,
+        assignmentId,
+        taskCode
+      });
     } catch (rubricError) {
-      console.warn("Could not sync evaluation rubric to Drive:", rubricError);
+      console.warn("Could not sync grading support files to Drive:", rubricError);
     }
 
     if (existingFile?.id) {
