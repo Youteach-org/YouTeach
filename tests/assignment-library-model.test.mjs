@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import {
   extractReusableAssignmentContent,
   buildAssignmentTemplateRecord,
-  buildAssignedInstanceFromTemplate
+  buildAssignedInstanceFromTemplate,
+  filterAssignmentTemplates,
+  buildAssignmentTemplateArchivePatch
 } from '../assignment-library-model.js';
 
 test('extractReusableAssignmentContent excludes assigned-instance state', () => {
@@ -169,4 +171,81 @@ test('buildAssignedInstanceFromTemplate validates run identity', () => {
     groupName: 'G1',
     dueAt: Number.NaN
   }), /due date/i);
+});
+
+
+test('filterAssignmentTemplates searches metadata and respects exact filters', () => {
+  const templates = {
+    a: {
+      id: 'a',
+      archived: false,
+      usageCount: 3,
+      content: {
+        title: 'Circulatory system model',
+        assignmentType: 'Project',
+        assignmentTypeCode: 'PJ',
+        course: 'Anatomy',
+        subject: 'Health Sciences',
+        unit: 'Unit 2',
+        topic: 'Circulation',
+        tags: ['model', 'heart']
+      }
+    },
+    b: {
+      id: 'b',
+      archived: true,
+      usageCount: 0,
+      content: {
+        title: 'Nutrition worksheet',
+        assignmentType: 'Homework',
+        assignmentTypeCode: 'HW',
+        course: 'Nutrition',
+        subject: 'Health Sciences',
+        unit: 'Unit 1',
+        topic: 'Macronutrients',
+        tags: ['worksheet']
+      }
+    }
+  };
+
+  assert.deepEqual(
+    filterAssignmentTemplates(templates, { query: 'heart', status: 'active' }).map(([id]) => id),
+    ['a']
+  );
+  assert.deepEqual(
+    filterAssignmentTemplates(templates, { type: 'PJ', course: 'Anatomy', usage: 'used' }).map(([id]) => id),
+    ['a']
+  );
+  assert.deepEqual(
+    filterAssignmentTemplates(templates, { subject: 'Health Sciences', status: 'archived', usage: 'unused' }).map(([id]) => id),
+    ['b']
+  );
+  assert.deepEqual(
+    filterAssignmentTemplates(templates, { topic: 'Macronutrients', tag: 'worksheet', status: 'all' }).map(([id]) => id),
+    ['b']
+  );
+});
+
+test('buildAssignmentTemplateArchivePatch changes archive metadata only', () => {
+  const template = {
+    id: 'tpl-1',
+    version: 4,
+    usageCount: 9,
+    content: { title: 'Keep me intact' }
+  };
+  const patch = buildAssignmentTemplateArchivePatch({
+    template,
+    archived: true,
+    now: 500,
+    actor: 'Teacher'
+  });
+
+  assert.deepEqual(patch, {
+    archived: true,
+    updatedAt: 500,
+    updatedBy: 'Teacher'
+  });
+  assert.equal(template.version, 4);
+  assert.equal(template.usageCount, 9);
+  assert.equal(template.content.title, 'Keep me intact');
 });
