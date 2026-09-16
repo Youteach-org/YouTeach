@@ -47,3 +47,9 @@ test('manual correction after AI launch wins over in-flight AI result', () => {
     /if \(!forceRegrade && submission\?\.grading\?\.mode === "manual"/
   );
 });
+
+
+test('legacy AI conflict labels are not rendered in the current teacher workflow', () => {
+  assert.doesNotMatch(teacherJs, /Compare · Manual:/);
+  assert.doesNotMatch(teacherJs, /Manual kept · AI suggestion:/);
+});
