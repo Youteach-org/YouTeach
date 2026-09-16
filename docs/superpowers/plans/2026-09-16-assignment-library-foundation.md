@@ -32,7 +32,7 @@
 - Produces: `buildAssignmentTemplateRecord({ id, assignment, now, actor })`
 - Produces: `buildAssignedInstanceFromTemplate({ template, code, groupName, dueAt, now, actor })`
 
-- [ ] **Step 1: Write failing tests for reusable-content extraction**
+- [x] **Step 1: Write failing tests for reusable-content extraction**
 
 Create tests that assert reusable fields survive while run-specific fields are absent:
 
@@ -68,7 +68,7 @@ test('extractReusableAssignmentContent excludes assigned-instance state', () => 
 });
 ```
 
-- [ ] **Step 2: Write failing tests for project checkpoint cleanup**
+- [x] **Step 2: Write failing tests for project checkpoint cleanup**
 
 The template may preserve reusable checkpoint content but must remove run-specific checkpoint dates:
 
@@ -94,7 +94,7 @@ test('project checkpoint templates keep instructions but drop run-specific dates
 });
 ```
 
-- [ ] **Step 3: Run the new test and verify RED**
+- [x] **Step 3: Run the new test and verify RED**
 
 Run:
 
@@ -104,11 +104,11 @@ node --test tests/assignment-library-model.test.mjs
 
 Expected: FAIL because `assignment-library-model.js` does not exist yet.
 
-- [ ] **Step 4: Implement minimal reusable-content extraction**
+- [x] **Step 4: Implement minimal reusable-content extraction**
 
 Create `assignment-library-model.js` with a deep-cloning helper and an explicit allowlist of reusable fields. Normalize tags and checkpoint content; never copy unknown runtime fields.
 
-- [ ] **Step 5: Run the test and verify GREEN**
+- [x] **Step 5: Run the test and verify GREEN**
 
 Run:
 
@@ -118,7 +118,7 @@ node --test tests/assignment-library-model.test.mjs
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 Commit message:
 
@@ -138,7 +138,7 @@ Add reusable assignment content model
 - Consumes: `extractReusableAssignmentContent(assignment)`
 - Produces: `buildAssignmentTemplateRecord({ id, assignment, now, actor })`
 
-- [ ] **Step 1: Add failing template-record tests**
+- [x] **Step 1: Add failing template-record tests**
 
 Tests must require:
 - stable `id`;
@@ -175,7 +175,7 @@ test('buildAssignmentTemplateRecord creates a reusable versioned template', () =
 });
 ```
 
-- [ ] **Step 2: Run and verify RED**
+- [x] **Step 2: Run and verify RED**
 
 ```bash
 node --test tests/assignment-library-model.test.mjs
@@ -183,11 +183,11 @@ node --test tests/assignment-library-model.test.mjs
 
 Expected: FAIL because the builder is missing.
 
-- [ ] **Step 3: Implement the minimal template builder**
+- [x] **Step 3: Implement the minimal template builder**
 
 The builder must reject a missing id or empty title and must deep-clone its content.
 
-- [ ] **Step 4: Run and verify GREEN**
+- [x] **Step 4: Run and verify GREEN**
 
 ```bash
 node --test tests/assignment-library-model.test.mjs
@@ -195,7 +195,7 @@ node --test tests/assignment-library-model.test.mjs
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```text
 Add versioned assignment template records
@@ -213,7 +213,7 @@ Add versioned assignment template records
 - Consumes: `buildAssignmentTemplateRecord(...)`
 - Produces: `buildAssignedInstanceFromTemplate({ template, code, groupName, dueAt, now, actor })`
 
-- [ ] **Step 1: Add failing instance tests**
+- [x] **Step 1: Add failing instance tests**
 
 Require a run-time assignment payload that:
 - receives `code`, `groupName`, `dueAt`, `active: true`, and existing Google Drive storage behavior;
@@ -255,7 +255,7 @@ test('buildAssignedInstanceFromTemplate creates a clean run with frozen snapshot
 
 Also mutate `template.content` after instance creation and assert `instance.templateSnapshot` does not change.
 
-- [ ] **Step 2: Run and verify RED**
+- [x] **Step 2: Run and verify RED**
 
 ```bash
 node --test tests/assignment-library-model.test.mjs
@@ -263,11 +263,11 @@ node --test tests/assignment-library-model.test.mjs
 
 Expected: FAIL because the instance builder is missing.
 
-- [ ] **Step 3: Implement minimal instance builder**
+- [x] **Step 3: Implement minimal instance builder**
 
 Validate `template`, `code`, `groupName`, and finite `dueAt`. Return only clean run fields plus the reusable content and frozen snapshot.
 
-- [ ] **Step 4: Run focused and existing regression tests**
+- [x] **Step 4: Run focused and existing regression tests**
 
 ```bash
 node --test tests/assignment-library-model.test.mjs
@@ -276,7 +276,7 @@ node --test tests/grading-workflow.test.mjs tests/project-checkpoints.test.mjs
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```text
 Create clean assigned instances from templates
@@ -294,11 +294,11 @@ Create clean assigned instances from templates
 - Consumes: the pure model from Tasks 1-3.
 - Produces: a precise next-step record for Firebase persistence and Assignment Library UX.
 
-- [ ] **Step 1: Record implementation status**
+- [x] **Step 1: Record implementation status**
 
 Document that the pure Template/Instance boundary is implemented but not yet wired to the teacher UI or Firebase `assignmentTemplates`.
 
-- [ ] **Step 2: Record the next integration slice**
+- [x] **Step 2: Record the next integration slice**
 
 The next slice will:
 - persist templates under `assignmentTemplates/{templateId}`;
@@ -309,7 +309,7 @@ The next slice will:
 
 No visual layout is to be invented until the relevant Assignment Library UX is reviewed.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```text
 Document Assignment Library foundation status
@@ -323,3 +323,11 @@ Document Assignment Library foundation status
 - Placeholder scan: no TBD/TODO/placeholder steps.
 - Type consistency: all tasks use the same three exported functions and the same `template.content` / `templateSnapshot` model.
 - Scope control: no unapproved Assignment Library page/layout is introduced.
+
+
+## Execution record — 2026-09-16
+
+- Tasks 1-3 completed with local TDD: the new focused test suite reached 6/6 passing.
+- Existing grading/project regression conditions were rechecked directly against the branch files through the GitHub connector because the local container cannot resolve github.com for a full clone.
+- Task 4 documentation completed on the feature branch.
+- No Teacher Assignments UI or Firebase persistence has been changed in this foundation slice.
