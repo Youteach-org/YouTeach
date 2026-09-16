@@ -861,13 +861,6 @@ function gradingTotalForSubmission(submission) {
   return Number.isFinite(total) ? total : null;
 }
 
-function aiCandidateTotalForSubmission(submission) {
-  const raw = submission?.aiGradingCandidate?.totalScore;
-  if (raw === null || raw === undefined || raw === "") return null;
-  const total = Number(raw);
-  return Number.isFinite(total) ? total : null;
-}
-
 function submissionIsGraded(submission) {
   if (!submission?.grading || gradingTotalForSubmission(submission) === null) return false;
   return ["graded", "ai-graded", "manual-graded"].includes(String(submission?.reviewStatus || ""));
@@ -1553,14 +1546,6 @@ function renderDetail() {
           : (published
             ? "Published"
             : (gradingMode === "ai" ? "AI graded · teacher review pending" : "Manual grade · unpublished"));
-        const aiCandidateTotal = aiCandidateTotalForSubmission(submission);
-        const aiCandidateState = String(submission?.aiGradingCandidateState || "");
-        const aiCandidateLabel = submission?.aiGradingCandidate
-          ? (aiCandidateState === "compare"
-            ? `Compare · Manual: ${gradeTotal === null ? "—" : Number(gradeTotal.toFixed(2))} / 100 · AI: ${aiCandidateTotal === null ? "manual review needed" : `${Number(aiCandidateTotal.toFixed(2))} / 100`}`
-            : `Manual kept · AI suggestion: ${aiCandidateTotal === null ? "manual review needed" : `${Number(aiCandidateTotal.toFixed(2))} / 100`}`)
-          : "";
-
         return `
           <article class="submission-card ${graded ? "graded" : "pending-grade"} ${!manualGradingPanel.hidden && selectedManualStudentKey === studentKey ? "selected-for-grading" : ""}" data-submission-student-key="${escapeHtml(studentKey)}">
             <h4>${escapeHtml(submission.studentName || "Student")}</h4>
@@ -1586,11 +1571,6 @@ function renderDetail() {
                    <strong>${escapeHtml(Number(gradeTotal.toFixed(2)))} / 100</strong>
                    <small>${published ? "Published" : "Unpublished"}</small>
                  </div>`
-            }
-
-            ${aiCandidateLabel
-              ? `<div class="ai-candidate-chip">${escapeHtml(aiCandidateLabel)}</div>`
-              : ""
             }
 
             <div class="submission-card-actions">
