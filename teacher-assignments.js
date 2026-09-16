@@ -1304,6 +1304,13 @@ function renderDetail() {
     ? validSubmissionEntries.map(([, submission]) => {
         const graded = submissionIsGraded(submission);
         const gradeTotal = gradingTotalForSubmission(submission);
+        const aiCandidateTotal = aiCandidateTotalForSubmission(submission);
+        const aiCandidateState = String(submission?.aiGradingCandidateState || "");
+        const aiCandidateLabel = submission?.aiGradingCandidate
+          ? (aiCandidateState === "compare"
+            ? `Compare · Manual: ${gradeTotal === null ? "—" : Number(gradeTotal.toFixed(2))} / 100 · AI: ${aiCandidateTotal === null ? "manual review needed" : `${Number(aiCandidateTotal.toFixed(2))} / 100`}`
+            : `Manual kept · AI suggestion: ${aiCandidateTotal === null ? "manual review needed" : `${Number(aiCandidateTotal.toFixed(2))} / 100`}`)
+          : "";
 
         return `
           <article class="submission-card ${graded ? "graded" : "pending-grade"}">
@@ -1328,8 +1335,8 @@ function renderDetail() {
               : `<div class="saved-grade-chip">Grade: ${escapeHtml(Number(gradeTotal.toFixed(2)))} / 100 · ${escapeHtml(submission?.grading?.mode || "manual")}</div>`
             }
 
-            ${submission?.aiGradingCandidate
-              ? '<div class="ai-candidate-chip">AI comparison available</div>'
+            ${aiCandidateLabel
+              ? `<div class="ai-candidate-chip">${escapeHtml(aiCandidateLabel)}</div>`
               : ""
             }
 
