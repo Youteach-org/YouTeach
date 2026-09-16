@@ -128,9 +128,12 @@ A manual grade must never be silently overwritten by a later AI rerun unless the
 ## 6. Login / responsive decisions
 
 - Teacher and Student password fields include a show/hide password control.
-- Tablet portrait layouts must use the available screen width.
-- Hidden sidebar must not reserve a phantom desktop column.
-- Teacher Home tablet portrait uses a responsive multi-column layout instead of narrow vertical strips.
+- **Global YouTeach rule:** every Teacher and Student page must use the full available viewport width in tablet portrait and mobile layouts.
+- Hidden/fixed/collapsed sidebars must never reserve a phantom desktop grid column on any page.
+- The global responsive guard lives in `styles.css` and `shared-ui-fixes.js`; page-specific CSS must not reintroduce a reserved 260px sidebar column.
+- Tablet portrait layouts should use sensible multi-column grids where space permits rather than collapsing content into narrow vertical strips.
+- Page titles/topbars must remain inside the hamburger safe area without adding duplicate left offsets.
+- Tables/carousels may scroll internally, but the page body should not become horizontally wider than the viewport.
 - Mobile may collapse to one column where appropriate.
 
 ## 7. Immediate next milestone: close the grading loop end-to-end
