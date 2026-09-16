@@ -1004,23 +1004,42 @@ function renderManualGrading() {
         ${criteria.map((criterion) => {
           const rawScore = savedScores?.[criterion.id];
           const value = Number.isFinite(Number(rawScore)) ? Number(rawScore) : "";
+          const percentage = value === "" || !Number(criterion.maxPoints)
+            ? ""
+            : Number(((Number(value) / Number(criterion.maxPoints)) * 100).toFixed(2));
           return `
             <label class="manual-criterion-row">
               <span class="manual-criterion-name" title="${escapeHtml(criterion.description || criterion.title)}">
                 ${escapeHtml(criterion.title)}
               </span>
-              <input
-                type="number"
-                min="0"
-                max="${escapeHtml(criterion.maxPoints)}"
-                step="0.01"
-                value="${escapeHtml(value)}"
-                data-manual-score
-                data-criterion-id="${escapeHtml(criterion.id)}"
-                data-max-points="${escapeHtml(criterion.maxPoints)}"
-                aria-label="${escapeHtml(criterion.title)} score"
-              >
-              <span class="manual-criterion-max">/ ${escapeHtml(criterion.maxPoints)}</span>
+              <span class="manual-points-input">
+                <input
+                  type="number"
+                  min="0"
+                  max="${escapeHtml(criterion.maxPoints)}"
+                  step="0.01"
+                  value="${escapeHtml(value)}"
+                  data-manual-score
+                  data-criterion-id="${escapeHtml(criterion.id)}"
+                  data-max-points="${escapeHtml(criterion.maxPoints)}"
+                  aria-label="${escapeHtml(criterion.title)} points"
+                >
+                <span class="manual-criterion-max">/ ${escapeHtml(criterion.maxPoints)}</span>
+              </span>
+              <span class="manual-percent-input">
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  value="${escapeHtml(percentage)}"
+                  data-manual-percent
+                  data-criterion-id="${escapeHtml(criterion.id)}"
+                  data-max-points="${escapeHtml(criterion.maxPoints)}"
+                  aria-label="${escapeHtml(criterion.title)} percentage"
+                >
+                <span>%</span>
+              </span>
             </label>
           `;
         }).join("")}
@@ -1054,6 +1073,26 @@ function updateManualCardTotal(card) {
   }, 0);
   const totalElement = card.querySelector("[data-manual-total]");
   if (totalElement) totalElement.textContent = `${Number(total.toFixed(2))} / 100`;
+}
+
+function syncManualCriterionInputs(input) {
+  const row = input.closest(".manual-criterion-row");
+  if (!row || input.value === "") return;
+
+  const scoreInput = row.querySelector("[data-manual-score]");
+  const percentInput = row.querySelector("[data-manual-percent]");
+  const maxPoints = Number(input.dataset.maxPoints || scoreInput?.dataset.maxPoints || 0);
+  if (!scoreInput || !percentInput || !Number.isFinite(maxPoints) || maxPoints <= 0) return;
+
+  if (input.matches("[data-manual-percent]")) {
+    const percent = Math.min(100, Math.max(0, Number(input.value) || 0));
+    input.value = String(Number(percent.toFixed(2)));
+    scoreInput.value = String(Number(((maxPoints * percent) / 100).toFixed(2)));
+  } else {
+    const score = Math.min(maxPoints, Math.max(0, Number(input.value) || 0));
+    input.value = String(Number(score.toFixed(2)));
+    percentInput.value = String(Number(((score / maxPoints) * 100).toFixed(2)));
+  }
 }
 
 function openManualGrading(assignmentId, studentKey = "") {
@@ -1781,7 +1820,8 @@ submissionList.addEventListener("click", (event) => {
 });
 
 manualGradingList.addEventListener("input", (event) => {
-  if (!event.target.matches("[data-manual-score]")) return;
+  if (!event.target.matches("[data-manual-score],[data-manual-percent]")) return;
+  syncManualCriterionInputs(event.target);
   updateManualCardTotal(event.target.closest("[data-manual-grade-card]"));
 });
 
