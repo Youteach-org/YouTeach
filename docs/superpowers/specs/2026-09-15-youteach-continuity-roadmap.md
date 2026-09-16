@@ -132,7 +132,10 @@ A manual grade must never be silently overwritten by a later AI rerun unless the
 - Hidden/fixed/collapsed sidebars must never reserve a phantom desktop grid column on any page.
 - The global responsive guard lives in `styles.css` and `shared-ui-fixes.js`; page-specific CSS must not reintroduce a reserved 260px sidebar column.
 - Tablet portrait layouts should use sensible multi-column grids where space permits rather than collapsing content into narrow vertical strips.
-- Page titles/topbars must remain inside the hamburger safe area without adding duplicate left offsets.
+- The hamburger safe area applies **only to the title/topbar row**, never to the full page content column.
+- The hamburger sits slightly inset at the upper-left so it visually belongs to the title bar.
+- Only the title/topbar receives left padding to clear the hamburger; all controls, cards, filters, tables, and content below the title return to the normal full-width content margin.
+- Do not create a blank vertical column under the hamburger.
 - Tables/carousels may scroll internally, but the page body should not become horizontally wider than the viewport.
 - Mobile may collapse to one column where appropriate.
 
