@@ -500,7 +500,7 @@ async function persistExamAnnotations() {
   await update(
     ref(db, `assignmentSubmissions/${examAnnotationState.assignmentId}/${examAnnotationState.studentKey}`),
     {
-      examAnnotations: examAnnotationsMap(),
+      examAnnotations: examAnnotationState.annotations.length ? examAnnotationsMap() : null,
       examAnnotationPointsTotal: Number(totalPoints.toFixed(2)),
       examAnnotationsUpdatedAt: now,
       examAnnotationsUpdatedBy: getTeacherName(),
@@ -604,11 +604,11 @@ async function openExamAnnotation(studentKey) {
     }
 
     const bytes = await response.arrayBuffer();
+    const pdfData = new Uint8Array(bytes);
+    examAnnotationState.pdfBytes = pdfData.slice().buffer;
     const pdfDocument = await window.pdfjsLib.getDocument({
-      data: new Uint8Array(bytes)
+      data: pdfData
     }).promise;
-
-    examAnnotationState.pdfBytes = bytes;
     examAnnotationState.pdfDocument = pdfDocument;
     examAnnotationState.pageCount = pdfDocument.numPages;
     examAnnotationState.page = 1;
