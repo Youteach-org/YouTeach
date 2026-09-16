@@ -90,6 +90,7 @@ const submittedCount = document.getElementById("submittedCount");
 const missingCount = document.getElementById("missingCount");
 const submissionList = document.getElementById("submissionList");
 const missingList = document.getElementById("missingList");
+const missingSummary = document.getElementById("missingSummary");
 const openDriveFolderBtn = document.getElementById("openDriveFolderBtn");
 const toggleAssignmentBtn = document.getElementById("toggleAssignmentBtn");
 const driveStatus = document.getElementById("driveStatus");
@@ -1245,6 +1246,9 @@ async function clearManualGrade(studentKey) {
     if (status) {
       status.textContent = "Manual grade cleared. Ready to grade again.";
       status.style.color = "#166534";
+    } else {
+      aiSyncStatus.textContent = "Manual grade cleared. Ready to grade again.";
+      aiSyncStatus.style.color = "#166534";
     }
   } catch (error) {
     console.error(error);
@@ -1572,19 +1576,43 @@ function renderDetail() {
               <a class="pdf-link" href="${escapeHtml(submission.driveFileUrl || "#")}" target="_blank" rel="noopener">
                 Open submitted PDF →
               </a>
-              ${gradeTotal !== null
-                ? `<button type="button" class="publish-grade-btn" data-publish-grade="${escapeHtml(studentKey)}">${published ? "Unpublish" : "Publish grade"}</button>`
-                : ""
-              }
+              <div class="submission-grade-actions">
+                ${gradingMode === "manual" && gradeTotal !== null
+                  ? `<button type="button" class="clear-manual-grade-btn" data-clear-card-grade="${escapeHtml(studentKey)}">Clear grade</button>`
+                  : ""
+                }
+                ${gradeTotal !== null
+                  ? `<button type="button" class="publish-grade-btn" data-publish-grade="${escapeHtml(studentKey)}">${published ? "Unpublish" : "Publish grade"}</button>`
+                  : ""
+                }
+              </div>
             </div>
           </article>
         `;
       }).join("")
     : '<div class="status-text">No PDF submissions yet.</div>';
 
-  missingList.textContent = missing.length
-    ? missing.map(([, student]) => student.fullName || student.name || student.nickname || "Student").join(", ")
-    : "None";
+  if (missingSummary) {
+    missingSummary.textContent = `Missing submissions (${missing.length})`;
+  }
+
+  missingList.innerHTML = missing.length
+    ? missing.map(([studentKey, student]) => {
+        const name = student.fullName || student.name || student.nickname || "Student";
+        const id = student.studentNumber || student.externalId || student.studentId || studentKey || "No ID";
+        const group = student.groupName || assignment.groupName || "GENERAL";
+
+        return `
+          <article class="missing-student-card">
+            <div class="missing-student-main">
+              <strong>${escapeHtml(name)}</strong>
+              <span>${escapeHtml(id)} · ${escapeHtml(group)}</span>
+            </div>
+            <span class="missing-student-chip">Not submitted</span>
+          </article>
+        `;
+      }).join("")
+    : '<div class="missing-empty-state">No missing submissions.</div>';
 
   if (!manualGradingPanel.hidden) renderManualGrading();
 }
@@ -1871,6 +1899,16 @@ teacherAssignmentList.addEventListener("click", (event) => {
 });
 
 submissionList.addEventListener("click", (event) => {
+  const clearButton = event.target.closest("[data-clear-card-grade]");
+  if (clearButton) {
+    clearManualGrade(clearButton.dataset.clearCardGrade).catch((error) => {
+      console.error(error);
+      aiSyncStatus.textContent = "Could not clear the manual grade.";
+      aiSyncStatus.style.color = "#b91c1c";
+    });
+    return;
+  }
+
   const publishButton = event.target.closest("[data-publish-grade]");
   if (publishButton) {
     toggleGradePublication(publishButton.dataset.publishGrade).catch((error) => {
