@@ -85,23 +85,23 @@ Implemented on `feature/assignment-library-foundation`, pending merge:
 - reusable Project checkpoint content keeps title/instructions/evidence types while absolute run-specific checkpoint dates are excluded;
 - `buildAssignmentTemplateRecord(...)` creates a schema-versioned reusable template record;
 - `buildAssignedInstanceFromTemplate(...)` creates a clean runtime assignment payload compatible with the existing `assignments` node;
-- each new instance carries `templateId`, `templateVersion`, and a deep-cloned `templateSnapshot` so later template edits cannot rewrite historical instances.
+- each new instance carries `templateId`, `templateVersion`, and a deep-cloned `templateSnapshot` so later template edits cannot rewrite historical instances;
+- reusable templates persist under `assignmentTemplates/{templateId}` in Firebase;
+- the existing Teacher Assignments page can save the selected assignment as a reusable template;
+- the existing Create Assignment form can load a saved template without importing group or due date;
+- creating from a loaded template writes the new `assignments/{assignmentId}` instance and template usage metadata atomically with one Firebase multi-location update;
+- Project checkpoint template rows reload without old review dates so the new run requires new dates.
 
-Not yet implemented in this foundation slice:
-- Firebase persistence under `assignmentTemplates`;
-- teacher actions to save an assignment as a template;
-- Assignment Library browsing/search/filter/archive UI;
-- creating a new assigned instance from the Library UI;
-- usage-count/statistics aggregation.
+Still deferred:
+- dedicated Assignment Library browsing/search/filter/archive UI;
+- editing an existing template as a first-class library workflow;
+- template duplication/variants;
+- aggregate performance statistics beyond the current usage counter.
 
-Next integration slice:
-1. persist reusable templates under `assignmentTemplates/{templateId}`;
-2. create assigned instances in the existing `assignments` node from a selected template;
-3. increment template usage only after successful instance creation;
-4. add the minimum teacher actions required to save/reuse a template;
-5. preserve the current Teacher Assignments grading/submission workflows unchanged.
-
-No Assignment Library visual layout should be invented from the provisional foundation; UI behavior still requires explicit product review.
+Current continuation:
+1. merge/field-test this foundation;
+2. then add library search/filter/archive behavior without changing historical instances;
+3. keep current Teacher Assignments grading/submission workflows unchanged.
 
 ## 4. Course/topic analytics foundation
 
