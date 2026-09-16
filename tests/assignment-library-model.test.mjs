@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   extractReusableAssignmentContent,
-  buildAssignmentTemplateRecord
+  buildAssignmentTemplateRecord,
+  buildAssignedInstanceFromTemplate
 } from '../assignment-library-model.js';
 
 test('extractReusableAssignmentContent excludes assigned-instance state', () => {
@@ -96,4 +97,76 @@ test('buildAssignmentTemplateRecord rejects missing ids and titles', () => {
     now: 1,
     actor: 'Teacher'
   }), /title/i);
+});
+
+test('buildAssignedInstanceFromTemplate creates a clean run with frozen snapshot', () => {
+  const template = buildAssignmentTemplateRecord({
+    id: 'tpl-1',
+    assignment: {
+      title: 'Respiratory system',
+      instructions: 'Create a diagram',
+      assignmentType: 'Classwork',
+      assignmentTypeCode: 'CT'
+    },
+    now: 100,
+    actor: 'Teacher'
+  });
+
+  const instance = buildAssignedInstanceFromTemplate({
+    template,
+    code: 'CT-RESP-G1-160926',
+    groupName: 'G1',
+    dueAt: 200,
+    now: 150,
+    actor: 'Teacher'
+  });
+
+  assert.equal(instance.templateId, 'tpl-1');
+  assert.equal(instance.templateVersion, 1);
+  assert.equal(instance.code, 'CT-RESP-G1-160926');
+  assert.equal(instance.groupName, 'G1');
+  assert.equal(instance.dueAt, 200);
+  assert.equal(instance.title, 'Respiratory system');
+  assert.equal(instance.assignmentTypeCode, 'CT');
+  assert.equal(instance.active, true);
+  assert.equal(instance.storageProvider, 'google-drive');
+  assert.equal(instance.createdAt, 150);
+  assert.equal(instance.createdBy, 'Teacher');
+  assert.equal('grading' in instance, false);
+  assert.equal('gradePublished' in instance, false);
+  assert.equal('assignmentSubmissions' in instance, false);
+
+  template.content.title = 'Changed later';
+  assert.equal(instance.templateSnapshot.title, 'Respiratory system');
+  assert.equal(instance.title, 'Respiratory system');
+});
+
+test('buildAssignedInstanceFromTemplate validates run identity', () => {
+  const template = buildAssignmentTemplateRecord({
+    id: 'tpl-1',
+    assignment: { title: 'Valid' },
+    now: 1,
+    actor: 'Teacher'
+  });
+
+  assert.throws(() => buildAssignedInstanceFromTemplate({
+    template,
+    code: '',
+    groupName: 'G1',
+    dueAt: 2
+  }), /task code/i);
+
+  assert.throws(() => buildAssignedInstanceFromTemplate({
+    template,
+    code: 'CT-VALID-G1-160926',
+    groupName: '',
+    dueAt: 2
+  }), /group/i);
+
+  assert.throws(() => buildAssignedInstanceFromTemplate({
+    template,
+    code: 'CT-VALID-G1-160926',
+    groupName: 'G1',
+    dueAt: Number.NaN
+  }), /due date/i);
 });
