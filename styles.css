@@ -869,85 +869,103 @@ body.sidebar-lock {
 /* ===== MENU MOBILE FINAL CLEAN END ===== */
 
 
-/* ===== HAMBURGER SAFE ZONE START =====
-   Reserve layout space for the fixed menu button so page content can never sit underneath it.
-   Pages should not add their own hamburger offsets. */
+/* ===== TITLE-BAR-ONLY HAMBURGER SAFE ZONE START =====
+   The fixed hamburger only reserves space inside the title bar.
+   Page controls below the title use the full content width. */
+.hamburger-btn {
+  top: 8px !important;
+  left: 8px !important;
+  width: 44px !important;
+  height: 44px !important;
+}
+
+.hamburger-btn + .menu-shell {
+  display: block !important;
+  grid-template-columns: 1fr !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+.hamburger-btn + .menu-shell .main-content {
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding-left: 16px !important;
+  padding-right: 16px !important;
+}
+
+.hamburger-btn + .menu-shell .main-content > .topbar,
+.hamburger-btn + .menu-shell .main-content .topbar {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding-left: 58px !important;
+  min-height: 52px !important;
+}
+
+.hamburger-btn + .menu-shell .main-content > .topbar + *,
+.hamburger-btn + .menu-shell .main-content .topbar + * {
+  margin-left: 0 !important;
+}
+
 @media (min-width: 769px) {
   .hamburger-btn + .menu-shell .main-content {
-    padding-left: 88px !important;
+    padding-top: 8px !important;
   }
 }
 
 @media (max-width: 768px) {
+  html,
+  body,
+  .menu-shell,
+  .main-content {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
   .hamburger-btn + .menu-shell .main-content {
-    padding-top: 92px !important;
+    padding-top: 8px !important;
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  .hamburger-btn + .menu-shell .main-content > .topbar,
+  .hamburger-btn + .menu-shell .main-content .topbar {
+    padding-left: 54px !important;
+    min-height: 50px !important;
   }
 }
-/* ===== HAMBURGER SAFE ZONE END ===== */
 
-
-/* ===== GLOBAL RESPONSIVE FULL-WIDTH GUARD START =====
-   Tablet portrait and narrow layouts must use the real viewport width.
-   Fixed/collapsed sidebars never reserve a desktop grid column. */
-@media (min-width:769px) and (max-width:1100px),
-       (orientation:portrait) and (min-width:769px) and (max-width:1200px) {
+@media (min-width: 769px) and (max-width: 1100px),
+       (orientation: portrait) and (min-width: 769px) and (max-width: 1200px) {
   html,
   body {
-    width:100% !important;
-    max-width:100% !important;
+    width: 100% !important;
+    max-width: 100% !important;
   }
 
   body {
-    overflow-x:hidden !important;
-  }
-
-  .menu-shell {
-    display:block !important;
-    grid-template-columns:1fr !important;
-    width:100% !important;
-    max-width:none !important;
-    min-width:0 !important;
-  }
-
-  .main-content,
-  .hamburger-btn + .menu-shell .main-content {
-    width:100% !important;
-    max-width:none !important;
-    min-width:0 !important;
-    margin:0 !important;
-    padding-top:22px !important;
-    padding-left:88px !important;
-    padding-right:24px !important;
+    overflow-x: hidden !important;
   }
 
   .main-content > * {
-    min-width:0 !important;
-    max-width:100% !important;
-  }
-
-  .topbar,
-  .main-content .topbar {
-    width:100% !important;
-    max-width:100% !important;
-    min-width:0 !important;
-    margin-left:0 !important;
-    margin-right:0 !important;
-  }
-
-  .topbar > *,
-  .topbar-right {
-    min-width:0 !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
   }
 
   .summary-grid {
-    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 
   .landing-grid,
   .two-home-cards,
   .student-info-grid,
   .two-columns {
-    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 
   .panel-card,
@@ -955,59 +973,22 @@ body.sidebar-lock {
   .info-card,
   .landing-card,
   .auth-card {
-    min-width:0 !important;
-    max-width:100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
   }
 
   .table-wrap {
-    width:100% !important;
-    max-width:100% !important;
-    overflow-x:auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
   }
 
   .summary-card strong,
   .landing-link-card h2,
   .panel-card h2,
   .panel-card h3 {
-    word-break:normal !important;
-    overflow-wrap:break-word !important;
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
   }
 }
-
-@media (max-width:768px) {
-  html,
-  body,
-  .menu-shell,
-  .main-content {
-    width:100% !important;
-    max-width:100% !important;
-    min-width:0 !important;
-  }
-
-  .menu-shell {
-    display:block !important;
-    grid-template-columns:1fr !important;
-  }
-
-  .main-content,
-  .hamburger-btn + .menu-shell .main-content {
-    margin:0 !important;
-    padding-top:92px !important;
-    padding-left:16px !important;
-    padding-right:16px !important;
-  }
-
-  .topbar,
-  .main-content .topbar {
-    width:100% !important;
-    max-width:100% !important;
-    margin-left:0 !important;
-    margin-right:0 !important;
-  }
-
-  .main-content > * {
-    min-width:0 !important;
-    max-width:100% !important;
-  }
-}
-/* ===== GLOBAL RESPONSIVE FULL-WIDTH GUARD END ===== */
+/* ===== TITLE-BAR-ONLY HAMBURGER SAFE ZONE END ===== */
