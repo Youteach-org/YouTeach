@@ -165,10 +165,17 @@ function wireOwnSubmissionListeners() {
 
 function submissionRow(submission) {
   if (!submission?.driveFileId) return "";
+
+  const total = Number(submission?.grading?.totalScore);
+  const hasGrade = Number.isFinite(total);
+  const reviewLabel = submission?.gradePublished && hasGrade
+    ? "grade released"
+    : (hasGrade ? "reviewed · grade not released" : "pending review");
+
   return `
     <div class="submission-row">
       <span>${escapeHtml(submission.driveFileName || "Submitted PDF")}</span>
-      <span>${Math.max(1, Math.round(Number(submission.size || 0) / 1024))} KB · pending review</span>
+      <span>${Math.max(1, Math.round(Number(submission.size || 0) / 1024))} KB · ${escapeHtml(reviewLabel)}</span>
     </div>
   `;
 }
