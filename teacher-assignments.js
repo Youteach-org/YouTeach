@@ -2002,7 +2002,17 @@ function refreshSelectedAiResults() {
     if (result?.ok && isPendingRun) {
       try { localStorage.removeItem(AI_PENDING_RUN_KEY); } catch (_) {}
     }
-  }).catch(() => {});
+
+    if (result?.error && assignmentId === selectedAssignmentId) {
+      aiSyncStatus.textContent = `AI sync error: ${result.error}`;
+      aiSyncStatus.style.color = "#b91c1c";
+    }
+  }).catch((error) => {
+    if (assignmentId === selectedAssignmentId) {
+      aiSyncStatus.textContent = `AI sync error: ${error?.message || "Unknown error"}`;
+      aiSyncStatus.style.color = "#b91c1c";
+    }
+  });
 }
 
 function requestInitialAiSync() {
