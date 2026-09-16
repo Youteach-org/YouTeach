@@ -125,6 +125,7 @@ let selectedManualStudentKey = "";
 let assignmentFilterGroupTouched = false;
 const aiAutoSyncTimers = new Map();
 let lastPassiveAiSyncAt = 0;
+let initialAiSyncRequested = false;
 
 teacherIdentity.textContent = getTeacherName();
 
@@ -1981,6 +1982,15 @@ function refreshSelectedAiResults() {
   }).catch(() => {});
 }
 
+function requestInitialAiSync() {
+  if (initialAiSyncRequested) return;
+  if (!selectedAssignmentId || !assignmentsCache[selectedAssignmentId]) return;
+  if (!assignmentHasSubmissions(selectedAssignmentId)) return;
+
+  initialAiSyncRequested = true;
+  setTimeout(refreshSelectedAiResults, 600);
+}
+
 syncAiGradesBtn.addEventListener("click", syncAiGrades);
 
 window.addEventListener("focus", refreshSelectedAiResults);
@@ -2082,9 +2092,11 @@ onValue(ref(db, "assignments"), (snapshot) => {
   renderAssignmentFilterOptions();
   renderAssignmentList();
   refreshAutomaticTaskCode();
+  requestInitialAiSync();
 });
 
 onValue(ref(db, "assignmentSubmissions"), (snapshot) => {
   submissionsCache = snapshot.val() || {};
   renderAssignmentList();
+  requestInitialAiSync();
 });
