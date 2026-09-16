@@ -110,6 +110,24 @@ const projectCheckpointRows = document.getElementById("projectCheckpointRows");
 const addProjectCheckpointBtn = document.getElementById("addProjectCheckpointBtn");
 const projectProgressPanel = document.getElementById("projectProgressPanel");
 const projectProgressTimeline = document.getElementById("projectProgressTimeline");
+const examAnnotationPanel = document.getElementById("examAnnotationPanel");
+const examAnnotationTitle = document.getElementById("examAnnotationTitle");
+const examPrevPageBtn = document.getElementById("examPrevPageBtn");
+const examNextPageBtn = document.getElementById("examNextPageBtn");
+const examPageLabel = document.getElementById("examPageLabel");
+const examQuestionNumber = document.getElementById("examQuestionNumber");
+const examQuestionPoints = document.getElementById("examQuestionPoints");
+const examQuestionComment = document.getElementById("examQuestionComment");
+const examUndoMarkBtn = document.getElementById("examUndoMarkBtn");
+const examClearPageBtn = document.getElementById("examClearPageBtn");
+const examPdfCanvas = document.getElementById("examPdfCanvas");
+const examAnnotationOverlay = document.getElementById("examAnnotationOverlay");
+const examAnnotationCount = document.getElementById("examAnnotationCount");
+const examAnnotationList = document.getElementById("examAnnotationList");
+const examSaveAnnotatedPdfBtn = document.getElementById("examSaveAnnotatedPdfBtn");
+const examOpenAnnotatedPdfLink = document.getElementById("examOpenAnnotatedPdfLink");
+const examAnnotationStatus = document.getElementById("examAnnotationStatus");
+const examToolButtons = document.querySelectorAll("[data-exam-tool]");
 const manualGradingPanel = document.getElementById("manualGradingPanel");
 const manualGradingTitle = document.getElementById("manualGradingTitle");
 const manualGradingList = document.getElementById("manualGradingList");
@@ -129,6 +147,16 @@ let selectedAssignmentId = "";
 let selectedDriveFolderUrl = "";
 let selectedManualStudentKey = "";
 let assignmentFilterGroupTouched = false;
+let examAnnotationState = {
+  assignmentId: "",
+  studentKey: "",
+  pdfBytes: null,
+  pdfDocument: null,
+  page: 1,
+  pageCount: 0,
+  tool: "correct",
+  annotations: []
+};
 const aiAutoSyncTimers = new Map();
 const AI_PENDING_RUN_KEY = "youteachAiGradingPendingRunV1";
 let lastPassiveAiSyncAt = 0;
@@ -367,6 +395,422 @@ function assignmentTypeCodeFor(assignment) {
 function isProjectAssignment(assignment) {
   return assignmentTypeCodeFor(assignment) === "PJ";
 }
+
+function isExamAssignment(assignment) {
+  return assignmentTypeCodeFor(assignment) === "EX" ||
+    String(assignment?.code || "").toUpperCase().startsWith("EX-");
+}
+
+function normalizeExamAnnotations(submission) {
+  return Object.entries(submission?.examAnnotations || {})
+    .map(([id, annotation]) => ({
+      id,
+      type: String(annotation?.type || "note"),
+      page: Math.max(1, Number(annotation?.page || 1)),
+      x: Math.min(1, Math.max(0, Number(annotation?.x || 0))),
+      y: Math.min(1, Math.max(0, Number(annotation?.y || 0))),
+      question: String(annotation?.question || ""),
+      points: annotation?.points === null || annotation?.points === undefined || annotation?.points === ""
+        ? null
+        : Number(annotation.points),
+      comment: String(annotation?.comment || ""),
+      createdAt: Number(annotation?.createdAt || 0),
+      createdBy: String(annotation?.createdBy || "")
+    }))
+    .sort((a, b) => Number(a.createdAt || 0) - Number(b.createdAt || 0));
+}
+
+function examAnnotationsMap() {
+  return Object.fromEntries(
+    examAnnotationState.annotations.map((annotation) => [annotation.id, {
+      type: annotation.type,
+      page: annotation.page,
+      x: annotation.x,
+      y: annotation.y,
+      question: annotation.question,
+      points: annotation.points,
+      comment: annotation.comment,
+      createdAt: annotation.createdAt,
+      createdBy: annotation.createdBy
+    }])
+  );
+}
+
+function examMarkLabel(annotation) {
+  if (annotation.type === "correct") return "✓";
+  if (annotation.type === "wrong") return "✗";
+  return "Note";
+}
+
+function examAnnotationMeta(annotation) {
+  const parts = [];
+  if (annotation.question) parts.push(`Q${annotation.question}`);
+  if (annotation.points !== null && Number.isFinite(Number(annotation.points))) {
+    parts.push(`${Number(annotation.points)} pt${Number(annotation.points) === 1 ? "" : "s"}`);
+  }
+  return parts.join(" · ");
+}
+
+function renderExamAnnotationList() {
+  examAnnotationCount.textContent = String(examAnnotationState.annotations.length);
+  examAnnotationList.innerHTML = examAnnotationState.annotations.length
+    ? [...examAnnotationState.annotations].reverse().map((annotation) => `
+        <div class="exam-annotation-item">
+          <div class="exam-annotation-item-head">
+            <strong>Page ${annotation.page} · ${escapeHtml(examMarkLabel(annotation))} ${escapeHtml(examAnnotationMeta(annotation))}</strong>
+            <button type="button" data-remove-exam-annotation="${escapeHtml(annotation.id)}">Remove</button>
+          </div>
+          ${annotation.comment ? `<span>${escapeHtml(annotation.comment)}</span>` : ""}
+          <small>${escapeHtml(annotation.createdBy || "Teacher")}</small>
+        </div>
+      `).join("")
+    : '<div class="status-text">No marks yet.</div>';
+}
+
+function renderExamAnnotationOverlay() {
+  const pageAnnotations = examAnnotationState.annotations.filter(
+    (annotation) => Number(annotation.page) === Number(examAnnotationState.page)
+  );
+
+  examAnnotationOverlay.innerHTML = pageAnnotations.map((annotation) => {
+    const meta = examAnnotationMeta(annotation);
+    const detail = [meta, annotation.comment].filter(Boolean).join(" · ");
+    return `
+      <div
+        class="exam-overlay-mark ${escapeHtml(annotation.type)}"
+        style="left:${Number(annotation.x * 100).toFixed(3)}%;top:${Number(annotation.y * 100).toFixed(3)}%"
+      >
+        <strong>${escapeHtml(examMarkLabel(annotation))}</strong>
+        ${detail ? `<small>${escapeHtml(detail)}</small>` : ""}
+      </div>
+    `;
+  }).join("");
+
+  renderExamAnnotationList();
+}
+
+async function persistExamAnnotations() {
+  if (!examAnnotationState.assignmentId || !examAnnotationState.studentKey) return;
+  const now = Date.now();
+  const totalPoints = examAnnotationState.annotations.reduce((sum, annotation) => {
+    const value = Number(annotation.points);
+    return sum + (Number.isFinite(value) ? value : 0);
+  }, 0);
+
+  await update(
+    ref(db, `assignmentSubmissions/${examAnnotationState.assignmentId}/${examAnnotationState.studentKey}`),
+    {
+      examAnnotations: examAnnotationsMap(),
+      examAnnotationPointsTotal: Number(totalPoints.toFixed(2)),
+      examAnnotationsUpdatedAt: now,
+      examAnnotationsUpdatedBy: getTeacherName(),
+      updatedAt: now
+    }
+  );
+}
+
+function setExamTool(tool) {
+  examAnnotationState.tool = ["correct", "wrong", "note"].includes(tool) ? tool : "correct";
+  examToolButtons.forEach((button) => {
+    button.classList.toggle("active", button.dataset.examTool === examAnnotationState.tool);
+  });
+}
+
+async function renderExamPage() {
+  if (!examAnnotationState.pdfDocument) return;
+  const page = await examAnnotationState.pdfDocument.getPage(examAnnotationState.page);
+  const baseViewport = page.getViewport({ scale: 1 });
+  const available = Math.max(560, Math.min(940, Number(examAnnotationPanel.clientWidth || 900) - 280));
+  const scale = Math.max(0.7, Math.min(1.5, available / baseViewport.width));
+  const viewport = page.getViewport({ scale });
+  const context = examPdfCanvas.getContext("2d");
+
+  examPdfCanvas.width = Math.ceil(viewport.width);
+  examPdfCanvas.height = Math.ceil(viewport.height);
+  examPdfCanvas.style.width = `${Math.ceil(viewport.width)}px`;
+  examPdfCanvas.style.height = `${Math.ceil(viewport.height)}px`;
+  examAnnotationOverlay.style.width = `${Math.ceil(viewport.width)}px`;
+  examAnnotationOverlay.style.height = `${Math.ceil(viewport.height)}px`;
+
+  await page.render({ canvasContext: context, viewport }).promise;
+  examPageLabel.textContent = `Page ${examAnnotationState.page} / ${examAnnotationState.pageCount}`;
+  examPrevPageBtn.disabled = examAnnotationState.page <= 1;
+  examNextPageBtn.disabled = examAnnotationState.page >= examAnnotationState.pageCount;
+  renderExamAnnotationOverlay();
+}
+
+async function openExamAnnotation(studentKey) {
+  const assignment = assignmentsCache[selectedAssignmentId];
+  const submission = submissionsCache?.[selectedAssignmentId]?.[studentKey];
+
+  if (!assignment || !submission?.driveFileId || !isExamAssignment(assignment)) return;
+
+  if (
+    !examAnnotationPanel.hidden &&
+    examAnnotationState.assignmentId === selectedAssignmentId &&
+    examAnnotationState.studentKey === studentKey
+  ) {
+    examAnnotationPanel.hidden = true;
+    return;
+  }
+
+  if (!window.pdfjsLib) {
+    examAnnotationStatus.textContent = "PDF viewer library did not load.";
+    examAnnotationStatus.className = "status-text bad";
+    examAnnotationPanel.hidden = false;
+    return;
+  }
+
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+    "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+  manualGradingPanel.hidden = true;
+  selectedManualStudentKey = "";
+  examAnnotationPanel.hidden = false;
+  examAnnotationTitle.textContent = `Exam annotations · ${submission.studentName || "Student"}`;
+  examAnnotationStatus.textContent = "Loading submitted PDF...";
+  examAnnotationStatus.className = "status-text";
+  examSaveAnnotatedPdfBtn.disabled = true;
+
+  examAnnotationState = {
+    assignmentId: selectedAssignmentId,
+    studentKey,
+    pdfBytes: null,
+    pdfDocument: null,
+    page: 1,
+    pageCount: 0,
+    tool: "correct",
+    annotations: normalizeExamAnnotations(submission)
+  };
+  setExamTool("correct");
+  renderExamAnnotationList();
+
+  examOpenAnnotatedPdfLink.hidden = !submission.examAnnotatedDriveFileUrl;
+  examOpenAnnotatedPdfLink.href = submission.examAnnotatedDriveFileUrl || "#";
+
+  try {
+    const response = await fetch("/api/exam-pdf-source", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        assignmentId: selectedAssignmentId,
+        studentKey
+      })
+    });
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.error || "Could not load exam PDF.");
+    }
+
+    const bytes = await response.arrayBuffer();
+    const pdfDocument = await window.pdfjsLib.getDocument({
+      data: new Uint8Array(bytes)
+    }).promise;
+
+    examAnnotationState.pdfBytes = bytes;
+    examAnnotationState.pdfDocument = pdfDocument;
+    examAnnotationState.pageCount = pdfDocument.numPages;
+    examAnnotationState.page = 1;
+    examAnnotationStatus.textContent = "Click the PDF to place the selected mark.";
+    examAnnotationStatus.className = "status-text ok";
+    examSaveAnnotatedPdfBtn.disabled = false;
+    await renderExamPage();
+    examAnnotationPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  } catch (error) {
+    console.error(error);
+    examAnnotationStatus.textContent = error?.message || "Could not load exam PDF.";
+    examAnnotationStatus.className = "status-text bad";
+  }
+}
+
+async function removeExamAnnotation(annotationId) {
+  examAnnotationState.annotations = examAnnotationState.annotations.filter(
+    (annotation) => annotation.id !== annotationId
+  );
+  renderExamAnnotationOverlay();
+  await persistExamAnnotations();
+}
+
+async function addExamAnnotationFromClick(event) {
+  if (!examAnnotationState.pdfDocument) return;
+  const rect = examAnnotationOverlay.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+
+  const x = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
+  const y = Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height));
+  const pointsRaw = examQuestionPoints.value.trim();
+  const points = pointsRaw === "" ? null : Number(pointsRaw);
+
+  if (points !== null && (!Number.isFinite(points) || points < 0)) {
+    examAnnotationStatus.textContent = "Points must be zero or greater.";
+    examAnnotationStatus.className = "status-text bad";
+    return;
+  }
+
+  const now = Date.now();
+  examAnnotationState.annotations.push({
+    id: `annotation-${now}-${Math.random().toString(36).slice(2, 8)}`,
+    type: examAnnotationState.tool,
+    page: examAnnotationState.page,
+    x,
+    y,
+    question: examQuestionNumber.value.trim(),
+    points,
+    comment: examQuestionComment.value.trim(),
+    createdAt: now,
+    createdBy: getTeacherName()
+  });
+
+  renderExamAnnotationOverlay();
+  examAnnotationStatus.textContent = "Saving mark...";
+  examAnnotationStatus.className = "status-text";
+  try {
+    await persistExamAnnotations();
+    examAnnotationStatus.textContent = "Mark saved.";
+    examAnnotationStatus.className = "status-text ok";
+  } catch (error) {
+    console.error(error);
+    examAnnotationStatus.textContent = "Could not save the mark.";
+    examAnnotationStatus.className = "status-text bad";
+  }
+}
+
+function asciiPdfText(value) {
+  return String(value || "")
+    .replace(/[–—]/g, "-")
+    .replace(/[“”]/g, '"')
+    .replace(/[‘’]/g, "'")
+    .replace(/[^\x20-\x7EÀ-ÿ]/g, "")
+    .slice(0, 120);
+}
+
+async function buildAnnotatedExamPdf() {
+  if (!window.PDFLib || !examAnnotationState.pdfBytes) {
+    throw new Error("PDF annotation library did not load.");
+  }
+
+  const { PDFDocument, StandardFonts, rgb } = window.PDFLib;
+  const pdfDoc = await PDFDocument.load(examAnnotationState.pdfBytes.slice(0));
+  const pages = pdfDoc.getPages();
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const bold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+  for (const annotation of examAnnotationState.annotations) {
+    const page = pages[Number(annotation.page) - 1];
+    if (!page) continue;
+
+    const { width, height } = page.getSize();
+    const x = Number(annotation.x) * width;
+    const y = (1 - Number(annotation.y)) * height;
+    const markSize = Math.max(10, Math.min(20, width * 0.025));
+    const lineWidth = Math.max(1.4, width * 0.0025);
+
+    if (annotation.type === "correct") {
+      page.drawLine({
+        start: { x: x - markSize * 0.5, y: y },
+        end: { x: x - markSize * 0.1, y: y - markSize * 0.45 },
+        thickness: lineWidth,
+        color: rgb(0.09, 0.64, 0.29)
+      });
+      page.drawLine({
+        start: { x: x - markSize * 0.1, y: y - markSize * 0.45 },
+        end: { x: x + markSize * 0.65, y: y + markSize * 0.5 },
+        thickness: lineWidth,
+        color: rgb(0.09, 0.64, 0.29)
+      });
+    } else if (annotation.type === "wrong") {
+      page.drawLine({
+        start: { x: x - markSize * 0.45, y: y - markSize * 0.45 },
+        end: { x: x + markSize * 0.45, y: y + markSize * 0.45 },
+        thickness: lineWidth,
+        color: rgb(0.86, 0.15, 0.15)
+      });
+      page.drawLine({
+        start: { x: x - markSize * 0.45, y: y + markSize * 0.45 },
+        end: { x: x + markSize * 0.45, y: y - markSize * 0.45 },
+        thickness: lineWidth,
+        color: rgb(0.86, 0.15, 0.15)
+      });
+    } else {
+      page.drawCircle({
+        x,
+        y,
+        size: markSize * 0.48,
+        borderWidth: lineWidth,
+        borderColor: rgb(0.15, 0.39, 0.92)
+      });
+    }
+
+    const meta = asciiPdfText(examAnnotationMeta(annotation));
+    const comment = asciiPdfText(annotation.comment);
+    const label = [meta, comment].filter(Boolean).join(" · ");
+    if (label) {
+      const size = Math.max(6, Math.min(9, width * 0.011));
+      const boxX = Math.min(width - 160, x + markSize * 0.8);
+      const boxY = Math.max(8, Math.min(height - 14, y - 4));
+      page.drawText(label, {
+        x: Math.max(4, boxX),
+        y: boxY,
+        size,
+        font: meta ? bold : font,
+        color: rgb(0.12, 0.16, 0.23),
+        maxWidth: 155
+      });
+    }
+  }
+
+  return pdfDoc.save();
+}
+
+async function saveAnnotatedExamPdf() {
+  if (!examAnnotationState.assignmentId || !examAnnotationState.studentKey) return;
+  examSaveAnnotatedPdfBtn.disabled = true;
+  examAnnotationStatus.textContent = "Generating annotated PDF...";
+  examAnnotationStatus.className = "status-text";
+
+  try {
+    await persistExamAnnotations();
+    const pdfBytes = await buildAnnotatedExamPdf();
+    const response = await fetch("/api/exam-annotation-upload", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/pdf",
+        "X-Assignment-Id": examAnnotationState.assignmentId,
+        "X-Student-Key": examAnnotationState.studentKey,
+        "X-File-Size": String(pdfBytes.byteLength)
+      },
+      body: pdfBytes
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.ok || !result.driveFileUrl) {
+      throw new Error(result.error || "Could not save annotated PDF.");
+    }
+
+    const now = Date.now();
+    await update(
+      ref(db, `assignmentSubmissions/${examAnnotationState.assignmentId}/${examAnnotationState.studentKey}`),
+      {
+        examAnnotationStatus: "annotated",
+        examAnnotationSavedAt: now,
+        examAnnotationSavedBy: getTeacherName(),
+        updatedAt: now
+      }
+    );
+
+    examOpenAnnotatedPdfLink.href = result.driveFileUrl;
+    examOpenAnnotatedPdfLink.hidden = false;
+    examAnnotationStatus.textContent = "Annotated PDF saved. Original submission was not modified.";
+    examAnnotationStatus.className = "status-text ok";
+  } catch (error) {
+    console.error(error);
+    examAnnotationStatus.textContent = error?.message || "Could not save annotated PDF.";
+    examAnnotationStatus.className = "status-text bad";
+  } finally {
+    examSaveAnnotatedPdfBtn.disabled = false;
+  }
+}
+
 
 function normalizeProjectCheckpoints(assignment) {
   return Object.entries(assignment?.projectCheckpoints || {})
@@ -1930,6 +2374,14 @@ function renderDetail() {
                 Open submitted PDF →
               </a>
               <div class="submission-grade-actions">
+                ${isExamAssignment(assignment)
+                  ? `<button type="button" class="manual-takeover-btn" data-annotate-exam="${escapeHtml(studentKey)}">${submission.examAnnotatedDriveFileId ? "Edit annotations" : "Annotate exam"}</button>`
+                  : ""
+                }
+                ${submission.examAnnotatedDriveFileUrl
+                  ? `<a class="pdf-link" href="${escapeHtml(submission.examAnnotatedDriveFileUrl)}" target="_blank" rel="noopener">Graded PDF</a>`
+                  : ""
+                }
                 ${gradingMode === "ai" && gradeTotal !== null
                   ? `<button type="button" class="manual-takeover-btn" data-manual-card-grade="${escapeHtml(studentKey)}">Manual grading</button>`
                   : ""
@@ -2262,6 +2714,7 @@ teacherAssignmentList.addEventListener("click", (event) => {
   const card = event.target.closest("[data-assignment-select]");
   if (!card) return;
   manualGradingPanel.hidden = true;
+  examAnnotationPanel.hidden = true;
   selectedManualStudentKey = "";
   selectedAssignmentId = card.dataset.assignmentSelect;
   renderAssignmentList();
@@ -2269,6 +2722,16 @@ teacherAssignmentList.addEventListener("click", (event) => {
 });
 
 submissionList.addEventListener("click", (event) => {
+  const annotateButton = event.target.closest("[data-annotate-exam]");
+  if (annotateButton) {
+    openExamAnnotation(annotateButton.dataset.annotateExam).catch((error) => {
+      console.error(error);
+      aiSyncStatus.textContent = "Could not open exam annotations.";
+      aiSyncStatus.style.color = "#b91c1c";
+    });
+    return;
+  }
+
   const manualButton = event.target.closest("[data-manual-card-grade]");
   if (manualButton) {
     openManualGrading(selectedAssignmentId, manualButton.dataset.manualCardGrade);
@@ -2299,6 +2762,56 @@ submissionList.addEventListener("click", (event) => {
   const card = event.target.closest("[data-submission-student-key]");
   if (!card) return;
   openManualGrading(selectedAssignmentId, card.dataset.submissionStudentKey);
+});
+
+examToolButtons.forEach((button) => {
+  button.addEventListener("click", () => setExamTool(button.dataset.examTool));
+});
+
+examAnnotationOverlay.addEventListener("click", (event) => {
+  addExamAnnotationFromClick(event);
+});
+
+examPrevPageBtn.addEventListener("click", async () => {
+  if (examAnnotationState.page <= 1) return;
+  examAnnotationState.page -= 1;
+  await renderExamPage();
+});
+
+examNextPageBtn.addEventListener("click", async () => {
+  if (examAnnotationState.page >= examAnnotationState.pageCount) return;
+  examAnnotationState.page += 1;
+  await renderExamPage();
+});
+
+examUndoMarkBtn.addEventListener("click", async () => {
+  if (!examAnnotationState.annotations.length) return;
+  examAnnotationState.annotations.pop();
+  renderExamAnnotationOverlay();
+  await persistExamAnnotations().catch(console.error);
+});
+
+examClearPageBtn.addEventListener("click", async () => {
+  const pageCount = examAnnotationState.annotations.filter(
+    (annotation) => annotation.page === examAnnotationState.page
+  ).length;
+  if (!pageCount) return;
+  if (!window.confirm(`Clear all ${pageCount} mark${pageCount === 1 ? "" : "s"} from page ${examAnnotationState.page}?`)) return;
+  examAnnotationState.annotations = examAnnotationState.annotations.filter(
+    (annotation) => annotation.page !== examAnnotationState.page
+  );
+  renderExamAnnotationOverlay();
+  await persistExamAnnotations().catch(console.error);
+});
+
+examAnnotationList.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-remove-exam-annotation]");
+  if (!button) return;
+  removeExamAnnotation(button.dataset.removeExamAnnotation).catch(console.error);
+});
+
+examSaveAnnotatedPdfBtn.addEventListener("click", () => {
+  saveAnnotatedExamPdf();
 });
 
 projectProgressTimeline.addEventListener("click", (event) => {
