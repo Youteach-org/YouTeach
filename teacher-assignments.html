@@ -1240,17 +1240,17 @@
 
                   <div class="overview-actions-stack">
                     <div class="ai-sync-bar">
-                      <label for="aiConflictMode">AI</label>
-                      <select id="aiConflictMode">
-                        <option value="keep-manual">Keep Manual</option>
-                        <option value="replace-manual">Replace with AI</option>
-                        <option value="compare">Compare</option>
+                      <label for="aiConflictMode" title="This choice only matters when a manual grade already exists.">If manual exists</label>
+                      <select id="aiConflictMode" title="Choose what to do only when this student already has a manual grade.">
+                        <option value="compare" selected>Compare first</option>
+                        <option value="keep-manual">Keep manual + save AI</option>
+                        <option value="replace-manual">Replace manual with AI</option>
                       </select>
                       <span id="aiSyncStatus" class="ai-sync-status"></span>
                     </div>
 
                     <div class="toolbar">
-                      <button id="syncAiGradesBtn" type="button">Sync</button>
+                      <button id="syncAiGradesBtn" type="button" title="Import the saved AI grading-results.json from Drive into YouTeach.">Import AI Results</button>
                       <button id="openDriveFolderBtn" disabled>Drive</button>
                       <button id="toggleAssignmentBtn">Close</button>
                     </div>
