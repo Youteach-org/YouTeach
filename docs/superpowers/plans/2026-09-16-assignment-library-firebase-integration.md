@@ -63,3 +63,13 @@ Run `node --test tests/assignment-library-integration.test.mjs` and verify RED b
 - `node --check assignment-library-model.js`.
 
 Document Firebase/UI integration as implemented on the feature branch, with archive/search/filter/statistics still deferred.
+
+
+## Execution record — 2026-09-16
+
+- Integration contract was committed first and verified RED: 5/5 source-contract checks failed before implementation.
+- Minimal Teacher Assignments integration was then added on the feature branch.
+- GREEN verification: 5/5 source-contract checks pass.
+- Firebase templates use `assignmentTemplates`; normal runs stay in `assignments`.
+- Creating from a template uses one root multi-location `update` for the assigned instance plus `usageCount` / `lastUsedAt`.
+- No separate Assignment Library page was introduced.
