@@ -74,10 +74,16 @@ function assignmentRubricCriteria(assignment) {
   return criteria.filter(Boolean);
 }
 
+function gradingTotalForSubmission(submission) {
+  const raw = submission?.grading?.totalScore;
+  if (raw === null || raw === undefined || raw === "") return null;
+  const total = Number(raw);
+  return Number.isFinite(total) ? total : null;
+}
+
 function publishedGradeHtml(assignment, submission, expanded) {
-  const totalRaw = submission?.grading?.totalScore;
-  const total = Number(totalRaw);
-  if (!submission?.gradePublished || !Number.isFinite(total)) return "";
+  const total = gradingTotalForSubmission(submission);
+  if (!submission?.gradePublished || total === null) return "";
 
   const criteria = assignmentRubricCriteria(assignment);
   const scores = submission?.grading?.criterionScores || {};
@@ -166,8 +172,8 @@ function wireOwnSubmissionListeners() {
 function submissionRow(submission) {
   if (!submission?.driveFileId) return "";
 
-  const total = Number(submission?.grading?.totalScore);
-  const hasGrade = Number.isFinite(total);
+  const total = gradingTotalForSubmission(submission);
+  const hasGrade = total !== null;
   const reviewLabel = submission?.gradePublished && hasGrade
     ? "grade released"
     : (hasGrade ? "reviewed · grade not released" : "pending review");
@@ -202,8 +208,8 @@ function renderAssignments() {
     const submittedBefore = hasSubmittedBefore(submission);
     const closed = isClosed(assignment);
     const expanded = expandedAssignmentId === assignmentId;
-    const publishedTotal = Number(submission?.grading?.totalScore);
-    const hasInternalGrade = Number.isFinite(publishedTotal);
+    const publishedTotal = gradingTotalForSubmission(submission);
+    const hasInternalGrade = publishedTotal !== null;
     const statusText = hasPdf
       ? (submission?.gradePublished && hasInternalGrade
         ? `Grade released · ${Number(publishedTotal.toFixed(2))} / 100`
