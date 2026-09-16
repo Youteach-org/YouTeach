@@ -124,6 +124,7 @@ let selectedDriveFolderUrl = "";
 let selectedManualStudentKey = "";
 let assignmentFilterGroupTouched = false;
 const aiAutoSyncTimers = new Map();
+const AI_PENDING_RUN_KEY = "youteachAiGradingPendingRunV1";
 let lastPassiveAiSyncAt = 0;
 let initialAiSyncRequested = false;
 
@@ -806,11 +807,13 @@ function startAiAutoSync(assignmentId, startedAt) {
     const result = await syncAiGrades({
       assignmentId,
       minimumResultsModifiedTime: startedAt,
+      forceRegrade: true,
       silentPending: true
     });
 
     if (result?.ok) {
       stopAiAutoSync(assignmentId);
+      try { localStorage.removeItem(AI_PENDING_RUN_KEY); } catch (_) {}
       return;
     }
 
@@ -838,6 +841,10 @@ function openChatGPTGrading(assignmentId) {
   navigator.clipboard?.writeText(prompt).catch(() => {});
 
   const startedAt = Date.now();
+  try {
+    localStorage.setItem(AI_PENDING_RUN_KEY, JSON.stringify({ assignmentId, startedAt }));
+  } catch (_) {}
+
   aiSyncStatus.textContent = "Waiting for AI results...";
   aiSyncStatus.style.color = "#64748b";
   startAiAutoSync(assignmentId, startedAt);
@@ -1976,9 +1983,25 @@ function refreshSelectedAiResults() {
   if (now - lastPassiveAiSyncAt < 5000) return;
   lastPassiveAiSyncAt = now;
 
+  let pendingRun = null;
+  try {
+    pendingRun = JSON.parse(localStorage.getItem(AI_PENDING_RUN_KEY) || "null");
+  } catch (_) {}
+
+  const isPendingRun =
+    pendingRun &&
+    String(pendingRun.assignmentId || "") === assignmentId &&
+    Number(pendingRun.startedAt || 0) > 0;
+
   syncAiGrades({
     assignmentId,
+    minimumResultsModifiedTime: isPendingRun ? Number(pendingRun.startedAt) : 0,
+    forceRegrade: Boolean(isPendingRun),
     silentPending: true
+  }).then((result) => {
+    if (result?.ok && isPendingRun) {
+      try { localStorage.removeItem(AI_PENDING_RUN_KEY); } catch (_) {}
+    }
   }).catch(() => {});
 }
 
