@@ -73,3 +73,12 @@ Document Firebase/UI integration as implemented on the feature branch, with arch
 - Firebase templates use `assignmentTemplates`; normal runs stay in `assignments`.
 - Creating from a template uses one root multi-location `update` for the assigned instance plus `usageCount` / `lastUsedAt`.
 - No separate Assignment Library page was introduced.
+
+
+### GitHub Actions verification
+
+- Workflow run: `35144825718`
+- Commit verified: `96a6804092ff93a4fae88f8b4883fab7d1529b62`
+- `node --test tests/*.test.mjs`: success
+- `sh build-pages.sh`: success
+- The verification workflow is temporary and is removed before integration to `main`.
