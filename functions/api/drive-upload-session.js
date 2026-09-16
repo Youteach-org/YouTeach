@@ -513,6 +513,50 @@ async function deleteDriveFile(accessToken, fileId) {
   }
 }
 
+function revisionGradeResetPatch(submission, action, timestamp, actor) {
+  const hasGradeState = Boolean(submission?.grading) || Boolean(submission?.gradePublished);
+  const base = {
+    grading: null,
+    reviewStatus: "pending",
+    teacherReviewStatus: null,
+    gradePublished: false,
+    gradePublishedAt: null,
+    gradePublishedBy: null,
+    gradingSourceSubmissionUpdatedAt: null,
+    gradingSourceDriveFileId: null,
+    aiGradingResultsFileModifiedTime: null,
+    aiGradingSyncedAt: null,
+    aiGradingCandidate: null,
+    aiGradingCandidateState: null
+  };
+
+  if (!hasGradeState) return base;
+
+  const randomPart = typeof crypto?.randomUUID === "function"
+    ? crypto.randomUUID().replace(/-/g, "").slice(0, 12)
+    : Math.random().toString(36).slice(2, 14);
+  const historyKey = `event-${timestamp}-${randomPart}`;
+
+  return {
+    ...base,
+    [`gradingHistory/${historyKey}`]: {
+      action,
+      timestamp,
+      actor: String(actor || "Student"),
+      from: {
+        grading: submission?.grading || null,
+        published: Boolean(submission?.gradePublished)
+      },
+      to: {
+        grading: null,
+        published: false
+      },
+      sourceDriveFileId: String(submission?.driveFileId || ""),
+      sourceSubmissionUpdatedAt: Number(submission?.uploadedAt || submission?.submittedAt || 0)
+    }
+  };
+}
+
 async function beginResumableUpload({
   accessToken,
   fileId,
@@ -687,10 +731,17 @@ export async function onRequest(context) {
       const submissionPath =
         `assignmentSubmissions/${encodeURIComponent(assignmentId)}/${encodeURIComponent(studentKey)}`;
 
+      const now = Date.now();
       await firebasePatch(submissionPath, {
+        ...revisionGradeResetPatch(
+          submission,
+          "submission-withdrawn",
+          now,
+          student.fullName || student.name || student.nickname || "Student"
+        ),
         withdrawn: true,
-        withdrawnAt: Date.now(),
-        updatedAt: Date.now(),
+        withdrawnAt: now,
+        updatedAt: now,
         reviewStatus: "withdrawn",
         identityReviewStatus: "withdrawn",
         driveFileId: null,
@@ -698,7 +749,19 @@ export async function onRequest(context) {
         driveFileUrl: null,
         mimeType: null,
         size: null,
-        uploadedAt: null
+        uploadedAt: null,
+        examAnnotations: null,
+        examAnnotationPointsTotal: null,
+        examAnnotationsUpdatedAt: null,
+        examAnnotationsUpdatedBy: null,
+        examAnnotationStatus: null,
+        examAnnotationSavedAt: null,
+        examAnnotationSavedBy: null,
+        examAnnotatedDriveFileId: null,
+        examAnnotatedDriveFileName: null,
+        examAnnotatedDriveFileUrl: null,
+        examAnnotatedAt: null,
+        examAnnotatedSourceDriveFileId: null
       });
 
       return json(200, {
@@ -767,7 +830,17 @@ export async function onRequest(context) {
       const submissionPath =
         `assignmentSubmissions/${encodeURIComponent(assignmentId)}/${encodeURIComponent(studentKey)}`;
 
+      const revisionReset = Number(submission?.uploadedAt || submission?.submittedAt || 0) > 0
+        ? revisionGradeResetPatch(
+            submission,
+            "submission-resubmitted",
+            now,
+            student.fullName || student.name || student.nickname || "Student"
+          )
+        : {};
+
       await firebasePatch(submissionPath, {
+        ...revisionReset,
         studentKey,
         studentName: student.fullName || student.name || student.nickname || "Student",
         nickname: student.nickname || "",
