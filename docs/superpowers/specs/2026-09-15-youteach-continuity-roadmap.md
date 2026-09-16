@@ -250,8 +250,11 @@ Foundation status — 2026-09-16:
 - pure Template vs Assigned Instance model implemented on `feature/assignment-library-foundation`, pending merge;
 - reusable content extraction explicitly excludes group/date/submission/grade/publication state;
 - new instances keep a frozen `templateSnapshot` plus `templateId` / `templateVersion`;
-- Firebase `assignmentTemplates` persistence and teacher-facing Assignment Library actions are the next integration slice;
-- no new Assignment Library layout has been approved yet.
+- Firebase persistence under `assignmentTemplates` is implemented on the feature branch;
+- Teacher Assignments can save the selected activity as a template and load a template into the existing Create Assignment form;
+- creating from a template atomically writes the new assigned instance plus template usage metadata;
+- group/due date and Project checkpoint dates remain run-specific;
+- dedicated library browse/search/filter/archive UX is still deferred.
 
 Remaining lifecycle decisions / implementation:
 - archive old assigned instances without deleting reusable templates;
