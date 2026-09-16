@@ -1055,7 +1055,13 @@ function renderManualGrading() {
         <a class="pdf-link" href="${escapeHtml(submission.driveFileUrl || "#")}" target="_blank" rel="noopener">
           Open PDF
         </a>
-        <button type="button" data-save-manual-grade="${escapeHtml(studentKey)}">Save Grade</button>
+        <div class="manual-grade-action-buttons">
+          ${submission?.grading?.mode === "manual"
+            ? `<button type="button" class="clear-manual-grade-btn" data-clear-manual-grade="${escapeHtml(studentKey)}">Clear Grade</button>`
+            : ""
+          }
+          <button type="button" data-save-manual-grade="${escapeHtml(studentKey)}">Save Grade</button>
+        </div>
       </div>
       <div class="manual-grade-status" data-manual-grade-status>
         ${savedTotal === null ? "" : "Saved manual grade"}
@@ -1185,6 +1191,68 @@ async function saveManualGrade(studentKey) {
     status.style.color = "#b91c1c";
   } finally {
     saveButton.disabled = false;
+  }
+}
+
+async function clearManualGrade(studentKey) {
+  const submission = submissionsCache?.[selectedAssignmentId]?.[studentKey];
+  const card = manualGradingList.querySelector(
+    `[data-manual-grade-card="${CSS.escape(studentKey)}"]`
+  );
+  const status = card?.querySelector("[data-manual-grade-status]");
+
+  if (!submission || submission?.grading?.mode !== "manual") {
+    if (status) {
+      status.textContent = "There is no manual grade to clear.";
+      status.style.color = "#b45309";
+    }
+    return;
+  }
+
+  const studentName = submission.studentName || "this student";
+  const confirmed = window.confirm(
+    `Clear the manual grade for ${studentName}? The submitted file will NOT be deleted. The grade will return to pending and can be graded again manually or with AI.`
+  );
+  if (!confirmed) return;
+
+  const clearButton = card?.querySelector("[data-clear-manual-grade]");
+  if (clearButton) clearButton.disabled = true;
+  if (status) {
+    status.textContent = "Clearing manual grade...";
+    status.style.color = "#64748b";
+  }
+
+  try {
+    await update(
+      ref(db, `assignmentSubmissions/${selectedAssignmentId}/${studentKey}`),
+      {
+        grading: null,
+        reviewStatus: "pending",
+        teacherReviewStatus: null,
+        gradePublished: false,
+        gradePublishedAt: null,
+        gradePublishedBy: null,
+        gradingSourceSubmissionUpdatedAt: null,
+        gradingSourceDriveFileId: null,
+        aiGradingResultsFileModifiedTime: null,
+        aiGradingSyncedAt: null,
+        aiGradingCandidate: null,
+        aiGradingCandidateState: null,
+        updatedAt: Date.now()
+      }
+    );
+
+    if (status) {
+      status.textContent = "Manual grade cleared. Ready to grade again.";
+      status.style.color = "#166534";
+    }
+  } catch (error) {
+    console.error(error);
+    if (status) {
+      status.textContent = "Could not clear the manual grade.";
+      status.style.color = "#b91c1c";
+    }
+    if (clearButton) clearButton.disabled = false;
   }
 }
 
@@ -1826,9 +1894,15 @@ manualGradingList.addEventListener("input", (event) => {
 });
 
 manualGradingList.addEventListener("click", (event) => {
-  const button = event.target.closest("[data-save-manual-grade]");
-  if (!button) return;
-  saveManualGrade(button.dataset.saveManualGrade);
+  const clearButton = event.target.closest("[data-clear-manual-grade]");
+  if (clearButton) {
+    clearManualGrade(clearButton.dataset.clearManualGrade);
+    return;
+  }
+
+  const saveButton = event.target.closest("[data-save-manual-grade]");
+  if (!saveButton) return;
+  saveManualGrade(saveButton.dataset.saveManualGrade);
 });
 
 closeManualGradingBtn.addEventListener("click", () => {
