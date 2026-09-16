@@ -19,10 +19,10 @@ Implemented on `main`, pending field validation:
 - student assignment cards expand in the grid to show full instructions/details;
 - student grade display refreshes live after teacher publication;
 - manual grading supports linked criterion points and percentages, with points constrained by criterion maximum;
-- grading-history/audit trail across revisions, including AI application, manual correction, publication/unpublication, grade clearing, source submission revision metadata, and a baseline view for grades that predate the history feature.
+- grading-history/audit trail across revisions, including AI application, manual correction, publication/unpublication, grade clearing, source submission revision metadata, and a baseline view for grades that predate the history feature;
+- Project review checkpoints with photo/video/document evidence uploads, additive Drive storage, student progress view, and teacher review state.
 
 Planned, not yet implemented:
-- Project review checkpoints with photo/video/document evidence uploads;
 - exam PDF/image annotation with ✓/✗ and per-question marks;
 - richer grading ledger fingerprinting using Drive modified-time/size through all layers;
 - bulk grade publication controls.
@@ -208,34 +208,47 @@ The grading JSON should eventually support per-question annotation metadata so t
 
 ## 5. Project assignments with progress tracking
 
-Project assignments need a milestone/checkpoint model instead of only one final PDF.
+Implemented first version on `main`.
 
-Teacher can define review dates/checkpoints.
+Project assignments use a milestone/checkpoint model in addition to the final PDF.
 
-Each checkpoint can contain:
+Teacher can define checkpoints while creating a `PJ` assignment. Each checkpoint stores:
 - checkpoint title;
 - review/due date;
 - instructions;
-- required evidence types;
-- optional teacher notes;
-- completion/review status.
+- required evidence types (`image`, `video`, `document`);
+- creation timestamp.
 
-Student can submit progress evidence such as:
+Student can submit additive progress evidence such as:
 - photos/images;
 - video;
-- PDF/document evidence;
-- other approved file types added later.
+- PDF/Office/text document evidence.
 
-Project evidence is additive across checkpoints and should not overwrite prior checkpoint history.
+Project evidence is stored separately from `assignmentSubmissions` under:
+`assignmentProjectEvidence/{assignmentId}/{studentKey}/{checkpointId}/{evidenceId}`
 
-Recommended Drive organization for Project assignments:
+Evidence does not overwrite prior checkpoint evidence and never replaces or mutates the final PDF submission.
+
+Drive organization:
 - task folder;
-- student subfolder;
-- checkpoint/review subfolders or equivalent structured metadata.
+- student folder;
+- checkpoint folder;
+- timestamped evidence files.
 
-The teacher should see a timeline of progress and be able to review each checkpoint.
+Teacher assignment detail shows a Project progress timeline across students and checkpoints. Each evidence file can be opened from Drive and marked Reviewed / reopened, with an optional teacher note.
 
-The final project submission remains distinct from interim progress evidence.
+Student expanded assignment cards show:
+- checkpoint title/instructions;
+- checkpoint due date and open/closed state;
+- accepted evidence types;
+- prior evidence files;
+- teacher review status and teacher note;
+- upload control for additional evidence while the checkpoint is open.
+
+Current limits for the first version:
+- photo/document evidence: up to 20 MB per file;
+- video evidence: up to 50 MB per file;
+- checkpoint configuration is created with the project assignment; a dedicated post-creation checkpoint editor is a later enhancement.
 
 ## 6. Student assignment card expansion
 
