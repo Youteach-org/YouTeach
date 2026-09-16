@@ -125,6 +125,21 @@ The AI must not:
 
 ## 3. Grading ledger / avoiding duplicate grading
 
+### 3.0 Drive ownership rule for AI results
+
+YouTeach uses the Google Drive `drive.file` scope. Therefore:
+- YouTeach must create `{TASK-CODE}--grading-results.json` itself inside the task folder;
+- ChatGPT must update that existing file in place and must not create a second file with the same name;
+- preserving the same Drive file ID lets YouTeach read the result without requesting broader Drive permissions;
+- the file is initialized as an empty schema-v2 placeholder when the task folder/grading support files are prepared;
+- if an older task has no YouTeach-owned results file, the sync endpoint creates the placeholder and waits for AI to update it.
+
+Root cause found on 2026-09-16:
+- ChatGPT had created the results file with a different app context;
+- YouTeach's `drive.file` OAuth token could see the task folder and its own rubric file but could not see that ChatGPT-created results file;
+- production sync therefore returned 404 even though the file was visible to the teacher in Drive;
+- the architecture was changed to precreate the results file from YouTeach and have AI update it.
+
 Critical idempotency rule:
 - Never treat an AI result as already applied when the submission has no current AI grade.
 - Source/revision markers alone are not enough to skip import; a valid current AI grade must also exist.
