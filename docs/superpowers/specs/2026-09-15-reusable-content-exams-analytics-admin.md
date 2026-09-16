@@ -135,9 +135,9 @@ Important:
 
 ## 6. Exam Question Bank
 
-First functional version implemented on `main` on 2026-09-16.
+A provisional first implementation exists on `main` as of 2026-09-16, but its detailed UX and workflow have NOT been approved by the user.
 
-The existing Exam assignment type is now connected to a reusable Question Bank.
+The accepted requirement is that the existing Exam assignment type becomes connected to a reusable Question Bank.
 
 ### 6.1 Bank item model
 
@@ -185,11 +185,11 @@ Historical performance may include:
 
 ## 7. Exam Creator
 
-First functional version implemented on `main` on 2026-09-16.
+A provisional first implementation exists on `main` as of 2026-09-16, but it must NOT be treated as the accepted product design.
 
-A new main section **Exam Creator** uses the canonical `exam-schema.js` contract.
+The accepted requirement is a new main section: **Exam Creator**.
 
-Implemented capabilities:
+Accepted high-level capabilities:
 - create an exam template;
 - pull questions from Question Bank;
 - filter bank items;
@@ -204,11 +204,10 @@ Implemented capabilities:
 - create a matching YouTeach `EX` assignment linked through `examTemplateId`, `examInstanceId`, and `examVersion`;
 - freeze question snapshots inside templates/instances so later Question Bank edits do not rewrite historical exam versions.
 
-Current A/B behavior:
-- Version A preserves teacher-defined section/question order.
-- Version B defaults to reversing question order within each section.
-- The answer key is rebuilt from the same reordered version, so numbering and correct answers cannot diverge.
-- The teacher can choose Version B to keep the same order instead.
+Important unresolved product decisions:
+- the exact A/B transformation rules are NOT approved;
+- reversing question order within sections was an assistant-made provisional choice and must not be treated as a requirement;
+- the exact Exam Creator layout, controls, defaults, section workflow, points workflow, assignment-creation flow, and teacher interactions remain to be defined with the user before further implementation.
 
 Future intelligent functions:
 - suggest questions based on course/topic coverage;
@@ -221,11 +220,11 @@ No intelligent selection should silently modify the teacher's final exam.
 
 ## 8. Answer Sheet Creator
 
-First functional version implemented on `main` on 2026-09-16.
+A provisional first implementation exists on `main` as of 2026-09-16, but its detailed output layout and workflow have NOT been approved by the user.
 
-The new **Answer Sheet Creator** consumes the exact template/version schema from Exam Creator.
+The accepted requirement is that **Answer Sheet Creator** consumes the exact exam/version schema from Exam Creator.
 
-It generates:
+Accepted outputs:
 - student answer sheet;
 - teacher answer key.
 
@@ -238,29 +237,30 @@ Requirements:
 
 The system does not maintain an independent manually duplicated answer key data source.
 
-Current output:
+Provisional implementation details currently present in code:
 - responsive browser preview;
 - print-ready student answer sheet;
 - print-ready teacher answer key;
-- browser **Print / Save PDF** workflow;
+- browser Print / Save PDF workflow;
 - multiple-choice bubbles;
 - True/False controls;
 - matching response lines;
-- configurable open-response lines.
+- configurable open-response lines;
+- a provisional shared `exam-schema.js`;
+- provisional Firebase nodes `examQuestionBank`, `examTemplates`, and `examInstances`.
 
-Canonical shared module:
-- `exam-schema.js` owns question normalization, template normalization, question snapshots, A/B version construction, answer-key derivation, and Exam Instance snapshots.
+These details are implementation experiments, not accepted requirements. Future work must first define the actual teacher workflow, version-generation rules, visual layout, answer-sheet format, exam-instance behavior, and any automatic assignment integration with the user.
 
-Firebase nodes introduced:
-- `examQuestionBank`
-- `examTemplates`
-- `examInstances`
+## 8.1 Approval status correction — 2026-09-16
 
-Current limitations / next extensions:
-- generated exam question paper itself is still a browser/schema workflow rather than a dedicated downloadable DOCX/PDF renderer;
-- Exam Creator does not yet perform automatic difficulty balancing or analytics-driven selection;
-- Answer Sheet Creator does not yet use fixed response coordinates for automatic grading/annotation;
-- future Exam Creator/Answer Sheet Creator region metadata should integrate with the implemented exam annotation workflow.
+The detailed Exam Creator / Answer Sheet Creator implementation created on 2026-09-16 was produced from a high-level architecture specification without enough user-defined product detail. It is therefore **provisional / unapproved**.
+
+Rules for continuation:
+- do not infer detailed product behavior from the existence of the provisional code;
+- do not treat provisional defaults as user requirements;
+- do not extend the current Exam Creator UX until the teacher workflow is explicitly defined;
+- preserve only the previously accepted architectural constraints: Question Bank, Exam Template, Exam Instance, shared exam/version schema, matching version-specific answer key, and historical snapshots;
+- any new UX, defaults, A/B transformation rules, points logic, answer-sheet layout, or assignment integration must be explicitly agreed before implementation.
 
 ## 9. Exam reuse lifecycle
 
