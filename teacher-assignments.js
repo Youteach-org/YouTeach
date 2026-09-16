@@ -861,6 +861,95 @@ function gradingTotalForSubmission(submission) {
   return Number.isFinite(total) ? total : null;
 }
 
+function gradingTotalFromGrade(grading) {
+  const raw = grading?.totalScore;
+  if (raw === null || raw === undefined || raw === "") return null;
+  const total = Number(raw);
+  return Number.isFinite(total) ? total : null;
+}
+
+function gradeHistoryEntries(submission) {
+  return Object.entries(submission?.gradingHistory || {})
+    .map(([id, event]) => ({ id, ...(event || {}) }))
+    .sort((a, b) => Number(b?.timestamp || 0) - Number(a?.timestamp || 0));
+}
+
+function gradeHistoryActionLabel(action) {
+  const value = String(action || "");
+  if (value === "ai-grade-applied") return "AI grade applied";
+  if (value === "manual-grade-saved") return "Manual grade saved";
+  if (value === "grade-published") return "Grade published";
+  if (value === "grade-unpublished") return "Grade unpublished";
+  if (value === "grade-cleared") return "Grade cleared";
+  return "Grade updated";
+}
+
+function gradeHistoryScoreLabel(state) {
+  const total = gradingTotalFromGrade(state?.grading);
+  if (total === null) return "No numeric grade";
+  const mode = String(state?.grading?.mode || "").toUpperCase();
+  return `${Number(total.toFixed(2))} / 100${mode ? ` · ${mode}` : ""}`;
+}
+
+function gradeHistoryHtml(submission) {
+  const entries = gradeHistoryEntries(submission);
+  if (!entries.length) return "";
+
+  return `
+    <details class="grade-history-details">
+      <summary>Grade history (${entries.length})</summary>
+      <div class="grade-history-list">
+        ${entries.map((event) => `
+          <div class="grade-history-event">
+            <div class="grade-history-event-head">
+              <strong>${escapeHtml(gradeHistoryActionLabel(event.action))}</strong>
+              <span>${escapeHtml(formatDate(event.timestamp))}</span>
+            </div>
+            <div class="grade-history-event-change">
+              ${escapeHtml(gradeHistoryScoreLabel(event.from))} → ${escapeHtml(gradeHistoryScoreLabel(event.to))}
+            </div>
+            <div class="grade-history-event-meta">
+              ${escapeHtml(event.actor || "YouTeach")}
+              ${event.to?.published ? " · Published" : " · Unpublished"}
+            </div>
+          </div>
+        `).join("")}
+      </div>
+    </details>
+  `;
+}
+
+function withGradeHistory(studentKey, submission, action, patch, options = {}) {
+  const timestamp = Number(options.timestamp || Date.now());
+  const historyKey = push(
+    ref(db, `assignmentSubmissions/${selectedAssignmentId}/${studentKey}/gradingHistory`)
+  ).key || `event-${timestamp}`;
+
+  const hasNextGrading = Object.prototype.hasOwnProperty.call(patch, "grading");
+  const nextGrading = hasNextGrading ? patch.grading : (submission?.grading || null);
+  const hasNextPublished = Object.prototype.hasOwnProperty.call(patch, "gradePublished");
+  const nextPublished = hasNextPublished ? Boolean(patch.gradePublished) : Boolean(submission?.gradePublished);
+
+  return {
+    ...patch,
+    [`gradingHistory/${historyKey}`]: {
+      action,
+      timestamp,
+      actor: String(options.actor || getTeacherName() || "Teacher"),
+      from: {
+        grading: submission?.grading || null,
+        published: Boolean(submission?.gradePublished)
+      },
+      to: {
+        grading: nextGrading,
+        published: nextPublished
+      },
+      sourceDriveFileId: String(submission?.driveFileId || ""),
+      sourceSubmissionUpdatedAt: Number(submission?.uploadedAt || submission?.submittedAt || 0)
+    }
+  };
+}
+
 function submissionIsGraded(submission) {
   if (!submission?.grading || gradingTotalForSubmission(submission) === null) return false;
   return ["graded", "ai-graded", "manual-graded"].includes(String(submission?.reviewStatus || ""));
@@ -1167,31 +1256,37 @@ async function saveManualGrade(studentKey) {
 
   try {
     const feedback = card.querySelector("[data-manual-feedback]")?.value.trim() || "";
+    const submission = submissionsCache?.[selectedAssignmentId]?.[studentKey] || {};
+    const now = Date.now();
+    const patch = {
+      grading: {
+        mode: "manual",
+        criterionScores,
+        totalScore: Number(totalScore.toFixed(2)),
+        rubricTotal: Number(criteria.reduce((sum, criterion) => sum + Number(criterion.maxPoints || 0), 0).toFixed(2)),
+        feedback,
+        gradedAt: now,
+        gradedBy: getTeacherName()
+      },
+      reviewStatus: "manual-graded",
+      teacherReviewStatus: "accepted",
+      gradePublished: false,
+      gradePublishedAt: null,
+      gradePublishedBy: null,
+      gradingSourceSubmissionUpdatedAt: Number(
+        submission?.uploadedAt ||
+        submission?.submittedAt ||
+        0
+      ),
+      gradingSourceDriveFileId: String(submission?.driveFileId || ""),
+      updatedAt: now
+    };
     await update(
       ref(db, `assignmentSubmissions/${selectedAssignmentId}/${studentKey}`),
-      {
-        grading: {
-          mode: "manual",
-          criterionScores,
-          totalScore: Number(totalScore.toFixed(2)),
-          rubricTotal: Number(criteria.reduce((sum, criterion) => sum + Number(criterion.maxPoints || 0), 0).toFixed(2)),
-          feedback,
-          gradedAt: Date.now(),
-          gradedBy: getTeacherName()
-        },
-        reviewStatus: "manual-graded",
-        teacherReviewStatus: "accepted",
-        gradePublished: false,
-        gradePublishedAt: null,
-        gradePublishedBy: null,
-        gradingSourceSubmissionUpdatedAt: Number(
-          submissionsCache?.[selectedAssignmentId]?.[studentKey]?.uploadedAt ||
-          submissionsCache?.[selectedAssignmentId]?.[studentKey]?.submittedAt ||
-          0
-        ),
-        gradingSourceDriveFileId: String(submissionsCache?.[selectedAssignmentId]?.[studentKey]?.driveFileId || ""),
-        updatedAt: Date.now()
-      }
+      withGradeHistory(studentKey, submission, "manual-grade-saved", patch, {
+        timestamp: now,
+        actor: getTeacherName()
+      })
     );
 
     status.textContent = `Saved · ${Number(totalScore.toFixed(2))} / 100`;
@@ -1234,23 +1329,28 @@ async function clearManualGrade(studentKey) {
   }
 
   try {
+    const now = Date.now();
+    const patch = {
+      grading: null,
+      reviewStatus: "pending",
+      teacherReviewStatus: null,
+      gradePublished: false,
+      gradePublishedAt: null,
+      gradePublishedBy: null,
+      gradingSourceSubmissionUpdatedAt: null,
+      gradingSourceDriveFileId: null,
+      aiGradingResultsFileModifiedTime: null,
+      aiGradingSyncedAt: null,
+      aiGradingCandidate: null,
+      aiGradingCandidateState: null,
+      updatedAt: now
+    };
     await update(
       ref(db, `assignmentSubmissions/${selectedAssignmentId}/${studentKey}`),
-      {
-        grading: null,
-        reviewStatus: "pending",
-        teacherReviewStatus: null,
-        gradePublished: false,
-        gradePublishedAt: null,
-        gradePublishedBy: null,
-        gradingSourceSubmissionUpdatedAt: null,
-        gradingSourceDriveFileId: null,
-        aiGradingResultsFileModifiedTime: null,
-        aiGradingSyncedAt: null,
-        aiGradingCandidate: null,
-        aiGradingCandidateState: null,
-        updatedAt: Date.now()
-      }
+      withGradeHistory(studentKey, submission, "grade-cleared", patch, {
+        timestamp: now,
+        actor: getTeacherName()
+      })
     );
 
     if (status) {
@@ -1277,22 +1377,31 @@ async function toggleGradePublication(studentKey) {
 
   const publish = !Boolean(submission.gradePublished);
 
+  const now = Date.now();
+  const patch = publish
+    ? {
+        gradePublished: true,
+        gradePublishedAt: now,
+        gradePublishedBy: getTeacherName(),
+        teacherReviewStatus: "accepted",
+        updatedAt: now
+      }
+    : {
+        gradePublished: false,
+        gradePublishedAt: null,
+        gradePublishedBy: null,
+        updatedAt: now
+      };
+
   await update(
     ref(db, `assignmentSubmissions/${selectedAssignmentId}/${studentKey}`),
-    publish
-      ? {
-          gradePublished: true,
-          gradePublishedAt: Date.now(),
-          gradePublishedBy: getTeacherName(),
-          teacherReviewStatus: "accepted",
-          updatedAt: Date.now()
-        }
-      : {
-          gradePublished: false,
-          gradePublishedAt: null,
-          gradePublishedBy: null,
-          updatedAt: Date.now()
-        }
+    withGradeHistory(
+      studentKey,
+      submission,
+      publish ? "grade-published" : "grade-unpublished",
+      patch,
+      { timestamp: now, actor: getTeacherName() }
+    )
   );
 }
 
@@ -1572,6 +1681,8 @@ function renderDetail() {
                    <small>${published ? "Published" : "Unpublished"}</small>
                  </div>`
             }
+
+            ${gradeHistoryHtml(submission)}
 
             <div class="submission-card-actions">
               <a class="pdf-link" href="${escapeHtml(submission.driveFileUrl || "#")}" target="_blank" rel="noopener">
