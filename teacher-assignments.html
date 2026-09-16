@@ -209,6 +209,48 @@
     .teacher-evidence-actions button{padding:4px 5px;font-size:7px}
     .rubric-footer textarea{min-height:44px;resize:vertical}
 
+    /* Assignment Library */
+    .assignment-library-card{padding:10px!important;display:grid;gap:8px}
+    .assignment-library-header{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .assignment-library-header h3{margin:0;font-size:16px}
+    .assignment-library-count{font-size:10px;font-weight:900;color:#64748b}
+    .assignment-library-header .status-text{margin-left:auto}
+    .assignment-library-filters{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
+      gap:6px
+    }
+    .assignment-library-filters input,.assignment-library-filters select{
+      width:100%;min-width:0;padding:7px 8px;border:1px solid #cbd5e1;border-radius:8px;
+      background:#fff;font:inherit;font-size:11px
+    }
+    .assignment-library-search{grid-column:span 2}
+    .assignment-library-clear{padding:7px 9px;font-size:10px}
+    .assignment-library-list{
+      display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px
+    }
+    .assignment-template-card{
+      display:grid;gap:6px;border:1px solid #dbeafe;border-radius:10px;padding:9px;background:#fff
+    }
+    .assignment-template-card.archived{border-color:#e2e8f0;background:#f8fafc;opacity:.88}
+    .assignment-template-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+    .assignment-template-card h4{margin:0;font-size:12px;line-height:1.2;color:#0f172a}
+    .assignment-template-type{
+      flex:0 0 auto;padding:3px 5px;border-radius:999px;background:#eff6ff;color:#1d4ed8;
+      font-size:8px;font-weight:900
+    }
+    .assignment-template-meta{font-size:9px;line-height:1.35;color:#64748b}
+    .assignment-template-tags{display:flex;flex-wrap:wrap;gap:4px}
+    .assignment-template-tag{
+      padding:2px 5px;border-radius:999px;background:#f1f5f9;color:#475569;font-size:8px;font-weight:800
+    }
+    .assignment-template-actions{display:flex;gap:5px;flex-wrap:wrap}
+    .assignment-template-actions button{padding:5px 7px;font-size:9px}
+    .assignment-library-empty{
+      grid-column:1/-1;padding:12px;border:1px dashed #cbd5e1;border-radius:9px;
+      text-align:center;font-size:10px;color:#64748b
+    }
+
     /* Assignment cards */
     .assignment-layout{display:grid;grid-template-columns:1fr;gap:6px;align-items:start}
     .assignment-layout>section{padding:7px!important}
@@ -1620,6 +1662,39 @@
               <button id="createAssignmentBtn">Create Assignment</button>
               <div id="createAssignmentStatus" class="status-text"></div>
             </div>
+          </div>
+        </section>
+
+        <section id="assignmentLibraryPanel" class="panel-card assignment-library-card">
+          <div class="assignment-library-header">
+            <h3>Assignment Library</h3>
+            <span id="assignmentLibraryCount" class="assignment-library-count">0 templates</span>
+            <span id="assignmentLibraryStatus" class="status-text"></span>
+          </div>
+
+          <div class="assignment-library-filters" aria-label="Assignment Library filters">
+            <input id="assignmentLibrarySearch" class="assignment-library-search" type="search" placeholder="Search title, topic, tags..." aria-label="Search Assignment Library">
+            <select id="assignmentLibraryTypeFilter" aria-label="Filter templates by type"><option value="">All types</option></select>
+            <select id="assignmentLibraryCourseFilter" aria-label="Filter templates by course"><option value="">All courses</option></select>
+            <select id="assignmentLibrarySubjectFilter" aria-label="Filter templates by subject"><option value="">All subjects</option></select>
+            <select id="assignmentLibraryUnitFilter" aria-label="Filter templates by unit"><option value="">All units</option></select>
+            <select id="assignmentLibraryTopicFilter" aria-label="Filter templates by topic"><option value="">All topics</option></select>
+            <select id="assignmentLibraryTagFilter" aria-label="Filter templates by tag"><option value="">All tags</option></select>
+            <select id="assignmentLibraryUsageFilter" aria-label="Filter templates by usage">
+              <option value="all">Any usage</option>
+              <option value="used">Used before</option>
+              <option value="unused">Never used</option>
+            </select>
+            <select id="assignmentLibraryStatusFilter" aria-label="Filter templates by archive status">
+              <option value="active" selected>Active</option>
+              <option value="archived">Archived</option>
+              <option value="all">All</option>
+            </select>
+            <button id="clearAssignmentLibraryFiltersBtn" class="assignment-library-clear" type="button">Clear</button>
+          </div>
+
+          <div id="assignmentLibraryList" class="assignment-library-list">
+            <div class="assignment-library-empty">No templates yet.</div>
           </div>
         </section>
 
