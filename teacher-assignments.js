@@ -109,7 +109,6 @@ const criteriaSaveStatus = document.getElementById("criteriaSaveStatus");
 const manualGradingPanel = document.getElementById("manualGradingPanel");
 const manualGradingTitle = document.getElementById("manualGradingTitle");
 const manualGradingList = document.getElementById("manualGradingList");
-const closeManualGradingBtn = document.getElementById("closeManualGradingBtn");
 const syncAiGradesBtn = document.getElementById("syncAiGradesBtn");
 const aiSyncStatus = document.getElementById("aiSyncStatus");
 const logoutBtn = document.getElementById("logoutBtn");
@@ -126,6 +125,7 @@ let selectedDriveFolderUrl = "";
 let selectedManualStudentKey = "";
 let assignmentFilterGroupTouched = false;
 const aiAutoSyncTimers = new Map();
+let lastPassiveAiSyncAt = 0;
 
 teacherIdentity.textContent = getTeacherName();
 
@@ -1098,10 +1098,20 @@ function syncManualCriterionInputs(input) {
 }
 
 function openManualGrading(assignmentId, studentKey = "") {
+  const sameAssignment = selectedAssignmentId === assignmentId;
+  const sameStudent = !studentKey || selectedManualStudentKey === studentKey;
+
+  if (!manualGradingPanel.hidden && sameAssignment && sameStudent) {
+    manualGradingPanel.hidden = true;
+    selectedManualStudentKey = "";
+    renderDetail();
+    return;
+  }
+
   selectedAssignmentId = assignmentId;
   selectedManualStudentKey = studentKey;
-  renderAssignmentList();
   manualGradingPanel.hidden = false;
+  renderAssignmentList();
   renderManualGrading();
   renderDetail();
   setTimeout(() => manualGradingPanel.scrollIntoView({ behavior: "smooth", block: "nearest" }), 0);
@@ -1173,7 +1183,11 @@ async function saveManualGrade(studentKey) {
         gradePublished: false,
         gradePublishedAt: null,
         gradePublishedBy: null,
-        gradingSourceSubmissionUpdatedAt: Number(submissionsCache?.[selectedAssignmentId]?.[studentKey]?.updatedAt || submissionsCache?.[selectedAssignmentId]?.[studentKey]?.submittedAt || 0),
+        gradingSourceSubmissionUpdatedAt: Number(
+          submissionsCache?.[selectedAssignmentId]?.[studentKey]?.uploadedAt ||
+          submissionsCache?.[selectedAssignmentId]?.[studentKey]?.submittedAt ||
+          0
+        ),
         gradingSourceDriveFileId: String(submissionsCache?.[selectedAssignmentId]?.[studentKey]?.driveFileId || ""),
         updatedAt: Date.now()
       }
@@ -1540,7 +1554,7 @@ function renderDetail() {
           : "";
 
         return `
-          <article class="submission-card ${graded ? "graded" : "pending-grade"}" data-submission-student-key="${escapeHtml(studentKey)}">
+          <article class="submission-card ${graded ? "graded" : "pending-grade"} ${!manualGradingPanel.hidden && selectedManualStudentKey === studentKey ? "selected-for-grading" : ""}" data-submission-student-key="${escapeHtml(studentKey)}">
             <h4>${escapeHtml(submission.studentName || "Student")}</h4>
             <div class="submission-meta">
               ${escapeHtml(submission.studentNumber || "No ID")} ·
@@ -1556,10 +1570,14 @@ function renderDetail() {
             <div class="review-chip">${escapeHtml(identityStatusLabel(submission.identityReviewStatus))}</div>
 
             ${gradeTotal === null
-              ? (submission?.grading?.mode === "ai"
-                ? '<div class="saved-grade-chip">AI reviewed · score pending manual review</div>'
+              ? (gradingMode === "ai"
+                ? '<div class="grade-display needs-review"><span>AI review</span><strong>Manual review needed</strong></div>'
                 : "")
-              : `<div class="saved-grade-chip">Grade: ${escapeHtml(Number(gradeTotal.toFixed(2)))} / 100 · ${escapeHtml(submission?.grading?.mode || "manual")}</div>`
+              : `<div class="grade-display ${gradingMode === "ai" ? "ai" : "manual"}">
+                   <span>${gradingMode === "ai" ? "AI grade" : "Manual grade"}</span>
+                   <strong>${escapeHtml(Number(gradeTotal.toFixed(2)))} / 100</strong>
+                   <small>${published ? "Published" : "Unpublished"}</small>
+                 </div>`
             }
 
             ${aiCandidateLabel
@@ -1572,6 +1590,10 @@ function renderDetail() {
                 Open submitted PDF →
               </a>
               <div class="submission-grade-actions">
+                ${gradingMode === "ai" && gradeTotal !== null
+                  ? `<button type="button" class="manual-takeover-btn" data-manual-card-grade="${escapeHtml(studentKey)}">Manual grading</button>`
+                  : ""
+                }
                 ${gradingMode === "manual" && gradeTotal !== null
                   ? `<button type="button" class="clear-manual-grade-btn" data-clear-card-grade="${escapeHtml(studentKey)}">Clear grade</button>`
                   : ""
@@ -1891,9 +1913,16 @@ teacherAssignmentList.addEventListener("click", (event) => {
   selectedManualStudentKey = "";
   selectedAssignmentId = card.dataset.assignmentSelect;
   renderAssignmentList();
+  setTimeout(refreshSelectedAiResults, 0);
 });
 
 submissionList.addEventListener("click", (event) => {
+  const manualButton = event.target.closest("[data-manual-card-grade]");
+  if (manualButton) {
+    openManualGrading(selectedAssignmentId, manualButton.dataset.manualCardGrade);
+    return;
+  }
+
   const clearButton = event.target.closest("[data-clear-card-grade]");
   if (clearButton) {
     clearManualGrade(clearButton.dataset.clearCardGrade).catch((error) => {
@@ -1938,13 +1967,27 @@ manualGradingList.addEventListener("click", (event) => {
   saveManualGrade(saveButton.dataset.saveManualGrade);
 });
 
-closeManualGradingBtn.addEventListener("click", () => {
-  manualGradingPanel.hidden = true;
-  selectedManualStudentKey = "";
-  renderDetail();
-});
+function refreshSelectedAiResults() {
+  const assignmentId = selectedAssignmentId;
+  const assignment = assignmentsCache[assignmentId];
+  if (!assignment || !assignmentHasSubmissions(assignmentId)) return;
+
+  const now = Date.now();
+  if (now - lastPassiveAiSyncAt < 5000) return;
+  lastPassiveAiSyncAt = now;
+
+  syncAiGrades({
+    assignmentId,
+    silentPending: true
+  }).catch(() => {});
+}
 
 syncAiGradesBtn.addEventListener("click", syncAiGrades);
+
+window.addEventListener("focus", refreshSelectedAiResults);
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") refreshSelectedAiResults();
+});
 
 openDriveFolderBtn.addEventListener("click", () => {
   if (selectedDriveFolderUrl) window.open(selectedDriveFolderUrl, "_blank", "noopener");
