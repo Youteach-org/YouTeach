@@ -815,8 +815,15 @@ async function syncAiGrades() {
   const assignment = assignmentsCache[selectedAssignmentId];
   if (!assignment) return;
 
+  if (aiConflictMode.value === "replace-manual") {
+    const confirmed = window.confirm(
+      "Replace existing manual grades with AI grades where both exist? This changes the saved grade in YouTeach, but it does not delete the AI results file in Drive."
+    );
+    if (!confirmed) return;
+  }
+
   syncAiGradesBtn.disabled = true;
-  aiSyncStatus.textContent = "Syncing AI grades...";
+  aiSyncStatus.textContent = "Importing AI results from Drive...";
   aiSyncStatus.style.color = "#64748b";
 
   try {
@@ -834,11 +841,11 @@ async function syncAiGrades() {
       throw new Error(result.error || "Could not sync AI grades.");
     }
 
-    const parts = [
-      `${result.imported || 0} imported`,
-      `${result.compared || 0} compared`,
-      `${result.skippedManual || 0} manual kept`
-    ];
+    const parts = [];
+    if (result.imported) parts.push(`${result.imported} AI grade${result.imported === 1 ? "" : "s"} applied`);
+    if (result.compared) parts.push(`${result.compared} ready to compare`);
+    if (result.skippedManual) parts.push(`${result.skippedManual} manual grade${result.skippedManual === 1 ? "" : "s"} kept; AI saved`);
+    if (!parts.length) parts.push("No grade changes");
     if (result.unmatched?.length) parts.push(`${result.unmatched.length} unmatched`);
     if (result.errors?.length) parts.push(`${result.errors.length} errors`);
 
