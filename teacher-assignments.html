@@ -632,6 +632,66 @@
       flex-wrap:wrap;
       justify-content:flex-end
     }
+    .grade-history-details{
+      margin-top:3px;
+      border:1px solid #e2e8f0;
+      border-radius:7px;
+      background:#f8fafc;
+      overflow:hidden
+    }
+    .grade-history-details>summary{
+      cursor:pointer;
+      list-style:none;
+      padding:4px 6px;
+      font-size:8px;
+      font-weight:900;
+      color:#475569
+    }
+    .grade-history-details>summary::-webkit-details-marker{display:none}
+    .grade-history-details>summary::after{
+      content:"Show";
+      float:right;
+      color:#2563eb;
+      font-size:7px
+    }
+    .grade-history-details[open]>summary::after{content:"Hide"}
+    .grade-history-list{
+      display:grid;
+      gap:4px;
+      max-height:170px;
+      overflow:auto;
+      padding:5px;
+      border-top:1px solid #e2e8f0
+    }
+    .grade-history-event{
+      padding:5px;
+      border:1px solid #e2e8f0;
+      border-radius:6px;
+      background:#fff
+    }
+    .grade-history-event-head{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:5px;
+      font-size:7px;
+      color:#64748b
+    }
+    .grade-history-event-head strong{
+      color:#0f172a;
+      font-size:8px
+    }
+    .grade-history-event-change{
+      margin-top:2px;
+      font-size:8px;
+      font-weight:900;
+      color:#334155
+    }
+    .grade-history-event-meta{
+      margin-top:2px;
+      font-size:7px;
+      color:#64748b
+    }
     @media(max-width:1180px){
       .missing-student-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
     }
@@ -1496,7 +1556,7 @@
     </main>
   </div>
 
-  <script type="module" src="teacher-assignments.js?v=grading-results-owned-file-20260916"></script>
+  <script type="module" src="teacher-assignments.js?v=grading-history-20260916"></script>
   <script defer src="shared-ui-fixes.js?v=titlebar-hamburger-20260916"></script>
 </body>
 </html>
