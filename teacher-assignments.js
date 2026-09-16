@@ -2267,6 +2267,7 @@ function renderAssignmentList() {
   }
 
   teacherAssignmentList.innerHTML = entries.map(({ id, assignment, evaluation }) => {
+    const cogAssignment = isCogAssignment(assignment);
     const count = evaluation.submitted;
     const total = evaluation.totalStudents;
     const missing = evaluation.missing;
@@ -2278,7 +2279,9 @@ function renderAssignmentList() {
         data-assignment-select="${id}"
         title="${escapeHtml(assignment.title || "Assignment")}"
       >
-        <div class="grading-actions">
+        ${cogAssignment
+          ? '<div class="grading-actions"><span class="evaluated-chip">COG · automatic grading</span></div>'
+          : `<div class="grading-actions">
           <button
             type="button"
             class="ai-grading-btn"
@@ -2293,7 +2296,8 @@ function renderAssignmentList() {
             ${count ? "" : "disabled"}
             title="${count ? "Grade this activity manually" : "No submissions to grade yet"}"
           >Manual Grading</button>
-        </div>
+        </div>`
+        }
 
         <div class="assignment-code-row">
           <span class="assignment-code">${escapeHtml(assignment.code || "")}</span>
@@ -2311,7 +2315,10 @@ function renderAssignmentList() {
         </span>
 
         <span class="assignment-progress">
-          ${count}/${total} submitted · ${evaluation.graded}/${count || 0} graded · ${missing} missing
+          ${cogAssignment
+            ? `COG activity · ${assignment.cogActivity?.modeId || "mode"} · ${assignment.cogActivity?.difficultyId || "difficulty"}`
+            : `${count}/${total} submitted · ${evaluation.graded}/${count || 0} graded · ${missing} missing`
+          }
         </span>
       </article>
     `;
@@ -2332,6 +2339,7 @@ function renderDetail() {
   assignmentDetail.hidden = false;
   assignmentDetailEmpty.hidden = true;
 
+  const cogAssignment = isCogAssignment(assignment);
   const students = assignmentStudents(assignment);
   const submissions = assignmentSubmissions(selectedAssignmentId);
   const validSubmissionEntries = Object.entries(submissions)
@@ -2350,20 +2358,26 @@ function renderDetail() {
   selectedDriveFolderUrl =
     validSubmissionEntries.find(([, submission]) => submission.driveFolderUrl)?.[1]?.driveFolderUrl || "";
 
-  openDriveFolderBtn.disabled = !selectedDriveFolderUrl;
-  driveStatus.textContent = selectedDriveFolderUrl
-    ? "PDFs are stored in the Google Drive folder for this task."
-    : "The Drive folder is created automatically with the first PDF submission.";
+  openDriveFolderBtn.hidden = cogAssignment;
+  openDriveFolderBtn.disabled = cogAssignment || !selectedDriveFolderUrl;
+  driveStatus.textContent = cogAssignment
+    ? "COG activities do not use PDF submission storage."
+    : (selectedDriveFolderUrl
+      ? "PDFs are stored in the Google Drive folder for this task."
+      : "The Drive folder is created automatically with the first PDF submission.");
 
   detailTitle.textContent = `${assignment.code || ""} · ${assignment.title || "Assignment"}`;
   const codeLockText = assignmentHasSubmissions(selectedAssignmentId)
     ? " · Code locked after first submission"
     : "";
-  detailMeta.textContent = `${assignment.groupName || "ALL"} · Due: ${formatDate(assignment.dueAt)} · ${assignment.active ? "Open" : "Closed"}${codeLockText}`;
+  const cogMeta = cogAssignment
+    ? ` · COG: ${assignment.cogActivity?.gameId || "game"} / ${assignment.cogActivity?.modeId || "mode"} / ${assignment.cogActivity?.difficultyId || "difficulty"} · ${Number(assignment.pointValue ?? assignment.cogActivity?.pointValue ?? 100)} pts${assignment.cogActivity?.minimumPercent == null ? "" : ` · min ${Number(assignment.cogActivity.minimumPercent)}%`}`
+    : "";
+  detailMeta.textContent = `${assignment.groupName || "ALL"} · Due: ${formatDate(assignment.dueAt)} · ${assignment.active ? "Open" : "Closed"}${codeLockText}${cogMeta}`;
   eligibleCount.textContent = students.length;
   submittedCount.textContent = validSubmissionEntries.length;
   missingCount.textContent = missing.length;
-  const lockedBySubmissions = assignmentHasSubmissions(selectedAssignmentId);
+  const lockedBySubmissions = !cogAssignment && assignmentHasSubmissions(selectedAssignmentId);
   toggleAssignmentBtn.textContent = assignment.active ? "Close Assignment" : "Reopen Assignment";
   editCriteriaBtn.disabled = lockedBySubmissions;
   editCriteriaBtn.title = lockedBySubmissions
@@ -2446,7 +2460,9 @@ function renderDetail() {
           </article>
         `;
       }).join("")
-    : '<div class="status-text">No PDF submissions yet.</div>';
+    : (cogAssignment
+      ? '<div class="status-text">No official COG submissions yet.</div>'
+      : '<div class="status-text">No PDF submissions yet.</div>');
 
   if (missingSummary) {
     missingSummary.textContent = `Missing submissions (${missing.length})`;
@@ -2650,7 +2666,7 @@ async function toggleAssignment() {
 function beginCriteriaEdit() {
   const assignment = assignmentsCache[selectedAssignmentId];
   if (!assignment) return;
-  if (assignmentHasSubmissions(selectedAssignmentId)) {
+  if (!isCogAssignment(assignment) && assignmentHasSubmissions(selectedAssignmentId)) {
     criteriaSaveStatus.textContent = "This assignment already has submissions and can no longer be modified.";
     criteriaSaveStatus.className = "status-text bad";
     criteriaEditPanel.hidden = true;
@@ -2678,7 +2694,7 @@ function cancelCriteriaEdit() {
 async function saveEvaluationCriteria() {
   const assignment = assignmentsCache[selectedAssignmentId];
   if (!assignment) return;
-  if (assignmentHasSubmissions(selectedAssignmentId)) {
+  if (!isCogAssignment(assignment) && assignmentHasSubmissions(selectedAssignmentId)) {
     criteriaSaveStatus.textContent = "This assignment already has submissions and can no longer be modified.";
     criteriaSaveStatus.className = "status-text bad";
     criteriaEditPanel.hidden = true;
