@@ -44,3 +44,33 @@ test('creating from a template writes instance and usage count atomically', () =
   assert.match(teacherJs, /multiLocationUpdates\[`assignmentTemplates\/\$\{loadedAssignmentTemplateId\}\/usageCount`\]/);
   assert.match(teacherJs, /await update\(ref\(db\), multiLocationUpdates\);/);
 });
+
+
+test('teacher assignments exposes searchable Assignment Library management controls', () => {
+  for (const id of [
+    'assignmentLibraryPanel',
+    'assignmentLibrarySearch',
+    'assignmentLibraryTypeFilter',
+    'assignmentLibraryCourseFilter',
+    'assignmentLibrarySubjectFilter',
+    'assignmentLibraryUnitFilter',
+    'assignmentLibraryTopicFilter',
+    'assignmentLibraryTagFilter',
+    'assignmentLibraryUsageFilter',
+    'assignmentLibraryStatusFilter',
+    'assignmentLibraryList'
+  ]) {
+    assert.match(teacherHtml, new RegExp(`id="${id}"`));
+  }
+});
+
+test('teacher assignments filters, loads, archives and restores library templates', () => {
+  assert.match(teacherJs, /filterAssignmentTemplates/);
+  assert.match(teacherJs, /buildAssignmentTemplateArchivePatch/);
+  assert.match(teacherJs, /function renderAssignmentLibrary\(/);
+  assert.match(teacherJs, /async function setAssignmentTemplateArchived\(/);
+  assert.match(teacherJs, /data-template-action="load"/);
+  assert.match(teacherJs, /data-template-action="archive"/);
+  assert.match(teacherJs, /data-template-action="restore"/);
+  assert.match(teacherJs, /update\(ref\(db, `assignmentTemplates\/\$\{templateId\}`\), patch\)/);
+});
