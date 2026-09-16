@@ -30,7 +30,17 @@ GitHub is the source of truth. Chat memory is secondary.
    - Answer Sheet Creator;
    - Administration.
 
-3. Relevant implementation files and recent commits on `main`.
+3. `docs/superpowers/specs/2026-09-16-grading-project-evidence-student-ux.md`
+   - canonical AI grade -> teacher review -> publish workflow;
+   - exact evidence-type grading rules;
+   - duplicate-grading ledger/idempotency;
+   - exam annotations;
+   - Project checkpoints with photo/video/document evidence;
+   - expanded student assignment cards;
+   - manual points/percentage grading;
+   - published student grades.
+
+4. Relevant implementation files and recent commits on `main`.
    - UI micro-decisions that are already implemented are authoritative in code/commit history even when not repeated word-for-word in a spec.
 
 ## Continuity rules
