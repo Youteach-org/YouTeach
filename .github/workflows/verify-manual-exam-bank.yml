@@ -1,0 +1,20 @@
+name: Verify Manual Exam Bank
+
+on:
+  push:
+    branches:
+      - feature/manual-exam-bank
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run YouTeach tests
+        run: node --test tests/*.test.mjs
+      - name: Build Pages output
+        run: sh build-pages.sh
