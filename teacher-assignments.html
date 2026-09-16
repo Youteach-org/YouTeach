@@ -1507,6 +1507,17 @@
             <h3>Create Assignment</h3>
           </div>
           <div class="create-grid">
+            <div class="field title-field">
+              <label for="assignmentTemplateSource">Assignment template</label>
+              <select id="assignmentTemplateSource">
+                <option value="">Start from scratch</option>
+              </select>
+              <div class="field-help">Load reusable academic content; group and dates stay specific to this run.</div>
+            </div>
+            <div class="field">
+              <label for="loadAssignmentTemplateBtn">Template action</label>
+              <button id="loadAssignmentTemplateBtn" type="button" disabled>Load template</button>
+            </div>
             <div class="field">
               <label for="assignmentType">Assignment type</label>
               <select id="assignmentType">
@@ -1638,6 +1649,8 @@
                 <summary>Actions</summary>
                 <div class="assignment-actions-popover">
                   <button id="showCreateAssignmentBtn" type="button">+ Create Assignment</button>
+                  <button id="saveSelectedTemplateBtn" type="button">Save selected as template</button>
+                  <div id="assignmentTemplateStatus" class="status-text"></div>
                 </div>
               </details>
             </div>
