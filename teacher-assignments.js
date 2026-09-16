@@ -109,7 +109,6 @@ const manualGradingPanel = document.getElementById("manualGradingPanel");
 const manualGradingTitle = document.getElementById("manualGradingTitle");
 const manualGradingList = document.getElementById("manualGradingList");
 const closeManualGradingBtn = document.getElementById("closeManualGradingBtn");
-const aiConflictMode = document.getElementById("aiConflictMode");
 const syncAiGradesBtn = document.getElementById("syncAiGradesBtn");
 const aiSyncStatus = document.getElementById("aiSyncStatus");
 const logoutBtn = document.getElementById("logoutBtn");
@@ -125,6 +124,7 @@ let selectedAssignmentId = "";
 let selectedDriveFolderUrl = "";
 let selectedManualStudentKey = "";
 let assignmentFilterGroupTouched = false;
+const aiAutoSyncTimers = new Map();
 
 teacherIdentity.textContent = getTeacherName();
 
