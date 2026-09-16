@@ -749,6 +749,14 @@ export async function onRequest(context) {
         return json(400, { ok: false, error: "Missing PDF upload data." });
       }
 
+      if (submission?.examAnnotatedDriveFileId) {
+        try {
+          await deleteDriveFile(accessToken, submission.examAnnotatedDriveFileId);
+        } catch (annotationDeleteError) {
+          console.warn("Could not remove stale annotated exam copy:", annotationDeleteError);
+        }
+      }
+
       const driveFile = await completeResumableUpload(sessionUrl, uploadBytes);
       const now = Date.now();
       const driveFileName = driveFile.name || fileName;
@@ -781,7 +789,19 @@ export async function onRequest(context) {
         driveFolderUrl: folder.url,
         mimeType: "application/pdf",
         size: Number(driveFile.size || numericSize || 0),
-        uploadedAt: now
+        uploadedAt: now,
+        examAnnotations: null,
+        examAnnotationPointsTotal: null,
+        examAnnotationsUpdatedAt: null,
+        examAnnotationsUpdatedBy: null,
+        examAnnotationStatus: null,
+        examAnnotationSavedAt: null,
+        examAnnotationSavedBy: null,
+        examAnnotatedDriveFileId: null,
+        examAnnotatedDriveFileName: null,
+        examAnnotatedDriveFileUrl: null,
+        examAnnotatedAt: null,
+        examAnnotatedSourceDriveFileId: null
       });
 
       return json(200, {
