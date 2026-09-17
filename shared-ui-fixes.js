@@ -200,7 +200,51 @@
       }
     }
 
+    function ensureExamBankNavigation() {
+      const links = sidebar.querySelector(".sidebar-links");
+      const brandLabel = (sidebar.querySelector(".brand p")?.textContent || "").toLowerCase();
+      if (!links || !brandLabel.includes("teacher")) return;
+
+      [
+        'a[href="exam-question-bank.html"]',
+        'a[href="exam-creator.html"]',
+        'a[href="answer-sheet-creator.html"]'
+      ].forEach((selector) => {
+        links.querySelectorAll(selector).forEach((link) => link.remove());
+      });
+
+      if (!links.querySelector('a[href="exam-bank.html"]')) {
+        const link = document.createElement("a");
+        link.className = "sidebar-link";
+        link.href = "exam-bank.html";
+        link.textContent = "Exam Bank";
+        const before = links.querySelector('a[href="teacher-points.html"]');
+        links.insertBefore(link, before || links.querySelector("button"));
+      }
+
+      const homeTools = document.querySelector(".teacher-home-tools");
+      if (homeTools) {
+        [
+          'a[href="exam-question-bank.html"]',
+          'a[href="exam-creator.html"]',
+          'a[href="answer-sheet-creator.html"]'
+        ].forEach((selector) => {
+          homeTools.querySelectorAll(selector).forEach((card) => card.remove());
+        });
+
+        if (!homeTools.querySelector('a[href="exam-bank.html"]')) {
+          const card = document.createElement("a");
+          card.className = "landing-link-card";
+          card.href = "exam-bank.html";
+          card.innerHTML = "<h2>Exam Bank</h2><p>Upload, classify, search and retrieve original exam files.</p>";
+          const before = homeTools.querySelector('a[href="teacher-points.html"]');
+          homeTools.insertBefore(card, before || null);
+        }
+      }
+    }
+
     ensureAssignmentsLink();
+    ensureExamBankNavigation();
 
     function syncIdentity() {
       const identityText = getBestIdentityText();
