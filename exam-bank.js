@@ -55,7 +55,6 @@ function setSelectOptions(select, values, allLabel) {
     unique.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("");
   if (unique.includes(previous)) select.value = previous;
 }
-}
 
 function refreshFilters() {
   const rows = Object.values(examBankEntries || {});
