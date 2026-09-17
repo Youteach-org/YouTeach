@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YouTeach - Exam Bank</title>
+  <link rel="stylesheet" href="styles.css?v=titlebar-hamburger-20260916">
+  <style>
+    *{box-sizing:border-box}
+    .exam-bank-page{display:grid;gap:12px;min-width:0}
+    .exam-bank-panel{background:#fff;border:1px solid #dbeafe;border-radius:12px;padding:12px;min-width:0}
+    .exam-bank-panel h3{margin:0 0 8px;font-size:15px;color:#0f172a}
+    .exam-bank-form{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;align-items:end}
+    .exam-bank-form label,.exam-bank-filters label{display:grid;gap:4px;font-size:9px;font-weight:900;color:#475569}
+    .exam-bank-form input,.exam-bank-form select,.exam-bank-filters input,.exam-bank-filters select{
+      width:100%;min-width:0;padding:7px 8px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;font:inherit;font-size:10px
+    }
+    .exam-bank-form .wide{grid-column:span 2}
+    .exam-bank-form .file-field{grid-column:1/-1}
+    .exam-bank-form-actions{grid-column:1/-1;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .exam-bank-form-actions button{padding:8px 12px;font-size:10px}
+    .exam-bank-filters{display:grid;grid-template-columns:minmax(220px,1.5fr) repeat(3,minmax(130px,.7fr)) auto;gap:7px;align-items:end}
+    .exam-bank-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:9px}
+    .exam-bank-card{display:grid;gap:7px;padding:10px;border:1px solid #dbeafe;border-radius:10px;background:#fff}
+    .exam-bank-card-head{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+    .exam-bank-card h4{margin:0;font-size:12px;line-height:1.25;color:#0f172a}
+    .exam-bank-version{flex:0 0 auto;padding:3px 6px;border-radius:999px;background:#eff6ff;color:#1d4ed8;font-size:8px;font-weight:900}
+    .exam-bank-meta{font-size:9px;line-height:1.4;color:#64748b}
+    .exam-bank-tags{display:flex;flex-wrap:wrap;gap:4px}
+    .exam-bank-tag{padding:2px 5px;border-radius:999px;background:#f1f5f9;color:#475569;font-size:8px;font-weight:800}
+    .exam-bank-actions{display:flex;gap:6px;flex-wrap:wrap}
+    .exam-bank-actions button,.exam-bank-actions a{padding:6px 8px;font-size:9px;text-decoration:none;border-radius:7px}
+    .exam-bank-empty{grid-column:1/-1;padding:18px;text-align:center;border:1px dashed #cbd5e1;border-radius:9px;color:#64748b;font-size:10px}
+    .exam-bank-count{font-size:10px;font-weight:900;color:#64748b}
+    .exam-bank-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+    @media(max-width:900px){.exam-bank-form{grid-template-columns:repeat(2,minmax(0,1fr))}.exam-bank-filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:600px){.exam-bank-form,.exam-bank-filters{grid-template-columns:1fr}.exam-bank-form .wide,.exam-bank-form .file-field{grid-column:auto}}
+  </style>
+</head>
+<body>
+  <button id="menuToggle" class="hamburger-btn" aria-label="Open menu"><span></span><span></span><span></span></button>
+  <div class="menu-shell">
+    <aside id="sidebar" class="sidebar collapsible-sidebar">
+      <div class="sidebar-content">
+        <div class="brand"><h1>YouTeach</h1><p>Teacher Menu</p></div>
+        <div id="sidebarIdentity" class="sidebar-identity">Teacher</div>
+        <div class="sidebar-links">
+          <a class="sidebar-link" href="buzzer.html">Buzzer</a>
+          <a class="sidebar-link" href="teacher.html">Teacher Home</a>
+          <a class="sidebar-link" href="teacher-students.html">Students</a>
+          <a class="sidebar-link" href="teacher-enrollment.html">Groups / Import</a>
+          <a class="sidebar-link" href="teacher-active.html">Active Today</a>
+          <a class="sidebar-link" href="teacher-assignments.html">Assignments</a>
+          <a class="sidebar-link active-link" href="exam-bank.html">Exam Bank</a>
+          <a class="sidebar-link" href="teacher-points.html">Points / Export</a>
+          <a class="sidebar-link" href="teacher-history.html">History</a>
+          <button id="logoutBtn" class="logout-btn">Logout</button>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div><h2>Exam Bank</h2><p>Store and retrieve original exam files. YouTeach does not modify their contents.</p></div>
+        <div class="topbar-right"><span id="teacherIdentity" class="teacher-identity">Teacher</span></div>
+      </header>
+
+      <div class="exam-bank-page">
+        <section class="exam-bank-panel">
+          <h3>Add exam</h3>
+          <form id="examBankForm" class="exam-bank-form">
+            <label class="wide">Title<input id="examTitle" required placeholder="e.g. First Epidemiology Exam"></label>
+            <label>Subject<input id="examSubject" placeholder="e.g. Epidemiology"></label>
+            <label>Exam type<input id="examType" placeholder="e.g. Monthly, Partial, Final"></label>
+            <label>Unit<input id="examUnit" placeholder="e.g. Unit 1"></label>
+            <label>Topic<input id="examTopic" placeholder="e.g. Incidence"></label>
+            <label>Date<input id="examDate" type="date"></label>
+            <label>Version<input id="examVersion" placeholder="e.g. A, B"></label>
+            <label class="wide">Tags<input id="examTags" placeholder="comma, separated"></label>
+            <label class="file-field">Original file<input id="examFile" type="file" accept=".pdf,.doc,.docx,.odt,.rtf,.txt" required></label>
+            <div class="exam-bank-form-actions">
+              <button id="uploadExamBtn" type="submit">Upload original exam</button>
+              <span id="examBankFormStatus" class="status-text"></span>
+            </div>
+          </form>
+        </section>
+
+        <section class="exam-bank-panel">
+          <div class="exam-bank-heading">
+            <h3>Saved exams</h3>
+            <span id="examBankCount" class="exam-bank-count">0 exams</span>
+          </div>
+          <div class="exam-bank-filters">
+            <label>Search<input id="examBankSearch" type="search" placeholder="Title, subject, topic, tag..."></label>
+            <label>Subject<select id="examBankSubjectFilter"><option value="">All subjects</option></select></label>
+            <label>Type<select id="examBankTypeFilter"><option value="">All types</option></select></label>
+            <label>Version<select id="examBankVersionFilter"><option value="">All versions</option></select></label>
+            <button id="clearExamBankFiltersBtn" type="button">Clear</button>
+          </div>
+          <div id="examBankList" class="exam-bank-list"><div class="exam-bank-empty">Loading...</div></div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script type="module" src="exam-bank.js?v=20260917"></script>
+  <script defer src="shared-ui-fixes.js?v=titlebar-hamburger-20260916"></script>
+</body>
+</html>
