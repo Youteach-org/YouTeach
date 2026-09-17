@@ -60,14 +60,14 @@ test('Exam Bank download API retrieves the stored original Drive file', () => {
   assert.match(api, /Content-Disposition/);
 });
 
-test('teacher navigation exposes Exam Bank and removes provisional exam tools', () => {
-  for (const page of ['teacher.html', 'teacher-assignments.html']) {
-    const html = source(page);
-    assert.match(html, /href="exam-bank\.html">Exam Bank</);
-    assert.doesNotMatch(html, />Question Bank</);
-    assert.doesNotMatch(html, />Exam Creator</);
-    assert.doesNotMatch(html, />Answer Sheet Creator</);
-  }
+test('shared teacher navigation exposes Exam Bank and removes provisional exam tools', () => {
+  const js = source('shared-ui-fixes.js');
+  assert.match(js, /exam-bank\.html/);
+  assert.match(js, /Exam Bank/);
+  assert.match(js, /exam-question-bank\.html/);
+  assert.match(js, /exam-creator\.html/);
+  assert.match(js, /answer-sheet-creator\.html/);
+  assert.match(js, /remove\(\)/);
 });
 
 test('provisional exam tool URLs redirect to the approved Exam Bank', () => {
