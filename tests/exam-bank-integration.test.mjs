@@ -56,7 +56,7 @@ test('Exam Bank download API retrieves the stored original Drive file', () => {
   const api = source('functions/api/exam-bank-download.js');
 
   assert.match(api, /firebaseGet\(`examBank\//);
-  assert.match(api, /alt=media/);
+  assert.match(api, /searchParams\.set\("alt", "media"\)/);
   assert.match(api, /Content-Disposition/);
 });
 
