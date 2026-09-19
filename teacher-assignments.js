@@ -2280,7 +2280,7 @@ function renderAssignmentList() {
         title="${escapeHtml(assignment.title || "Assignment")}"
       >
         ${cogAssignment
-          ? '<div class="grading-actions"><span class="evaluated-chip">COG · automatic grading</span></div>'
+          ? '<div class="grading-actions"><span class="evaluated-chip">COG automatic result</span></div>'
           : `<div class="grading-actions">
           <button
             type="button"
@@ -2311,6 +2311,10 @@ function renderAssignmentList() {
           <span class="assignment-mini-chip ${assignment.active ? "open" : "closed"}">
             ${assignment.active ? "Open" : "Closed"}
           </span>
+          ${cogAssignment
+            ? `<span class="cog-config-chip">${escapeHtml(assignment.cogActivity?.modeId || "mode")} · ${escapeHtml(assignment.cogActivity?.difficultyId || "difficulty")}</span>`
+            : ""
+          }
           ${evaluation.complete ? '<span class="evaluated-chip">Evaluated</span>' : ""}
         </span>
 
