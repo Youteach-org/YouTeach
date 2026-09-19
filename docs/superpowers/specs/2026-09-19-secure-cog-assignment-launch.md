@@ -45,10 +45,11 @@ The signing secret must live in the Cloudflare Pages environment as `YOUTEACH_SE
 
 The current phase is practice-only.
 
-YouTeach may write an ephemeral Verb Runner launch record containing:
+Assignment launches use a signed bearer credential that is separate from the legacy `launch` credential used by the normal YouTeach → Verb Runner entry flow.
+
+After validating the signed student session and stored assignment, YouTeach creates a short-lived HMAC-signed `assignmentLaunch` token containing:
 
 - student key;
-- game id;
 - assignment id and code;
 - COG mode;
 - COG difficulty;
@@ -57,12 +58,26 @@ YouTeach may write an ephemeral Verb Runner launch record containing:
 - contract version;
 - `purpose: "assignment-practice"`;
 - `officialSubmissionAllowed: false`;
-- created/expiry timestamps;
-- one-time-use state.
+- issued/expiry timestamps;
+- a random nonce.
 
-Verb Runner must consume the token once and lock the assigned race/mode and difficulty for that launched run.
+The signed assignment token is **not** written to the public Classroom Online Games Firebase tree.
 
-The game must not treat the token or its Firebase result as an official YouTeach submission.
+YouTeach returns the token to Verb Runner together with the YouTeach issuer origin. Verb Runner sends the credential back to the YouTeach `/api/cog-launch-resolve` Function. That resolver:
+
+- only answers CORS requests from the production Classroom Online Games Pages origin or its Pages preview subdomains;
+- verifies the HMAC signature and expiry;
+- re-reads the canonical student and assignment;
+- re-validates group targeting and COG assignment availability;
+- returns canonical student identity plus the signed assignment configuration.
+
+Verb Runner then removes the signed credential and issuer from the visible URL, leaves only a non-sensitive assigned-activity marker, and locks the assigned race/mode and difficulty for that run.
+
+Refreshing an assigned launch after the credential was removed must not silently fall back to Free mode; the student must reopen the task from YouTeach.
+
+The legacy normal `launch` flow remains separate and unchanged so existing YouTeach/Buzzer entry into Verb Runner stays compatible.
+
+The game must not treat the practice credential or gameplay Firebase state as an official YouTeach submission.
 
 ## Mode mapping for Verb Runner
 
