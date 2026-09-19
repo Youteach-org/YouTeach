@@ -17,10 +17,9 @@ test('student assignments recognize COG tasks and render configuration',()=>{
   assert.match(js,/pointValue/);
 });
 
-test('student COG launch is practice-only until secure official submission exists',()=>{
-  assert.match(js,/purpose:\s*"assignment-practice"/);
-  assert.match(js,/officialSubmissionAllowed:\s*false/);
-  assert.match(js,/launchTokens/);
+test('student COG launch requests a server-issued practice credential',()=>{
+  assert.match(js,/fetch\("\/api\/cog-assignment-launch"/);
+  assert.doesNotMatch(js,/launchTokens/);
 });
 
 test('COG assignment styling exists in student view',()=>{
