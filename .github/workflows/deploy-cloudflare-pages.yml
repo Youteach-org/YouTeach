@@ -35,7 +35,7 @@ jobs:
           printf '%s' "$PREVIEW_SESSION_SECRET" | \
             npx wrangler@4 pages secret put YOUTEACH_SESSION_SECRET \
               --project-name=youteach --env preview
-          printf '%s' 'https://feature-youteach-cog-assignment-launch.classroom-online-games.pages.dev' | \
+          printf '%s' 'https://feature-youteach-cog-assignm.classroom-online-games.pages.dev' | \
             npx wrangler@4 pages secret put COG_ASSIGNMENT_ORIGIN \
               --project-name=youteach --env preview
 
