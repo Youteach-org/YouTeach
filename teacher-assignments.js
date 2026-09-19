@@ -2881,7 +2881,10 @@ async function createAssignment() {
       evaluationCriteria: rubricResult.criteria,
       evaluationDistribution,
       evaluationNotes,
-      projectCheckpoints: typeCode === "PJ" ? projectResult.checkpoints : null
+      projectCheckpoints: typeCode === "PJ" ? projectResult.checkpoints : null,
+      cogActivity: typeCode === "COG" ? cogActivity : null,
+      pointValue: typeCode === "COG" ? cogActivity.pointValue : null,
+      undoSubmissionEnabled: typeCode === "COG" ? cogActivity.undoSubmissionEnabled : true
     };
 
     const sourceTemplate = loadedAssignmentTemplateId
@@ -2915,7 +2918,7 @@ async function createAssignment() {
         groupName,
         dueAt,
         active: true,
-        storageProvider: "google-drive",
+        storageProvider: typeCode === "COG" ? "cog" : "google-drive",
         createdAt: now,
         createdBy: getTeacherName()
       };
@@ -2931,6 +2934,9 @@ async function createAssignment() {
     assignmentInstructions.value = "";
     assignmentEvaluationNotes.value = "";
     assignmentDueAt.value = "";
+    cogMinimumPercent.value = "";
+    cogPointValue.value = "100";
+    cogUndoSubmissionEnabled.checked = true;
     loadedAssignmentTemplateId = "";
     assignmentTemplateSource.value = "";
     loadAssignmentTemplateBtn.disabled = true;
