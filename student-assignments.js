@@ -1,5 +1,5 @@
 import { db } from "./firebase.js";
-import { ref, get, onValue, set } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { ref, get, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireStudentSession, clearStudentSession, saveLeaveLog } from "./student-auth.js";
 import { getCertifiedCogGame } from "./cog-activity-catalog.mjs";
 import {
@@ -120,45 +120,27 @@ function isCogAssignment(assignment) {
     Boolean(assignment?.cogActivity?.gameId);
 }
 
-function createOpaqueCogLaunchToken() {
-  const bytes = new Uint8Array(24);
-  crypto.getRandomValues(bytes);
-  let raw = "";
-  bytes.forEach((value) => { raw += String.fromCharCode(value); });
-  return btoa(raw).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
-}
-
 async function createCogAssignmentPracticeToken(assignmentId, assignment) {
   const config = assignment?.cogActivity || {};
   const game = getCertifiedCogGame(config.gameId);
   if (!game) throw new Error("This COG game is not available for assignments.");
-  if (game.id !== "verb-runner") {
-    throw new Error("This COG game does not have a practice launch adapter yet.");
-  }
 
-  const token = createOpaqueCogLaunchToken();
-  const now = Date.now();
-  await set(ref(db, `classroomGames/verbRunnerV2/launchTokens/${token}`), {
-    studentKey,
-    game: game.id,
-    purpose: "assignment-practice",
-    officialSubmissionAllowed: false,
-    assignmentId,
-    assignmentCode: String(assignment?.code || ""),
-    cogActivity: {
-      gameId: game.id,
-      modeId: String(config.modeId || ""),
-      difficultyId: String(config.difficultyId || ""),
-      minimumPercent: config.minimumPercent == null ? null : Number(config.minimumPercent),
-      pointValue: Number(assignment?.pointValue ?? config.pointValue ?? 100),
-      contractVersion: Number(config.contractVersion || game.contractVersion || 1)
-    },
-    createdAt: now,
-    expiresAt: now + 5 * 60 * 1000,
-    used: false
+  const response = await fetch("/api/cog-assignment-launch", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      assignmentId,
+      studentKey,
+      externalId
+    })
   });
 
-  return { token, game };
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || !result.ok || !result.launchUrl) {
+    throw new Error(result.error || "Could not open the COG activity.");
+  }
+
+  return { launchUrl: String(result.launchUrl), game };
 }
 
 function cogAssignmentHtml(assignmentId, assignment) {
@@ -790,9 +772,8 @@ assignmentList.addEventListener("click", (event) => {
     if (progress) progress.textContent = "Opening COG activity...";
 
     createCogAssignmentPracticeToken(assignmentId, assignment)
-      .then(({ token, game }) => {
-        const base = `https://classroom-online-games.pages.dev${game.publicPath || "/"}`;
-        window.location.href = `${base}?launch=${encodeURIComponent(token)}`;
+      .then(({ launchUrl }) => {
+        window.location.href = launchUrl;
       })
       .catch((error) => {
         console.error(error);
