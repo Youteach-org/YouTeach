@@ -80,6 +80,21 @@ Only identity fields may persist as the student's remembered YouTeach identity i
 
 Assignment launch context must not persist into later free-mode runs.
 
+## Authentication hardening prerequisite for official grading
+
+The signed YouTeach session prevents a browser from inventing or altering its own session payload, but it does not by itself solve the legacy credential-storage model.
+
+The current legacy student records may expose password fields through client-readable Firebase data because the old browser login read the student collection directly.
+
+Therefore, before any COG result can become an official grade:
+
+- student credential material must no longer be readable from public/client Firebase paths;
+- the server-side login verifier must use a credential source that the browser cannot enumerate;
+- production Firebase rules and the credential migration must be validated;
+- official COG receipt validation must depend on that hardened identity boundary.
+
+Until those conditions are met, the signed session may be used for practice launch continuity but is not sufficient authority for an official grade.
+
 ## Official submission — intentionally pending
 
 A later phase will add:
