@@ -2331,6 +2331,7 @@ function renderAssignmentList() {
     const total = evaluation.totalStudents;
     const missing = evaluation.missing;
     const evaluatedClass = evaluation.complete ? "evaluated" : "";
+    const cogAssignment = isCogAssignment(assignment);
 
     return `
       <article
@@ -2338,7 +2339,9 @@ function renderAssignmentList() {
         data-assignment-select="${id}"
         title="${escapeHtml(assignment.title || "Assignment")}"
       >
-        <div class="grading-actions">
+        ${cogAssignment
+          ? '<div class="grading-actions"><span class="assignment-mini-chip">COG result is automatic</span></div>'
+          : `<div class="grading-actions">
           <button
             type="button"
             class="ai-grading-btn"
@@ -2353,7 +2356,7 @@ function renderAssignmentList() {
             ${count ? "" : "disabled"}
             title="${count ? "Grade this activity manually" : "No submissions to grade yet"}"
           >Manual Grading</button>
-        </div>
+        </div>`}
 
         <div class="assignment-code-row">
           <span class="assignment-code">${escapeHtml(assignment.code || "")}</span>
@@ -2363,6 +2366,7 @@ function renderAssignmentList() {
 
         <span class="assignment-item-meta">
           <span class="assignment-mini-chip">${escapeHtml(assignment.groupName || "ALL")}</span>
+          ${cogAssignment ? '<span class="assignment-mini-chip">COG</span>' : ""}
           <span class="assignment-mini-chip">${escapeHtml(formatCompactDate(assignment.dueAt))}</span>
           <span class="assignment-mini-chip ${assignment.active ? "open" : "closed"}">
             ${assignment.active ? "Open" : "Closed"}
@@ -2393,6 +2397,7 @@ function renderDetail() {
   assignmentDetail.hidden = false;
   assignmentDetailEmpty.hidden = true;
 
+  const cogAssignment = isCogAssignment(assignment);
   const students = assignmentStudents(assignment);
   const submissions = assignmentSubmissions(selectedAssignmentId);
   const validSubmissionEntries = Object.entries(submissions)
@@ -2411,16 +2416,29 @@ function renderDetail() {
   selectedDriveFolderUrl =
     validSubmissionEntries.find(([, submission]) => submission.driveFolderUrl)?.[1]?.driveFolderUrl || "";
 
-  openDriveFolderBtn.disabled = !selectedDriveFolderUrl;
-  driveStatus.textContent = selectedDriveFolderUrl
-    ? "PDFs are stored in the Google Drive folder for this task."
-    : "The Drive folder is created automatically with the first PDF submission.";
+  openDriveFolderBtn.hidden = cogAssignment;
+  openDriveFolderBtn.disabled = cogAssignment || !selectedDriveFolderUrl;
+  driveStatus.textContent = cogAssignment
+    ? "COG submissions use verified game results instead of PDF evidence."
+    : (selectedDriveFolderUrl
+      ? "PDFs are stored in the Google Drive folder for this task."
+      : "The Drive folder is created automatically with the first PDF submission.");
 
   detailTitle.textContent = `${assignment.code || ""} · ${assignment.title || "Assignment"}`;
   const codeLockText = assignmentHasSubmissions(selectedAssignmentId)
     ? " · Code locked after first submission"
     : "";
-  detailMeta.textContent = `${assignment.groupName || "ALL"} · Due: ${formatDate(assignment.dueAt)} · ${assignment.active ? "Open" : "Closed"}${codeLockText}`;
+  const cogMeta = cogAssignment
+    ? (() => {
+        const config = assignment.cogActivity || {};
+        const game = getCertifiedCogGame(config.gameId);
+        const mode = game?.modes?.find((item) => item.id === config.modeId)?.name || config.modeId || "Mode";
+        const difficulty = game?.difficulties?.find((item) => item.id === config.difficultyId)?.name || config.difficultyId || "Difficulty";
+        const minimum = config.minimumPercent == null ? "No minimum" : `Minimum ${Number(config.minimumPercent)}%`;
+        return ` · ${game?.name || config.gameId || "COG"} · ${mode} · ${difficulty} · ${minimum} · ${Number(assignment.pointValue ?? config.pointValue ?? 100)} pts`;
+      })()
+    : "";
+  detailMeta.textContent = `${assignment.groupName || "ALL"} · Due: ${formatDate(assignment.dueAt)} · ${assignment.active ? "Open" : "Closed"}${codeLockText}${cogMeta}`;
   eligibleCount.textContent = students.length;
   submittedCount.textContent = validSubmissionEntries.length;
   missingCount.textContent = missing.length;
@@ -2438,7 +2456,9 @@ function renderDetail() {
     editCriteriaBtn.title = "Criteria locked after the first submission.";
   }
 
-  submissionList.innerHTML = validSubmissionEntries.length
+  submissionList.innerHTML = cogAssignment
+    ? '<div class="status-text">No official COG submissions yet.</div>'
+    : validSubmissionEntries.length
     ? validSubmissionEntries.map(([studentKey, submission]) => {
         const graded = submissionIsGraded(submission);
         const gradeTotal = gradingTotalForSubmission(submission);
@@ -2776,6 +2796,8 @@ function loadSelectedAssignmentTemplate() {
     });
   }
   refreshProjectCheckpointBuilder();
+  if (typeCode === "COG") loadCogActivityDraft(content.cogActivity, content);
+  else refreshCogActivityConfigPanel();
 
   loadedAssignmentTemplateId = templateId;
   createAssignmentPanel.hidden = false;
