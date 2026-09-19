@@ -50,6 +50,34 @@ jobs:
             --branch="${{ github.head_ref }}" \
             --commit-hash="${{ github.event.pull_request.head.sha }}"
 
+      - name: Smoke test YouTeach preview
+        if: github.event_name == 'pull_request'
+        run: |
+          PREVIEW='https://feature-cog-youteach-assignm.youteach.pages.dev'
+          COG_PREVIEW='https://feature-youteach-cog-assignm.classroom-online-games.pages.dev'
+
+          curl -fsS --retry 5 --retry-delay 2 "$PREVIEW/student-assignments.html" -o /tmp/student-assignments.html
+          grep -q 'cog-assignment-box' /tmp/student-assignments.html
+
+          curl -fsS --retry 5 --retry-delay 2 "$PREVIEW/student-assignments.js" -o /tmp/student-assignments.js
+          grep -q '/api/cog-assignment-launch' /tmp/student-assignments.js
+          grep -q 'Authorization' /tmp/student-assignments.js
+
+          STATUS="$(curl -sS -o /tmp/launch-no-auth.json -w '%{http_code}' \
+            -X POST "$PREVIEW/api/cog-assignment-launch" \
+            -H 'Content-Type: application/json' \
+            --data '{"assignmentId":"smoke-test"}')"
+          test "$STATUS" = '401'
+          grep -q 'Sign in again' /tmp/launch-no-auth.json
+
+          STATUS="$(curl -sS -D /tmp/cors-headers.txt -o /dev/null -w '%{http_code}' \
+            -X OPTIONS "$PREVIEW/api/cog-launch-resolve" \
+            -H "Origin: $COG_PREVIEW" \
+            -H 'Access-Control-Request-Method: POST' \
+            -H 'Access-Control-Request-Headers: Content-Type')"
+          test "$STATUS" = '204'
+          grep -qi "access-control-allow-origin: $COG_PREVIEW" /tmp/cors-headers.txt
+
       - name: Ensure YouTeach student session secret exists
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         env:
