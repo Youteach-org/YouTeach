@@ -13,7 +13,8 @@ test('student assignment UI recognizes COG assignments and does not render PDF u
   assert.match(js, /function isCogAssignment\(assignment\)/);
   assert.match(js, /data-open-cog-assignment=/);
   assert.match(js, /COG activity/);
-  assert.match(js, /const cogAssignment = isCogAssignment\(assignment\)/);\n  assert.match(js, /if \(cogAssignment\)/);
+  assert.match(js, /const cogAssignment = isCogAssignment\(assignment\)/);
+  assert.match(js, /if \(cogAssignment\)/);
   assert.match(html, /\.cog-assignment-box\{/);
 });
 
