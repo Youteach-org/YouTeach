@@ -4,7 +4,7 @@ set -eu
 rm -rf dist
 mkdir -p dist
 
-for file in *.html *.js *.css; do
+for file in *.html *.js *.mjs *.css; do
   if [ -f "$file" ]; then
     cp "$file" dist/
   fi
