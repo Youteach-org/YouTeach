@@ -249,3 +249,44 @@ test('buildAssignmentTemplateArchivePatch changes archive metadata only', () => 
   assert.equal(template.usageCount, 9);
   assert.equal(template.content.title, 'Keep me intact');
 });
+
+
+test('COG templates preserve reusable game configuration and use COG storage on assignment', () => {
+  const template = buildAssignmentTemplateRecord({
+    id: 'tpl-cog',
+    assignment: {
+      title: 'Verb Runner practice',
+      assignmentType: 'COG Activity',
+      assignmentTypeCode: 'COG',
+      cogActivity: {
+        gameId: 'verb-runner',
+        modeId: 'sentence',
+        difficultyId: 'medium',
+        minimumPercent: 70,
+        contractVersion: 1
+      },
+      pointValue: 15,
+      undoSubmissionEnabled: false
+    },
+    now: 100,
+    actor: 'Teacher'
+  });
+
+  assert.equal(template.content.cogActivity.gameId, 'verb-runner');
+  assert.equal(template.content.pointValue, 15);
+  assert.equal(template.content.undoSubmissionEnabled, false);
+
+  const instance = buildAssignedInstanceFromTemplate({
+    template,
+    code: 'COG-VERBRU-G1-160926',
+    groupName: 'G1',
+    dueAt: 200,
+    now: 150,
+    actor: 'Teacher'
+  });
+
+  assert.equal(instance.storageProvider, 'cog');
+  assert.equal(instance.cogActivity.modeId, 'sentence');
+  assert.equal(instance.pointValue, 15);
+  assert.equal(instance.undoSubmissionEnabled, false);
+});
