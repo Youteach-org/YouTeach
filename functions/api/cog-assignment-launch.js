@@ -1,4 +1,5 @@
 import { verifyStudentSession } from "../_shared/student-session.js";
+import { signCogAssignmentLaunch } from "../_shared/cog-assignment-launch.js";
 
 const DATABASE_URL = "https://youteach-d9a79-default-rtdb.firebaseio.com";
 const COG_ORIGIN = "https://classroom-online-games.pages.dev";
@@ -19,27 +20,16 @@ async function firebaseGet(path) {
   return response.json();
 }
 
-async function firebasePut(path, value) {
-  const response = await fetch(`${DATABASE_URL}/${path}.json`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(value)
-  });
-  if (!response.ok) throw new Error(`Firebase write failed: ${response.status}`);
-}
-
 function bearerToken(request) {
   const header = String(request.headers.get("Authorization") || "");
   const match = header.match(/^Bearer\s+(.+)$/i);
   return match ? match[1].trim() : "";
 }
 
-function makeToken() {
-  const bytes = new Uint8Array(32);
+function makeNonce() {
+  const bytes = new Uint8Array(16);
   crypto.getRandomValues(bytes);
-  let binary = "";
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 function assignmentTypeCodeFor(assignment) {
@@ -131,29 +121,34 @@ export async function onRequestPost({ request, env }) {
     }
 
     const cogActivity = validateCogConfig(assignment);
-    const token = makeToken();
     const now = Date.now();
     const expiresAt = now + 5 * 60 * 1000;
+    const token = await signCogAssignmentLaunch(
+      {
+        studentKey: session.studentKey,
+        assignmentId,
+        assignmentCode: String(assignment.code || ""),
+        purpose: "assignment-practice",
+        officialSubmissionAllowed: false,
+        cogActivity,
+        iat: now,
+        exp: expiresAt,
+        nonce: makeNonce()
+      },
+      env.YOUTEACH_SESSION_SECRET
+    );
 
-    await firebasePut(`classroomGames/verbRunnerV2/launchTokens/${token}`, {
-      studentKey: session.studentKey,
-      game: "verb-runner",
-      purpose: "assignment-practice",
-      officialSubmissionAllowed: false,
-      assignmentId,
-      assignmentCode: String(assignment.code || ""),
-      cogActivity,
-      createdAt: now,
-      expiresAt,
-      used: false
-    });
+    const issuer = new URL(request.url).origin;
+    const launchUrl = new URL(`${COG_ORIGIN}/Verb-Runner/`);
+    launchUrl.searchParams.set("assignmentLaunch", token);
+    launchUrl.searchParams.set("issuer", issuer);
 
     return json(200, {
       ok: true,
       purpose: "assignment-practice",
       officialSubmissionAllowed: false,
       expiresAt,
-      launchUrl: `${COG_ORIGIN}/Verb-Runner/?launch=${encodeURIComponent(token)}`
+      launchUrl: launchUrl.toString()
     });
   } catch (error) {
     console.error(error);
