@@ -2,7 +2,7 @@ import { verifyStudentSession } from "../_shared/student-session.js";
 import { signCogAssignmentLaunch } from "../_shared/cog-assignment-launch.js";
 
 const DATABASE_URL = "https://youteach-d9a79-default-rtdb.firebaseio.com";
-const COG_ORIGIN = "https://classroom-online-games.pages.dev";
+const DEFAULT_COG_ORIGIN = "https://classroom-online-games.pages.dev";
 
 function json(status, payload) {
   return new Response(JSON.stringify(payload), {
@@ -34,6 +34,22 @@ function makeNonce() {
 
 function assignmentTypeCodeFor(assignment) {
   return String(assignment?.assignmentTypeCode || "").trim().toUpperCase();
+}
+
+function cogOriginFor(env) {
+  const raw = String(env?.COG_ASSIGNMENT_ORIGIN || DEFAULT_COG_ORIGIN).trim();
+  const url = new URL(raw);
+  const host = url.hostname.toLowerCase();
+  if (
+    url.protocol !== "https:" ||
+    !(
+      host === "classroom-online-games.pages.dev" ||
+      host.endsWith(".classroom-online-games.pages.dev")
+    )
+  ) {
+    throw new Error("Invalid Classroom Online Games assignment origin.");
+  }
+  return url.origin;
 }
 
 function validateCogConfig(assignment) {
@@ -139,7 +155,7 @@ export async function onRequestPost({ request, env }) {
     );
 
     const issuer = new URL(request.url).origin;
-    const launchUrl = new URL(`${COG_ORIGIN}/Verb-Runner/`);
+    const launchUrl = new URL(`${cogOriginFor(env)}/Verb-Runner/`);
     launchUrl.searchParams.set("assignmentLaunch", token);
     launchUrl.searchParams.set("issuer", issuer);
 
