@@ -2,7 +2,7 @@ import { db } from "./firebase.js";
 import { ref, get, update, set } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 const SESSION_KEY = "youteachStudentKey";
-const SESSION_EXTERNAL_ID = "youteachStudentExternalId";
+const SESSION_EXTERNAL_ID = "youteachStudentExternalId";\nconst SESSION_TOKEN = "youteachStudentSessionToken";
 
 export function getStudentKey() {
   return localStorage.getItem(SESSION_KEY);
@@ -12,14 +12,21 @@ export function getStudentExternalId() {
   return localStorage.getItem(SESSION_EXTERNAL_ID);
 }
 
-export function setStudentSession(studentKey, externalId) {
+export function getStudentSessionToken() {
+  return localStorage.getItem(SESSION_TOKEN);
+}
+
+export function setStudentSession(studentKey, externalId, sessionToken = "") {
   localStorage.setItem(SESSION_KEY, studentKey);
   localStorage.setItem(SESSION_EXTERNAL_ID, externalId);
+  if (sessionToken) localStorage.setItem(SESSION_TOKEN, sessionToken);
+  else localStorage.removeItem(SESSION_TOKEN);
 }
 
 export function clearStudentSession() {
   localStorage.removeItem(SESSION_KEY);
   localStorage.removeItem(SESSION_EXTERNAL_ID);
+  localStorage.removeItem(SESSION_TOKEN);
 }
 
 function todayKey() {
@@ -141,45 +148,58 @@ export async function setStudentLeave(studentKey, reason = "") {
 }
 
 export async function loginStudentByExternalIdAndPassword(externalId, password) {
-  const snapshot = await get(ref(db, "students"));
-  const students = snapshot.val() || {};
-  const cleanId = externalId.trim();
+  const response = await fetch("/api/student-session", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      externalId: String(externalId || "").trim(),
+      password: String(password || "")
+    })
+  });
 
-  for (const [key, student] of Object.entries(students)) {
-    const savedExternalId = (student.studentNumber || "").trim();
-    const savedInternalId = (student.id || "").trim();
-
-    if (savedExternalId === cleanId || savedInternalId === cleanId) {
-      const validPassword = student.password || "1234";
-
-      if (password !== validPassword) {
-        return { ok: false, message: "Incorrect password. Use 1234 for now." };
-      }
-
-      const updatedStudent = {
-        ...student,
-        nickname: student.nickname || (student.fullName || student.name || "Student").split(" ")[0],
-        groupName: student.groupName || "GENERAL"
-      };
-
-      setStudentSession(key, cleanId);
-      return { ok: true, key, student: updatedStudent };
-    }
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || !result.ok) {
+    return {
+      ok: false,
+      message: result.error || "Could not sign in."
+    };
   }
 
-  return { ok: false, message: "Student not found. Try external ID exactly as saved." };
+  const studentKey = String(result.studentKey || "").trim();
+  const cleanExternalId = String(result.externalId || "").trim();
+  const sessionToken = String(result.sessionToken || "").trim();
+  if (!studentKey || !cleanExternalId || !sessionToken) {
+    return { ok: false, message: "The server returned an incomplete student session." };
+  }
+
+  const student = {
+    ...(result.student || {}),
+    nickname: result.student?.nickname || "Student",
+    groupName: result.student?.groupName || "GENERAL"
+  };
+
+  setStudentSession(studentKey, cleanExternalId, sessionToken);
+  return {
+    ok: true,
+    key: studentKey,
+    studentKey,
+    externalId: cleanExternalId,
+    sessionToken,
+    student
+  };
 }
 
 export function requireStudentSession() {
   const studentKey = getStudentKey();
   const externalId = getStudentExternalId();
+  const sessionToken = getStudentSessionToken();
 
   if (!studentKey || !externalId) {
     window.location.href = "student.html";
     return null;
   }
 
-  return { studentKey, externalId };
+  return { studentKey, externalId, sessionToken };
 }
 
 export async function saveLeaveLog(studentKey, reason = "") {
