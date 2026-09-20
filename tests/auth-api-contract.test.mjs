@@ -24,11 +24,12 @@ test('teacher enrollment verifies a signed teacher session instead of browser fl
   assert.doesNotMatch(source,/youteachTeacherAuth/);
 });
 
-test('legacy migration never returns or logs plaintext password values',()=>{
-  const path='functions/api/auth-migrate-students.js';
+test('migration status can prove cutover readiness without handling plaintext credentials',()=>{
+  const path='functions/api/auth-migration-status.js';
   assert.equal(existsSync(new URL(path,root)),true);
   const source=read(path);
   assert.match(source,/YOUTEACH_AUTH/);
-  assert.doesNotMatch(source,/console\.log\([^\n]*password/i);
-  assert.match(source,/password\s*:\s*null/);
+  assert.match(source,/readyForCredentialCutover/);
+  assert.match(source,/publicCredentialFields/);
+  assert.doesNotMatch(source,/student\?\.password|student\.password/);
 });
