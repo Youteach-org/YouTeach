@@ -1,4 +1,5 @@
 export const LIVE_COG_IDLE_TTL_MS = 60 * 60 * 1000;
+export const LIVE_COG_PRESENCE_STALE_MS = 90 * 1000;
 
 function text(value, field) {
   const clean = String(value ?? "").trim();
@@ -11,6 +12,15 @@ function normalizeStringArray(raw) {
     ? raw
     : (raw && typeof raw === "object" ? Object.values(raw) : []);
   return [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))];
+}
+
+function normalizePresenceMap(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  return Object.fromEntries(
+    Object.entries(raw)
+      .map(([key, value]) => [String(key || "").trim(), Number(value || 0)])
+      .filter(([key, value]) => key && Number.isFinite(value) && value >= 0)
+  );
 }
 
 function timestamp(value, field, { nullable = false } = {}) {
@@ -49,18 +59,66 @@ export function validateConnectedGame(raw = {}) {
     startedAt: timestamp(raw.startedAt, "startedAt"),
     updatedAt: timestamp(raw.updatedAt ?? raw.startedAt, "updatedAt"),
     teacherPresenceAt: timestamp(raw.teacherPresenceAt ?? raw.startedAt, "teacherPresenceAt"),
+    studentPresence: normalizePresenceMap(raw.studentPresence),
     noPresenceSince: timestamp(raw.noPresenceSince, "noPresenceSince", { nullable: true }),
     endedAt: timestamp(raw.endedAt, "endedAt", { nullable: true }),
     expiredAt: timestamp(raw.expiredAt, "expiredAt", { nullable: true })
   };
 }
 
+export function livePresenceState({ connectedGame, now = Date.now() } = {}) {
+  const game = validateConnectedGame(connectedGame);
+  const current = timestamp(now, "now");
+
+  if (game.status !== "active") {
+    return {
+      hasPresence: false,
+      latestPresenceAt: 0,
+      noPresenceSince: game.noPresenceSince,
+      expired: game.status === "expired"
+    };
+  }
+
+  const presenceTimes = [
+    game.startedAt,
+    game.teacherPresenceAt,
+    ...Object.values(game.studentPresence || {})
+  ].filter((value) => Number.isFinite(Number(value)) && Number(value) >= 0)
+    .map(Number);
+
+  const latestPresenceAt = presenceTimes.length ? Math.max(...presenceTimes) : game.startedAt;
+  const hasPresence = current - latestPresenceAt < LIVE_COG_PRESENCE_STALE_MS;
+
+  if (hasPresence) {
+    return {
+      hasPresence: true,
+      latestPresenceAt,
+      noPresenceSince: null,
+      expired: false
+    };
+  }
+
+  const inferredZeroSince = latestPresenceAt + LIVE_COG_PRESENCE_STALE_MS;
+  const storedZeroSince = game.noPresenceSince == null ? null : Number(game.noPresenceSince);
+  const noPresenceSince = storedZeroSince == null
+    ? inferredZeroSince
+    : Math.min(storedZeroSince, inferredZeroSince);
+
+  return {
+    hasPresence: false,
+    latestPresenceAt,
+    noPresenceSince,
+    expired: current - noPresenceSince >= LIVE_COG_IDLE_TTL_MS
+  };
+}
+
 export function shouldExpireConnectedGame({ connectedGame, now = Date.now() } = {}) {
   if (!connectedGame) return false;
-  const game = validateConnectedGame(connectedGame);
-  if (game.status !== "active" || game.noPresenceSince == null) return false;
-  const current = timestamp(now, "now");
-  return current - game.noPresenceSince >= LIVE_COG_IDLE_TTL_MS;
+  try {
+    return livePresenceState({ connectedGame, now }).expired;
+  } catch {
+    return false;
+  }
 }
 
 export function canStudentAccessLiveGame({
