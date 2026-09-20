@@ -48,14 +48,14 @@ jobs:
         run: |
           npx wrangler@4 pages deploy dist \
             --project-name=youteach \
-            --branch="cog-youteach-secure-integrated" \
+            --branch="cog-secure-current" \
             --commit-hash="${{ github.sha }}"
 
       - name: Smoke test YouTeach preview
         if: github.event_name == 'pull_request'
         run: |
           set -euo pipefail
-          PREVIEW='https://cog-youteach-secure-integrat.youteach.pages.dev'
+          PREVIEW='https://cog-secure-current.youteach.pages.dev'
           COG_PREVIEW='https://cog-youteach-secure-current.classroom-online-games.pages.dev'
 
           fetch_preview() {
