@@ -20,6 +20,15 @@ const logoutBtn = document.getElementById("logoutBtn");
 const groupSelect = document.getElementById("groupSelect");
 const numTeamsInput = document.getElementById("numTeams");
 const teamSourceSelect = document.getElementById("teamSourceSelect");
+const teamSourceStudentCount = document.getElementById("teamSourceStudentCount");
+const activityTypeSelect = document.getElementById("activityTypeSelect");
+const activityOtherTypeField = document.getElementById("activityOtherTypeField");
+const activityOtherType = document.getElementById("activityOtherType");
+const activityTitle = document.getElementById("activityTitle");
+const activityTeamTarget = document.getElementById("activityTeamTarget");
+const activityScheduledFor = document.getElementById("activityScheduledFor");
+const activityScheduleStatus = document.getElementById("activityScheduleStatus");
+const scheduleTeamActivityBtn = document.getElementById("scheduleTeamActivityBtn");
 const createTeamsBtn = document.getElementById("createTeams");
 const printTeamsBtn = document.getElementById("printTeamsBtn");
 const printNameModeSelect = document.getElementById("printNameModeSelect");
@@ -283,6 +292,154 @@ function studentsForTeams(groupName) {
   };
 }
 
+function selectedActivityType() {
+  const code = String(activityTypeSelect?.value || "CT").trim().toUpperCase();
+  if (code === "OTHER") {
+    const custom = String(activityOtherType?.value || "").trim();
+    return {
+      code: custom
+        ? custom.split(/\s+/).map((part) => part[0] || "").join("").slice(0, 3).toUpperCase() || "OT"
+        : "OT",
+      label: custom || "Other"
+    };
+  }
+
+  const option = activityTypeSelect?.options?.[activityTypeSelect.selectedIndex];
+  return {
+    code,
+    label: String(option?.textContent || code).replace(/\s*\([^)]*\)\s*$/, "").trim()
+  };
+}
+
+function setDefaultActivitySchedule() {
+  if (!activityScheduledFor || activityScheduledFor.value) return;
+  const now = new Date();
+  now.setMinutes(Math.ceil(now.getMinutes() / 5) * 5, 0, 0);
+  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+  activityScheduledFor.value = local.toISOString().slice(0, 16);
+}
+
+function renderActivityTeamTargets() {
+  if (!activityTeamTarget) return;
+  const previous = activityTeamTarget.value || "all";
+  const teamLabels = getAllTeamLabels();
+  activityTeamTarget.innerHTML =
+    '<option value="all">All Generated Teams</option>' +
+    teamLabels.map((label) => `<option value="${label.replace(/"/g, "&quot;")}">${label}</option>`).join("");
+
+  if (teamLabels.includes(previous)) activityTeamTarget.value = previous;
+  else activityTeamTarget.value = "all";
+
+  if (scheduleTeamActivityBtn) scheduleTeamActivityBtn.disabled = !sessionCache?.active || teamLabels.length === 0;
+  if (activityScheduleStatus && (!sessionCache?.active || teamLabels.length === 0)) {
+    activityScheduleStatus.textContent = "Generate teams to schedule an activity.";
+  }
+}
+
+function selectedSourceCount(groupName) {
+  if (!groupName) return 0;
+  return studentsForTeams(groupName).entries.length;
+}
+
+async function scheduleTeamActivity() {
+  if (!sessionCache?.active) {
+    alert("Generate teams first.");
+    return;
+  }
+
+  const groupName = sessionCache.groupName || groupSelect.value || "";
+  const title = String(activityTitle?.value || "").trim();
+  const type = selectedActivityType();
+  const target = String(activityTeamTarget?.value || "all");
+  const scheduledValue = String(activityScheduledFor?.value || "");
+  const scheduledFor = scheduledValue ? new Date(scheduledValue).getTime() : Date.now();
+
+  if (!title) {
+    alert("Enter an activity title.");
+    activityTitle?.focus();
+    return;
+  }
+
+  if (activityTypeSelect?.value === "OTHER" && !String(activityOtherType?.value || "").trim()) {
+    alert("Specify the activity type.");
+    activityOtherType?.focus();
+    return;
+  }
+
+  if (!Number.isFinite(scheduledFor)) {
+    alert("Choose a valid schedule date and time.");
+    return;
+  }
+
+  const assignments = sessionCache.assignments || {};
+  const allTeamLabels = getAllTeamLabels();
+  const targetTeams = target === "all" ? allTeamLabels : [target];
+  const memberKeys = Object.entries(assignments)
+    .filter(([, teamLabel]) => targetTeams.includes(teamLabel))
+    .map(([studentKey]) => studentKey);
+
+  if (!memberKeys.length) {
+    alert("The selected team has no students.");
+    return;
+  }
+
+  scheduleTeamActivityBtn.disabled = true;
+  if (activityScheduleStatus) activityScheduleStatus.textContent = "Scheduling activity...";
+
+  try {
+    const activityRef = push(ref(db, "teamActivities"));
+    const teamSnapshot = {};
+
+    targetTeams.forEach((teamLabel) => {
+      teamSnapshot[teamLabel] = getTeamMembersByLabel(teamLabel).map(([studentKey, student]) => ({
+        studentKey,
+        name: getDisplayName(student)
+      }));
+    });
+
+    const record = {
+      id: activityRef.key,
+      title,
+      activityType: type.label,
+      activityTypeCode: type.code,
+      groupName,
+      teamTarget: target === "all" ? "all" : target,
+      teamLabels: targetTeams,
+      memberKeys,
+      teamSnapshot,
+      scheduledFor,
+      status: "scheduled",
+      source: "buzzer-team-generator",
+      sessionCreatedAt: Number(sessionCache.createdAt || 0),
+      createdAt: Date.now(),
+      createdBy: getTeacherName()
+    };
+
+    await set(activityRef, record);
+    await set(ref(db, `session/current/scheduledActivities/${activityRef.key}`), {
+      activityId: activityRef.key,
+      title,
+      activityType: type.label,
+      activityTypeCode: type.code,
+      teamTarget: record.teamTarget,
+      scheduledFor,
+      status: "scheduled"
+    });
+
+    if (activityScheduleStatus) {
+      activityScheduleStatus.textContent =
+        `Scheduled: ${title} · ${target === "all" ? "All Generated Teams" : target}.`;
+    }
+    if (activityTitle) activityTitle.value = "";
+  } catch (error) {
+    console.error(error);
+    if (activityScheduleStatus) activityScheduleStatus.textContent = "Could not schedule activity.";
+    alert("Could not schedule the activity. Try again.");
+  } finally {
+    renderActivityTeamTargets();
+  }
+}
+
 function todayKey() {
   const now = new Date();
 
@@ -410,8 +567,12 @@ function renderHeader() {
   activeBlockLabel.textContent = activeBlockCache;
   blockStatusLabel.textContent = isBlockClosed(activeBlockCache) ? "CLOSED" : "OPEN";
   sessionStatusLabel.textContent = sessionCache?.active ? "Active session" : "No active session";
-  const presentCount = activePresentStudentsForGroup(selectedGroup).length;
-  studentCountLabel.textContent = String(presentCount);
+
+  const presentCount = selectedGroup ? activePresentStudentsForGroup(selectedGroup).length : 0;
+  const sourceCount = selectedSourceCount(selectedGroup);
+
+  studentCountLabel.textContent = String(sourceCount);
+  if (teamSourceStudentCount) teamSourceStudentCount.textContent = String(sourceCount);
   if (presentTodayLabel) presentTodayLabel.textContent = String(presentCount);
 }
 
@@ -743,6 +904,17 @@ groupSelect.addEventListener("change", () => {
   renderResult();
 });
 
+teamSourceSelect.addEventListener("change", () => {
+  renderHeader();
+});
+
+activityTypeSelect?.addEventListener("change", () => {
+  if (activityOtherTypeField) activityOtherTypeField.hidden = activityTypeSelect.value !== "OTHER";
+});
+
+scheduleTeamActivityBtn?.addEventListener("click", scheduleTeamActivity);
+setDefaultActivitySchedule();
+
 createTeamsBtn.addEventListener("click", async () => {
   const numTeams = parseInt(numTeamsInput.value, 10);
   const groupName = groupSelect.value;
@@ -1056,6 +1228,7 @@ onValue(ref(db, "session/current"), (snapshot) => {
   renderResult();
   renderTeamRoster();
   renderLiveScores();
+  renderActivityTeamTargets();
 });
 
 if (printTeamsBtn) printTeamsBtn.addEventListener("click", printTeamsPdf);
@@ -1066,12 +1239,3 @@ numTeamsInput.addEventListener("keydown", (e) => {
     createTeamsBtn.click();
   }
 });
-
-// Classroom Online Games remains a separate application.
-// The Buzzer only opens the COG teacher monitor menu. Each game owns its own entry requirements.
-const openCogTeacherBtn = document.getElementById("openCogTeacherBtn");
-if (openCogTeacherBtn) {
-  openCogTeacherBtn.addEventListener("click", () => {
-    window.open("https://classroom-online-games.pages.dev/teacher/", "_blank", "noopener");
-  });
-}
