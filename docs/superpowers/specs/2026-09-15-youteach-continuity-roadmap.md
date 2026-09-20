@@ -140,6 +140,7 @@ Rules:
 - The normal Assignments page remains behind the modal and refreshes through the existing Firebase listeners after a new assignment is created.
 - Buzzer passes generated-team context into the same module; the Assignments page opens it with normal working-group context.
 - Closing the popup returns the teacher to the screen from which it was opened.
+- On the normal Assignments page, **Create Assignment is a direct button**. The redundant **Actions** menu/button is removed and must not be reintroduced as the primary creation entry point.
 
 ## 4. Accepted Teacher Assignments UX
 
