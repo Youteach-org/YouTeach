@@ -1,7 +1,7 @@
 import { db } from "./firebase.js";
 import { ref, onValue, push, set, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireTeacherAuth, getTeacherName } from "./teacher-auth.js";
-import { readAssignmentsModuleContext } from "./assignment-module-launcher.js";
+import { readAssignmentsModuleContext } from "./assignment-module-launcher.js?v=popup-library-20260920";
 
 if (!requireTeacherAuth()) throw new Error("Teacher authentication required.");
 
