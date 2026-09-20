@@ -309,8 +309,15 @@ function taskCodeExists(code) {
   );
 }
 
+function renderOtherTypeField() {
+  const show = assignmentType.value === "OTHER";
+  assignmentOtherTypeField.hidden = !show;
+  assignmentOtherTypeField.style.display = show ? "grid" : "none";
+  if (!show) assignmentOtherType.value = "";
+}
+
 function refreshAutomaticTaskCode() {
-  assignmentOtherTypeField.hidden = assignmentType.value !== "OTHER";
+  renderOtherTypeField();
   const code = taskCodeBase();
   assignmentCode.value = code;
 
@@ -681,7 +688,7 @@ async function createAssignment() {
 }
 
 assignmentType.addEventListener("change", () => {
-  assignmentOtherTypeField.hidden = assignmentType.value !== "OTHER";
+  renderOtherTypeField();
   refreshProjectCheckpointBuilder();
   refreshAutomaticTaskCode();
 });
@@ -725,6 +732,7 @@ projectCheckpointRows.addEventListener("click", (event) => {
 
 createAssignmentBtn.addEventListener("click", createAssignment);
 
+renderOtherTypeField();
 renderRubricEditors();
 renderTargetOptions();
 refreshProjectCheckpointBuilder();
