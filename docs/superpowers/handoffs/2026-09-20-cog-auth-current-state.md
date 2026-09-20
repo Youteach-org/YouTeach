@@ -237,3 +237,23 @@ If a new instance is asked "continue YouTeach/COG", it should:
 4. inspect PR #11 and PR #41;
 5. inspect the latest Actions runs;
 6. continue from the first unresolved gate above rather than recreating already-completed work.
+
+## Current next action — refreshed after main divergence
+
+Before continuing Cloudflare KV provisioning, rebuild/rebase the secure integration against the current `main` of both repositories.
+
+Reason:
+- YouTeach integration branch is currently diverged from `main` and is behind newer work, including the live COG session bridge and Buzzer activity-scheduling changes.
+- Classroom Online Games integration branch is also diverged from `main` and is behind newer work, including the live COG session bridge and Verb Runner 2.5 planning/runner-direction updates.
+- Both active PRs are therefore currently non-mergeable and must not be forced.
+
+Required sequence:
+1. Create fresh integration branches from the current `main` of YouTeach and Classroom Online Games.
+2. Port only the secure-auth / signed-launch / official-result changes that are not already superseded by newer `main` work.
+3. Reconcile overlaps with the new live COG session bridge, Buzzer activity scheduler and current Verb Runner architecture.
+4. Run fresh full CI on the exact new heads.
+5. Update/repoint the active PRs to the fresh compatible branches.
+6. Only after both PRs are green and mergeable, resume Cloudflare KV provisioning.
+7. Then continue preview auth validation with a real Ghost login before touching real-student credentials.
+
+Do not spend time granting Cloudflare KV permission until the code integration is current again; infrastructure should be provisioned against the branch that is actually intended to ship.
