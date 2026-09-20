@@ -61,6 +61,96 @@ let settingsCache = {};
 let activeBlockCache = "Block 1";
 let groupsCache = {};
 
+let teacherAudioContext = null;
+let buzzAudioStateInitialized = false;
+let lastObservedBuzzToken = "";
+
+function ensureTeacherAudioContext() {
+  if (!teacherAudioContext) {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return null;
+    teacherAudioContext = new AudioContextClass();
+  }
+  return teacherAudioContext;
+}
+
+function primeTeacherAudio() {
+  const context = ensureTeacherAudioContext();
+  if (context?.state === "suspended") {
+    context.resume().catch(() => {});
+  }
+}
+
+function playTeacherBuzzAlert() {
+  const context = ensureTeacherAudioContext();
+  if (!context) return;
+
+  const play = () => {
+    const start = context.currentTime + 0.01;
+    const tones = [
+      { frequency: 880, offset: 0, duration: 0.13 },
+      { frequency: 1175, offset: 0.16, duration: 0.18 }
+    ];
+
+    tones.forEach(({ frequency, offset, duration }) => {
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      const toneStart = start + offset;
+      const toneEnd = toneStart + duration;
+
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(frequency, toneStart);
+      gain.gain.setValueAtTime(0.0001, toneStart);
+      gain.gain.exponentialRampToValueAtTime(0.28, toneStart + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, toneEnd);
+
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.start(toneStart);
+      oscillator.stop(toneEnd + 0.02);
+    });
+  };
+
+  if (context.state === "suspended") {
+    context.resume().then(play).catch(() => {});
+  } else {
+    play();
+  }
+}
+
+function getBuzzAudioToken(currentBuzz) {
+  if (!currentBuzz) return "";
+  return [
+    currentBuzz.timestamp || "",
+    currentBuzz.studentKey || currentBuzz.id || currentBuzz.name || "",
+    currentBuzz.team || ""
+  ].join("|");
+}
+
+function handleTeacherBuzzAudio(nextSession) {
+  const currentBuzz = nextSession?.buzzer?.currentBuzz || null;
+  const token = getBuzzAudioToken(currentBuzz);
+
+  if (!buzzAudioStateInitialized) {
+    buzzAudioStateInitialized = true;
+    lastObservedBuzzToken = token;
+    return;
+  }
+
+  if (!token) {
+    lastObservedBuzzToken = "";
+    return;
+  }
+
+  if (token !== lastObservedBuzzToken) {
+    lastObservedBuzzToken = token;
+    playTeacherBuzzAlert();
+  }
+}
+
+window.addEventListener("pointerdown", primeTeacherAudio, { once: true, capture: true });
+window.addEventListener("keydown", primeTeacherAudio, { once: true, capture: true });
+
 function getDisplayName(student) {
   return (student?.nickname || student?.fullName || student?.name || "Student").trim();
 }
@@ -927,7 +1017,9 @@ onValue(ref(db, "settings"), (snapshot) => {
 });
 
 onValue(ref(db, "session/current"), (snapshot) => {
-  sessionCache = snapshot.val() || null;
+  const nextSession = snapshot.val() || null;
+  handleTeacherBuzzAudio(nextSession);
+  sessionCache = nextSession;
   if (sessionCache?.groupName && !getStoredWorkingGroup()) {
     setStoredWorkingGroup(sessionCache.groupName);
   }
