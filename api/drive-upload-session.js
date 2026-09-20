@@ -251,7 +251,7 @@ module.exports = async function handler(req, res) {
         ? Object.values(rawRecipients).map((value) => String(value || "")).filter(Boolean)
         : []);
     if (recipientKeys.length && !recipientKeys.includes(String(studentKey))) {
-      return send(403, { ok: false, error: "This assignment is not assigned to this student." });
+      return send(res, 403, { ok: false, error: "This assignment is not assigned to this student." });
     }
     const accessToken = await getAccessToken();
     const taskCode = safeSegment(assignment.code || assignmentId, "TASK");
