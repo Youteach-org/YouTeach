@@ -55,15 +55,14 @@ function escapeHtml(value) {
 }
 
 function ghostNumber(student) {
-  const label = String(student?.nickname || student?.fullName || student?.name || "");
-  const match = label.match(/ghost\s*0*(\d+)/i);
+  const nickname = String(student?.nickname || "").trim();
+  const match = nickname.match(/^ghost0*(\d+)$/i);
   return match ? Number(match[1]) : Number.MAX_SAFE_INTEGER;
 }
 
 function isGhostStudent(student) {
   const nickname = String(student?.nickname || "").trim();
-  const fallbackName = String(student?.fullName || student?.name || "").trim();
-  return /^ghost\s*\d+/i.test(nickname) || /^ghost\s*\d+/i.test(fallbackName);
+  return /^ghost\d+$/i.test(nickname);
 }
 
 function ghostEntries() {
