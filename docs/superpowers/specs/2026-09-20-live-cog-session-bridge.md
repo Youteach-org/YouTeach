@@ -230,3 +230,21 @@ The implementation is accepted when all of the following are true:
 12. Completed live-game results return automatically to YouTeach and are attached to the correct student/session.
 13. Retries/reconnects cannot duplicate an accepted result.
 14. Existing COG Assignment behavior remains a separate lifecycle.
+
+## Buzzer activity planning update — 2026-09-20
+
+The standalone **Open Classroom Games** card/button in Buzzer is removed.
+
+The **Team Source** card is now also the activity-planning surface:
+
+- a live student-count badge appears at the right of Team Source;
+- **Present Students Only** shows the current present count for the selected group;
+- **All Students in Group** shows the total enrollment count for the selected group;
+- **Activity Type** uses the same activity taxonomy as Assignments: Classroom Task (CT), Homework (HW), Exam (EX), Project (PJ), Practice (PC), Research (RS), Presentation (PT), Classroom Online Games (COG), and Other;
+- COG is added to the normal Assignments type selector so the taxonomy stays consistent;
+- the teacher may schedule an activity for **all generated teams or one individual team**;
+- every scheduled team activity records the exact member keys and a team snapshot under `teamActivities/{activityId}`;
+- the active Buzzer session stores a lightweight link under `session/current/scheduledActivities/{activityId}`, so closing/completing the session carries the activity references into session history.
+
+This planning ledger does **not** merge a live COG session with the separate COG Assignment lifecycle. Selecting **Classroom Online Games (COG)** classifies and records the planned team activity; secure game launch/result rules remain governed by the live-session bridge and the distinct assigned-COG lifecycle.
+
