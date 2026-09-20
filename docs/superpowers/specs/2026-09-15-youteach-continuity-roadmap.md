@@ -106,7 +106,7 @@ A manual grade must never be silently overwritten by a later AI rerun unless the
 
 ### Create Assignment canonical form — 2026-09-20
 
-This supersedes any earlier UI wording that made templates part of the primary Create Assignment flow.
+This section's earlier exclusion of library/template selection from Create Assignment is superseded by the **Assignment Library toggle decision — 2026-09-20** below. The assignment-instance fields remain the canonical creation form.
 
 The normal **Create Assignment** form must prioritize the assigned instance itself, in this order:
 
@@ -121,8 +121,8 @@ The normal **Create Assignment** form must prioritize the assigned instance itse
 
 Rules:
 - **Other** is the only Assignment Type that reveals a custom type text field.
-- Do not show **Save Template**, **Load Template**, a template selector, or **Start from scratch** inside the normal Create Assignment flow.
-- Template infrastructure may remain in the data model/library for later reuse, but it must not dominate or clutter Create Assignment unless the teacher explicitly enters a template/library workflow.
+- The creation form itself remains focused on the assignment instance; reusable-source selection is handled by the explicit **From scratch / Assignment Library** toggle documented below.
+- Template/library infrastructure must not appear as unrelated controls mixed into the assignment fields.
 - Evaluation criteria are a required visible section of Create Assignment, not hidden behind a collapsed control.
 - Criteria retain the approved model: preset + custom criteria, exactly 100 total points, equal or manual distribution.
 - Instructions for ChatGPT are teacher-only grading/review instructions and remain separate from student instructions.
@@ -135,19 +135,36 @@ Rules:
 
 - **Create Assignment is a reusable popup module, not the Teacher Assignments page inside a modal.**
 - Both the Teacher Assignments page and Buzzer/Team Generator open the same dedicated module.
-- The popup loads `assignment-create-module.html` and contains only the Create Assignment workflow.
-- It must not include Assignment Browser, Assignment Library, assignment detail/submissions, grading panels, or the rest of `teacher-assignments.html`.
+- The popup loads `assignment-create-module.html` and contains the Create Assignment workflow plus its integrated **Assignment Library** source selector.
+- It must not include Assignment Browser, assignment detail/submissions, grading panels, or the rest of `teacher-assignments.html`.
+- The standalone Assignment Library panel on the normal Assignments page is removed; Assignment Library belongs inside the Create Assignment popup.
 - The normal Assignments page remains behind the modal and refreshes through the existing Firebase listeners after a new assignment is created.
 - Buzzer passes generated-team context into the same module; the Assignments page opens it with normal working-group context.
 - Closing the popup returns the teacher to the screen from which it was opened.
 - On the normal Assignments page, **Create Assignment is a direct button**. The redundant **Actions** menu/button is removed and must not be reintroduced as the primary creation entry point.
+
+
+### Assignment Library toggle inside Create Assignment — 2026-09-20
+
+This supersedes the earlier rule that Assignment Library must stay outside the Create Assignment popup.
+
+- The Create Assignment popup starts with a two-mode toggle:
+  - **From scratch**
+  - **Assignment Library**
+- **From scratch** shows a clean new-assignment form.
+- **Assignment Library** reveals the reusable-assignment browser inside the same popup.
+- Choosing a library item pre-fills reusable assignment content (type, name, student instructions, evaluation criteria, teacher-only ChatGPT instructions, and reusable type-specific content such as Project checkpoint definitions).
+- Run-specific fields are never copied from the source: target/group/team recipients, Task Code, due date/time, submission state, grades, publication state, and other run/session state must be newly selected/generated.
+- The library may use existing saved reusable assignment records and prior assignments as reusable sources; the teacher's intent is to base a new assignment on a previous assignment without leaving the popup.
+- Switching back to **From scratch** clears library-source linkage and restores a fresh form while preserving the current working-group/team context.
+- Assignment Library is no longer a standalone panel on the normal Assignments page.
 
 ## 4. Accepted Teacher Assignments UX
 
 - Assignment cards are compact, not full-page rows.
 - Desktop aims to show multiple assignment cards at once.
 - Assignment browser supports compact filtering/navigation.
-- Create Assignment is hidden until requested from Actions.
+- Create Assignment opens from the direct **Create Assignment** button; there is no Actions menu.
 - Selected assignment summary is compact.
 - Criteria summary is compact and visible when an assignment is selected.
 - Criteria are arranged efficiently rather than occupying large vertical panels.
