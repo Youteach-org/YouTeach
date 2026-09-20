@@ -83,7 +83,7 @@ function criterionRowHtml(criterion = {}) {
   return `
     <div class="criterion-row" data-evaluation-criterion data-criterion-id="${escapeHtml(id)}">
       <input data-criterion-name value="${escapeHtml(criterion.name || "")}" placeholder="Criterion name">
-      <input data-criterion-short-label value="${escapeHtml(criterion.shortLabel || "")}" placeholder="Short label">
+      <input data-criterion-short-label value="${escapeHtml(criterion.shortLabel || "")}" placeholder="Abbr." aria-label="Abbreviation" title="Abbreviation used in reports">
       <input data-criterion-weight type="number" min="0" max="100" step="0.1"
         value="${Number(criterion.weight || 0) || ""}" placeholder="%">
       <select data-criterion-source>${sourceOptionsHtml(criterion.source || "manual")}</select>
