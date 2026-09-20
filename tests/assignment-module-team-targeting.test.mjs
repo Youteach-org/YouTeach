@@ -27,38 +27,33 @@ test('Buzzer generates teams before exposing Assignments module', () => {
   assert.match(buzzerJs, /openAssignmentsModule\(context\)/);
 });
 
-test('Assignment creation is type-first and does not offer Start from scratch', () => {
-  const typeIndex = assignmentsHtml.indexOf('id="assignmentType"');
-  const templateIndex = assignmentsHtml.indexOf('id="assignmentTemplateSource"');
-  assert.ok(typeIndex >= 0 && templateIndex > typeIndex);
-  assert.doesNotMatch(assignmentsHtml, /Start from scratch/);
-  assert.match(assignmentsHtml, /id="assignmentOtherTypeField" hidden/);
-  assert.match(assignmentsJs, /assignmentOtherTypeField\.hidden = assignmentType\.value !== "OTHER"/);
-  assert.match(assignmentsJs, /No saved templates for this type/);
+test('Create Assignment popup offers explicit scratch/library source toggle and conditional Other', () => {
+  assert.match(createModuleHtml, /id="createFromScratchBtn"/);
+  assert.match(createModuleHtml, /id="createFromLibraryBtn"/);
+  assert.match(createModuleHtml, /id="assignmentType"/);
+  assert.match(createModuleHtml, /id="assignmentOtherTypeField" hidden/);
+  assert.match(createModuleJs, /function renderOtherTypeField\(\)/);
+  assert.match(createModuleJs, /assignmentType\.value === "OTHER"/);
 });
 
-
-test('Create Assignment keeps the canonical visible fields and hides template workflow', () => {
-  assert.match(assignmentsHtml, /id="assignmentType"/);
-  assert.match(assignmentsHtml, /Assignment name/);
-  assert.match(assignmentsHtml, /id="assignmentGroupHelp"/);
-  assert.match(assignmentsHtml, /Due date and time/);
-  assert.match(assignmentsHtml, /Instructions for students/);
-  assert.match(assignmentsHtml, /id="createCriteriaHeading">Evaluation criteria/);
-  assert.match(assignmentsHtml, /Instructions for ChatGPT when reviewing/);
-  assert.doesNotMatch(assignmentsHtml, /Saved template \(optional\)/);
-  assert.doesNotMatch(assignmentsHtml, /Template action/);
-  assert.doesNotMatch(assignmentsHtml, /<details class="rubric-details">/);
-  assert.match(assignmentsJs, /function applyAssignmentGroupContext\(\)/);
-  assert.match(assignmentsJs, /Working group:/);
+test('Create Assignment popup keeps the canonical assignment fields while Library is only a source chooser', () => {
+  assert.match(createModuleHtml, /Assignment name/);
+  assert.match(createModuleHtml, /id="assignmentGroupHelp"/);
+  assert.match(createModuleHtml, /Due date and time/);
+  assert.match(createModuleHtml, /Instructions for students/);
+  assert.match(createModuleHtml, /id="criteriaHeading">Evaluation criteria/);
+  assert.match(createModuleHtml, /Instructions for ChatGPT when reviewing/);
+  assert.match(createModuleHtml, /id="assignmentLibraryPanel"/);
+  assert.doesNotMatch(createModuleHtml, /Assignment Browser/);
+  assert.doesNotMatch(createModuleHtml, /submissionList/);
 });
 
-test('Generated-team target appears only in team module context', () => {
-  assert.match(assignmentsHtml, /id="assignmentTargetField"[^>]*hidden/);
-  assert.match(assignmentsJs, /All Generated Teams/);
-  assert.match(assignmentsJs, /hasGeneratedTeamContext/);
-  assert.match(assignmentsJs, /recipientStudentKeys/);
-  assert.match(assignmentsJs, /recipientTeamTarget/);
+test('Generated-team target is handled by the shared Create Assignment module', () => {
+  assert.match(createModuleHtml, /id="assignmentTargetField"[^>]*hidden/);
+  assert.match(createModuleJs, /All Generated Teams/);
+  assert.match(createModuleJs, /hasGeneratedTeamContext/);
+  assert.match(createModuleJs, /recipientStudentKeys/);
+  assert.match(createModuleJs, /recipientTeamTarget/);
 });
 
 test('Exact team recipients are enforced client-side and server-side', () => {
