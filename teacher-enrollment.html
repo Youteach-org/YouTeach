@@ -6,16 +6,22 @@
   <title>YouTeach - Groups / Import</title>
   <link rel="stylesheet" href="styles.css?v=titlebar-hamburger-20260916">
   <style>
-    .group-evaluation-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-    .group-evaluation-grid label{display:grid;gap:5px;font-size:12px;font-weight:800;color:#334155}
-    .group-evaluation-grid input{width:100%}
+    .evaluation-template-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
+    .criteria-editor{display:grid;gap:8px}
+    .criteria-editor-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+    .criterion-row{display:grid;grid-template-columns:minmax(160px,1.4fr) 90px minmax(180px,1fr) auto;gap:8px;align-items:center;padding:8px;border:1px solid #dbe3ee;border-radius:9px;background:#f8fafc}
+    .criterion-row input,.criterion-row select{width:100%;min-width:0}
+    .criterion-remove{background:#fff1f2;color:#be123c;border:1px solid #fecdd3}
     .evaluation-total{font-weight:900;font-size:13px}
     .evaluation-total.ok{color:#166534}
     .evaluation-total.bad{color:#b91c1c}
-    .group-form-actions{display:flex;gap:8px;flex-wrap:wrap}
+    .group-form-actions,.template-actions{display:flex;gap:8px;flex-wrap:wrap}
     .group-evaluation-summary{font-size:11px;color:#475569;line-height:1.4}
     .setup-required{font-weight:800;color:#b45309}
-    @media(max-width:700px){.group-evaluation-grid{grid-template-columns:1fr}}
+    @media(max-width:800px){
+      .criterion-row{grid-template-columns:1fr}
+      .evaluation-template-row{grid-template-columns:1fr}
+    }
   </style>
 </head>
 <body>
@@ -71,26 +77,32 @@
             <input id="evaluationUnitCountInput" type="number" min="1" max="10" step="1" value="3">
 
             <div>
-              <strong>Evaluation criteria</strong>
-              <div class="hint-box" style="margin-top:6px;">Set the maximum percentage each category contributes to the block grade. Total must equal 100%.</div>
+              <strong>Evaluation setup</strong>
+              <div class="hint-box" style="margin-top:6px;">
+                Criteria belong to this group. Add, remove, rename, or replace them as needed. The total must equal 100%.
+              </div>
             </div>
 
-            <div class="group-evaluation-grid">
-              <label>Tasks %
-                <input id="tasksWeightInput" type="number" min="0" max="100" step="0.1" placeholder="0">
-              </label>
-              <label>Exams %
-                <input id="examsWeightInput" type="number" min="0" max="100" step="0.1" placeholder="0">
-              </label>
-              <label>Participation %
-                <input id="participationWeightInput" type="number" min="0" max="100" step="0.1" placeholder="0">
-              </label>
-              <label>Attendance %
-                <input id="attendanceWeightInput" type="number" min="0" max="100" step="0.1" placeholder="0">
-              </label>
+            <div class="evaluation-template-row">
+              <select id="evaluationTemplateSelect">
+                <option value="">Start with custom criteria</option>
+                <option value="builtin:cle-fall-2026">CLE Otoño 2026</option>
+              </select>
+              <button id="useEvaluationTemplateBtn" type="button">Use Template</button>
+            </div>
+
+            <div class="criteria-editor">
+              <div class="criteria-editor-head">
+                <strong>Evaluation criteria</strong>
+                <button id="addEvaluationCriterionBtn" type="button">+ Add Criterion</button>
+              </div>
+              <div id="evaluationCriteriaRows"></div>
             </div>
 
             <div id="evaluationWeightTotal" class="evaluation-total bad">0 / 100%</div>
+            <div class="template-actions">
+              <button id="saveEvaluationTemplateBtn" type="button">Save Setup as Template</button>
+            </div>
             <div class="group-form-actions">
               <button id="createGroupBtn">Create Group</button>
               <button id="cancelGroupEditBtn" type="button" hidden>Cancel Edit</button>
@@ -184,7 +196,7 @@
     </main>
   </div>
 
-  <script type="module" src="teacher-enrollment.js?v=group-evaluation-20260920-2"></script>
+  <script type="module" src="teacher-enrollment.js?v=dynamic-evaluation-20260920"></script>
 <script defer src="shared-ui-fixes.js?v=titlebar-hamburger-20260916"></script>
 </body>
 </html>
