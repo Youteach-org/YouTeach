@@ -1,6 +1,7 @@
 import { db } from "./firebase.js";
 import { ref, onValue, push, set, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
+import { openAssignmentsModule, readAssignmentsModuleContext } from "./assignment-module-launcher.js";
 import {
   buildAssignmentTemplateRecord,
   buildAssignedInstanceFromTemplate,
@@ -65,6 +66,9 @@ const assignmentOtherType = document.getElementById("assignmentOtherType");
 const taskCodeStatus = document.getElementById("taskCodeStatus");
 const assignmentTitle = document.getElementById("assignmentTitle");
 const assignmentGroup = document.getElementById("assignmentGroup");
+const assignmentTargetField = document.getElementById("assignmentTargetField");
+const assignmentTargetSelect = document.getElementById("assignmentTargetSelect");
+const assignmentTargetHelp = document.getElementById("assignmentTargetHelp");
 const assignmentInstructions = document.getElementById("assignmentInstructions");
 const assignmentDueAt = document.getElementById("assignmentDueAt");
 const createPresetCriteria = document.getElementById("createPresetCriteria");
@@ -159,6 +163,7 @@ const syncAiGradesBtn = document.getElementById("syncAiGradesBtn");
 const aiSyncStatus = document.getElementById("aiSyncStatus");
 const logoutBtn = document.getElementById("logoutBtn");
 const teacherIdentity = document.getElementById("teacherIdentity");
+const openAssignmentsModuleBtn = document.getElementById("openAssignmentsModuleBtn");
 
 let assignmentsCache = {};
 let assignmentTemplatesCache = {};
@@ -168,6 +173,8 @@ let groupsCache = {};
 let projectEvidenceCache = {};
 let loadedAssignmentTemplateId = "";
 const WORKING_GROUP_KEY = "youteachWorkingGroup";
+const ASSIGNMENTS_MODULE_MODE = new URLSearchParams(window.location.search).get("module") === "1";
+const assignmentsModuleContext = ASSIGNMENTS_MODULE_MODE ? readAssignmentsModuleContext() : null;
 
 let selectedAssignmentId = "";
 let selectedDriveFolderUrl = "";
@@ -294,6 +301,118 @@ function compactGroupCode(value) {
   return tokens.map((token) => token[0]).join("").slice(0, 4);
 }
 
+function normalizeRecipientKeys(raw) {
+  if (Array.isArray(raw)) return raw.map((value) => String(value || "")).filter(Boolean);
+  if (raw && typeof raw === "object") {
+    return Object.values(raw).map((value) => String(value || "")).filter(Boolean);
+  }
+  return [];
+}
+
+function moduleGeneratedTeams() {
+  const rawTeams = Array.isArray(assignmentsModuleContext?.teams)
+    ? assignmentsModuleContext.teams
+    : [];
+
+  return rawTeams.map((team) => ({
+    label: String(team?.label || "").trim(),
+    memberKeys: [...new Set(normalizeRecipientKeys(team?.memberKeys))]
+  })).filter((team) => team.label && team.memberKeys.length);
+}
+
+function hasGeneratedTeamContext() {
+  return Boolean(
+    ASSIGNMENTS_MODULE_MODE &&
+    assignmentsModuleContext?.source === "team-creator" &&
+    moduleGeneratedTeams().length
+  );
+}
+
+function selectedGeneratedTeamTarget() {
+  const teams = moduleGeneratedTeams();
+  const value = String(assignmentTargetSelect?.value || "all-generated");
+  const selectedTeams = value === "all-generated"
+    ? teams
+    : teams.filter((team) => team.label === value);
+  const memberKeys = [...new Set(selectedTeams.flatMap((team) => team.memberKeys))];
+
+  return {
+    value,
+    label: value === "all-generated" ? "All Generated Teams" : value,
+    teamLabels: selectedTeams.map((team) => team.label),
+    memberKeys
+  };
+}
+
+function assignmentTargetMetadata() {
+  if (!hasGeneratedTeamContext()) return {};
+  const target = selectedGeneratedTeamTarget();
+  return {
+    recipientMode: "generated-teams",
+    recipientStudentKeys: target.memberKeys,
+    recipientTeamLabels: target.teamLabels,
+    recipientTeamTarget: target.label,
+    sourceBuzzerSessionCreatedAt: Number(assignmentsModuleContext?.sessionCreatedAt || 0)
+  };
+}
+
+function generatedTeamCodePart() {
+  if (!hasGeneratedTeamContext()) return "";
+  const target = selectedGeneratedTeamTarget();
+  if (target.value === "all-generated") return "TMS";
+  const number = target.label.match(/\d+/)?.[0];
+  return number ? `T${number}` : (compactInitials(target.label, 3) || "TM");
+}
+
+function renderAssignmentTargetOptions() {
+  if (!assignmentTargetField || !assignmentTargetSelect) return;
+
+  if (!hasGeneratedTeamContext()) {
+    assignmentTargetField.hidden = true;
+    assignmentGroup.disabled = false;
+    return;
+  }
+
+  const teams = moduleGeneratedTeams();
+  const previous = assignmentTargetSelect.value || "all-generated";
+  assignmentTargetField.hidden = false;
+  assignmentTargetSelect.innerHTML =
+    '<option value="all-generated">All Generated Teams</option>' +
+    teams.map((team) => `<option value="${escapeHtml(team.label)}">${escapeHtml(team.label)} · ${team.memberKeys.length} students</option>`).join("");
+
+  assignmentTargetSelect.value = teams.some((team) => team.label === previous)
+    ? previous
+    : "all-generated";
+
+  const target = selectedGeneratedTeamTarget();
+  if (assignmentTargetHelp) {
+    assignmentTargetHelp.textContent =
+      `${target.label}: ${target.memberKeys.length} student${target.memberKeys.length === 1 ? "" : "s"}. This means the generated teams only, not the whole group.`;
+  }
+}
+
+function applyAssignmentModuleContext() {
+  if (!ASSIGNMENTS_MODULE_MODE) return;
+
+  if (hasGeneratedTeamContext()) {
+    const groupName = String(assignmentsModuleContext?.groupName || "").trim();
+    if (groupName) {
+      if (![...assignmentGroup.options].some((option) => option.value === groupName)) {
+        const option = document.createElement("option");
+        option.value = groupName;
+        option.textContent = groupName;
+        assignmentGroup.appendChild(option);
+      }
+      assignmentGroup.value = groupName;
+      assignmentGroup.disabled = true;
+      sessionStorage.setItem(WORKING_GROUP_KEY, groupName);
+    }
+  }
+
+  renderAssignmentTargetOptions();
+  refreshAutomaticTaskCode();
+}
+
 function selectedAssignmentTypeCode() {
   if (assignmentType.value !== "OTHER") return assignmentType.value;
   return compactInitials(assignmentOtherType.value, 3) || "OT";
@@ -311,10 +430,11 @@ function taskCodeBase() {
   const typePart = selectedAssignmentTypeCode();
   const titlePart = compactTitleCode(assignmentTitle.value);
   const groupPart = compactGroupCode(assignmentGroup.value);
+  const teamPart = generatedTeamCodePart();
   const datePart = dateCode(assignmentDueAt.value);
 
   if (!typePart || !titlePart || !groupPart || !datePart) return "";
-  return [typePart, titlePart, groupPart, datePart].join("-");
+  return [typePart, titlePart, groupPart, teamPart, datePart].filter(Boolean).join("-");
 }
 
 function taskCodeExists(code, excludeAssignmentId = "") {
@@ -1370,9 +1490,15 @@ function renderEvaluationCriteria(assignment) {
 }
 
 function assignmentStudents(assignment) {
+  const recipientKeys = normalizeRecipientKeys(assignment?.recipientStudentKeys);
+  const recipientSet = new Set(recipientKeys);
   const target = String(assignment?.groupName || "ALL");
+
   return Object.entries(studentsCache || {})
-    .filter(([, student]) => target === "ALL" || String(student.groupName || "GENERAL") === target)
+    .filter(([studentKey, student]) => {
+      if (recipientSet.size) return recipientSet.has(studentKey);
+      return target === "ALL" || String(student.groupName || "GENERAL") === target;
+    })
     .sort((a, b) => String(a[1]?.fullName || a[1]?.name || "").localeCompare(String(b[1]?.fullName || b[1]?.name || "")));
 }
 
@@ -2129,6 +2255,7 @@ function renderGroupOptions() {
   if ([...assignmentGroup.options].some((option) => option.value === current)) {
     assignmentGroup.value = current;
   }
+  applyAssignmentModuleContext();
   refreshAutomaticTaskCode();
 }
 
@@ -2595,26 +2722,37 @@ async function setAssignmentTemplateArchived(templateId, archived) {
 
 function renderAssignmentTemplateOptions() {
   const previous = assignmentTemplateSource.value;
+  const selectedType = selectedAssignmentTypeCode();
+  const standardTypeCodes = new Set(["CT", "HW", "EX", "PJ", "PC", "RS", "PT", "COG"]);
+
   const templates = Object.entries(assignmentTemplatesCache || {})
     .filter(([, template]) => !template?.archived)
+    .filter(([, template]) => {
+      const templateType = String(template?.content?.assignmentTypeCode || "").trim().toUpperCase();
+      if (assignmentType.value === "OTHER") return !standardTypeCodes.has(templateType);
+      return templateType === selectedType;
+    })
     .sort((a, b) => {
       const aTitle = String(a[1]?.content?.title || "");
       const bTitle = String(b[1]?.content?.title || "");
       return aTitle.localeCompare(bTitle);
     });
 
+  const availableIds = new Set(templates.map(([id]) => id));
   assignmentTemplateSource.innerHTML =
-    '<option value="">Start from scratch</option>' +
+    `<option value="">${templates.length ? "No template selected" : "No saved templates for this type"}</option>` +
     templates.map(([id, template]) => {
       const title = String(template?.content?.title || "Untitled template");
-      const type = String(template?.content?.assignmentTypeCode || "");
       const uses = Number(template?.usageCount || 0);
-      return `<option value="${escapeHtml(id)}">${escapeHtml(title)}${type ? ` · ${escapeHtml(type)}` : ""} · ${uses} use${uses === 1 ? "" : "s"}</option>`;
+      return `<option value="${escapeHtml(id)}">${escapeHtml(title)} · ${uses} use${uses === 1 ? "" : "s"}</option>`;
     }).join("");
 
-  if (previous && assignmentTemplatesCache[previous] && !assignmentTemplatesCache[previous]?.archived) {
+  if (previous && availableIds.has(previous)) {
     assignmentTemplateSource.value = previous;
+  } else if (loadedAssignmentTemplateId && !availableIds.has(loadedAssignmentTemplateId)) {
+    loadedAssignmentTemplateId = "";
   }
+
   loadAssignmentTemplateBtn.disabled = !assignmentTemplateSource.value;
 }
 
@@ -2664,7 +2802,7 @@ function loadSelectedAssignmentTemplate() {
 
   const content = template.content;
   const typeCode = String(content.assignmentTypeCode || "").trim().toUpperCase();
-  const standardTypeCodes = new Set(["CT", "HW", "EX", "PJ", "PC", "RS", "PT"]);
+  const standardTypeCodes = new Set(["CT", "HW", "EX", "PJ", "PC", "RS", "PT", "COG"]);
   if (standardTypeCodes.has(typeCode)) {
     assignmentType.value = typeCode;
     assignmentOtherType.value = "";
@@ -2712,6 +2850,7 @@ async function createAssignment() {
   const typeCode = selectedAssignmentTypeCode();
   const title = assignmentTitle.value.trim();
   const groupName = assignmentGroup.value || "ALL";
+  const targetMetadata = assignmentTargetMetadata();
   const instructions = assignmentInstructions.value.trim();
   const dueValue = assignmentDueAt.value;
   const dueAt = dueValue ? new Date(dueValue).getTime() : null;
@@ -2752,6 +2891,12 @@ async function createAssignment() {
 
   if (!assignmentDueAt.value) {
     createAssignmentStatus.textContent = "Select the due date.";
+    createAssignmentStatus.className = "status-text bad";
+    return;
+  }
+
+  if (hasGeneratedTeamContext() && !normalizeRecipientKeys(targetMetadata.recipientStudentKeys).length) {
+    createAssignmentStatus.textContent = "The selected generated team has no students.";
     createAssignmentStatus.className = "status-text bad";
     return;
   }
@@ -2818,6 +2963,7 @@ async function createAssignment() {
         now,
         actor: getTeacherName()
       });
+      assignmentPayload = { ...assignmentPayload, ...targetMetadata };
       const templateSnapshot = assignmentPayload.templateSnapshot;
       if (!templateSnapshot) throw new Error("Could not freeze the template snapshot.");
 
@@ -2832,6 +2978,7 @@ async function createAssignment() {
         code,
         ...reusableAssignment,
         groupName,
+        ...targetMetadata,
         dueAt,
         active: true,
         storageProvider: "google-drive",
@@ -2866,6 +3013,9 @@ async function createAssignment() {
     refreshAutomaticTaskCode();
     createAssignmentStatus.textContent = "Assignment created.";
     createAssignmentStatus.className = "status-text ok";
+    if (ASSIGNMENTS_MODULE_MODE && window.parent !== window) {
+      window.parent.postMessage({ type: "youteach:assignment-created", assignmentId: target.key }, window.location.origin);
+    }
     createAssignmentPanel.hidden = true;
     assignmentActionsMenu.open = false;
   } catch (error) {
@@ -3226,12 +3376,23 @@ openDriveFolderBtn.addEventListener("click", () => {
 });
 
 assignmentType.addEventListener("change", () => {
+  assignmentOtherTypeField.hidden = assignmentType.value !== "OTHER";
+  loadedAssignmentTemplateId = "";
+  assignmentTemplateSource.value = "";
+  renderAssignmentTemplateOptions();
   refreshAutomaticTaskCode();
   refreshProjectCheckpointBuilder();
 });
-assignmentOtherType.addEventListener("input", refreshAutomaticTaskCode);
+assignmentOtherType.addEventListener("input", () => {
+  refreshAutomaticTaskCode();
+  if (assignmentType.value === "OTHER") renderAssignmentTemplateOptions();
+});
 assignmentTitle.addEventListener("input", refreshAutomaticTaskCode);
 assignmentGroup.addEventListener("change", refreshAutomaticTaskCode);
+assignmentTargetSelect?.addEventListener("change", () => {
+  renderAssignmentTargetOptions();
+  refreshAutomaticTaskCode();
+});
 assignmentDueAt.addEventListener("input", refreshAutomaticTaskCode);
 
 showCreateAssignmentBtn.addEventListener("click", () => {
@@ -3240,6 +3401,8 @@ showCreateAssignmentBtn.addEventListener("click", () => {
   assignmentActionsMenu.open = false;
 
   if (opening) {
+    applyAssignmentModuleContext();
+    renderAssignmentTemplateOptions();
     createAssignmentPanel.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 });
@@ -3275,6 +3438,10 @@ assignmentScrollRightBtn.addEventListener("click", () => {
 
 createAssignmentBtn.addEventListener("click", createAssignment);
 saveSelectedTemplateBtn.addEventListener("click", saveSelectedAssignmentAsTemplate);
+openAssignmentsModuleBtn?.addEventListener("click", () => {
+  if (ASSIGNMENTS_MODULE_MODE) return;
+  openAssignmentsModule({ source: "assignments" });
+});
 
 assignmentLibrarySearch.addEventListener("input", renderAssignmentLibrary);
 [
@@ -3358,6 +3525,7 @@ fillRubricEditor(
   createDistributionRadios,
   "equal"
 );
+applyAssignmentModuleContext();
 refreshAutomaticTaskCode();
 refreshProjectCheckpointBuilder();
 renderAssignmentTemplateOptions();
