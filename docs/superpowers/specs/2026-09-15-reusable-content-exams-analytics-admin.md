@@ -313,3 +313,13 @@ Future ChatGPT instances should preserve these distinctions:
 - historical student data never copies into reused content
 - analytics accumulate from historical instances
 - Admin is a separate role-aware section
+
+
+## Create Assignment library placement — 2026-09-20
+
+The reusable-content data model remains valid, but its primary teacher UX changes:
+
+- Assignment Library is accessed **inside the Create Assignment popup**, not as a standalone panel on the Assignments page.
+- The popup provides a clear **From scratch / Assignment Library** toggle.
+- Selecting a previous assignment or saved reusable record copies only reusable academic content into a new assignment instance.
+- Group/team target, due date, Task Code, submissions, grades, and publication/run state are always new instance data.

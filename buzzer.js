@@ -9,7 +9,7 @@ import {
   remove
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
-import { openAssignmentsModule } from "./assignment-module-launcher.js";
+import { openAssignmentsModule } from "./assignment-module-launcher.js?v=popup-library-20260920";
 
 requireTeacherAuth();
 

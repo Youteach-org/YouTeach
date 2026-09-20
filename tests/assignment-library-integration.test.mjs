@@ -8,69 +8,41 @@ const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
 const teacherJs = readFileSync(join(root, 'teacher-assignments.js'), 'utf8');
 const teacherHtml = readFileSync(join(root, 'teacher-assignments.html'), 'utf8');
+const moduleJs = readFileSync(join(root, 'assignment-create-module.js'), 'utf8');
+const moduleHtml = readFileSync(join(root, 'assignment-create-module.html'), 'utf8');
 
-test('teacher assignments exposes minimal Assignment Library controls', () => {
-  assert.match(teacherHtml, /id="saveSelectedTemplateBtn"/);
-  assert.match(teacherHtml, /id="assignmentTemplateSource"/);
-  assert.match(teacherHtml, /id="loadAssignmentTemplateBtn"/);
-  assert.match(teacherHtml, /id="assignmentTemplateStatus"/);
+test('Assignment Library is inside Create Assignment popup, not the Assignments page', () => {
+  assert.match(moduleHtml, /id="createFromScratchBtn"/);
+  assert.match(moduleHtml, /id="createFromLibraryBtn"/);
+  assert.match(moduleHtml, /id="assignmentLibraryPanel"/);
+  assert.doesNotMatch(teacherHtml, /<section id="assignmentLibraryPanel"/);
+  assert.match(teacherHtml, /id="assignmentLibraryCompatibility" hidden/);
 });
 
-test('teacher assignments subscribes to reusable templates', () => {
-  assert.match(teacherJs, /let assignmentTemplatesCache = \{\};/);
-  assert.match(teacherJs, /onValue\(ref\(db, "assignmentTemplates"\)/);
-  assert.match(teacherJs, /function renderAssignmentTemplateOptions\(/);
+test('popup library can reuse real previous assignments and saved library items', () => {
+  assert.match(moduleJs, /kind: "assignment"/);
+  assert.match(moduleJs, /kind: "template"/);
+  assert.match(moduleJs, /sourceAssignmentId/);
+  assert.match(moduleJs, /templateId: loadedLibrarySource\.id/);
+  assert.match(moduleJs, /onValue\(ref\(db, "assignmentTemplates"\)/);
+  assert.match(moduleJs, /onValue\(ref\(db, "assignments"\)/);
 });
 
-test('saving a selected assignment persists a reusable template record', () => {
+test('reusing a source copies academic content but clears run-specific due date', () => {
+  assert.match(moduleJs, /function reusableContentFromAssignment\(/);
+  assert.match(moduleJs, /assignmentDueAt\.value = ""/);
+  assert.match(moduleJs, /reusableProjectCheckpoints/);
+  assert.match(moduleJs, /evaluationCriteria/);
+  assert.match(moduleJs, /evaluationNotes/);
+});
+
+test('template usage metadata is retained when a saved library item is used', () => {
+  assert.match(moduleJs, /templateVersion/);
+  assert.match(moduleJs, /templateSnapshot/);
+  assert.match(moduleJs, /usageCount: Number\(sourceTemplate\.usageCount \|\| 0\) \+ 1/);
+});
+
+test('legacy template model remains available without visible main-page library UI', () => {
   assert.match(teacherJs, /buildAssignmentTemplateRecord/);
-  assert.match(teacherJs, /async function saveSelectedAssignmentAsTemplate\(/);
-  assert.match(teacherJs, /push\(ref\(db, "assignmentTemplates"\)\)/);
-  assert.match(teacherJs, /set\(target, template\)/);
-});
-
-test('loading a template fills the existing create form without run-specific values', () => {
-  assert.match(teacherJs, /function loadSelectedAssignmentTemplate\(/);
-  assert.match(teacherJs, /loadedAssignmentTemplateId = templateId/);
-  assert.match(teacherJs, /assignmentDueAt\.value = ""/);
-  assert.match(teacherJs, /projectCheckpointRows\.innerHTML = ""/);
-});
-
-test('creating from a template writes instance and usage count atomically', () => {
   assert.match(teacherJs, /buildAssignedInstanceFromTemplate/);
-  assert.match(teacherJs, /templateSnapshot/);
-  assert.match(teacherJs, /const multiLocationUpdates = \{\};/);
-  assert.match(teacherJs, /multiLocationUpdates\[`assignments\/\$\{target\.key\}`\]/);
-  assert.match(teacherJs, /multiLocationUpdates\[`assignmentTemplates\/\$\{loadedAssignmentTemplateId\}\/usageCount`\]/);
-  assert.match(teacherJs, /await update\(ref\(db\), multiLocationUpdates\);/);
-});
-
-
-test('teacher assignments exposes searchable Assignment Library management controls', () => {
-  for (const id of [
-    'assignmentLibraryPanel',
-    'assignmentLibrarySearch',
-    'assignmentLibraryTypeFilter',
-    'assignmentLibraryCourseFilter',
-    'assignmentLibrarySubjectFilter',
-    'assignmentLibraryUnitFilter',
-    'assignmentLibraryTopicFilter',
-    'assignmentLibraryTagFilter',
-    'assignmentLibraryUsageFilter',
-    'assignmentLibraryStatusFilter',
-    'assignmentLibraryList'
-  ]) {
-    assert.match(teacherHtml, new RegExp(`id="${id}"`));
-  }
-});
-
-test('teacher assignments filters, loads, archives and restores library templates', () => {
-  assert.match(teacherJs, /filterAssignmentTemplates/);
-  assert.match(teacherJs, /buildAssignmentTemplateArchivePatch/);
-  assert.match(teacherJs, /function renderAssignmentLibrary\(/);
-  assert.match(teacherJs, /async function setAssignmentTemplateArchived\(/);
-  assert.match(teacherJs, /data-template-action="load"/);
-  assert.match(teacherJs, /data-template-action="archive"/);
-  assert.match(teacherJs, /data-template-action="restore"/);
-  assert.match(teacherJs, /update\(ref\(db, `assignmentTemplates\/\$\{templateId\}`\), patch\)/);
 });
