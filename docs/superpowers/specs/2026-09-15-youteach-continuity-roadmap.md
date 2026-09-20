@@ -578,3 +578,71 @@ groups/{groupName}/evaluationWeights/attendance
 - If modern graded assignments exist for a Tasks or Exams category in a block, their average 0–100 score is multiplied by that category's configured weight. Otherwise the legacy category points are used as a direct contribution, capped at that category's configured weight.
 - Participation and Attendance legacy points are direct weighted contributions, capped at their configured category weights.
 - Current block grade is the sum of category contributions and is capped at 100.
+
+
+## Dynamic group evaluation criteria and reusable templates — 2026-09-20
+
+This **supersedes** the earlier fixed-category model that assumed every group used Tasks, Exams, Participation, and Attendance.
+
+### Dynamic criteria
+- Evaluation criteria are defined **per group**. There is no universal fixed list.
+- A group evaluation setup contains:
+  - number of evaluation blocks/units;
+  - an ordered list of criteria;
+  - each criterion has a stable id, teacher-defined name, percentage weight, and grade source.
+- Teachers may add, remove, rename, reorder, and replace criteria when a course changes.
+- Criterion weights must total exactly **100%** before saving.
+- Existing students remain attached to the group when criteria are edited/replaced.
+
+Canonical fields:
+```text
+groups/{groupName}/evaluationUnitCount
+groups/{groupName}/evaluationCriteria/{criterionId}/id
+groups/{groupName}/evaluationCriteria/{criterionId}/name
+groups/{groupName}/evaluationCriteria/{criterionId}/weight
+groups/{groupName}/evaluationCriteria/{criterionId}/source
+groups/{groupName}/evaluationCriteria/{criterionId}/order
+```
+
+Supported source identifiers are implementation mappings, not user-visible mandatory criteria:
+- `writtenExam` -> legacy/imported written exam score
+- `oralExam` -> legacy/imported oral exam score
+- `verbsExam` -> legacy/imported verbs exam score
+- `tasks` -> task/assignment grades and legacy task points
+- `participation` -> participation/activity points
+- `attendance` -> attendance points
+- `assignments` -> assignments explicitly tagged to this criterion
+- `manual` -> criterion exists but requires teacher-entered/imported grade data
+
+### Evaluation templates
+- Group evaluation setups can be saved as reusable templates independently of student rosters.
+- Create Group provides a template selector plus **Use Template**; choosing a template preloads blocks/units and all criterion definitions.
+- Editing an existing group provides **Save as Template**.
+- A teacher can finish a course, replace the old criteria for the same group, or reuse the old setup when creating a new group.
+- Templates never copy students, grades, attendance, assignments, or other historical student data.
+
+Canonical template path:
+```text
+groupEvaluationTemplates/{templateId}
+  name
+  evaluationUnitCount
+  evaluationCriteria
+  createdAt
+  updatedAt
+  createdBy
+```
+
+### Students page
+- Students renders criteria from the selected group's configuration; labels and percentages are never hard-coded.
+- Each block grade is the weighted sum of the group's configured criteria.
+- The cell breakdown uses the teacher-defined criterion names.
+- If the group has no configured criteria totaling 100%, Students shows **Evaluation setup required**.
+
+### CLE Otoño 2026 reusable preset
+The CLE Otoño 2026 manual confirms these four grading rubrics for the current course:
+- Written exam — 35%
+- Oral exam — 40%
+- Tasks — 10%
+- Verbs exam — 15%
+
+This CLE setup is a reusable preset/template only and must **not** become a universal YouTeach grading rule.
