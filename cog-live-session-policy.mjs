@@ -6,6 +6,13 @@ function text(value, field) {
   return clean;
 }
 
+function normalizeStringArray(raw) {
+  const values = Array.isArray(raw)
+    ? raw
+    : (raw && typeof raw === "object" ? Object.values(raw) : []);
+  return [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))];
+}
+
 function timestamp(value, field, { nullable = false } = {}) {
   if (nullable && (value == null || value === "")) return null;
   const number = Number(value);
@@ -31,6 +38,12 @@ export function validateConnectedGame(raw = {}) {
     gameName: text(raw.gameName, "gameName"),
     cogSessionId: text(raw.cogSessionId, "cogSessionId"),
     groupName: text(raw.groupName, "groupName"),
+    assignmentId: String(raw.assignmentId || "").trim(),
+    assignmentCode: String(raw.assignmentCode || "").trim(),
+    assignmentTitle: String(raw.assignmentTitle || "").trim(),
+    recipientStudentKeys: normalizeStringArray(raw.recipientStudentKeys),
+    recipientTeamLabels: normalizeStringArray(raw.recipientTeamLabels),
+    recipientTeamTarget: String(raw.recipientTeamTarget || "").trim(),
     status,
     launchMode,
     startedAt: timestamp(raw.startedAt, "startedAt"),
@@ -50,7 +63,12 @@ export function shouldExpireConnectedGame({ connectedGame, now = Date.now() } = 
   return current - game.noPresenceSince >= LIVE_COG_IDLE_TTL_MS;
 }
 
-export function canStudentAccessLiveGame({ connectedGame, studentGroup, now = Date.now() } = {}) {
+export function canStudentAccessLiveGame({
+  connectedGame,
+  studentGroup,
+  studentKey = "",
+  now = Date.now()
+} = {}) {
   if (!connectedGame) return false;
   let game;
   try {
@@ -60,6 +78,12 @@ export function canStudentAccessLiveGame({ connectedGame, studentGroup, now = Da
   }
   const group = String(studentGroup || "").trim();
   if (!group || game.groupName !== group || game.status !== "active") return false;
+
+  if (game.recipientStudentKeys.length) {
+    const key = String(studentKey || "").trim();
+    if (!key || !game.recipientStudentKeys.includes(key)) return false;
+  }
+
   return !shouldExpireConnectedGame({ connectedGame: game, now });
 }
 
