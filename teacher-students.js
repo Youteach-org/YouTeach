@@ -2,6 +2,11 @@ import { db } from "./firebase.js";
 import { ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
 import { migrateExistingStudentsForTeacher } from "./student-auth.js";
+import {
+  calculateBlockGrade,
+  evaluationBlockNames,
+  groupEvaluationConfig
+} from "./group-evaluation-model.js";
 
 requireTeacherAuth();
 
@@ -13,7 +18,10 @@ const groupFilter = document.getElementById("groupFilter");
 const searchStudentInput = document.getElementById("searchStudent");
 const selectedGroupCard = document.getElementById("selectedGroupCard");
 const studentsInGroupCard = document.getElementById("studentsInGroupCard");
+const evaluationUnitCountCard = document.getElementById("evaluationUnitCountCard");
+const evaluationSetupSummary = document.getElementById("evaluationSetupSummary");
 const studentsTableBody = document.getElementById("studentsTableBody");
+const studentsTableHeadRow = studentsTableBody.closest("table")?.querySelector("thead tr");
 const saveAllStudentsBtn = document.getElementById("saveAllStudentsBtn");
 
 teacherIdentity.textContent = getTeacherName();
@@ -21,6 +29,8 @@ logoutBtn.addEventListener("click", logoutTeacher);
 
 let studentsCache = {};
 let groupsCache = {};
+let assignmentsCache = {};
+let assignmentSubmissionsCache = {};
 let sessionCache = null;
 let selectedGroup = "";
 
@@ -50,32 +60,120 @@ function formatGradeNumber(value) {
   return Number(number.toFixed(1)).toString();
 }
 
-function getExtraPoints(student, blockName){
-  return Number(student?.blockPoints?.[blockName] || 0);
-}
-
-function getAttendancePoints(student, blockName) {
-  return Number(student?.attendancePoints?.[blockName] || 0);
-}
-
-function getTaskPoints(student, blockName) {
-  return Number(student?.taskPoints?.[blockName] || 0);
-}
-
-function getOfficialPoints(student, blockName){
-  const examBlock = student?.examPoints?.[blockName] || {};
-  return Number(examBlock.written || 0) + Number(examBlock.oral || 0) + Number(examBlock.verbs || 0);
-}
-
-function getTotalPointsForBlock(student, blockName){
+function legacyExamPoints(student, blockName) {
   const exam = student?.examPoints?.[blockName] || {};
-  const E = Number(exam.written || 0);
-  const EO = Number(exam.oral || 0);
-  const EV = Number(exam.verbs || 0);
-  const P = Number(student?.blockPoints?.[blockName] || 0);
-  const A = Number(student?.attendancePoints?.[blockName] || 0);
-  const T = Number(student?.taskPoints?.[blockName] || 0);
-  return E + EO + EV + P + A + T;
+  return Number(exam.written || 0) + Number(exam.oral || 0) + Number(exam.verbs || 0);
+}
+
+function normalizedRecipientKeys(raw) {
+  if (Array.isArray(raw)) return raw.map(String);
+  if (raw && typeof raw === "object") return Object.values(raw).map(String);
+  return [];
+}
+
+function assignmentAppliesToStudent(assignment, studentKey, student) {
+  if (!assignment || !student) return false;
+
+  const assignmentGroup = String(assignment.groupName || "");
+  if (assignmentGroup && assignmentGroup !== "ALL" && assignmentGroup !== String(student.groupName || "")) {
+    return false;
+  }
+
+  const exactRecipients = normalizedRecipientKeys(assignment.recipientStudentKeys);
+  if (exactRecipients.length && !exactRecipients.includes(String(studentKey))) return false;
+
+  return true;
+}
+
+function assignmentBlock(assignment) {
+  return String(assignment?.evaluationBlock || assignment?.block || "").trim();
+}
+
+function gradedAssignmentScores(studentKey, student, blockName, category) {
+  const scores = [];
+
+  Object.entries(assignmentsCache || {}).forEach(([assignmentId, assignment]) => {
+    if (!assignmentAppliesToStudent(assignment, studentKey, student)) return;
+    if (assignmentBlock(assignment) !== blockName) return;
+
+    const typeCode = String(assignment.assignmentTypeCode || "").trim().toUpperCase();
+    const isExam = typeCode === "EX";
+    if (category === "exams" && !isExam) return;
+    if (category === "tasks" && isExam) return;
+
+    const raw = assignmentSubmissionsCache?.[assignmentId]?.[studentKey]?.grading?.totalScore;
+    if (raw === null || raw === undefined || raw === "") return;
+    const score = Number(raw);
+    if (Number.isFinite(score)) scores.push(Math.min(100, Math.max(0, score)));
+  });
+
+  return scores;
+}
+
+function currentBlockGrade(studentKey, student, blockName, config) {
+  return calculateBlockGrade({
+    weights: config.weights,
+    taskScores: gradedAssignmentScores(studentKey, student, blockName, "tasks"),
+    examScores: gradedAssignmentScores(studentKey, student, blockName, "exams"),
+    legacyTaskPoints: Number(student?.taskPoints?.[blockName] || 0),
+    legacyExamPoints: legacyExamPoints(student, blockName),
+    participationPoints: Number(student?.blockPoints?.[blockName] || 0),
+    attendancePoints: Number(student?.attendancePoints?.[blockName] || 0)
+  });
+}
+
+function renderEvaluationSummary(group) {
+  const config = groupEvaluationConfig(group);
+
+  if (!config.configured) {
+    evaluationUnitCountCard.textContent = "Setup required";
+    evaluationSetupSummary.innerHTML =
+      '<span class="evaluation-setup-required">Evaluation setup required in Groups / Import.</span>';
+    return config;
+  }
+
+  evaluationUnitCountCard.textContent = String(config.unitCount);
+  evaluationSetupSummary.innerHTML = [
+    ["Tasks", config.weights.tasks],
+    ["Exams", config.weights.exams],
+    ["Participation", config.weights.participation],
+    ["Attendance", config.weights.attendance]
+  ].map(([label, value]) =>
+    `<span class="evaluation-weight-chip">${escapeHtml(label)} <strong>${formatGradeNumber(value)}%</strong></span>`
+  ).join("");
+
+  return config;
+}
+
+function renderBlockHeaders(blockNames) {
+  if (!studentsTableHeadRow) return;
+  studentsTableHeadRow.innerHTML = `
+    <th style="min-width:140px;">External ID</th>
+    <th style="min-width:320px;">Full Name</th>
+    <th style="min-width:180px;">Nickname</th>
+    <th>Today Active</th>
+    ${blockNames.map((blockName) => `<th>${escapeHtml(blockName)} Grade</th>`).join("")}
+  `;
+}
+
+function blockGradeHtml(studentKey, student, blockName, config) {
+  if (!config.configured) {
+    return '<span class="block-grade-setup-required">Setup required</span>';
+  }
+
+  const result = currentBlockGrade(studentKey, student, blockName, config);
+  const c = result.contributions;
+  const w = config.weights;
+
+  return `
+    <span class="block-grade-total">${formatGradeNumber(result.total)}</span>
+    <span class="block-grade-breakdown">
+      T ${formatGradeNumber(c.tasks)}/${formatGradeNumber(w.tasks)} ·
+      E ${formatGradeNumber(c.exams)}/${formatGradeNumber(w.exams)} ·
+      P ${formatGradeNumber(c.participation)}/${formatGradeNumber(w.participation)} ·
+      A ${formatGradeNumber(c.attendance)}/${formatGradeNumber(w.attendance)}
+    </span>
+  `;
 }
 
 function getStoredWorkingGroup(){
@@ -152,11 +250,17 @@ function renderStudents(){
   renderGroupFilter();
 
   const entries = getFilteredEntries();
+  const selectedGroupRecord = groupsCache?.[selectedGroup] || {};
+  const config = renderEvaluationSummary(selectedGroupRecord);
+  const blockNames = evaluationBlockNames(selectedGroupRecord);
+  renderBlockHeaders(blockNames);
+
   selectedGroupCard.textContent = selectedGroup || "No group selected";
   studentsInGroupCard.textContent = String(entries.length);
 
+  const columnCount = 4 + blockNames.length;
   if(!entries.length){
-    studentsTableBody.innerHTML = `<tr><td colspan="7">No students found for this group.</td></tr>`;
+    studentsTableBody.innerHTML = `<tr><td colspan="${columnCount}">No students found for this group.</td></tr>`;
     return;
   }
 
@@ -166,9 +270,9 @@ function renderStudents(){
       <td><input class="table-input student-name-input name-column-input" data-student-key="${escapeHtml(key)}" value="${escapeHtml(getDisplayName(student))}"></td>
       <td><input class="table-input student-nickname-input" data-student-key="${escapeHtml(key)}" value="${escapeHtml(student.nickname || "")}"></td>
       <td>${student.activeNow ? "YES" : "NO"}</td>
-      <td>${formatGradeNumber(getTotalPointsForBlock(student, "Block 1"))}</td>
-      <td>${formatGradeNumber(getTotalPointsForBlock(student, "Block 2"))}</td>
-      <td>${formatGradeNumber(getTotalPointsForBlock(student, "Block 3"))}</td>
+      ${blockNames.map((blockName) =>
+        `<td class="block-grade-cell">${blockGradeHtml(key, student, blockName, config)}</td>`
+      ).join("")}
     </tr>
   `).join("");
 
@@ -232,6 +336,16 @@ onValue(ref(db, "students"), (snapshot) => {
 
 onValue(ref(db, "groups"), (snapshot) => {
   groupsCache = snapshot.val() || {};
+  renderStudents();
+});
+
+onValue(ref(db, "assignments"), (snapshot) => {
+  assignmentsCache = snapshot.val() || {};
+  renderStudents();
+});
+
+onValue(ref(db, "assignmentSubmissions"), (snapshot) => {
+  assignmentSubmissionsCache = snapshot.val() || {};
   renderStudents();
 });
 
