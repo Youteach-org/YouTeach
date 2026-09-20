@@ -8,7 +8,7 @@ import {
   onValue,
   remove
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
+import { requireTeacherAuth, getTeacherSessionToken, getTeacherName, logoutTeacher } from "./teacher-auth.js";
 
 requireTeacherAuth();
 
@@ -798,9 +798,13 @@ createTeamsBtn.addEventListener("click", async () => {
     }
   }
 
-    await set(ref(db, "session/current"), {
+  const sessionCreatedAt = Date.now();
+  const sessionId = `yt-${sessionCreatedAt}-${Math.random().toString(36).slice(2, 8)}`;
+
+  await set(ref(db, "session/current"), {
     active: true,
-    createdAt: Date.now(),
+    sessionId,
+    createdAt: sessionCreatedAt,
     groupName,
     teamSourceMode: teamSource.mode,
     teams: sessionTeams,
@@ -1068,10 +1072,48 @@ numTeamsInput.addEventListener("keydown", (e) => {
 });
 
 // Classroom Online Games remains a separate application.
-// The Buzzer only opens the COG teacher monitor menu. Each game owns its own entry requirements.
+// YouTeach authorizes the teacher and selected Buzzer group before COG opens.
 const openCogTeacherBtn = document.getElementById("openCogTeacherBtn");
 if (openCogTeacherBtn) {
-  openCogTeacherBtn.addEventListener("click", () => {
-    window.open("https://classroom-online-games.pages.dev/teacher/", "_blank", "noopener");
+  openCogTeacherBtn.addEventListener("click", async () => {
+    if (!sessionCache?.active || !sessionCache?.groupName) {
+      alert("Create or activate a Buzzer session with a group first.");
+      return;
+    }
+
+    const teacherSessionToken = getTeacherSessionToken();
+    if (!teacherSessionToken) {
+      alert("Your teacher session expired. Sign in again.");
+      return;
+    }
+
+    const pendingWindow = window.open("about:blank", "_blank");
+    if (pendingWindow) pendingWindow.opener = null;
+    openCogTeacherBtn.disabled = true;
+
+    try {
+      const response = await fetch("/api/cog-live-teacher-launch", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${teacherSessionToken}`
+        }
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || payload?.ok !== true || !payload?.launchUrl) {
+        throw new Error(payload?.error || "Could not open Classroom Online Games.");
+      }
+
+      if (pendingWindow) {
+        pendingWindow.location.href = payload.launchUrl;
+      } else {
+        window.open(payload.launchUrl, "_blank", "noopener");
+      }
+    } catch (error) {
+      if (pendingWindow && !pendingWindow.closed) pendingWindow.close();
+      console.error(error);
+      alert(error?.message || "Could not open Classroom Online Games.");
+    } finally {
+      openCogTeacherBtn.disabled = false;
+    }
   });
 }
