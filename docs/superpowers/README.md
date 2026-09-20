@@ -43,7 +43,13 @@ GitHub is the source of truth. Chat memory is secondary.
    - grade reset without deleting the student's submission;
    - regrading after reset.
 
-5. Relevant implementation files and recent commits on `main`.
+5. `docs/superpowers/specs/2026-09-19-ghost-test-lab.md`
+   - reusable Ghost student test accounts;
+   - simulated attendance/presence;
+   - real assignment submission and grading verification;
+   - Buzzer simulation.
+
+6. Relevant implementation files and recent commits on `main`.
    - UI micro-decisions that are already implemented are authoritative in code/commit history even when not repeated word-for-word in a spec.
 
 ## Continuity rules
