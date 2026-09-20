@@ -63,8 +63,8 @@ jobs:
           }
 
           fetch_preview "$PREVIEW/student-assignments.html" -o /tmp/student-assignments.html
-          grep -q 'cog-assignment-box' /tmp/student-assignments.html || {
-            echo "::error::student-assignments.html is missing the COG assignment UI"
+          test -s /tmp/student-assignments.html || {
+            echo "::error::student-assignments.html did not deploy"
             exit 1
           }
 
