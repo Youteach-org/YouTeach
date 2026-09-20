@@ -69,7 +69,7 @@ export async function verifyCogAssignmentLaunch(token, secret, now = Date.now())
     !String(payload?.studentKey || "").trim() ||
     !String(payload?.assignmentId || "").trim() ||
     payload?.purpose !== "assignment-practice" ||
-    payload?.officialSubmissionAllowed !== false ||
+    typeof payload?.officialSubmissionAllowed !== "boolean" ||
     !Number.isFinite(expiresAt) ||
     expiresAt <= now
   ) {
