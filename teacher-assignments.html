@@ -1508,7 +1508,31 @@
       }
     }
 
+    .assignment-module-mode body{background:#f8fafc}
+    .assignment-module-mode #menuToggle,
+    .assignment-module-mode .sidebar,
+    .assignment-module-mode .topbar{display:none!important}
+    .assignment-module-mode .menu-shell{display:block!important}
+    .assignment-module-mode .main-content{
+      margin:0!important;
+      width:100%!important;
+      max-width:none!important;
+      padding:10px!important
+    }
+    .assignment-module-mode .assignments-page{max-width:none!important;margin:0!important}
+    .assignment-target-field{
+      border:1px solid #bfdbfe;
+      background:#eff6ff;
+      border-radius:9px;
+      padding:7px
+    }
+
   </style>
+  <script>
+    if (new URLSearchParams(window.location.search).get("module") === "1") {
+      document.documentElement.classList.add("assignment-module-mode");
+    }
+  </script>
 </head>
 <body>
   <button id="menuToggle" class="hamburger-btn" aria-label="Open menu"><span></span><span></span><span></span></button>
@@ -1540,7 +1564,10 @@
           <h2>Assignments</h2>
           <p>PDF assignments · grading · submissions</p>
         </div>
-        <div class="topbar-right"><span id="teacherIdentity" class="teacher-identity">Teacher</span></div>
+        <div class="topbar-right">
+          <button id="openAssignmentsModuleBtn" type="button">Assignments Module</button>
+          <span id="teacherIdentity" class="teacher-identity">Teacher</span>
+        </div>
       </header>
 
       <div class="assignments-page">
@@ -1549,17 +1576,6 @@
             <h3>Create Assignment</h3>
           </div>
           <div class="create-grid">
-            <div class="field title-field">
-              <label for="assignmentTemplateSource">Assignment template</label>
-              <select id="assignmentTemplateSource">
-                <option value="">Start from scratch</option>
-              </select>
-              <div class="field-help">Load reusable academic content; group and dates stay specific to this run.</div>
-            </div>
-            <div class="field">
-              <label for="loadAssignmentTemplateBtn">Template action</label>
-              <button id="loadAssignmentTemplateBtn" type="button" disabled>Load template</button>
-            </div>
             <div class="field">
               <label for="assignmentType">Assignment type</label>
               <select id="assignmentType">
@@ -1577,7 +1593,18 @@
             <div class="field" id="assignmentOtherTypeField" hidden>
               <label for="assignmentOtherType">Specify other type</label>
               <input id="assignmentOtherType" placeholder="e.g. Lab, Portfolio, Case study">
-              <div class="field-help">YouTeach will create a short prefix automatically from this type.</div>
+              <div class="field-help">This field appears only when Other is selected.</div>
+            </div>
+            <div class="field title-field">
+              <label for="assignmentTemplateSource">Saved template (optional)</label>
+              <select id="assignmentTemplateSource">
+                <option value="">No template selected</option>
+              </select>
+              <div class="field-help">Templates are filtered by the assignment type selected above.</div>
+            </div>
+            <div class="field">
+              <label for="loadAssignmentTemplateBtn">Template action</label>
+              <button id="loadAssignmentTemplateBtn" type="button" disabled>Load template</button>
             </div>
             <div class="field title-field">
               <label for="assignmentTitle">Assignment title</label>
@@ -1586,6 +1613,13 @@
             <div class="field">
               <label for="assignmentGroup">Group</label>
               <select id="assignmentGroup"><option value="ALL">All groups</option></select>
+            </div>
+            <div id="assignmentTargetField" class="field assignment-target-field" hidden>
+              <label for="assignmentTargetSelect">Assign to generated teams</label>
+              <select id="assignmentTargetSelect">
+                <option value="all-generated">All Generated Teams</option>
+              </select>
+              <div id="assignmentTargetHelp" class="field-help">Only students inside the generated teams will receive this assignment.</div>
             </div>
             <div class="field">
               <label for="assignmentDueAt">Due date</label>
@@ -1923,7 +1957,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-  <script type="module" src="teacher-assignments.js?v=exam-annotations-20260916"></script>
+  <script type="module" src="teacher-assignments.js?v=assignments-module-20260920"></script>
   <script defer src="shared-ui-fixes.js?v=titlebar-hamburger-20260916"></script>
 </body>
 </html>
