@@ -9,11 +9,11 @@ const root = join(here, '..');
 const teacherJs = readFileSync(join(root, 'teacher-assignments.js'), 'utf8');
 const teacherHtml = readFileSync(join(root, 'teacher-assignments.html'), 'utf8');
 
-test('teacher assignments exposes minimal Assignment Library controls', () => {
-  assert.match(teacherHtml, /id="saveSelectedTemplateBtn"/);
+test('teacher assignments exposes approved Assignment Library load controls without Save Template UI', () => {
+  assert.doesNotMatch(teacherHtml, /id="saveSelectedTemplateBtn"/);
+  assert.doesNotMatch(teacherHtml, /id="assignmentTemplateStatus"/);
   assert.match(teacherHtml, /id="assignmentTemplateSource"/);
   assert.match(teacherHtml, /id="loadAssignmentTemplateBtn"/);
-  assert.match(teacherHtml, /id="assignmentTemplateStatus"/);
 });
 
 test('teacher assignments subscribes to reusable templates', () => {
