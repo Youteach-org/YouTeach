@@ -48,11 +48,19 @@ export async function migrateExistingStudentsForTeacher() {
     const fullName = student.fullName || student.name || "";
     const nickname = student.nickname || (fullName ? fullName.split(" ")[0] : "Student");
     const groupName = student.groupName || "GENERAL";
-    const blockPoints = {
-      "Block 1": Number(student?.blockPoints?.["Block 1"] || 0),
-      "Block 2": Number(student?.blockPoints?.["Block 2"] || 0),
-      "Block 3": Number(student?.blockPoints?.["Block 3"] || 0)
-    };
+    const existingBlockPoints =
+      student?.blockPoints && typeof student.blockPoints === "object"
+        ? student.blockPoints
+        : {};
+    const blockPoints = Object.fromEntries(
+      Object.entries(existingBlockPoints).map(([blockName, value]) => [
+        blockName,
+        Number(value || 0)
+      ])
+    );
+    for (const blockName of ["Block 1", "Block 2", "Block 3"]) {
+      if (blockPoints[blockName] === undefined) blockPoints[blockName] = 0;
+    }
 
     updates[`students/${key}/fullName`] = fullName;
     updates[`students/${key}/name`] = fullName;
