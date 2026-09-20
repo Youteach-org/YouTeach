@@ -2,7 +2,9 @@ import { db } from "./firebase.js";
 import { ref, get, update, set } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 const SESSION_KEY = "youteachStudentKey";
-const SESSION_EXTERNAL_ID = "youteachStudentExternalId";\nconst SESSION_TOKEN = "youteachStudentSessionToken";
+const SESSION_EXTERNAL_ID = "youteachStudentExternalId";
+const SESSION_TOKEN = "youteachStudentSessionToken";
+const SESSION_EXPIRES_AT = "youteachStudentSessionExpiresAt";
 
 export function getStudentKey() {
   return localStorage.getItem(SESSION_KEY);
@@ -13,20 +15,21 @@ export function getStudentExternalId() {
 }
 
 export function getStudentSessionToken() {
-  return localStorage.getItem(SESSION_TOKEN);
+  return localStorage.getItem(SESSION_TOKEN) || "";
 }
 
-export function setStudentSession(studentKey, externalId, sessionToken = "") {
+export function setStudentSession(studentKey, externalId, sessionToken, expiresAt) {
   localStorage.setItem(SESSION_KEY, studentKey);
   localStorage.setItem(SESSION_EXTERNAL_ID, externalId);
-  if (sessionToken) localStorage.setItem(SESSION_TOKEN, sessionToken);
-  else localStorage.removeItem(SESSION_TOKEN);
+  localStorage.setItem(SESSION_TOKEN, sessionToken);
+  localStorage.setItem(SESSION_EXPIRES_AT, String(Number(expiresAt || 0)));
 }
 
 export function clearStudentSession() {
   localStorage.removeItem(SESSION_KEY);
   localStorage.removeItem(SESSION_EXTERNAL_ID);
   localStorage.removeItem(SESSION_TOKEN);
+  localStorage.removeItem(SESSION_EXPIRES_AT);
 }
 
 function todayKey() {
@@ -40,10 +43,7 @@ export async function migrateExistingStudentsForTeacher() {
 
   if (!groups.GENERAL) {
     await update(ref(db, "groups"), {
-      GENERAL: {
-        name: "GENERAL",
-        createdAt: Date.now()
-      }
+      GENERAL: { name: "GENERAL", createdAt: Date.now() }
     });
   }
 
@@ -55,23 +55,18 @@ export async function migrateExistingStudentsForTeacher() {
     const fullName = student.fullName || student.name || "";
     const nickname = student.nickname || (fullName ? fullName.split(" ")[0] : "Student");
     const groupName = student.groupName || "GENERAL";
-    const blockPoints = {
-      "Block 1": Number(student?.blockPoints?.["Block 1"] || 0),
-      "Block 2": Number(student?.blockPoints?.["Block 2"] || 0),
-      "Block 3": Number(student?.blockPoints?.["Block 3"] || 0)
-    };
-
     updates[`students/${key}/fullName`] = fullName;
     updates[`students/${key}/name`] = fullName;
     updates[`students/${key}/nickname`] = nickname;
     updates[`students/${key}/groupName`] = groupName;
-    updates[`students/${key}/password`] = student.password || "1234";
-    updates[`students/${key}/blockPoints`] = blockPoints;
+    updates[`students/${key}/blockPoints`] = {
+      "Block 1": Number(student?.blockPoints?.["Block 1"] || 0),
+      "Block 2": Number(student?.blockPoints?.["Block 2"] || 0),
+      "Block 3": Number(student?.blockPoints?.["Block 3"] || 0)
+    };
   }
 
-  if (Object.keys(updates).length) {
-    await update(ref(db), updates);
-  }
+  if (Object.keys(updates).length) await update(ref(db), updates);
 }
 
 export async function markAttendanceOnLogin(studentKey, student) {
@@ -115,7 +110,6 @@ export async function markAttendanceOnLogin(studentKey, student) {
     lastAttendanceDate: dateKey,
     lastSeenAt: nowTs
   });
-
   return dateKey;
 }
 
@@ -141,51 +135,28 @@ export async function setStudentLeave(studentKey, reason = "") {
       leftEarly: true
     });
   }
-
-  await update(ref(db, `students/${studentKey}`), {
-    activeNow: false
-  });
+  await update(ref(db, `students/${studentKey}`), { activeNow: false });
 }
 
 export async function loginStudentByExternalIdAndPassword(externalId, password) {
   const response = await fetch("/api/student-session", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      externalId: String(externalId || "").trim(),
-      password: String(password || "")
-    })
+    body: JSON.stringify({ externalId: String(externalId || "").trim(), password: String(password || "") })
   });
+  const data = await response.json().catch(() => ({}));
 
-  const result = await response.json().catch(() => ({}));
-  if (!response.ok || !result.ok) {
-    return {
-      ok: false,
-      message: result.error || "Could not sign in."
-    };
+  if (!response.ok || data.ok !== true || !data.sessionToken) {
+    return { ok: false, message: data.error || "Incorrect ID or password." };
   }
 
-  const studentKey = String(result.studentKey || "").trim();
-  const cleanExternalId = String(result.externalId || "").trim();
-  const sessionToken = String(result.sessionToken || "").trim();
-  if (!studentKey || !cleanExternalId || !sessionToken) {
-    return { ok: false, message: "The server returned an incomplete student session." };
-  }
-
-  const student = {
-    ...(result.student || {}),
-    nickname: result.student?.nickname || "Student",
-    groupName: result.student?.groupName || "GENERAL"
-  };
-
-  setStudentSession(studentKey, cleanExternalId, sessionToken);
+  setStudentSession(data.studentKey, data.externalId, data.sessionToken, data.expiresAt);
   return {
     ok: true,
-    key: studentKey,
-    studentKey,
-    externalId: cleanExternalId,
-    sessionToken,
-    student
+    key: data.studentKey,
+    studentKey: data.studentKey,
+    externalId: data.externalId,
+    student: data.student || {}
   };
 }
 
@@ -193,13 +164,15 @@ export function requireStudentSession() {
   const studentKey = getStudentKey();
   const externalId = getStudentExternalId();
   const sessionToken = getStudentSessionToken();
+  const expiresAt = Number(localStorage.getItem(SESSION_EXPIRES_AT) || 0);
 
-  if (!studentKey || !externalId) {
+  if (!studentKey || !externalId || !sessionToken || !expiresAt || expiresAt <= Date.now()) {
+    clearStudentSession();
     window.location.href = "student.html";
     return null;
   }
 
-  return { studentKey, externalId, sessionToken };
+  return { studentKey, externalId, sessionToken, expiresAt };
 }
 
 export async function saveLeaveLog(studentKey, reason = "") {
