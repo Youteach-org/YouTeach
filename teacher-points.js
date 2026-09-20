@@ -1,6 +1,7 @@
 import { db } from "./firebase.js";
 import { ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
+import { evaluationBlockNames, groupEvaluationConfig } from "./group-evaluation-model.js";
 
 requireTeacherAuth();
 
@@ -100,17 +101,57 @@ function getAllGroupNames() {
   return Array.from(names).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
 }
 
+function maxConfiguredUnitCount() {
+  const configuredCounts = Object.values(groupsCache || {})
+    .map((group) => groupEvaluationConfig(group))
+    .filter((config) => config.configured)
+    .map((config) => config.unitCount);
+  return Math.max(3, ...configuredCounts);
+}
+
+function blockNamesForGroup(groupName = "") {
+  if (groupName && groupsCache?.[groupName]) {
+    const config = groupEvaluationConfig(groupsCache[groupName]);
+    if (config.configured) return evaluationBlockNames(groupsCache[groupName]);
+  }
+  return Array.from({ length: maxConfiguredUnitCount() }, (_, index) => `Block ${index + 1}`);
+}
+
+function replaceBlockOptions(select, blockNames, fallback = "Block 1") {
+  if (!select) return;
+  const previous = select.value;
+  select.innerHTML = blockNames
+    .map((blockName) => `<option value="${escapeHtml(blockName)}">${escapeHtml(blockName)}</option>`)
+    .join("");
+  select.value = blockNames.includes(previous)
+    ? previous
+    : (blockNames.includes(fallback) ? fallback : blockNames[0] || "");
+}
+
+function renderBlockSelectors() {
+  const activeBlock = settingsCache.activeBlock || "Block 1";
+  replaceBlockOptions(gradeBlockSelect, blockNamesForGroup(), activeBlock);
+  replaceBlockOptions(exportBlockSelect, blockNamesForGroup(exportGroupSelect.value || ""), activeBlock);
+  replaceBlockOptions(deleteBlockSelect, blockNamesForGroup(deleteGroupSelect?.value || ""), activeBlock);
+}
+
 function renderExportGroups() {
   const groups = getAllGroupNames();
+  const previousExportGroup = exportGroupSelect.value;
+  const previousDeleteGroup = deleteGroupSelect?.value || "";
   const options =
     '<option value="">All groups</option>' +
     groups.map((groupName) => `<option value="${escapeHtml(groupName)}">${escapeHtml(groupName)}</option>`).join("");
 
   exportGroupSelect.innerHTML = options;
+  if (groups.includes(previousExportGroup)) exportGroupSelect.value = previousExportGroup;
 
   if (deleteGroupSelect) {
     deleteGroupSelect.innerHTML = options;
+    if (groups.includes(previousDeleteGroup)) deleteGroupSelect.value = previousDeleteGroup;
   }
+
+  renderBlockSelectors();
 }
 
 function findStudent(id, fullName) {
@@ -408,6 +449,9 @@ function exportGrades() {
   downloadTextFile(`${blockName.replace(/\s+/g, "_").toLowerCase()}_${groupSuffix}_grades.csv`, lines.join("\n"));
 }
 
+exportGroupSelect.addEventListener("change", renderBlockSelectors);
+if (deleteGroupSelect) deleteGroupSelect.addEventListener("change", renderBlockSelectors);
+
 previewGradesBtn.addEventListener("click", previewPastedGrades);
 saveGradesBtn.addEventListener("click", saveGrades);
 clearGradesBtn.addEventListener("click", clearGrades);
@@ -426,11 +470,10 @@ onValue(ref(db, "students"), (snapshot) => {
 onValue(ref(db, "groups"), (snapshot) => {
   groupsCache = snapshot.val() || {};
   renderExportGroups();
+  renderBlockSelectors();
 });
 
 onValue(ref(db, "settings"), (snapshot) => {
   settingsCache = snapshot.val() || {};
-  const activeBlock = settingsCache.activeBlock || "Block 1";
-  
-  exportBlockSelect.value = activeBlock;
+  renderBlockSelectors();
 });
