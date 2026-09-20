@@ -77,7 +77,9 @@ test('Assignments popup loads only the dedicated Create Assignment module', () =
   assert.match(createModuleHtml, /id="createPresetCriteria"/);
   assert.match(createModuleHtml, /Instructions for ChatGPT when reviewing/);
   assert.doesNotMatch(createModuleHtml, /Assignment Browser/);
-  assert.doesNotMatch(createModuleHtml, /Assignment Library/);
+  assert.match(createModuleHtml, /Assignment Library/);
+  assert.match(createModuleHtml, /id="createFromScratchBtn"/);
+  assert.match(createModuleHtml, /id="createFromLibraryBtn"/);
   assert.doesNotMatch(createModuleHtml, /submissionList/);
   assert.match(createModuleJs, /recipientStudentKeys/);
   assert.match(assignmentsJs, /openAssignmentsModule\(\{ source: "assignments" \}\)/);
@@ -103,4 +105,14 @@ test('Buzzer layout prioritizes control, team grid, and Team Source context', ()
   assert.match(buzzerHtml, /repeat\(auto-fit, minmax\(270px, 1fr\)\)/);
   assert.match(buzzerHtml, /#resetSession\s*\{/);
   assert.ok(buzzerHtml.indexOf('<h4>Team Source<\/h4>') < buzzerHtml.indexOf('<h4>Working Group<\/h4>'));
+});
+
+
+test('Assignment Library lives inside the popup and can reuse previous assignments', () => {
+  assert.match(createModuleHtml, /id="assignmentLibraryPanel"/);
+  assert.match(createModuleJs, /kind: "assignment"/);
+  assert.match(createModuleJs, /sourceAssignmentId/);
+  assert.match(createModuleJs, /kind: "template"/);
+  assert.match(assignmentsHtml, /id="assignmentLibraryCompatibility" hidden/);
+  assert.doesNotMatch(assignmentsHtml, /<section id="assignmentLibraryPanel"/);
 });
