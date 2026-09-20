@@ -887,8 +887,9 @@ Expiration:
 The implementation plan is amended as follows:
 
 - remove the standalone `openCogTeacherBtn` / Open Classroom Games card from Buzzer;
-- Team Source owns Activity Type, team target, title, and schedule controls;
-- Activity Type taxonomy matches Assignments and includes `COG`;
-- scheduled activities may target all generated teams or one team;
-- scheduled activity records live under `teamActivities` and are referenced from the active Buzzer session;
-- a future/remaining authenticated COG launch action must originate from the generic COG activity flow, not from a permanent COG-only button.
+- Team Source owns only team-source/count and team-generation controls;
+- after teams exist, Buzzer enables the reusable **Assignments** modal;
+- Assignment Type is selected inside the shared Assignments workspace and includes `COG`;
+- team-context Assignments can target All Generated Teams or one generated team and persist exact recipient student keys;
+- there is no separate `teamActivities` planning ledger for this flow; the normal `assignments` instance is the canonical activity record;
+- a future/remaining authenticated COG launch action must originate from a COG assignment/activity in this shared flow, not from a permanent COG-only button.
