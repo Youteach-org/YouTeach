@@ -21,12 +21,16 @@ const studentsJs = readFileSync(join(root, 'teacher-students.js'), 'utf8');
 const gradeRuntimeJs = readFileSync(join(root, 'group-grade-runtime.js'), 'utf8');
 const createAssignmentHtml = readFileSync(join(root, 'assignment-create-module.html'), 'utf8');
 const createAssignmentJs = readFileSync(join(root, 'assignment-create-module.js'), 'utf8');
+const pointsHtml = readFileSync(join(root, 'teacher-points.html'), 'utf8');
+const pointsJs = readFileSync(join(root, 'teacher-points.js'), 'utf8');
+const blockReportHtml = readFileSync(join(root, 'teacher-block-report.html'), 'utf8');
+const blockReportJs = readFileSync(join(root, 'teacher-block-report.js'), 'utf8');
 
 const criteria = [
-  { id: 'written', name: 'Written exam', weight: 35, source: 'writtenExam', order: 0 },
-  { id: 'oral', name: 'Oral exam', weight: 40, source: 'oralExam', order: 1 },
-  { id: 'tasks', name: 'Tasks', weight: 10, source: 'tasks', order: 2 },
-  { id: 'verbs', name: 'Verbs exam', weight: 15, source: 'verbsExam', order: 3 }
+  { id: 'written', name: 'Written exam', shortLabel: 'E', weight: 35, source: 'writtenExam', order: 0 },
+  { id: 'oral', name: 'Oral exam', shortLabel: 'O', weight: 40, source: 'oralExam', order: 1 },
+  { id: 'tasks', name: 'Tasks', shortLabel: 'T', weight: 10, source: 'tasks', order: 2 },
+  { id: 'verbs', name: 'Verbs exam', shortLabel: 'V', weight: 15, source: 'verbsExam', order: 3 }
 ];
 
 test('group evaluation criteria are dynamic and must total 100 percent', () => {
@@ -130,4 +134,36 @@ test('normalization keeps teacher-defined criterion names and sources', () => {
   assert.equal(normalized[0].id, 'customKey');
   assert.equal(normalized[0].name, 'Portfolio');
   assert.equal(normalized[0].source, 'manual');
+});
+
+
+test('evaluation UI contains no hard-coded CLE grading preset', () => {
+  assert.doesNotMatch(enrollmentHtml, /CLE Otoño|CLE Fall|cle-fall-2026/i);
+  assert.doesNotMatch(enrollmentJs, /CLE_FALL_2026/);
+});
+
+test('criterion short labels persist for configurable report columns', () => {
+  const normalized = normalizeEvaluationCriteria(criteria);
+  assert.equal(normalized[0].shortLabel, 'E');
+  assert.equal(criteriaToFirebaseObject(criteria).written.shortLabel, 'E');
+  assert.match(enrollmentJs, /data-criterion-short-label/);
+});
+
+test('manual custom criteria have a universal score-entry path', () => {
+  assert.match(pointsHtml, /id="manualCriterionGroupSelect"/);
+  assert.match(pointsHtml, /id="manualCriterionSelect"/);
+  assert.match(pointsHtml, /id="manualCriterionScoreInput"/);
+  assert.match(pointsJs, /evaluationCriterionScores/);
+  assert.match(pointsJs, /criterion\.source === "manual"/);
+});
+
+test('block report is universal and generated from group criteria', () => {
+  assert.match(blockReportHtml, /Block Report/);
+  assert.match(blockReportHtml, /id="reportOrganizationInput"/);
+  assert.match(blockReportHtml, /id="reportSignatureSelect"/);
+  assert.match(blockReportJs, /groupEvaluationConfig/);
+  assert.match(blockReportJs, /config\.criteria\.map/);
+  assert.match(blockReportJs, /calculateStudentBlockGrade/);
+  assert.match(blockReportJs, /reportCriterionLabel/);
+  assert.doesNotMatch(blockReportJs, /CLE|35%|40%|15%|10%/);
 });
