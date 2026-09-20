@@ -20,4 +20,4 @@ Use the already-existing Ghost students (nicknames such as Ghost01, Ghost02, etc
 
 ## Correction 2026-09-20
 
-The canonical test nicknames are `Ghost01`, `Ghost02`, etc., with no space. The lab matches the `nickname` field only and must not normalize spaced variants such as `Ghost 01` into valid Ghost accounts.
+The canonical test nicknames are `Ghost01`, `Ghost02`, etc., with no space. The lab matches the `nickname` field only and must preserve that exact naming convention.
