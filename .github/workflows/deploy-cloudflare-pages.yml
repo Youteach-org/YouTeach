@@ -54,28 +54,46 @@ jobs:
       - name: Smoke test YouTeach preview
         if: github.event_name == 'pull_request'
         run: |
+          set -euo pipefail
           PREVIEW='https://cog-youteach-secure-integrat.youteach.pages.dev'
           COG_PREVIEW='https://cog-youteach-secure-current.classroom-online-games.pages.dev'
 
-          curl -fsS --retry 5 --retry-delay 2 "$PREVIEW/student-assignments.html" -o /tmp/student-assignments.html
-          grep -q 'cog-assignment-box' /tmp/student-assignments.html
+          fetch_preview() {
+            curl -fsS --retry 10 --retry-delay 2 --retry-all-errors "$@"
+          }
 
-          curl -fsS --retry 5 --retry-delay 2 "$PREVIEW/student-assignments.js" -o /tmp/student-assignments.js
-          grep -q '/api/cog-assignment-launch' /tmp/student-assignments.js
-          grep -q 'Authorization' /tmp/student-assignments.js
+          fetch_preview "$PREVIEW/student-assignments.html" -o /tmp/student-assignments.html
+          grep -q 'cog-assignment-box' /tmp/student-assignments.html || {
+            echo "::error::student-assignments.html is missing the COG assignment UI"
+            exit 1
+          }
 
-          STATUS="$(curl -sS -o /tmp/launch-no-auth.json -w '%{http_code}' \
+          fetch_preview "$PREVIEW/student-assignments.js" -o /tmp/student-assignments.js
+          grep -q '/api/cog-assignment-launch' /tmp/student-assignments.js || {
+            echo "::error::student-assignments.js is missing the COG launch endpoint"
+            exit 1
+          }
+          grep -q 'Authorization' /tmp/student-assignments.js || {
+            echo "::error::student-assignments.js is missing signed-session authorization"
+            exit 1
+          }
+
+          STATUS="$(curl -sS --retry 10 --retry-delay 2 --retry-all-errors -o /tmp/launch-no-auth.json -w '%{http_code}' \
             -X POST "$PREVIEW/api/cog-assignment-launch" \
             -H 'Content-Type: application/json' \
             --data '{"assignmentId":"smoke-test"}')"
+          echo "Unauthenticated launch status: $STATUS"
+          cat /tmp/launch-no-auth.json
           test "$STATUS" = '401'
           grep -q 'Sign in again' /tmp/launch-no-auth.json
 
-          STATUS="$(curl -sS -D /tmp/cors-headers.txt -o /dev/null -w '%{http_code}' \
+          STATUS="$(curl -sS --retry 10 --retry-delay 2 --retry-all-errors -D /tmp/cors-headers.txt -o /dev/null -w '%{http_code}' \
             -X OPTIONS "$PREVIEW/api/cog-launch-resolve" \
             -H "Origin: $COG_PREVIEW" \
             -H 'Access-Control-Request-Method: POST' \
             -H 'Access-Control-Request-Headers: Content-Type')"
+          echo "Resolver preflight status: $STATUS"
+          cat /tmp/cors-headers.txt
           test "$STATUS" = '204'
           grep -qi "access-control-allow-origin: $COG_PREVIEW" /tmp/cors-headers.txt
 
