@@ -82,3 +82,25 @@ test('Assignments popup loads only the dedicated Create Assignment module', () =
   assert.match(createModuleJs, /recipientStudentKeys/);
   assert.match(assignmentsJs, /openAssignmentsModule\(\{ source: "assignments" \}\)/);
 });
+
+
+test('Create Assignment popup keeps Other conditional and student instructions dominant', () => {
+  assert.match(createModuleHtml, /id="assignmentOtherTypeField" hidden style="display:none"/);
+  assert.match(createModuleJs, /function renderOtherTypeField\(\)/);
+  assert.match(createModuleJs, /assignmentType\.value === "OTHER"/);
+  assert.match(createModuleHtml, /class="field student-instructions"/);
+  assert.match(createModuleHtml, /min-height:170px/);
+});
+
+test('Assignments uses direct Create Assignment access without Actions menu', () => {
+  assert.match(assignmentsHtml, /id="openAssignmentsModuleBtn"/);
+  assert.doesNotMatch(assignmentsHtml, /id="assignmentActionsMenu"/);
+  assert.doesNotMatch(assignmentsHtml, /id="showCreateAssignmentBtn"/);
+});
+
+test('Buzzer layout prioritizes control, team grid, and Team Source context', () => {
+  assert.ok(buzzerHtml.indexOf('<h3>Buzzer Control<\/h3>') < buzzerHtml.indexOf('Teams and Members'));
+  assert.match(buzzerHtml, /repeat\(auto-fit, minmax\(270px, 1fr\)\)/);
+  assert.match(buzzerHtml, /#resetSession\s*\{/);
+  assert.ok(buzzerHtml.indexOf('<h4>Team Source<\/h4>') < buzzerHtml.indexOf('<h4>Working Group<\/h4>'));
+});
