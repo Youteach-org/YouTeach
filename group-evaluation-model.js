@@ -42,6 +42,7 @@ export function normalizeEvaluationCriteria(value = []) {
       return {
         id: normalizeCriterionId(criterion.id, index),
         name: String(criterion.name || criterion.title || "").trim(),
+        shortLabel: String(criterion.shortLabel || criterion.abbreviation || "").trim(),
         weight: Number.isFinite(weight) ? Math.max(0, weight) : 0,
         source,
         order: Number.isFinite(Number(criterion.order)) ? Number(criterion.order) : index
@@ -67,6 +68,7 @@ export function criteriaToFirebaseObject(criteria = []) {
       {
         id: criterion.id,
         name: criterion.name,
+        shortLabel: criterion.shortLabel,
         weight: criterion.weight,
         source: criterion.source,
         order: criterion.order
