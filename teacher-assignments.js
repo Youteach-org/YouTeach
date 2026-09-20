@@ -1534,17 +1534,26 @@ function assignmentSubmissions(assignmentId) {
   return submissionsCache?.[assignmentId] || {};
 }
 
+function isActiveCogSubmission(submission) {
+  return submission?.submissionType === "cog" &&
+    Boolean(submission?.receiptId) &&
+    !submission?.withdrawn &&
+    submission?.submissionStatus !== "awaiting-resubmission";
+}
+
 function assignmentHasSubmissions(assignmentId) {
   return Object.values(assignmentSubmissions(assignmentId))
-    .some((submission) => Boolean(submission?.driveFileId));
+    .some((submission) => Boolean(submission?.driveFileId) || isActiveCogSubmission(submission));
 }
 
 function assignmentEvaluationState(assignmentId, assignment) {
   const submissions = Object.values(assignmentSubmissions(assignmentId))
-    .filter((submission) => submission?.driveFileId);
+    .filter((submission) => submission?.driveFileId || isActiveCogSubmission(submission));
 
   const submitted = submissions.length;
-  const graded = submissions.filter((submission) => submissionIsGraded(submission)).length;
+  const graded = submissions.filter((submission) =>
+    submission?.submissionType === "cog" ? isActiveCogSubmission(submission) : submissionIsGraded(submission)
+  ).length;
 
   const totalStudents = assignmentStudents(assignment).length;
   const missing = Math.max(0, totalStudents - submitted);
@@ -2473,7 +2482,7 @@ function renderDetail() {
   const students = assignmentStudents(assignment);
   const submissions = assignmentSubmissions(selectedAssignmentId);
   const validSubmissionEntries = Object.entries(submissions)
-    .filter(([, submission]) => submission?.driveFileId)
+    .filter(([, submission]) => submission?.driveFileId || isActiveCogSubmission(submission))
     .sort((a, b) => {
       const aGraded = submissionIsGraded(a[1]);
       const bGraded = submissionIsGraded(b[1]);
@@ -2488,10 +2497,13 @@ function renderDetail() {
   selectedDriveFolderUrl =
     validSubmissionEntries.find(([, submission]) => submission.driveFolderUrl)?.[1]?.driveFolderUrl || "";
 
-  openDriveFolderBtn.disabled = !selectedDriveFolderUrl;
-  driveStatus.textContent = selectedDriveFolderUrl
-    ? "PDFs are stored in the Google Drive folder for this task."
-    : "The Drive folder is created automatically with the first PDF submission.";
+  const cogAssignment = String(assignment?.assignmentTypeCode || "").trim().toUpperCase() === "COG";
+  openDriveFolderBtn.disabled = cogAssignment || !selectedDriveFolderUrl;
+  driveStatus.textContent = cogAssignment
+    ? "COG results are submitted from Classroom Online Games; no PDF folder is required."
+    : (selectedDriveFolderUrl
+      ? "PDFs are stored in the Google Drive folder for this task."
+      : "The Drive folder is created automatically with the first PDF submission.");
 
   detailTitle.textContent = `${assignment.code || ""} · ${assignment.title || "Assignment"}`;
   const codeLockText = assignmentHasSubmissions(selectedAssignmentId)
@@ -2520,6 +2532,26 @@ function renderDetail() {
 
   submissionList.innerHTML = validSubmissionEntries.length
     ? validSubmissionEntries.map(([studentKey, submission]) => {
+        if (submission?.submissionType === "cog") {
+          return `
+            <article class="submission-card graded" data-submission-student-key="${escapeHtml(studentKey)}">
+              <h4>${escapeHtml(submission.studentName || "Student")}</h4>
+              <div class="submission-meta">
+                ${escapeHtml(submission.studentNumber || "No ID")} ·
+                ${escapeHtml(submission.groupName || "")} ·
+                ${escapeHtml(formatDate(submission.updatedAt || submission.submittedAt))}
+              </div>
+              <div class="grading-state-chip graded">COG result</div>
+              <div class="grade-display manual">
+                <span>Official COG score</span>
+                <strong>${escapeHtml(submission.officialScorePercent)}%</strong>
+                <small>${escapeHtml(submission.earnedPoints)} / ${escapeHtml(submission.pointValue)} pts</small>
+              </div>
+              <div class="review-chip">Server receipt · ${escapeHtml(submission.receiptId || "pending verification")}</div>
+            </article>
+          `;
+        }
+
         const graded = submissionIsGraded(submission);
         const gradeTotal = gradingTotalForSubmission(submission);
         const published = Boolean(submission?.gradePublished && gradeTotal !== null);
@@ -2588,7 +2620,7 @@ function renderDetail() {
           </article>
         `;
       }).join("")
-    : '<div class="status-text">No PDF submissions yet.</div>';
+    : `<div class="status-text">${cogAssignment ? "No COG results submitted yet." : "No PDF submissions yet."}</div>`;
 
   if (missingSummary) {
     missingSummary.textContent = `Missing submissions (${missing.length})`;

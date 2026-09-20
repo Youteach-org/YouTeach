@@ -2,6 +2,7 @@ import { db } from "./firebase.js";
 import { ref, onValue, push, set, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireTeacherAuth, getTeacherName } from "./teacher-auth.js";
 import { readAssignmentsModuleContext } from "./assignment-module-launcher.js?v=popup-library-20260920";
+import { COG_ASSIGNMENT_GAMES, getCertifiedCogGame, validateCogAssignmentDraft } from "./cog-activity-catalog.mjs";
 
 if (!requireTeacherAuth()) throw new Error("Teacher authentication required.");
 
@@ -62,6 +63,13 @@ const assignmentDueAt = document.getElementById("assignmentDueAt");
 const assignmentCode = document.getElementById("assignmentCode");
 const taskCodeStatus = document.getElementById("taskCodeStatus");
 const assignmentInstructions = document.getElementById("assignmentInstructions");
+const cogActivityConfigPanel = document.getElementById("cogActivityConfigPanel");
+const cogGame = document.getElementById("cogGame");
+const cogMode = document.getElementById("cogMode");
+const cogDifficulty = document.getElementById("cogDifficulty");
+const cogMinimumPercent = document.getElementById("cogMinimumPercent");
+const cogPointValue = document.getElementById("cogPointValue");
+const cogUndoSubmissionEnabled = document.getElementById("cogUndoSubmissionEnabled");
 const createPresetCriteria = document.getElementById("createPresetCriteria");
 const createCriteriaRows = document.getElementById("createCriteriaRows");
 const createCriteriaTotal = document.getElementById("createCriteriaTotal");
@@ -184,7 +192,10 @@ function reusableContentFromAssignment(assignment = {}) {
     unit: assignment.unit,
     topic: assignment.topic,
     subtopic: assignment.subtopic,
-    tags: Array.isArray(assignment.tags) ? assignment.tags : []
+    tags: Array.isArray(assignment.tags) ? assignment.tags : [],
+    cogActivity: assignment.cogActivity || null,
+    pointValue: assignment.pointValue ?? assignment.cogActivity?.pointValue ?? null,
+    undoSubmissionEnabled: assignment.undoSubmissionEnabled !== false
   };
 }
 
@@ -672,6 +683,55 @@ function addProjectCheckpointRow(checkpoint = {}) {
   projectCheckpointRows.insertAdjacentHTML("beforeend", checkpointRowHtml(checkpoint));
 }
 
+function fillCogModeAndDifficultyOptions() {
+  const game = getCertifiedCogGame(cogGame.value) || COG_ASSIGNMENT_GAMES[0] || null;
+  if (!game) {
+    cogMode.innerHTML = "";
+    cogDifficulty.innerHTML = "";
+    return;
+  }
+
+  const previousMode = cogMode.value;
+  const previousDifficulty = cogDifficulty.value;
+  cogMode.innerHTML = game.modes
+    .map((mode) => `<option value="${escapeHtml(mode.id)}">${escapeHtml(mode.name)}</option>`)
+    .join("");
+  cogDifficulty.innerHTML = game.difficulties
+    .map((difficulty) => `<option value="${escapeHtml(difficulty.id)}">${escapeHtml(difficulty.name)}</option>`)
+    .join("");
+
+  cogMode.value = game.modes.some((mode) => mode.id === previousMode)
+    ? previousMode
+    : (game.modes[0]?.id || "");
+  cogDifficulty.value = game.difficulties.some((difficulty) => difficulty.id === previousDifficulty)
+    ? previousDifficulty
+    : (game.difficulties.find((difficulty) => difficulty.id === "medium")?.id || game.difficulties[0]?.id || "");
+}
+
+function refreshCogActivityConfigPanel() {
+  cogActivityConfigPanel.hidden = assignmentType.value !== "COG";
+  if (cogActivityConfigPanel.hidden) return;
+  if (!cogGame.options.length) {
+    cogGame.innerHTML = COG_ASSIGNMENT_GAMES
+      .filter((game) => game.assignmentCertified === true)
+      .map((game) => `<option value="${escapeHtml(game.id)}">${escapeHtml(game.name)}</option>`)
+      .join("");
+  }
+  fillCogModeAndDifficultyOptions();
+}
+
+function loadCogActivityIntoCreateForm(cogActivity = null, pointValue = null, undoSubmissionEnabled = true) {
+  refreshCogActivityConfigPanel();
+  if (cogActivityConfigPanel.hidden) return;
+  if (cogActivity?.gameId) cogGame.value = String(cogActivity.gameId);
+  fillCogModeAndDifficultyOptions();
+  if (cogActivity?.modeId) cogMode.value = String(cogActivity.modeId);
+  if (cogActivity?.difficultyId) cogDifficulty.value = String(cogActivity.difficultyId);
+  cogMinimumPercent.value = cogActivity?.minimumPercent == null ? "" : String(cogActivity.minimumPercent);
+  cogPointValue.value = String(pointValue ?? cogActivity?.pointValue ?? 100);
+  cogUndoSubmissionEnabled.checked = undoSubmissionEnabled !== false;
+}
+
 function refreshProjectCheckpointBuilder() {
   const projectSelected = assignmentType.value === "PJ";
   projectCheckpointBuilder.hidden = !projectSelected;
@@ -879,6 +939,7 @@ function resetReusableForm() {
   renderRubricEditors([], "equal");
   renderOtherTypeField();
   refreshProjectCheckpointBuilder();
+  refreshCogActivityConfigPanel();
   refreshAutomaticTaskCode();
   setStatus("");
 }
@@ -915,6 +976,9 @@ function loadLibraryEntry(key) {
     Object.entries(content.projectCheckpoints || {}).forEach(([id, checkpoint]) => {
       addProjectCheckpointRow({ id, ...(checkpoint || {}) });
     });
+  }
+  if (assignmentType.value === "COG") {
+    loadCogActivityIntoCreateForm(content.cogActivity, content.pointValue, content.undoSubmissionEnabled);
   }
 
   loadedLibrarySource = {
@@ -956,6 +1020,22 @@ async function createAssignment() {
   const evaluationDistribution = getDistributionMode();
   const evaluationNotes = assignmentEvaluationNotes.value.trim();
 
+  let cogActivity = null;
+  if (typeCode === "COG") {
+    try {
+      cogActivity = validateCogAssignmentDraft({
+        gameId: cogGame.value,
+        modeId: cogMode.value,
+        difficultyId: cogDifficulty.value,
+        pointValue: cogPointValue.value,
+        minimumPercent: cogMinimumPercent.value,
+        undoSubmissionEnabled: cogUndoSubmissionEnabled.checked
+      });
+    } catch (error) {
+      return setStatus(error?.message || "Complete the COG activity configuration.", "bad");
+    }
+  }
+
   if (!title) return setStatus("Enter an assignment name.", "bad");
   if (assignmentType.value === "OTHER" && !assignmentOtherType.value.trim()) {
     return setStatus("Specify the assignment type.", "bad");
@@ -987,7 +1067,10 @@ async function createAssignment() {
   try {
     const now = Date.now();
     const target = push(ref(db, "assignments"));
-    const storedInstructions = buildStoredInstructions(assignmentInstructions.value.trim(), {
+    const visibleInstructions = typeCode === "COG" && !assignmentInstructions.value.trim()
+      ? "Complete the assigned COG activity. Practice as needed and send your chosen valid result to your teacher."
+      : assignmentInstructions.value.trim();
+    const storedInstructions = buildStoredInstructions(visibleInstructions, {
       schemaVersion: 1,
       assignmentType: typeLabel,
       assignmentTypeCode: typeCode,
@@ -1007,6 +1090,9 @@ async function createAssignment() {
       evaluationDistribution,
       evaluationNotes,
       projectCheckpoints: typeCode === "PJ" ? project.checkpoints : null,
+      cogActivity: typeCode === "COG" ? cogActivity : null,
+      pointValue: typeCode === "COG" ? cogActivity.pointValue : null,
+      undoSubmissionEnabled: typeCode === "COG" ? cogActivity.undoSubmissionEnabled : true,
       ...(loadedLibrarySource?.kind === "assignment"
         ? { sourceAssignmentId: loadedLibrarySource.id }
         : {}),
@@ -1021,7 +1107,7 @@ async function createAssignment() {
       ...targetMetadata,
       dueAt,
       active: true,
-      storageProvider: "google-drive",
+      storageProvider: typeCode === "COG" ? "cog" : "google-drive",
       createdAt: now,
       createdBy: getTeacherName()
     };
@@ -1084,6 +1170,7 @@ assignmentLibraryList.addEventListener("click", (event) => {
 assignmentType.addEventListener("change", () => {
   renderOtherTypeField();
   refreshProjectCheckpointBuilder();
+  refreshCogActivityConfigPanel();
   refreshAutomaticTaskCode();
 });
 assignmentOtherType.addEventListener("input", refreshAutomaticTaskCode);
@@ -1094,6 +1181,7 @@ assignmentTargetSelect.addEventListener("change", () => {
   refreshAutomaticTaskCode();
 });
 assignmentDueAt.addEventListener("input", refreshAutomaticTaskCode);
+cogGame.addEventListener("change", fillCogModeAndDifficultyOptions);
 
 createPresetCriteria.addEventListener("change", refreshDistribution);
 createPresetCriteria.addEventListener("input", () => {
@@ -1130,6 +1218,7 @@ renderOtherTypeField();
 renderRubricEditors();
 renderTargetOptions();
 refreshProjectCheckpointBuilder();
+refreshCogActivityConfigPanel();
 setCreationMode("scratch");
 
 onValue(ref(db, "groups"), (snapshot) => {

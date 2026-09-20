@@ -99,6 +99,15 @@
     .criteria-remove{min-height:30px;padding:4px}
     .criteria-help{font-size:9px;color:#64748b}
     .project-builder{grid-column:1/-1;border:1px solid #dbeafe;border-radius:10px;background:#f8fafc;padding:10px;display:grid;gap:8px}
+    .cog-config-panel{grid-column:1/-1;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;padding:10px;border:1px solid #bbf7d0;border-radius:10px;background:#f0fdf4}
+    .cog-config-panel[hidden]{display:none!important}
+    .cog-config-head{grid-column:1/-1;display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+    .cog-config-head h2{margin:0;font-size:13px;color:#14532d}
+    .cog-config-head p{margin:2px 0 0;font-size:9px;line-height:1.35;color:#3f6212}
+    .cog-config-panel .field{grid-column:span 1}
+    .cog-config-panel .cog-wide{grid-column:span 2}
+    .cog-toggle{display:flex!important;align-items:center;gap:7px;min-height:34px;padding:6px 8px;border:1px solid #bbf7d0;border-radius:8px;background:#fff;font-size:10px!important}
+    .cog-toggle input{width:15px!important;height:15px;margin:0}
     .project-builder[hidden]{display:none!important}
     .project-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
     .project-head h2{margin:0;font-size:13px}
@@ -224,6 +233,42 @@
         <label for="assignmentInstructions">Instructions for students — what they should do and submit</label>
         <textarea id="assignmentInstructions" placeholder="Write the complete instructions for the students: what they must do, what they must include, and exactly what they must submit."></textarea>
       </div>
+
+      <section id="cogActivityConfigPanel" class="cog-config-panel" hidden>
+        <div class="cog-config-head">
+          <div>
+            <h2>COG activity</h2>
+            <p>Choose the certified game, assigned mode and difficulty.</p>
+          </div>
+        </div>
+        <div class="field cog-wide">
+          <label for="cogGame">Game</label>
+          <select id="cogGame"></select>
+        </div>
+        <div class="field cog-wide">
+          <label for="cogMode">Mode</label>
+          <select id="cogMode"></select>
+        </div>
+        <div class="field">
+          <label for="cogDifficulty">Difficulty</label>
+          <select id="cogDifficulty"></select>
+        </div>
+        <div class="field">
+          <label for="cogPointValue">Task points</label>
+          <input id="cogPointValue" type="number" min="0.1" step="0.1" value="100">
+        </div>
+        <div class="field">
+          <label for="cogMinimumPercent">Minimum performance</label>
+          <input id="cogMinimumPercent" type="number" min="0" max="100" step="1" placeholder="Optional">
+          <div class="field-help">Leave empty to accept any completed result.</div>
+        </div>
+        <div class="field cog-wide">
+          <label class="cog-toggle" for="cogUndoSubmissionEnabled">
+            <input id="cogUndoSubmissionEnabled" type="checkbox" checked>
+            Allow Undo Submission while the task is open
+          </label>
+        </div>
+      </section>
 
       <section class="rubric" aria-labelledby="criteriaHeading">
         <div class="rubric-header">
