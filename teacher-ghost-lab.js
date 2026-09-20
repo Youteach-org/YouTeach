@@ -148,7 +148,7 @@ function renderGhosts() {
   }
 
   if (!ghosts.length) {
-    ghostTableBody.innerHTML = '<tr><td colspan="7" class="ghost-empty">No students with nickname Ghost 01, Ghost 02, etc. were found.</td></tr>';
+    ghostTableBody.innerHTML = '<tr><td colspan="7" class="ghost-empty">No students with nickname Ghost01, Ghost02, etc. were found.</td></tr>';
     return;
   }
 
@@ -193,9 +193,9 @@ function renderAssignmentOptions() {
   }
 
   if (!entries.length) {
-    assignmentStatus.textContent = "No open assignment currently applies to the Ghost students. Create one for their group or ALL.";
+    assignmentStatus.textContent = "No open assignment currently applies to the Ghost students. Create one for their current group, or ALL.";
   } else if (!selectedAssignmentId) {
-    assignmentStatus.textContent = "Choose an open assignment assigned to the Ghost group or ALL.";
+    assignmentStatus.textContent = "Choose an open assignment assigned to the current group of the selected Ghost students, or ALL.";
   }
 }
 
