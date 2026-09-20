@@ -1,7 +1,7 @@
 export const EVALUATION_SOURCE_OPTIONS = Object.freeze([
-  { key: "writtenExam", label: "Written exam score" },
-  { key: "oralExam", label: "Oral exam score" },
-  { key: "verbsExam", label: "Verbs exam score" },
+  { key: "writtenExam", label: "Written exam weighted points (legacy/import)" },
+  { key: "oralExam", label: "Oral exam weighted points (legacy/import)" },
+  { key: "verbsExam", label: "Verbs exam weighted points (legacy/import)" },
   { key: "tasks", label: "Tasks / homework" },
   { key: "participation", label: "Participation / activity points" },
   { key: "attendance", label: "Attendance points" },
