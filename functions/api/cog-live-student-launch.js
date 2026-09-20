@@ -93,6 +93,7 @@ export async function onRequestPost({ request, env }) {
     if (!canStudentAccessLiveGame({
       connectedGame,
       studentGroup,
+      studentKey: sessionGrant.studentKey,
       now: Date.now()
     })) {
       return json(403, { ok: false, error: "This live activity is not available for your group." });
@@ -130,6 +131,7 @@ export async function onRequestPost({ request, env }) {
       gameId: game.id,
       gameName: game.name,
       cogSessionId: String(connectedGame.cogSessionId || ""),
+      assignmentId: String(connectedGame.assignmentId || ""),
       iat: now,
       exp: expiresAt,
       nonce: nonce()
