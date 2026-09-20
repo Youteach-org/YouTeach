@@ -18,6 +18,7 @@ const enrollmentHtml = readFileSync(join(root, 'teacher-enrollment.html'), 'utf8
 const enrollmentJs = readFileSync(join(root, 'teacher-enrollment.js'), 'utf8');
 const studentsHtml = readFileSync(join(root, 'teacher-students.html'), 'utf8');
 const studentsJs = readFileSync(join(root, 'teacher-students.js'), 'utf8');
+const gradeRuntimeJs = readFileSync(join(root, 'group-grade-runtime.js'), 'utf8');
 const createAssignmentHtml = readFileSync(join(root, 'assignment-create-module.html'), 'utf8');
 const createAssignmentJs = readFileSync(join(root, 'assignment-create-module.js'), 'utf8');
 
@@ -106,9 +107,10 @@ test('Students renders arbitrary criterion names and dynamic block grades', () =
   assert.match(studentsHtml, /id="evaluationUnitCountCard"/);
   assert.match(studentsHtml, /id="evaluationSetupSummary"/);
   assert.match(studentsJs, /config\.criteria\.map/);
-  assert.match(studentsJs, /calculateBlockGrade/);
-  assert.match(studentsJs, /evaluationCriterionScores/);
-  assert.match(studentsJs, /groupEvaluationCriterionId/);
+  assert.match(studentsJs, /calculateStudentBlockGrade/);
+  assert.match(gradeRuntimeJs, /calculateBlockGrade/);
+  assert.match(gradeRuntimeJs, /evaluationCriterionScores/);
+  assert.match(gradeRuntimeJs, /groupEvaluationCriterionId/);
   assert.doesNotMatch(studentsJs, /config\.weights/);
 });
 
