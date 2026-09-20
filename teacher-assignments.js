@@ -1963,20 +1963,6 @@ function renderManualGrading() {
               <span class="manual-criterion-name" title="${escapeHtml(criterion.description || criterion.title)}">
                 ${escapeHtml(criterion.title)}
               </span>
-              <span class="manual-points-input">
-                <input
-                  type="number"
-                  min="0"
-                  max="${escapeHtml(criterion.maxPoints)}"
-                  step="0.01"
-                  value="${escapeHtml(value)}"
-                  data-manual-score
-                  data-criterion-id="${escapeHtml(criterion.id)}"
-                  data-max-points="${escapeHtml(criterion.maxPoints)}"
-                  aria-label="${escapeHtml(criterion.title)} points"
-                >
-                <span class="manual-criterion-max">/ ${escapeHtml(criterion.maxPoints)}</span>
-              </span>
               <span class="manual-percent-input">
                 <input
                   type="number"
@@ -1990,6 +1976,20 @@ function renderManualGrading() {
                   aria-label="${escapeHtml(criterion.title)} percentage"
                 >
                 <span>%</span>
+              </span>
+              <span class="manual-points-input">
+                <input
+                  type="number"
+                  min="0"
+                  max="${escapeHtml(criterion.maxPoints)}"
+                  step="0.01"
+                  value="${escapeHtml(value)}"
+                  data-manual-score
+                  data-criterion-id="${escapeHtml(criterion.id)}"
+                  data-max-points="${escapeHtml(criterion.maxPoints)}"
+                  aria-label="${escapeHtml(criterion.title)} points"
+                >
+                <span class="manual-criterion-max">/ ${escapeHtml(criterion.maxPoints)}</span>
               </span>
             </label>
           `;
