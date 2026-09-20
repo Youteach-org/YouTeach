@@ -34,6 +34,22 @@ test('Assignment creation is type-first and does not offer Start from scratch', 
   assert.match(assignmentsJs, /No saved templates for this type/);
 });
 
+
+test('Create Assignment keeps the canonical visible fields and hides template workflow', () => {
+  assert.match(assignmentsHtml, /id="assignmentType"/);
+  assert.match(assignmentsHtml, /Assignment name/);
+  assert.match(assignmentsHtml, /id="assignmentGroupHelp"/);
+  assert.match(assignmentsHtml, /Due date and time/);
+  assert.match(assignmentsHtml, /Instructions for students/);
+  assert.match(assignmentsHtml, /id="createCriteriaHeading">Evaluation criteria/);
+  assert.match(assignmentsHtml, /Instructions for ChatGPT when reviewing/);
+  assert.doesNotMatch(assignmentsHtml, /Saved template \(optional\)/);
+  assert.doesNotMatch(assignmentsHtml, /Template action/);
+  assert.doesNotMatch(assignmentsHtml, /<details class="rubric-details">/);
+  assert.match(assignmentsJs, /function applyAssignmentGroupContext\(\)/);
+  assert.match(assignmentsJs, /Working group:/);
+});
+
 test('Generated-team target appears only in team module context', () => {
   assert.match(assignmentsHtml, /id="assignmentTargetField"[^>]*hidden/);
   assert.match(assignmentsJs, /All Generated Teams/);
