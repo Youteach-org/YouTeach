@@ -52,6 +52,10 @@ Examples:
 
 Reusing a template creates a new instance. It must never copy prior student evidence or grades.
 
+### UI clarification — 2026-09-20
+
+The Template vs Assigned Instance architecture remains approved, but template controls are not part of the normal Create Assignment form. The primary creation form must stay focused on the assigned instance. Library/template management is a separate workflow and must not displace assignment type, name, group/target, due date, student instructions, visible criteria, or teacher-only ChatGPT review instructions.
+
 ## 3. Assignment Library
 
 Add a reusable Assignment Library concept.
