@@ -1,3 +1,5 @@
+import { officialCogResultsEnabled } from "../../cog-official-result-policy.mjs";
+import { signCogResultToken } from "../_shared/cog-result-token.js";
 import { verifyCogAssignmentLaunch } from "../_shared/cog-assignment-launch.js";
 
 const DATABASE_URL = "https://youteach-d9a79-default-rtdb.firebaseio.com";
@@ -106,6 +108,38 @@ export async function onRequestPost({ request, env }) {
       return json(403, { ok: false, error: "This COG assignment is no longer available." }, origin);
     }
 
+    const canonicalConfig = assignment.cogActivity || {};
+    if (
+      String(canonicalConfig.gameId || "") !== String(launch.cogActivity?.gameId || "") ||
+      String(canonicalConfig.modeId || "") !== String(launch.cogActivity?.modeId || "") ||
+      String(canonicalConfig.difficultyId || "") !== String(launch.cogActivity?.difficultyId || "")
+    ) {
+      return json(403, { ok: false, error: "This COG assignment configuration changed. Reopen it from YouTeach." }, origin);
+    }
+
+    const officialSubmissionAllowed =
+      launch.officialSubmissionAllowed === true &&
+      officialCogResultsEnabled(env);
+
+    let submissionToken = "";
+    let submissionTokenExpiresAt = null;
+    if (officialSubmissionAllowed) {
+      const now = Date.now();
+      submissionTokenExpiresAt = now + 2 * 60 * 60 * 1000;
+      submissionToken = await signCogResultToken(
+        {
+          studentKey: String(launch.studentKey),
+          assignmentId: String(launch.assignmentId),
+          assignmentCode: String(launch.assignmentCode || assignment.code || ""),
+          cogActivity: launch.cogActivity,
+          iat: now,
+          exp: submissionTokenExpiresAt,
+          nonce: String(launch.nonce || "")
+        },
+        env.YOUTEACH_SESSION_SECRET
+      );
+    }
+
     const fullName = String(student.fullName || student.name || "").trim();
     const nickname = String(
       student.nickname || (fullName ? fullName.split(/\s+/)[0] : "Student")
@@ -123,11 +157,13 @@ export async function onRequestPost({ request, env }) {
       },
       launchContext: {
         purpose: "assignment-practice",
-        officialSubmissionAllowed: false,
+        officialSubmissionAllowed,
         assignmentId: String(launch.assignmentId),
         assignmentCode: String(launch.assignmentCode || assignment.code || ""),
         cogActivity: launch.cogActivity
-      }
+      },
+      submissionToken,
+      submissionTokenExpiresAt
     }, origin);
   } catch (error) {
     console.error(error);
