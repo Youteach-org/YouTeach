@@ -3,11 +3,6 @@ import { ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebas
 
 sessionStorage.removeItem("firebase:authUser");
 
-const USERS = [
-  { username: "teacher", password: "teacher123", role: "teacher", displayName: "Teacher" },
-  { username: "admin", password: "admin123", role: "admin", displayName: "Admin" }
-];
-
 const WORKING_GROUP_KEY = "youteachWorkingGroup";
 const usernameInput = document.getElementById("username");
 const passwordInput = document.getElementById("password");
@@ -30,15 +25,8 @@ function renderGroups() {
     '<option value="">Select group</option>' +
     groups.map((group) => `<option value="${group}">${group}</option>`).join("");
 
-  if (storedGroup && groups.includes(storedGroup)) {
-    workingGroupSelect.value = storedGroup;
-  }
-
-  if (!groups.length) {
-    workingGroupMessage.textContent = "No registered groups yet. You may skip for now.";
-  } else {
-    workingGroupMessage.textContent = "";
-  }
+  if (storedGroup && groups.includes(storedGroup)) workingGroupSelect.value = storedGroup;
+  workingGroupMessage.textContent = groups.length ? "" : "No registered groups yet. You may skip for now.";
 }
 
 function showWorkingGroupStep(user) {
@@ -51,36 +39,44 @@ function showWorkingGroupStep(user) {
 function completeLogin(groupName = "") {
   const user = pendingUser;
   if (!user) return;
-
-  sessionStorage.setItem("youteachTeacherAuth", "true");
+  sessionStorage.setItem("youteachTeacherSession", user.sessionToken);
+  sessionStorage.setItem("youteachTeacherSessionExpiresAt", String(user.expiresAt));
   sessionStorage.setItem("youteachTeacherRole", user.role);
   sessionStorage.setItem("youteachTeacherName", user.displayName);
-
-  if (groupName) {
-    sessionStorage.setItem(WORKING_GROUP_KEY, groupName);
-  } else {
-    sessionStorage.removeItem(WORKING_GROUP_KEY);
-  }
-
+  if (groupName) sessionStorage.setItem(WORKING_GROUP_KEY, groupName);
+  else sessionStorage.removeItem(WORKING_GROUP_KEY);
   window.location.href = "buzzer.html";
 }
 
-function doTeacherLogin() {
+async function doTeacherLogin() {
   const username = usernameInput.value.trim();
   const password = passwordInput.value;
-  const user = USERS.find((item) => item.username === username && item.password === password);
+  loginMessage.textContent = "";
+  loginBtn.disabled = true;
 
-  if (!user) {
-    loginMessage.textContent = "Invalid username or password.";
+  try {
+    const response = await fetch("/api/teacher-session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data.ok !== true || !data.sessionToken) {
+      loginMessage.textContent = data.error || "Invalid username or password.";
+      loginMessage.className = "status-text bad";
+      return;
+    }
+    showWorkingGroupStep(data);
+  } catch (error) {
+    console.error(error);
+    loginMessage.textContent = "Could not sign in.";
     loginMessage.className = "status-text bad";
-    return;
+  } finally {
+    loginBtn.disabled = false;
   }
-
-  showWorkingGroupStep(user);
 }
 
 loginBtn.addEventListener("click", doTeacherLogin);
-
 continueWithGroupBtn.addEventListener("click", () => {
   const groupName = workingGroupSelect.value;
   if (!groupName) {
@@ -90,9 +86,7 @@ continueWithGroupBtn.addEventListener("click", () => {
   }
   completeLogin(groupName);
 });
-
 skipWorkingGroupBtn.addEventListener("click", () => completeLogin(""));
-
 [usernameInput, passwordInput].forEach((input) => {
   input.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
@@ -101,7 +95,6 @@ skipWorkingGroupBtn.addEventListener("click", () => completeLogin(""));
     }
   });
 });
-
 onValue(ref(db, "groups"), (snapshot) => {
   groupsCache = snapshot.val() || {};
   renderGroups();

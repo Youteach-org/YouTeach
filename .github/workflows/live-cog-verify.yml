@@ -1,0 +1,25 @@
+name: Verify live COG integration branch
+
+on:
+  push:
+    branches:
+      - feature/live-cog-session-bridge-20260920
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check server JavaScript
+        run: find functions -name '*.js' -print0 | xargs -0 -n1 node --check
+
+      - name: Run YouTeach tests
+        run: node --test tests/*.test.mjs
+
+      - name: Build Pages output
+        run: sh build-pages.sh

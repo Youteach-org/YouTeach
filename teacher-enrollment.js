@@ -1,7 +1,6 @@
 ﻿import { db } from "./firebase.js";
-import { ref, push, set, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-import { generateId } from "./app.js";
-import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
+import { ref, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { requireTeacherAuth, getTeacherName, getTeacherSessionToken, logoutTeacher } from "./teacher-auth.js";
 import { migrateExistingStudentsForTeacher } from "./student-auth.js";
 
 requireTeacherAuth();
@@ -127,27 +126,29 @@ function parseBulkText(text) {
 
 async function saveStudent(fullName, nickname = "", studentNumber = "", groupName = "") {
   const cleanName = fullName.trim();
-  const cleanNickname = nickname.trim() || cleanName.split(" ")[0];
+  const cleanNickname = nickname.trim();
   const cleanNumber = studentNumber.trim();
-  const internalId = generateId();
 
-  const newRef = push(ref(db, "students"));
-
-  await set(newRef, {
-    fullName: cleanName,
-    name: cleanName,
-    nickname: cleanNickname,
-    studentNumber: cleanNumber,
-    groupName,
-    id: internalId,
-    password: "1234",
-    activeNow: true,
-    blockPoints: {
-      "Block 1": 0,
-      "Block 2": 0,
-      "Block 3": 0
-    }
+  const response = await fetch("/api/student-enrollment", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${getTeacherSessionToken()}`
+    },
+    body: JSON.stringify({
+      student: {
+        fullName: cleanName,
+        nickname: cleanNickname,
+        studentNumber: cleanNumber,
+        groupName
+      }
+    })
   });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || data.ok !== true) {
+    throw new Error(data.error || "Could not add student.");
+  }
+  return data.students?.[0] || null;
 }
 
 createGroupBtn.addEventListener("click", async () => {
@@ -285,4 +286,3 @@ onValue(ref(db, "students"), (snapshot) => {
   studentsCache = snapshot.val() || {};
   renderGroupsTable();
 });
-
