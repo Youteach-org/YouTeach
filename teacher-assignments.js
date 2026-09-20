@@ -3432,14 +3432,8 @@ assignmentTargetSelect?.addEventListener("change", () => {
 assignmentDueAt.addEventListener("input", refreshAutomaticTaskCode);
 
 showCreateAssignmentBtn.addEventListener("click", () => {
-  const opening = createAssignmentPanel.hidden;
-  createAssignmentPanel.hidden = !opening;
   assignmentActionsMenu.open = false;
-
-  if (opening) {
-    applyAssignmentModuleContext();
-    createAssignmentPanel.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
+  openAssignmentsModule({ source: "assignments" });
 });
 
 assignmentFilterCode.addEventListener("input", renderAssignmentList);
