@@ -16,6 +16,10 @@ async function teacherBridgeToken(overrides = {}) {
     teacherDisplayName: "Teacher",
     youTeachSessionId: "yt-123",
     groupName: "533-2",
+    assignmentId: "assignment-1",
+    recipientStudentKeys: ["student-1", "student-2"],
+    recipientTeamLabels: ["Team 1"],
+    recipientTeamTarget: "Team 1",
     iat: now,
     exp: now + 60_000,
     ...overrides
@@ -79,6 +83,9 @@ test("register creates connectedGame only from canonical active Buzzer session",
     assert.equal(payload.connectedGame.cogSessionId, "ABC123");
     assert.equal(payload.connectedGame.status, "active");
     assert.equal(payload.connectedGame.launchMode, "live-buzzer");
+    assert.equal(payload.connectedGame.assignmentId, "assignment-1");
+    assert.deepEqual(payload.connectedGame.recipientStudentKeys, ["student-1", "student-2"]);
+    assert.equal(payload.connectedGame.recipientTeamTarget, "Team 1");
     assert.equal(writes.length, 1);
     assert.equal(writes[0].groupName, "533-2");
   } finally {
