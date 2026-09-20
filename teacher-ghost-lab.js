@@ -96,7 +96,16 @@ function todayKey() {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 }
 
-function assignmentAppliesToStudent(assignment, student) {
+function assignmentAppliesToStudent(assignment, studentKey, student) {
+  const rawRecipients = assignment?.recipientStudentKeys;
+  const recipientKeys = Array.isArray(rawRecipients)
+    ? rawRecipients.map((value) => String(value || "")).filter(Boolean)
+    : (rawRecipients && typeof rawRecipients === "object"
+      ? Object.values(rawRecipients).map((value) => String(value || "")).filter(Boolean)
+      : []);
+
+  if (recipientKeys.length) return recipientKeys.includes(String(studentKey));
+
   const target = String(assignment?.groupName || "ALL");
   const group = String(student?.groupName || "GENERAL");
   return target === "ALL" || target === group;
@@ -112,7 +121,7 @@ function eligibleAssignments() {
   const ghosts = ghostEntries();
   return Object.entries(assignmentsCache || {})
     .filter(([, assignment]) => assignmentIsOpen(assignment))
-    .filter(([, assignment]) => ghosts.some(([, student]) => assignmentAppliesToStudent(assignment, student)))
+    .filter(([, assignment]) => ghosts.some(([studentKey, student]) => assignmentAppliesToStudent(assignment, studentKey, student)))
     .sort((a, b) => Number(b[1]?.createdAt || 0) - Number(a[1]?.createdAt || 0));
 }
 
