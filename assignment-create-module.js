@@ -625,7 +625,7 @@ async function createAssignment() {
   const rubric = collectRubric();
   const evaluationDistribution = getDistributionMode();
   const evaluationNotes = assignmentEvaluationNotes.value.trim();
-  if (!title) return setStatus("Enter an assignment name.", "bad"); return setStatus("Enter an assignment name.", "bad");
+  if (!title) return setStatus("Enter an assignment name.", "bad");
   if (assignmentType.value === "OTHER" && !assignmentOtherType.value.trim()) {
     return setStatus("Specify the assignment type.", "bad");
   }
@@ -652,6 +652,7 @@ async function createAssignment() {
 
   const cogLaunchWindow = typeCode === "COG" ? window.open("about:blank", "_blank") : null;
   if (cogLaunchWindow) cogLaunchWindow.opener = null;
+  let cogLaunchSucceeded = false;
 
   createAssignmentBtn.disabled = true;
   setStatus("Creating...");
@@ -694,6 +695,7 @@ async function createAssignment() {
       setStatus("Assignment created. Opening Classroom Online Games...", "ok");
       try {
         await launchCogAssignment(target.key, cogLaunchWindow);
+        cogLaunchSucceeded = true;
       } catch (launchError) {
         if (cogLaunchWindow && !cogLaunchWindow.closed) cogLaunchWindow.close();
         setStatus(
@@ -715,7 +717,7 @@ async function createAssignment() {
     }
   } catch (error) {
     console.error(error);
-    if (cogLaunchWindow && !cogLaunchWindow.closed && !cogLaunchWindow.location.href.startsWith("https://classroom-online-games.pages.dev")) {
+    if (cogLaunchWindow && !cogLaunchWindow.closed && !cogLaunchSucceeded) {
       cogLaunchWindow.close();
     }
     if (!String(createAssignmentStatus.textContent || "").startsWith("Assignment created, but")) {
