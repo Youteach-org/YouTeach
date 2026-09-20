@@ -149,8 +149,44 @@ At minimum:
 - COG official-result endpoint rejects a practice-only session/result;
 - database reads cannot retrieve password material after migration.
 
-## Current status
+## Current status — updated 2026-09-20
 
-Not implemented.
+Implementation now exists on the active integration branch `feature/cog-youteach-secure-current-20260920` and PR #11.
 
-This document records the blocker and migration order only. Existing COG assignment PRs remain practice-only.
+Implemented on that branch:
+- Cloudflare KV-backed credential-store abstraction using binding `YOUTEACH_AUTH`;
+- PBKDF2-SHA256 password hashing;
+- signed student sessions;
+- signed teacher/admin sessions;
+- student login endpoint;
+- teacher login endpoint;
+- password-change endpoint;
+- teacher-authorized student enrollment/import endpoint;
+- bootstrap credential provisioning endpoint;
+- migration-status endpoint;
+- controlled bulk student migration endpoint;
+- non-destructive preview migration mode;
+- auth regression tests.
+
+The target infrastructure decision is Cloudflare Workers KV with separate preview and production namespaces.
+
+Current infrastructure blocker:
+- the existing GitHub Cloudflare API token can deploy Pages;
+- the latest provisioning attempt received HTTP 401 when accessing Workers KV;
+- the token therefore needs `Account -> Workers KV Storage -> Edit` before the auth-infrastructure workflow can create/list namespaces.
+
+A manual-only provisioning workflow is present at:
+`.github/workflows/auth-infra-provision.yml`
+
+Do not enable production auth cutover or official COG results until:
+1. preview KV is provisioned;
+2. teacher auth is validated in preview;
+3. at least one Ghost student completes a real Student-login test;
+4. the complete YouTeach -> COG -> Send to teacher -> Undo/resubmit loop is verified;
+5. production KV and teacher/admin credentials are provisioned;
+6. controlled real-student migration reports no pending credentials and no public password fields.
+
+The active handoff is:
+`docs/superpowers/handoffs/2026-09-20-cog-auth-current-state.md`
+
+That handoff supersedes this document for current execution state while the integration remains open.
