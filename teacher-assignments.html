@@ -1701,38 +1701,22 @@
           </div>
         </section>
 
-        <section id="assignmentLibraryPanel" class="panel-card assignment-library-card">
-          <div class="assignment-library-header">
-            <h3>Assignment Library</h3>
-            <span id="assignmentLibraryCount" class="assignment-library-count">0 templates</span>
-            <span id="assignmentLibraryStatus" class="status-text"></span>
-          </div>
-
-          <div class="assignment-library-filters" aria-label="Assignment Library filters">
-            <input id="assignmentLibrarySearch" class="assignment-library-search" type="search" placeholder="Search title, topic, tags..." aria-label="Search Assignment Library">
-            <select id="assignmentLibraryTypeFilter" aria-label="Filter templates by type"><option value="">All types</option></select>
-            <select id="assignmentLibraryCourseFilter" aria-label="Filter templates by course"><option value="">All courses</option></select>
-            <select id="assignmentLibrarySubjectFilter" aria-label="Filter templates by subject"><option value="">All subjects</option></select>
-            <select id="assignmentLibraryUnitFilter" aria-label="Filter templates by unit"><option value="">All units</option></select>
-            <select id="assignmentLibraryTopicFilter" aria-label="Filter templates by topic"><option value="">All topics</option></select>
-            <select id="assignmentLibraryTagFilter" aria-label="Filter templates by tag"><option value="">All tags</option></select>
-            <select id="assignmentLibraryUsageFilter" aria-label="Filter templates by usage">
-              <option value="all">Any usage</option>
-              <option value="used">Used before</option>
-              <option value="unused">Never used</option>
-            </select>
-            <select id="assignmentLibraryStatusFilter" aria-label="Filter templates by archive status">
-              <option value="active" selected>Active</option>
-              <option value="archived">Archived</option>
-              <option value="all">All</option>
-            </select>
-            <button id="clearAssignmentLibraryFiltersBtn" class="assignment-library-clear" type="button">Clear</button>
-          </div>
-
-          <div id="assignmentLibraryList" class="assignment-library-list">
-            <div class="assignment-library-empty">No templates yet.</div>
-          </div>
-        </section>
+        <div id="assignmentLibraryCompatibility" hidden style="display:none!important" aria-hidden="true">
+          <div id="assignmentLibraryPanel"></div>
+          <input id="assignmentLibrarySearch">
+          <select id="assignmentLibraryTypeFilter"></select>
+          <select id="assignmentLibraryCourseFilter"></select>
+          <select id="assignmentLibrarySubjectFilter"></select>
+          <select id="assignmentLibraryUnitFilter"></select>
+          <select id="assignmentLibraryTopicFilter"></select>
+          <select id="assignmentLibraryTagFilter"></select>
+          <select id="assignmentLibraryUsageFilter"><option value="all">Any usage</option></select>
+          <select id="assignmentLibraryStatusFilter"><option value="active">Active</option></select>
+          <button id="clearAssignmentLibraryFiltersBtn" type="button"></button>
+          <div id="assignmentLibraryList"></div>
+          <span id="assignmentLibraryCount"></span>
+          <span id="assignmentLibraryStatus"></span>
+        </div>
 
         <div class="assignment-layout">
           <section class="panel-card">
@@ -1951,7 +1935,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-  <script type="module" src="teacher-assignments.js?v=manual-percent-first-20260920"></script>
+  <script type="module" src="teacher-assignments.js?v=popup-library-20260920"></script>
   <script defer src="shared-ui-fixes.js?v=titlebar-hamburger-20260916"></script>
 </body>
 </html>
