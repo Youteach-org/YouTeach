@@ -1,11 +1,6 @@
 name: Provision YouTeach auth infrastructure
 
 on:
-  push:
-    branches:
-      - feature/cog-youteach-secure-current-20260920
-    paths:
-      - .github/workflows/auth-infra-provision.yml
   workflow_dispatch:
 
 permissions:
@@ -34,7 +29,12 @@ jobs:
           ensure_namespace() {
             TITLE="$1"
             OUTPUT_NAME="$2"
-            LIST="$(curl -fsS "$API?per_page=100" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN")"
+            HTTP_CODE="$(curl -sS -o /tmp/kv-list.json -w '%{http_code}' "$API?per_page=100" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN")"
+            if [ "$HTTP_CODE" != "200" ]; then
+              echo "::error::Cloudflare token cannot access Workers KV (HTTP $HTTP_CODE). Add Account > Workers KV Storage > Edit to the existing token."
+              exit 1
+            fi
+            LIST="$(cat /tmp/kv-list.json)"
             ID="$(printf '%s' "$LIST" | jq -r --arg title "$TITLE" '.result[] | select(.title==$title) | .id' | head -n1)"
             if [ -z "$ID" ]; then
               CREATED="$(curl -fsS -X POST "$API"                 -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"                 -H "Content-Type: application/json"                 --data "$(jq -nc --arg title "$TITLE" '{title:$title}')")"
