@@ -283,7 +283,7 @@ Response:
 node --test tests/cog-live-teacher-launch.test.mjs
 ```
 
-- [ ] **Step 3: implement server launch signing and change `openCogTeacherBtn` to request the launch URL.**
+- [ ] **Step 3: implement server launch signing and wire it to the generic Buzzer activity flow when the selected/scheduled Activity Type is `COG`. Do not restore a standalone Classroom Games button.**
 
 - [ ] **Step 4: run YouTeach suite/build.**
 
@@ -880,3 +880,15 @@ Student:
 
 Expiration:
 `explicit teacher end OR 60 continuous minutes with zero teacher and zero student presence`.
+
+
+## Approved UI replacement — 2026-09-20
+
+The implementation plan is amended as follows:
+
+- remove the standalone `openCogTeacherBtn` / Open Classroom Games card from Buzzer;
+- Team Source owns Activity Type, team target, title, and schedule controls;
+- Activity Type taxonomy matches Assignments and includes `COG`;
+- scheduled activities may target all generated teams or one team;
+- scheduled activity records live under `teamActivities` and are referenced from the active Buzzer session;
+- a future/remaining authenticated COG launch action must originate from the generic COG activity flow, not from a permanent COG-only button.
