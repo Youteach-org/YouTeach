@@ -97,7 +97,7 @@
       <header class="topbar">
         <div>
           <h2>Grades Upload</h2>
-          <p>Paste grades in the format: ID, Name, E, E.O, E.V, P, A, T, TOTAL.</p>
+          <p>Import legacy grade sheets or enter scores for custom group criteria.</p>
         </div>
         <div class="topbar-right">
           <span id="teacherIdentity" class="teacher-identity">Teacher</span>
@@ -108,7 +108,7 @@
         <div class="grades-grid">
           <div class="panel-card">
             <div class="panel-card-header">
-              <h3>Paste Grades from Excel</h3>
+              <h3>Legacy Grade Sheet Import</h3>
             </div>
 
             <div class="stack-controls">
@@ -118,6 +118,7 @@
                 <option value="Block 3">Block 3</option>
               </select>
 
+              <div class="hint-box">Compatibility import for existing E, E.O, E.V, P, A, T grade sheets.</div>
               <textarea id="gradesPasteBox" class="grades-textarea" placeholder="Paste Excel rows here"></textarea>
             </div>
 
@@ -161,7 +162,34 @@
 
         <div class="panel-card">
           <div class="panel-card-header">
-            <h3>Export Block Grades</h3>
+            <h3>Manual Group Criterion Grade</h3>
+          </div>
+          <div class="stack-controls">
+            <select id="manualCriterionGroupSelect">
+              <option value="">Select group</option>
+            </select>
+            <select id="manualCriterionBlockSelect">
+              <option value="Block 1">Block 1</option>
+            </select>
+            <select id="manualCriterionSelect">
+              <option value="">Select manual criterion</option>
+            </select>
+            <select id="manualCriterionStudentSelect">
+              <option value="">Select student</option>
+            </select>
+            <input id="manualCriterionScoreInput" type="number" min="0" max="100" step="0.1" placeholder="Score 0–100">
+            <div id="manualCriterionHelp" class="hint-box">
+              Custom criteria whose source is Manual / imported criterion score can be entered here.
+            </div>
+          </div>
+          <div class="grades-actions">
+            <button id="saveManualCriterionScoreBtn" type="button">Save Criterion Score</button>
+          </div>
+        </div>
+
+        <div class="panel-card">
+          <div class="panel-card-header">
+            <h3>Legacy CSV Export</h3>
           </div>
 
           <div class="stack-controls">
@@ -212,7 +240,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script type="module" src="teacher-points.js?v=group-evaluation-20260920"></script>
+  <script type="module" src="teacher-points.js?v=dynamic-evaluation-20260920"></script>
   <script defer src="shared-ui-fixes.js?v=titlebar-hamburger-20260916"></script>
 </body>
 </html>
