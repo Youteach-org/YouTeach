@@ -102,6 +102,34 @@ A manual grade must never be silently overwritten by a later AI rerun unless the
 - If AI reviewed a submission but a criterion still requires manual review, it remains in the pending section.
 - Fully evaluated assignments can also use a distinct state and move later in the assignment browser; this behavior is retained.
 
+
+
+### Create Assignment canonical form — 2026-09-20
+
+This supersedes any earlier UI wording that made templates part of the primary Create Assignment flow.
+
+The normal **Create Assignment** form must prioritize the assigned instance itself, in this order:
+
+1. Assignment Type.
+2. Assignment Name.
+3. Assignment target/group context.
+4. Due date and time.
+5. Instructions for students.
+6. Evaluation criteria.
+7. Instructions for ChatGPT when reviewing/grading.
+8. Type-specific controls such as Project checkpoints only when applicable.
+
+Rules:
+- **Other** is the only Assignment Type that reveals a custom type text field.
+- Do not show **Save Template**, **Load Template**, a template selector, or **Start from scratch** inside the normal Create Assignment flow.
+- Template infrastructure may remain in the data model/library for later reuse, but it must not dominate or clutter Create Assignment unless the teacher explicitly enters a template/library workflow.
+- Evaluation criteria are a required visible section of Create Assignment, not hidden behind a collapsed control.
+- Criteria retain the approved model: preset + custom criteria, exactly 100 total points, equal or manual distribution.
+- Instructions for ChatGPT are teacher-only grading/review instructions and remain separate from student instructions.
+- If a specific working group already exists in YouTeach context, Create Assignment uses and displays that group by default and does not make the teacher select it again.
+- If no specific working group exists, the Group control is available so the teacher can choose the target.
+- When opened from Team Generator, the generated-team target further scopes the assignment to All Generated Teams or one generated team; All Generated Teams means only students in those generated teams.
+
 ## 4. Accepted Teacher Assignments UX
 
 - Assignment cards are compact, not full-page rows.
