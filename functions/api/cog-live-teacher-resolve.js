@@ -94,7 +94,11 @@ export async function onRequestPost({ request, env }) {
       return json(401, { ok: false, error: "Invalid or expired teacher launch." }, origin);
     }
 
-    const currentSession = await firebaseGet("session/current");
+    const assignmentId = String(launch.assignmentId || "").trim();
+    const [currentSession, assignment] = await Promise.all([
+      firebaseGet("session/current"),
+      assignmentId ? firebaseGet(`assignments/${encodeURIComponent(assignmentId)}`) : Promise.resolve(null)
+    ]);
     const canonicalSessionId = String(
       currentSession?.sessionId || currentSession?.createdAt || ""
     ).trim();
@@ -111,6 +115,31 @@ export async function onRequestPost({ request, env }) {
         error: "The YouTeach Buzzer session changed. Reopen Classroom Online Games from Buzzer."
       }, origin);
     }
+
+    const assignmentTypeCode = String(assignment?.assignmentTypeCode || "").trim().toUpperCase();
+    const assignmentGroup = String(assignment?.groupName || "").trim();
+    if (
+      !assignmentId ||
+      !assignment ||
+      assignment?.active === false ||
+      assignmentTypeCode !== "COG" ||
+      assignmentGroup !== canonicalGroup
+    ) {
+      return json(409, {
+        ok: false,
+        error: "The COG assignment is no longer active for this Buzzer group."
+      }, origin);
+    }
+
+    const normalizeStringArray = (raw) => {
+      const values = Array.isArray(raw)
+        ? raw
+        : (raw && typeof raw === "object" ? Object.values(raw) : []);
+      return [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))];
+    };
+    const recipientStudentKeys = normalizeStringArray(assignment.recipientStudentKeys);
+    const recipientTeamLabels = normalizeStringArray(assignment.recipientTeamLabels);
+    const recipientTeamTarget = String(assignment.recipientTeamTarget || "").trim();
 
     const now = Date.now();
     const expiresAt = Math.min(
@@ -131,6 +160,12 @@ export async function onRequestPost({ request, env }) {
       teacherDisplayName: String(launch.teacherDisplayName || "Teacher"),
       youTeachSessionId: canonicalSessionId,
       groupName: canonicalGroup,
+      assignmentId,
+      assignmentCode: String(assignment.code || "").trim(),
+      assignmentTitle: String(assignment.title || "Classroom Online Games").trim(),
+      recipientStudentKeys,
+      recipientTeamLabels,
+      recipientTeamTarget,
       iat: now,
       exp: expiresAt,
       nonce: nonce()
@@ -145,7 +180,10 @@ export async function onRequestPost({ request, env }) {
       },
       liveContext: {
         youTeachSessionId: canonicalSessionId,
-        groupName: canonicalGroup
+        groupName: canonicalGroup,
+        assignmentId,
+        assignmentCode: String(assignment.code || "").trim(),
+        assignmentTitle: String(assignment.title || "Classroom Online Games").trim()
       },
       bridgeToken,
       bridgeExpiresAt: expiresAt
