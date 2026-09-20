@@ -108,41 +108,10 @@
       white-space: nowrap;
     }
 
-    .activity-fields {
-      display: grid;
-      grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
-      gap: 10px;
-      margin-top: 10px;
-    }
-
-    .activity-field {
-      display: grid;
-      gap: 6px;
-    }
-
-    .activity-field.full {
-      grid-column: 1 / -1;
-    }
-
-    .activity-field label {
-      font-size: 12px;
-      font-weight: 700;
-      color: #334155;
-    }
-
-    .activity-field input,
-    .activity-field select,
     .generator-section > select,
     .generator-section > input {
       width: 100%;
       box-sizing: border-box;
-    }
-
-    .activity-status {
-      min-height: 18px;
-      margin-top: 8px;
-      font-size: 12px;
-      color: #64748b;
     }
 
     .generator-mini-note {
@@ -664,47 +633,15 @@
                 <option value="all">All Students in Group</option>
               </select>
 
-              <div class="activity-fields">
-                <div class="activity-field">
-                  <label for="activityTypeSelect">Activity Type</label>
-                  <select id="activityTypeSelect">
-                    <option value="CT">Classroom Task (CT)</option>
-                    <option value="HW">Homework (HW)</option>
-                    <option value="EX">Exam (EX)</option>
-                    <option value="PJ">Project (PJ)</option>
-                    <option value="PC">Practice (PC)</option>
-                    <option value="RS">Research (RS)</option>
-                    <option value="PT">Presentation (PT)</option>
-                    <option value="COG">Classroom Online Games (COG)</option>
-                    <option value="OTHER">Other</option>
-                  </select>
-                </div>
-                <div class="activity-field" id="activityOtherTypeField" hidden>
-                  <label for="activityOtherType">Other Type</label>
-                  <input id="activityOtherType" placeholder="e.g. Lab, Debate">
-                </div>
-                <div class="activity-field full">
-                  <label for="activityTitle">Activity Title</label>
-                  <input id="activityTitle" placeholder="Activity title">
-                </div>
-                <div class="activity-field">
-                  <label for="activityTeamTarget">Target Team</label>
-                  <select id="activityTeamTarget">
-                    <option value="all">All Generated Teams</option>
-                  </select>
-                </div>
-                <div class="activity-field">
-                  <label for="activityScheduledFor">Scheduled For</label>
-                  <input id="activityScheduledFor" type="datetime-local">
-                </div>
-              </div>
-              <div id="activityScheduleStatus" class="activity-status">Generate teams to schedule an activity.</div>
-
-              <h4>Number of Teams</h4>
+              <h4 style="margin-top:12px">Number of Teams</h4>
               <input id="numTeams" type="number" min="1" placeholder="Number of teams">
+              <div class="generator-mini-note">
+                Generate the teams first. Then open Assignments to assign an activity to all generated teams or to one specific generated team.
+              </div>
+
               <div class="generator-actions">
                 <button id="createTeams">Generate Smart Teams</button>
-                <button id="scheduleTeamActivityBtn" type="button">Schedule Activity</button>
+                <button id="openAssignmentsModuleBtn" type="button" disabled>Assignments</button>
                 <select id="printNameModeSelect">
                   <option value="nickname">Print nicknames</option>
                   <option value="fullName">Print full names</option>
@@ -740,7 +677,7 @@
     </main>
   </div>
 
-  <script type="module" src="buzzer.js?v=team-activity-scheduler-20260920"></script>
+  <script type="module" src="buzzer.js?v=assignments-module-20260920"></script>
   <script defer src="shared-ui-fixes.js?v=titlebar-hamburger-20260916"></script>
   <script type="module" src="attendance-validation.js"></script>
 </body>
