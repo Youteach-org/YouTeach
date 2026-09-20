@@ -21,3 +21,8 @@ Use the already-existing Ghost students (nicknames such as Ghost01, Ghost02, etc
 ## Correction 2026-09-20
 
 Canonical test identity: group `FANTASMA`; external IDs `GHOST01`–`GHOST20`; nicknames `FAKE-01`–`FAKE-20`. The lab must not identify these accounts by a `Ghost01` nickname because that field does not contain the Ghost ID.
+
+
+## Selection UX rule
+
+The Ghost list keeps individual checkboxes and must also expose separate visible `Select all` and `Deselect all` controls. This follows the project-wide list-selection rule in `docs/superpowers/README.md`.
