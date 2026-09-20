@@ -1,0 +1,99 @@
+name: Provision YouTeach auth infrastructure
+
+on:
+  push:
+    branches:
+      - feature/cog-youteach-secure-current-20260920
+    paths:
+      - .github/workflows/auth-infra-provision.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  provision:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout secure integration branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/cog-youteach-secure-current-20260920
+          fetch-depth: 0
+
+      - name: Create or reuse auth KV namespaces
+        id: kv
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID_RAW: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          ACCOUNT_ID="$(printf '%s' "$CLOUDFLARE_ACCOUNT_ID_RAW" | tr -d '[:space:]')"
+          API="https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/storage/kv/namespaces"
+
+          ensure_namespace() {
+            TITLE="$1"
+            OUTPUT_NAME="$2"
+            LIST="$(curl -fsS "$API?per_page=100" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN")"
+            ID="$(printf '%s' "$LIST" | jq -r --arg title "$TITLE" '.result[] | select(.title==$title) | .id' | head -n1)"
+            if [ -z "$ID" ]; then
+              CREATED="$(curl -fsS -X POST "$API"                 -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"                 -H "Content-Type: application/json"                 --data "$(jq -nc --arg title "$TITLE" '{title:$title}')")"
+              ID="$(printf '%s' "$CREATED" | jq -r '.result.id // empty')"
+            fi
+            test -n "$ID"
+            printf '%s=%s\n' "$OUTPUT_NAME" "$ID" >> "$GITHUB_OUTPUT"
+          }
+
+          ensure_namespace "youteach-auth-production" "production_id"
+          ensure_namespace "youteach-auth-preview" "preview_id"
+
+      - name: Bind production and preview KV in Wrangler config
+        env:
+          PROD_ID: ${{ steps.kv.outputs.production_id }}
+          PREVIEW_ID: ${{ steps.kv.outputs.preview_id }}
+        run: |
+          set -euo pipefail
+          cat > wrangler.toml <<EOF
+          name = "youteach"
+          pages_build_output_dir = "./dist"
+          compatibility_date = "2026-09-14"
+
+          [[kv_namespaces]]
+          binding = "YOUTEACH_AUTH"
+          id = "$PROD_ID"
+
+          [[env.preview.kv_namespaces]]
+          binding = "YOUTEACH_AUTH"
+          id = "$PREVIEW_ID"
+          EOF
+
+      - name: Commit KV bindings
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- wrangler.toml; then
+            echo "Wrangler KV bindings already current."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add wrangler.toml
+            git commit -m "infra: bind YouTeach auth KV namespaces"
+            git push origin HEAD:feature/cog-youteach-secure-current-20260920
+          fi
+
+      - name: Verify and deploy isolated preview
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          node --test tests/*.test.mjs
+          sh build-pages.sh
+          npx wrangler@4 pages deploy dist             --project-name=youteach             --branch=cog-secure-current             --commit-dirty=true >/dev/null
+
+      - name: Verify preview auth binding is active
+        run: |
+          set -euo pipefail
+          PREVIEW='https://cog-secure-current.youteach.pages.dev'
+          STATUS="$(curl -sS -o /tmp/auth-check.json -w '%{http_code}'             -X POST "$PREVIEW/api/teacher-session"             -H 'Content-Type: application/json'             --data '{"username":"preview-check","password":"not-a-real-credential"}')"
+          test "$STATUS" != '503'
+          rm -f /tmp/auth-check.json
