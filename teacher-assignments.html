@@ -816,7 +816,7 @@
     .manual-criterion-list{display:grid;gap:2px}
     .manual-criterion-row{
       display:grid;
-      grid-template-columns:minmax(0,1fr) 104px 78px;
+      grid-template-columns:minmax(0,1fr) 78px 104px;
       gap:5px;
       align-items:center;
       padding:3px 0;
@@ -1754,14 +1754,7 @@
 
               <button id="clearAssignmentFiltersBtn" class="assignment-filter-clear" type="button">Clear</button>
 
-              <details id="assignmentActionsMenu" class="assignment-actions-menu">
-                <summary>Actions</summary>
-                <div class="assignment-actions-popover">
-                  <button id="showCreateAssignmentBtn" type="button">+ Create Assignment</button>
-                  <button id="saveSelectedTemplateBtn" type="button" hidden tabindex="-1">Save selected as template</button>
-                  <div id="assignmentTemplateStatus" class="status-text"></div>
-                </div>
-              </details>
+              
             </div>
 
             <div class="assignment-carousel-shell">
@@ -1956,7 +1949,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-  <script type="module" src="teacher-assignments.js?v=canonical-create-assignment-20260920"></script>
+  <script type="module" src="teacher-assignments.js?v=cog-reentry-20260920"></script>
   <script defer src="shared-ui-fixes.js?v=titlebar-hamburger-20260916"></script>
 </body>
 </html>
