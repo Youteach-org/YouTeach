@@ -100,3 +100,48 @@ test('bulk migration rejects an invalid bootstrap bearer before reading Firebase
     globalThis.fetch=previousFetch;
   }
 });
+
+test('preview copy-only migration keeps public passwords and does not claim cutover readiness',async()=>{
+  assert.equal(existsSync(endpointUrl),true);
+  const { onRequestPost }=await import(endpointUrl.href+'?copy='+Date.now());
+
+  const kv=new FakeKV();
+  const students={
+    ghost01:{studentNumber:'GHOST-01',nickname:'Ghost01',password:'ghost-pass'}
+  };
+  const previousFetch=globalThis.fetch;
+  globalThis.fetch=async(url,options={})=>{
+    const method=String(options.method||'GET').toUpperCase();
+    if(method==='GET'&&String(url).endsWith('/students.json'))return jsonResponse(students);
+    if(method==='PATCH')return jsonResponse({ok:true});
+    return jsonResponse({error:'unexpected request'},500);
+  };
+
+  try{
+    const request=new Request('https://youteach.test/api/auth-migrate-students',{
+      method:'POST',
+      headers:{
+        Authorization:'Bearer bootstrap-secret',
+        'Content-Type':'application/json'
+      },
+      body:JSON.stringify({removePublicPasswords:false})
+    });
+    const response=await onRequestPost({
+      request,
+      env:{
+        YOUTEACH_AUTH:kv,
+        YOUTEACH_AUTH_BOOTSTRAP_SECRET:'bootstrap-secret'
+      }
+    });
+    const data=await response.json();
+    assert.equal(response.status,200);
+    assert.equal(data.migrated,1);
+    assert.equal(data.pending,0);
+    assert.equal(data.publicCredentialFieldsRemaining,1);
+    assert.equal(data.readyForCredentialCutover,false);
+    assert.equal(students.ghost01.password,'ghost-pass');
+    assert.ok(kv.map.has('student:ghost01'));
+  }finally{
+    globalThis.fetch=previousFetch;
+  }
+});
