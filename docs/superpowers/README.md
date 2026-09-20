@@ -49,7 +49,13 @@ GitHub is the source of truth. Chat memory is secondary.
    - real assignment submission and grading verification;
    - Buzzer simulation.
 
-6. Relevant implementation files and recent commits on `main`.
+6. `docs/superpowers/specs/2026-09-20-live-cog-session-bridge.md`
+   - teacher-controlled live COG sessions from YouTeach Buzzer;
+   - group-scoped Student Buzzer game access;
+   - verified identity handoff and automatic result return;
+   - explicit end plus 60-minute zero-presence expiry.
+
+7. Relevant implementation files and recent commits on `main`.
    - UI micro-decisions that are already implemented are authoritative in code/commit history even when not repeated word-for-word in a spec.
 
 ## Global UI rules
@@ -64,6 +70,10 @@ Whenever a YouTeach page contains a list with multi-selection, use the standard 
 - when only some items are selected, the master checkbox uses the indeterminate state.
 
 Do not replace this standard pattern with separate `Select all` / `Deselect all` buttons unless a specific page explicitly requires them. This is a standing project-wide UX rule for current and future list-based pages.
+
+## Interaction convention
+
+- Number every assistant response to this user. Keep the response number visible at the beginning of each reply when working on this project.
 
 ## Continuity rules
 
