@@ -423,3 +423,13 @@ Accepted behavior:
 - the first Firebase snapshot after page load does not replay an old buzz;
 - clearing `currentBuzz` arms the alert for the next student press;
 - browsers may require one teacher interaction with the page before programmatic audio is allowed, so the audio context is primed on the first pointer or keyboard interaction.
+
+
+## Buzzer active-team exhaustion — 2026-09-20
+
+Accepted behavior:
+- `Mark Wrong / Next` locks the team that answered incorrectly;
+- after locking that team, the Teacher Buzzer evaluates only teams that currently have at least one active student in the session group;
+- if every active team is locked, the round closes automatically because no eligible team remains to answer;
+- inactive/offline teams must not keep a round artificially open;
+- opening a new round clears all round lockouts as before.
