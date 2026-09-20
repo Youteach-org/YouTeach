@@ -27,8 +27,7 @@ function round2(value){return Math.round((Number(value)+Number.EPSILON)*100)/100
 
 export function officialCogResultsEnabled(env={}){
   return String(env?.YOUTEACH_COG_OFFICIAL_RESULTS_ENABLED||'').toLowerCase()==='true' &&
-    String(env?.YOUTEACH_AUTH_HARDENED||'').toLowerCase()==='true' &&
-    Boolean(env?.YOUTEACH_AUTH);
+    String(env?.YOUTEACH_AUTH_HARDENED||'').toLowerCase()==='true';
 }
 
 export function expectedSuccessesForMode(modeId){
