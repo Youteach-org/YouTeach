@@ -535,6 +535,8 @@ Buzzer:
 
 ## Group evaluation model and Students grade dashboard — 2026-09-20
 
+> **SUPERSEDED later on 2026-09-20:** Do not implement the fixed Tasks / Exams / Participation / Attendance model below. It is retained only as history. The canonical model is **Dynamic group evaluation criteria and reusable templates — 2026-09-20**.
+
 This supersedes the fixed three-column raw-points interpretation on the Teacher **Students** page.
 
 ### Group creation / configuration
