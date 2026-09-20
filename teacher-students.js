@@ -1,7 +1,7 @@
 import { db } from "./firebase.js";
 import { ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
-import { migrateExistingStudentsForTeacher } from "./student-auth.js";
+import { migrateExistingStudentsForTeacher } from "./student-auth.js?v=group-evaluation-20260920";
 import {
   calculateBlockGrade,
   evaluationBlockNames,
