@@ -6,6 +6,7 @@
   <title>Create Assignment</title>
   <style>
     *{box-sizing:border-box}
+    [hidden]{display:none!important}
     html,body{margin:0;min-height:100%;font-family:Arial,Helvetica,sans-serif;background:#f8fafc;color:#0f172a}
     body{padding:14px}
     .create-assignment-module{display:grid;gap:12px}
@@ -26,6 +27,13 @@
     .field-help{font-size:9px;line-height:1.3;color:#64748b}
     .title-field{grid-column:span 2}
     .instructions-field{grid-column:span 3}
+    .student-instructions{grid-column:1/-1}
+    .student-instructions textarea{
+      min-height:170px;
+      font-size:13px;
+      line-height:1.45;
+      padding:11px 12px
+    }
     .full{grid-column:1/-1}
     .target-field{border:1px solid #bfdbfe;background:#eff6ff;border-radius:9px;padding:8px}
     .rubric{grid-column:1/-1;border:1px solid #dbeafe;border-radius:10px;background:#f8fafc;padding:10px;display:grid;gap:9px}
@@ -79,7 +87,7 @@
     @media(max-width:650px){
       body{padding:10px}
       .create-grid{grid-template-columns:1fr}
-      .title-field,.instructions-field,.full{grid-column:1}
+      .title-field,.instructions-field,.student-instructions,.full{grid-column:1}
       .rubric-columns{grid-template-columns:1fr}
       .preset-grid{grid-template-columns:1fr}
       .criteria-row{grid-template-columns:1fr 1fr}
@@ -115,7 +123,7 @@
         </select>
       </div>
 
-      <div class="field" id="assignmentOtherTypeField" hidden>
+      <div class="field" id="assignmentOtherTypeField" hidden style="display:none">
         <label for="assignmentOtherType">Specify other type</label>
         <input id="assignmentOtherType" placeholder="e.g. Lab, Debate">
       </div>
@@ -148,9 +156,9 @@
         <div id="taskCodeStatus" class="field-help">Complete the assignment information to generate the code.</div>
       </div>
 
-      <div class="field instructions-field">
-        <label for="assignmentInstructions">Instructions for students</label>
-        <textarea id="assignmentInstructions" placeholder="What should students do and submit?"></textarea>
+      <div class="field student-instructions">
+        <label for="assignmentInstructions">Instructions for students — what they should do and submit</label>
+        <textarea id="assignmentInstructions" placeholder="Write the complete instructions for the students: what they must do, what they must include, and exactly what they must submit."></textarea>
       </div>
 
       <section class="rubric" aria-labelledby="criteriaHeading">
@@ -209,6 +217,6 @@
     </div>
   </main>
 
-  <script type="module" src="assignment-create-module.js?v=20260920"></script>
+  <script type="module" src="assignment-create-module.js?v=20260920-2"></script>
 </body>
 </html>
