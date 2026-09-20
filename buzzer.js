@@ -165,11 +165,17 @@ function getFirstName(student) {
 }
 
 function ensureBlockPointsObject(student) {
-  return {
-    "Block 1": Number(student?.blockPoints?.["Block 1"] || 0),
-    "Block 2": Number(student?.blockPoints?.["Block 2"] || 0),
-    "Block 3": Number(student?.blockPoints?.["Block 3"] || 0)
-  };
+  const source =
+    student?.blockPoints && typeof student.blockPoints === "object"
+      ? student.blockPoints
+      : {};
+  const result = Object.fromEntries(
+    Object.entries(source).map(([blockName, value]) => [blockName, Number(value || 0)])
+  );
+  for (const blockName of ["Block 1", "Block 2", "Block 3"]) {
+    if (result[blockName] === undefined) result[blockName] = 0;
+  }
+  return result;
 }
 
 function isBlockClosed(blockName) {
