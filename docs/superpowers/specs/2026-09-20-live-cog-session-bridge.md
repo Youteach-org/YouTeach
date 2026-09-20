@@ -240,8 +240,8 @@ Approved sequence:
 2. The Team Source count shows present students or all students in the group, depending on the selected source.
 3. The teacher chooses the number of teams and generates them.
 4. Only after generated teams exist does the **Assignments** control become available.
-5. Assignments opens as an in-page modal/workspace; it does not navigate the teacher away from Buzzer.
-6. The modal uses the same Teacher Assignments implementation, not a duplicated simplified assignment form.
+5. Assignments opens a dedicated **Create Assignment** popup module; it does not navigate the teacher away from Buzzer and it does not load the full Teacher Assignments page.
+6. The popup uses the shared dedicated Create Assignment module (`assignment-create-module.html`) used by both Buzzer and the normal Assignments page.
 
 Assignment creation rules:
 
