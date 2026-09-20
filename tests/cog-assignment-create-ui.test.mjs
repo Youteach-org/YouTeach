@@ -12,8 +12,8 @@ import {
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
-const html = readFileSync(join(root, 'teacher-assignments.html'), 'utf8');
-const js = readFileSync(join(root, 'teacher-assignments.js'), 'utf8');
+const html = readFileSync(join(root, 'assignment-create-module.html'), 'utf8');
+const js = readFileSync(join(root, 'assignment-create-module.js'), 'utf8');
 const buildScript = readFileSync(join(root, 'build-pages.sh'), 'utf8');
 
 test('COG catalog exposes only explicitly certified assignable games', () => {
@@ -61,7 +61,7 @@ test('COG assignment draft validates game, mode, difficulty, points and optional
   }), /mode/i);
 });
 
-test('teacher assignment form exposes visible COG configuration controls', () => {
+test('shared Create Assignment module exposes visible COG configuration controls', () => {
   assert.match(html, /<option value="COG">COG Activity \(COG\)<\/option>/);
   assert.match(html, /id="cogActivityConfigPanel"/);
   assert.match(html, /id="cogGame"/);
@@ -72,7 +72,7 @@ test('teacher assignment form exposes visible COG configuration controls', () =>
   assert.match(html, /id="cogUndoSubmissionEnabled"/);
 });
 
-test('teacher assignment creation persists COG configuration and does not use Drive storage', () => {
+test('shared Create Assignment module persists COG configuration and does not use Drive storage', () => {
   assert.match(js, /from "\.\/cog-activity-catalog\.mjs"/);
   assert.match(js, /validateCogAssignmentDraft/);
   assert.match(js, /cogActivity:/);
