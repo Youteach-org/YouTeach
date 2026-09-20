@@ -4,8 +4,12 @@ import { generateId } from "./app.js";
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
 import { migrateExistingStudentsForTeacher } from "./student-auth.js?v=group-evaluation-20260920";
 import {
+  CLE_FALL_2026_EVALUATION_PRESET,
+  EVALUATION_SOURCE_OPTIONS,
+  criteriaToFirebaseObject,
   groupEvaluationConfig,
   evaluationWeightTotal,
+  normalizeEvaluationCriteria,
   normalizeEvaluationUnitCount
 } from "./group-evaluation-model.js";
 
@@ -18,10 +22,11 @@ const logoutBtn = document.getElementById("logoutBtn");
 
 const groupNameInput = document.getElementById("groupNameInput");
 const evaluationUnitCountInput = document.getElementById("evaluationUnitCountInput");
-const tasksWeightInput = document.getElementById("tasksWeightInput");
-const examsWeightInput = document.getElementById("examsWeightInput");
-const participationWeightInput = document.getElementById("participationWeightInput");
-const attendanceWeightInput = document.getElementById("attendanceWeightInput");
+const evaluationTemplateSelect = document.getElementById("evaluationTemplateSelect");
+const useEvaluationTemplateBtn = document.getElementById("useEvaluationTemplateBtn");
+const saveEvaluationTemplateBtn = document.getElementById("saveEvaluationTemplateBtn");
+const addEvaluationCriterionBtn = document.getElementById("addEvaluationCriterionBtn");
+const evaluationCriteriaRows = document.getElementById("evaluationCriteriaRows");
 const evaluationWeightTotalLabel = document.getElementById("evaluationWeightTotal");
 const groupEvaluationStatus = document.getElementById("groupEvaluationStatus");
 const createGroupBtn = document.getElementById("createGroupBtn");
@@ -48,11 +53,12 @@ const groupsTableBody = document.getElementById("groupsTableBody");
 teacherIdentity.textContent = getTeacherName();
 logoutBtn.addEventListener("click", logoutTeacher);
 
-refreshEvaluationWeightTotal();
-
+renderEvaluationTemplateOptions();
+setCriteriaEditor([]);
 
 let groupsCache = {};
 let studentsCache = {};
+let evaluationTemplatesCache = {};
 let editingGroupName = "";
 
 
@@ -65,21 +71,128 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
-function evaluationWeightsFromForm() {
-  return {
-    tasks: Number(tasksWeightInput.value || 0),
-    exams: Number(examsWeightInput.value || 0),
-    participation: Number(participationWeightInput.value || 0),
-    attendance: Number(attendanceWeightInput.value || 0)
-  };
+function makeCriterionId() {
+  return `criterion-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+}
+
+function sourceOptionsHtml(selected = "manual") {
+  return EVALUATION_SOURCE_OPTIONS.map((option) =>
+    `<option value="${escapeHtml(option.key)}" ${option.key === selected ? "selected" : ""}>${escapeHtml(option.label)}</option>`
+  ).join("");
+}
+
+function criterionRowHtml(criterion = {}) {
+  const id = String(criterion.id || makeCriterionId());
+  return `
+    <div class="criterion-row" data-evaluation-criterion data-criterion-id="${escapeHtml(id)}">
+      <input data-criterion-name value="${escapeHtml(criterion.name || "")}" placeholder="Criterion name">
+      <input data-criterion-weight type="number" min="0" max="100" step="0.1"
+        value="${Number(criterion.weight || 0) || ""}" placeholder="%">
+      <select data-criterion-source>${sourceOptionsHtml(criterion.source || "manual")}</select>
+      <button class="criterion-remove" type="button" data-remove-evaluation-criterion title="Remove criterion">×</button>
+    </div>
+  `;
+}
+
+function addEvaluationCriterionRow(criterion = {}) {
+  evaluationCriteriaRows.insertAdjacentHTML("beforeend", criterionRowHtml(criterion));
+  refreshEvaluationWeightTotal();
+}
+
+function criteriaFromForm() {
+  return normalizeEvaluationCriteria(
+    [...evaluationCriteriaRows.querySelectorAll("[data-evaluation-criterion]")].map((row, order) => ({
+      id: String(row.dataset.criterionId || makeCriterionId()),
+      name: String(row.querySelector("[data-criterion-name]")?.value || "").trim(),
+      weight: Number(row.querySelector("[data-criterion-weight]")?.value || 0),
+      source: String(row.querySelector("[data-criterion-source]")?.value || "manual"),
+      order
+    }))
+  );
+}
+
+function setCriteriaEditor(criteria = []) {
+  const normalized = normalizeEvaluationCriteria(criteria);
+  evaluationCriteriaRows.innerHTML = "";
+  if (normalized.length) normalized.forEach((criterion) => addEvaluationCriterionRow(criterion));
+  else addEvaluationCriterionRow();
+  refreshEvaluationWeightTotal();
 }
 
 function refreshEvaluationWeightTotal() {
-  const total = evaluationWeightTotal(evaluationWeightsFromForm());
+  const total = evaluationWeightTotal(criteriaFromForm());
   evaluationWeightTotalLabel.textContent = `${total} / 100%`;
   evaluationWeightTotalLabel.classList.toggle("ok", Math.abs(total - 100) < 0.01);
   evaluationWeightTotalLabel.classList.toggle("bad", Math.abs(total - 100) >= 0.01);
   return total;
+}
+
+function renderEvaluationTemplateOptions() {
+  const previous = evaluationTemplateSelect.value;
+  const savedOptions = Object.entries(evaluationTemplatesCache || {})
+    .filter(([, template]) => template && typeof template === "object")
+    .sort((a, b) => String(a[1]?.name || "").localeCompare(String(b[1]?.name || "")))
+    .map(([id, template]) =>
+      `<option value="saved:${escapeHtml(id)}">${escapeHtml(template.name || "Evaluation template")}</option>`
+    )
+    .join("");
+
+  evaluationTemplateSelect.innerHTML = `
+    <option value="">Start with custom criteria</option>
+    <option value="builtin:${CLE_FALL_2026_EVALUATION_PRESET.id}">${escapeHtml(CLE_FALL_2026_EVALUATION_PRESET.name)}</option>
+    ${savedOptions}
+  `;
+
+  if ([...evaluationTemplateSelect.options].some((option) => option.value === previous)) {
+    evaluationTemplateSelect.value = previous;
+  }
+}
+
+function selectedEvaluationTemplate() {
+  const value = String(evaluationTemplateSelect.value || "");
+  if (value === `builtin:${CLE_FALL_2026_EVALUATION_PRESET.id}`) {
+    return CLE_FALL_2026_EVALUATION_PRESET;
+  }
+  if (value.startsWith("saved:")) {
+    return evaluationTemplatesCache[value.slice(6)] || null;
+  }
+  return null;
+}
+
+function applyEvaluationTemplate(template) {
+  if (!template) return;
+  evaluationUnitCountInput.value = String(normalizeEvaluationUnitCount(template.evaluationUnitCount, 3));
+  setCriteriaEditor(template.evaluationCriteria || []);
+  groupEvaluationStatus.textContent = `Loaded template: ${template.name || "Evaluation template"}.`;
+  groupEvaluationStatus.className = "status-text ok";
+}
+
+async function saveCurrentEvaluationAsTemplate() {
+  const criteria = criteriaFromForm();
+  const total = evaluationWeightTotal(criteria);
+  if (!criteria.length || Math.abs(total - 100) >= 0.01) {
+    groupEvaluationStatus.textContent = "Complete criteria totaling 100% before saving a template.";
+    groupEvaluationStatus.className = "status-text bad";
+    return;
+  }
+
+  const suggested = editingGroupName ? `${editingGroupName} evaluation` : "";
+  const name = String(prompt("Template name:", suggested) || "").trim();
+  if (!name) return;
+
+  const target = push(ref(db, "groupEvaluationTemplates"));
+  const now = Date.now();
+  await set(target, {
+    name,
+    evaluationUnitCount: normalizeEvaluationUnitCount(evaluationUnitCountInput.value, 3),
+    evaluationCriteria: criteriaToFirebaseObject(criteria),
+    createdAt: now,
+    updatedAt: now,
+    createdBy: getTeacherName()
+  });
+
+  groupEvaluationStatus.textContent = `Template saved: ${name}.`;
+  groupEvaluationStatus.className = "status-text ok";
 }
 
 function resetGroupForm() {
@@ -87,10 +200,8 @@ function resetGroupForm() {
   groupNameInput.disabled = false;
   groupNameInput.value = "";
   evaluationUnitCountInput.value = "3";
-  tasksWeightInput.value = "";
-  examsWeightInput.value = "";
-  participationWeightInput.value = "";
-  attendanceWeightInput.value = "";
+  evaluationTemplateSelect.value = "";
+  setCriteriaEditor([]);
   createGroupBtn.textContent = "Create Group";
   cancelGroupEditBtn.hidden = true;
   groupEvaluationStatus.textContent = "";
@@ -107,14 +218,12 @@ function beginGroupEvaluationEdit(groupName) {
   groupNameInput.value = groupName;
   groupNameInput.disabled = true;
   evaluationUnitCountInput.value = String(config.unitCount);
-  tasksWeightInput.value = String(config.weights.tasks || "");
-  examsWeightInput.value = String(config.weights.exams || "");
-  participationWeightInput.value = String(config.weights.participation || "");
-  attendanceWeightInput.value = String(config.weights.attendance || "");
+  evaluationTemplateSelect.value = "";
+  setCriteriaEditor(config.criteria);
   createGroupBtn.textContent = "Save Group Settings";
   cancelGroupEditBtn.hidden = false;
   groupEvaluationStatus.textContent = config.configured
-    ? "Editing evaluation settings."
+    ? "Editing this group's evaluation criteria. You may remove old criteria and add new ones."
     : "This group still needs evaluation settings.";
   groupEvaluationStatus.className = config.configured ? "status-text" : "status-text bad";
   refreshEvaluationWeightTotal();
@@ -146,7 +255,9 @@ function renderGroupsTable() {
     const count = Object.values(studentsCache || {}).filter((student) => (student.groupName || "") === groupName).length;
     const config = groupEvaluationConfig(group);
     const evaluationSummary = config.configured
-      ? `Tasks ${config.weights.tasks}% · Exams ${config.weights.exams}% · Participation ${config.weights.participation}% · Attendance ${config.weights.attendance}%`
+      ? config.criteria.map((criterion) =>
+          `${escapeHtml(criterion.name)} ${criterion.weight}%`
+        ).join(" · ")
       : '<span class="setup-required">Evaluation setup required</span>';
 
     return `
@@ -254,8 +365,14 @@ createGroupBtn.addEventListener("click", async () => {
   }
 
   const evaluationUnitCount = normalizeEvaluationUnitCount(evaluationUnitCountInput.value, 3);
-  const evaluationWeights = evaluationWeightsFromForm();
-  const total = evaluationWeightTotal(evaluationWeights);
+  const evaluationCriteria = criteriaFromForm();
+  const total = evaluationWeightTotal(evaluationCriteria);
+
+  if (!evaluationCriteria.length || evaluationCriteria.some((criterion) => !criterion.name)) {
+    groupEvaluationStatus.textContent = "Add at least one named evaluation criterion.";
+    groupEvaluationStatus.className = "status-text bad";
+    return;
+  }
 
   if (Math.abs(total - 100) >= 0.01) {
     groupEvaluationStatus.textContent = "Evaluation criteria must total exactly 100%.";
@@ -276,7 +393,8 @@ createGroupBtn.addEventListener("click", async () => {
     name: groupName,
     createdAt: Number(existing.createdAt || now),
     evaluationUnitCount,
-    evaluationWeights,
+    evaluationCriteria: criteriaToFirebaseObject(evaluationCriteria),
+    evaluationWeights: null,
     evaluationConfiguredAt: now,
     evaluationConfiguredBy: getTeacherName()
   });
@@ -286,9 +404,29 @@ createGroupBtn.addEventListener("click", async () => {
   alert(wasEditing ? "Group evaluation settings saved." : "Group created.");
 });
 
-[tasksWeightInput, examsWeightInput, participationWeightInput, attendanceWeightInput]
-  .forEach((input) => input.addEventListener("input", refreshEvaluationWeightTotal));
+addEvaluationCriterionBtn.addEventListener("click", () => addEvaluationCriterionRow());
 
+evaluationCriteriaRows.addEventListener("input", refreshEvaluationWeightTotal);
+evaluationCriteriaRows.addEventListener("change", refreshEvaluationWeightTotal);
+evaluationCriteriaRows.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-remove-evaluation-criterion]");
+  if (!button) return;
+  button.closest("[data-evaluation-criterion]")?.remove();
+  if (!evaluationCriteriaRows.querySelector("[data-evaluation-criterion]")) addEvaluationCriterionRow();
+  refreshEvaluationWeightTotal();
+});
+
+useEvaluationTemplateBtn.addEventListener("click", () => {
+  const template = selectedEvaluationTemplate();
+  if (!template) {
+    groupEvaluationStatus.textContent = "Select an evaluation template first.";
+    groupEvaluationStatus.className = "status-text bad";
+    return;
+  }
+  applyEvaluationTemplate(template);
+});
+
+saveEvaluationTemplateBtn.addEventListener("click", saveCurrentEvaluationAsTemplate);
 cancelGroupEditBtn.addEventListener("click", resetGroupForm);
 
 groupsTableBody.addEventListener("click", (event) => {
@@ -408,6 +546,11 @@ onValue(ref(db, "groups"), (snapshot) => {
   groupsCache = snapshot.val() || {};
   renderGroupSelectors();
   renderGroupsTable();
+});
+
+onValue(ref(db, "groupEvaluationTemplates"), (snapshot) => {
+  evaluationTemplatesCache = snapshot.val() || {};
+  renderEvaluationTemplateOptions();
 });
 
 onValue(ref(db, "students"), (snapshot) => {
