@@ -12,23 +12,30 @@ const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..");
 const SECRET = "test-session-secret-abcdefghijklmnopqrstuvwxyz-123456";
 
-test("Buzzer requests an authenticated COG teacher launch instead of opening a bare URL", () => {
-  const source = readFileSync(join(root, "buzzer.js"), "utf8");
-  assert.match(source, /getTeacherSessionToken/);
-  assert.match(source, /fetch\("\/api\/cog-live-teacher-launch"/);
-  assert.match(source, /Authorization/);
-  assert.doesNotMatch(source, /window\.open\("https:\/\/classroom-online-games\.pages\.dev\/teacher\/"\s*,/);
+test("COG teacher launch originates from Create Assignment, not a permanent Buzzer button", () => {
+  const buzzerHtml = readFileSync(join(root, "buzzer.html"), "utf8");
+  const moduleJs = readFileSync(join(root, "assignment-create-module.js"), "utf8");
+
+  assert.doesNotMatch(buzzerHtml, /id="openCogTeacherBtn"/);
+  assert.match(moduleJs, /getTeacherSessionToken/);
+  assert.match(moduleJs, /\/api\/cog-live-teacher-launch/);
+  assert.match(moduleJs, /assignmentId:\s*target\.key/);
+  assert.match(moduleJs, /typeCode\s*===\s*"COG"/);
 });
 
 test("teacher launch rejects missing authentication before Firebase access", async () => {
   const response = await createTeacherLaunch({
-    request: new Request("https://youteach.pages.dev/api/cog-live-teacher-launch", { method: "POST" }),
+    request: new Request("https://youteach.pages.dev/api/cog-live-teacher-launch", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ assignmentId: "assignment-1" })
+    }),
     env: { YOUTEACH_SESSION_SECRET: SECRET }
   });
   assert.equal(response.status, 401);
 });
 
-test("teacher launch reads canonical active Buzzer group and signs it", async () => {
+test("teacher launch requires a canonical COG assignment for the active Buzzer group", async () => {
   const now = Date.now();
   const teacherSession = await signTeacherSession({
     username: "teacher",
@@ -45,9 +52,20 @@ test("teacher launch reads canonical active Buzzer group and signs it", async ()
     if (value.endsWith("/session/current.json")) {
       return new Response(JSON.stringify({
         active: true,
+        sessionId: "yt-123",
         createdAt: 123456789,
+        groupName: "533-2"
+      }), { status: 200 });
+    }
+    if (value.endsWith("/assignments/assignment-1.json")) {
+      return new Response(JSON.stringify({
+        active: true,
+        assignmentTypeCode: "COG",
+        title: "Verb practice",
         groupName: "533-2",
-        assignments: {}
+        recipientStudentKeys: ["student-1", "student-2"],
+        recipientTeamLabels: ["Team 1"],
+        recipientTeamTarget: "Team 1"
       }), { status: 200 });
     }
     throw new Error("Unexpected fetch: " + value);
@@ -57,7 +75,11 @@ test("teacher launch reads canonical active Buzzer group and signs it", async ()
     const response = await createTeacherLaunch({
       request: new Request("https://preview.youteach.pages.dev/api/cog-live-teacher-launch", {
         method: "POST",
-        headers: { Authorization: "Bearer " + teacherSession }
+        headers: {
+          Authorization: "Bearer " + teacherSession,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ assignmentId: "assignment-1" })
       }),
       env: { YOUTEACH_SESSION_SECRET: SECRET }
     });
@@ -66,17 +88,18 @@ test("teacher launch reads canonical active Buzzer group and signs it", async ()
     const url = new URL(payload.launchUrl);
     assert.equal(url.origin, "https://classroom-online-games.pages.dev");
     assert.equal(url.pathname, "/teacher/");
-    assert.equal(url.searchParams.get("issuer"), "https://preview.youteach.pages.dev");
     const launch = await verifyCogLiveToken(url.searchParams.get("ytLiveTeacher"), SECRET, now + 1000);
     assert.equal(launch?.purpose, "cog-live-teacher");
+    assert.equal(launch?.assignmentId, "assignment-1");
     assert.equal(launch?.groupName, "533-2");
-    assert.equal(launch?.youTeachSessionId, "123456789");
+    assert.deepEqual(launch?.recipientStudentKeys, ["student-1", "student-2"]);
+    assert.equal(launch?.youTeachSessionId, "yt-123");
   } finally {
     globalThis.fetch = originalFetch;
   }
 });
 
-test("teacher launch rejects when no active Buzzer session exists", async () => {
+test("teacher launch rejects non-COG or wrong-group assignments", async () => {
   const now = Date.now();
   const teacherSession = await signTeacherSession({
     username: "teacher",
@@ -86,13 +109,36 @@ test("teacher launch rejects when no active Buzzer session exists", async () => 
     iat: now,
     exp: now + 60 * 60 * 1000
   }, SECRET);
+
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = async () => new Response(JSON.stringify({ active: false }), { status: 200 });
+  globalThis.fetch = async (url) => {
+    const value = String(url);
+    if (value.endsWith("/session/current.json")) {
+      return new Response(JSON.stringify({
+        active: true,
+        sessionId: "yt-123",
+        groupName: "533-2"
+      }), { status: 200 });
+    }
+    if (value.endsWith("/assignments/assignment-1.json")) {
+      return new Response(JSON.stringify({
+        active: true,
+        assignmentTypeCode: "HW",
+        groupName: "533-2"
+      }), { status: 200 });
+    }
+    throw new Error("Unexpected fetch: " + value);
+  };
+
   try {
     const response = await createTeacherLaunch({
       request: new Request("https://youteach.pages.dev/api/cog-live-teacher-launch", {
         method: "POST",
-        headers: { Authorization: "Bearer " + teacherSession }
+        headers: {
+          Authorization: "Bearer " + teacherSession,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ assignmentId: "assignment-1" })
       }),
       env: { YOUTEACH_SESSION_SECRET: SECRET }
     });
