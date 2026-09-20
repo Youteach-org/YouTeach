@@ -5,9 +5,11 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import {
   calculateBlockGrade,
+  criteriaToFirebaseObject,
   evaluationBlockNames,
   evaluationWeightTotal,
-  groupEvaluationConfig
+  groupEvaluationConfig,
+  normalizeEvaluationCriteria
 } from '../group-evaluation-model.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -16,88 +18,114 @@ const enrollmentHtml = readFileSync(join(root, 'teacher-enrollment.html'), 'utf8
 const enrollmentJs = readFileSync(join(root, 'teacher-enrollment.js'), 'utf8');
 const studentsHtml = readFileSync(join(root, 'teacher-students.html'), 'utf8');
 const studentsJs = readFileSync(join(root, 'teacher-students.js'), 'utf8');
+const createAssignmentHtml = readFileSync(join(root, 'assignment-create-module.html'), 'utf8');
 const createAssignmentJs = readFileSync(join(root, 'assignment-create-module.js'), 'utf8');
 
-test('group evaluation weights must form a 100 percent policy', () => {
-  assert.equal(evaluationWeightTotal({ tasks: 30, exams: 40, participation: 20, attendance: 10 }), 100);
-  assert.equal(groupEvaluationConfig({
+const criteria = [
+  { id: 'written', name: 'Written exam', weight: 35, source: 'writtenExam', order: 0 },
+  { id: 'oral', name: 'Oral exam', weight: 40, source: 'oralExam', order: 1 },
+  { id: 'tasks', name: 'Tasks', weight: 10, source: 'tasks', order: 2 },
+  { id: 'verbs', name: 'Verbs exam', weight: 15, source: 'verbsExam', order: 3 }
+];
+
+test('group evaluation criteria are dynamic and must total 100 percent', () => {
+  assert.equal(evaluationWeightTotal(criteria), 100);
+  const config = groupEvaluationConfig({
     evaluationUnitCount: 4,
-    evaluationWeights: { tasks: 30, exams: 40, participation: 20, attendance: 10 }
-  }).configured, true);
+    evaluationCriteria: criteriaToFirebaseObject(criteria)
+  });
+  assert.equal(config.configured, true);
+  assert.equal(config.criteria.length, 4);
+  assert.equal(config.criteria[0].name, 'Written exam');
   assert.equal(groupEvaluationConfig({ name: 'Legacy' }).configured, false);
+});
+
+test('old fixed evaluationWeights are no longer accepted as canonical configuration', () => {
+  const config = groupEvaluationConfig({
+    evaluationUnitCount: 3,
+    evaluationWeights: { tasks: 25, exams: 50, participation: 15, attendance: 10 }
+  });
+  assert.equal(config.configured, false);
+  assert.equal(config.legacyFixedWeightsPresent, true);
 });
 
 test('group block names come from configured evaluation unit count', () => {
   assert.deepEqual(
     evaluationBlockNames({
       evaluationUnitCount: 4,
-      evaluationWeights: { tasks: 25, exams: 25, participation: 25, attendance: 25 }
+      evaluationCriteria: criteriaToFirebaseObject(criteria)
     }),
     ['Block 1', 'Block 2', 'Block 3', 'Block 4']
   );
 });
 
-test('block grade applies configured category weights', () => {
+test('block grade applies arbitrary criteria and their configured weights', () => {
   const grade = calculateBlockGrade({
-    weights: { tasks: 30, exams: 40, participation: 20, attendance: 10 },
-    taskScores: [80, 100],
-    examScores: [75],
-    participationPoints: 12,
-    attendancePoints: 10
+    criteria,
+    valuesByCriterion: {
+      written: { value: 28, mode: 'contribution' },
+      oral: { value: 32, mode: 'contribution' },
+      tasks: { value: 0, mode: 'contribution' },
+      verbs: { value: 15, mode: 'contribution' }
+    }
   });
 
-  assert.equal(grade.contributions.tasks, 27);
-  assert.equal(grade.contributions.exams, 30);
-  assert.equal(grade.contributions.participation, 12);
-  assert.equal(grade.contributions.attendance, 10);
-  assert.equal(grade.total, 79);
+  assert.equal(grade.total, 75);
+  assert.equal(grade.criteria.find((item) => item.id === 'written').contribution, 28);
+  assert.equal(grade.criteria.find((item) => item.id === 'oral').contribution, 32);
 });
 
-test('legacy task and exam points remain fallback contributions', () => {
+test('score-mode criteria convert a 0-100 score into weighted contribution', () => {
   const grade = calculateBlockGrade({
-    weights: { tasks: 20, exams: 50, participation: 20, attendance: 10 },
-    legacyTaskPoints: 18,
-    legacyExamPoints: 45,
-    participationPoints: 50,
-    attendancePoints: 7
+    criteria: [{ id: 'project', name: 'Project', weight: 50, source: 'manual', order: 0 }],
+    valuesByCriterion: { project: { value: 80, mode: 'score' } }
   });
-
-  assert.equal(grade.contributions.tasks, 18);
-  assert.equal(grade.contributions.exams, 45);
-  assert.equal(grade.contributions.participation, 20);
-  assert.equal(grade.contributions.attendance, 7);
-  assert.equal(grade.total, 90);
+  assert.equal(grade.total, 40);
 });
 
-test('group creation UI captures units and four evaluation categories', () => {
+test('group creation UI uses a dynamic criterion editor and reusable templates', () => {
   for (const id of [
     'evaluationUnitCountInput',
-    'tasksWeightInput',
-    'examsWeightInput',
-    'participationWeightInput',
-    'attendanceWeightInput',
+    'evaluationTemplateSelect',
+    'useEvaluationTemplateBtn',
+    'saveEvaluationTemplateBtn',
+    'addEvaluationCriterionBtn',
+    'evaluationCriteriaRows',
     'evaluationWeightTotal'
   ]) {
     assert.match(enrollmentHtml, new RegExp(`id="${id}"`));
   }
-  assert.match(enrollmentJs, /evaluationWeights/);
-  assert.match(enrollmentJs, /evaluationUnitCount/);
+  assert.doesNotMatch(enrollmentHtml, /tasksWeightInput|examsWeightInput|participationWeightInput|attendanceWeightInput/);
+  assert.match(enrollmentJs, /criteriaToFirebaseObject/);
+  assert.match(enrollmentJs, /groupEvaluationTemplates/);
+  assert.match(enrollmentJs, /data-evaluation-criterion/);
   assert.match(enrollmentJs, /Evaluation criteria must total exactly 100%/);
-  assert.match(enrollmentJs, /data-edit-group-evaluation/);
 });
 
-test('Students renders dynamic block grades from group policy', () => {
+test('Students renders arbitrary criterion names and dynamic block grades', () => {
   assert.match(studentsHtml, /id="evaluationUnitCountCard"/);
   assert.match(studentsHtml, /id="evaluationSetupSummary"/);
-  assert.match(studentsJs, /evaluationBlockNames/);
+  assert.match(studentsJs, /config\.criteria\.map/);
   assert.match(studentsJs, /calculateBlockGrade/);
-  assert.match(studentsJs, /assignmentSubmissions/);
-  assert.match(studentsJs, /Setup required/);
-  assert.doesNotMatch(studentsJs, /getTotalPointsForBlock/);
+  assert.match(studentsJs, /evaluationCriterionScores/);
+  assert.match(studentsJs, /groupEvaluationCriterionId/);
+  assert.doesNotMatch(studentsJs, /config\.weights/);
 });
 
-test('new assignments are tagged with the active evaluation block', () => {
+test('new assignments can be linked to a group evaluation criterion', () => {
+  assert.match(createAssignmentHtml, /id="assignmentGroupCriterion"/);
+  assert.match(createAssignmentJs, /groupEvaluationCriterionId/);
+  assert.match(createAssignmentJs, /groupEvaluationCriterionName/);
+  assert.match(createAssignmentJs, /groupEvaluationConfig/);
   assert.match(createAssignmentJs, /evaluationBlock:/);
-  assert.match(createAssignmentJs, /settingsCache\.activeBlock/);
-  assert.match(createAssignmentJs, /onValue\(ref\(db, "settings"\)/);
+});
+
+test('normalization keeps teacher-defined criterion names and sources', () => {
+  const normalized = normalizeEvaluationCriteria({
+    customKey: { name: 'Portfolio', weight: 25, source: 'manual', order: 1 }
+  });
+  assert.equal(normalized.length, 1);
+  assert.equal(normalized[0].id, 'customKey');
+  assert.equal(normalized[0].name, 'Portfolio');
+  assert.equal(normalized[0].source, 'manual');
 });
