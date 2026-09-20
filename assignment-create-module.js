@@ -90,6 +90,7 @@ const basedOnSourceChip = document.getElementById("basedOnSourceChip");
 let groupsCache = {};
 let assignmentsCache = {};
 let assignmentTemplatesCache = {};
+let settingsCache = {};
 let loadedLibrarySource = null;
 let creationMode = "scratch";
 
@@ -1018,6 +1019,7 @@ async function createAssignment() {
           }
         : {}),
       groupName,
+      evaluationBlock: String(settingsCache.activeBlock || "Block 1"),
       ...targetMetadata,
       dueAt,
       active: true,
@@ -1148,4 +1150,8 @@ onValue(ref(db, "assignmentTemplates"), (snapshot) => {
   assignmentTemplatesCache = snapshot.val() || {};
   renderAssignmentLibraryFilters();
   if (creationMode === "library") renderAssignmentLibrary();
+});
+
+onValue(ref(db, "settings"), (snapshot) => {
+  settingsCache = snapshot.val() || {};
 });
