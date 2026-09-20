@@ -2463,7 +2463,7 @@ function renderDetail() {
     assignmentDetail.hidden = true;
     assignmentDetailEmpty.hidden = false;
     selectedDriveFolderUrl = "";
-    if (saveSelectedTemplateBtn) if (saveSelectedTemplateBtn) saveSelectedTemplateBtn.disabled = true;
+    if (saveSelectedTemplateBtn) saveSelectedTemplateBtn.disabled = true;
     return;
   }
 
@@ -2799,7 +2799,7 @@ async function saveSelectedAssignmentAsTemplate() {
     return;
   }
 
-  if (saveSelectedTemplateBtn) if (saveSelectedTemplateBtn) saveSelectedTemplateBtn.disabled = true;
+  if (saveSelectedTemplateBtn) saveSelectedTemplateBtn.disabled = true;
   assignmentTemplateStatus.textContent = "Saving template...";
   assignmentTemplateStatus.className = "status-text";
 
