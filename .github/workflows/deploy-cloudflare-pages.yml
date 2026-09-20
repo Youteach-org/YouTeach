@@ -56,27 +56,55 @@ jobs:
           PREVIEW='https://feature-cog-youteach-assignm.youteach.pages.dev'
           COG_PREVIEW='https://feature-youteach-cog-assignm.classroom-online-games.pages.dev'
 
+          echo "Checking student assignment assets..."
           curl -fsS --retry 5 --retry-delay 2 "$PREVIEW/student-assignments.html" -o /tmp/student-assignments.html
-          grep -q 'cog-assignment-box' /tmp/student-assignments.html
+          grep -q 'cog-assignment-box' /tmp/student-assignments.html || {
+            echo "::error::COG assignment card CSS was not found in deployed student-assignments.html"
+            exit 1
+          }
 
           curl -fsS --retry 5 --retry-delay 2 "$PREVIEW/student-assignments.js" -o /tmp/student-assignments.js
-          grep -q '/api/cog-assignment-launch' /tmp/student-assignments.js
-          grep -q 'Authorization' /tmp/student-assignments.js
+          grep -q '/api/cog-assignment-launch' /tmp/student-assignments.js || {
+            echo "::error::Deployed student-assignments.js does not call the COG assignment launch endpoint"
+            exit 1
+          }
+          grep -q 'Authorization' /tmp/student-assignments.js || {
+            echo "::error::Deployed student-assignments.js does not send signed-session authorization"
+            exit 1
+          }
 
+          echo "Checking unauthenticated assignment launch rejection..."
           STATUS="$(curl -sS -o /tmp/launch-no-auth.json -w '%{http_code}' \
             -X POST "$PREVIEW/api/cog-assignment-launch" \
             -H 'Content-Type: application/json' \
             --data '{"assignmentId":"smoke-test"}')"
-          test "$STATUS" = '401'
-          grep -q 'Sign in again' /tmp/launch-no-auth.json
+          echo "Launch endpoint status: $STATUS"
+          cat /tmp/launch-no-auth.json
+          test "$STATUS" = '401' || {
+            echo "::error::Expected 401 from unauthenticated COG assignment launch, got $STATUS"
+            exit 1
+          }
+          grep -q 'Sign in again' /tmp/launch-no-auth.json || {
+            echo "::error::Unauthenticated launch response did not contain the expected sign-in message"
+            exit 1
+          }
 
+          echo "Checking preview-to-preview CORS..."
           STATUS="$(curl -sS -D /tmp/cors-headers.txt -o /dev/null -w '%{http_code}' \
             -X OPTIONS "$PREVIEW/api/cog-launch-resolve" \
             -H "Origin: $COG_PREVIEW" \
             -H 'Access-Control-Request-Method: POST' \
             -H 'Access-Control-Request-Headers: Content-Type')"
-          test "$STATUS" = '204'
-          grep -qi "access-control-allow-origin: $COG_PREVIEW" /tmp/cors-headers.txt
+          echo "CORS preflight status: $STATUS"
+          cat /tmp/cors-headers.txt
+          test "$STATUS" = '204' || {
+            echo "::error::Expected 204 from COG launch resolver preflight, got $STATUS"
+            exit 1
+          }
+          tr -d '\r' < /tmp/cors-headers.txt | grep -Fqi "access-control-allow-origin: $COG_PREVIEW" || {
+            echo "::error::COG preview origin was not returned in Access-Control-Allow-Origin"
+            exit 1
+          }
 
       - name: Ensure YouTeach student session secret exists
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
