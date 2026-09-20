@@ -2804,8 +2804,9 @@ async function saveSelectedAssignmentAsTemplate() {
   }
 }
 
-function loadSelectedAssignmentTemplate() {
-  const templateId = String(assignmentTemplateSource.value || "");
+function loadSelectedAssignmentTemplate(templateIdOverride = "") {
+  const explicitTemplateId = typeof templateIdOverride === "string" ? templateIdOverride : "";
+  const templateId = explicitTemplateId || String(assignmentTemplateSource.value || "");
   const template = assignmentTemplatesCache[templateId];
   if (!template?.content) return;
 
@@ -2820,6 +2821,9 @@ function loadSelectedAssignmentTemplate() {
     assignmentOtherType.value = String(content.assignmentType || typeCode || "");
   }
   assignmentOtherTypeField.hidden = assignmentType.value !== "OTHER";
+  renderAssignmentTemplateOptions();
+  assignmentTemplateSource.value = templateId;
+  loadAssignmentTemplateBtn.disabled = false;
 
   assignmentTitle.value = String(content.title || "");
   assignmentInstructions.value = splitStoredInstructions(content.instructions).visibleInstructions;
@@ -3486,9 +3490,7 @@ assignmentLibraryList.addEventListener("click", async (event) => {
   if (!templateId || !assignmentTemplatesCache[templateId]) return;
 
   if (action === "load") {
-    assignmentTemplateSource.value = templateId;
-    loadAssignmentTemplateBtn.disabled = false;
-    loadSelectedAssignmentTemplate();
+    loadSelectedAssignmentTemplate(templateId);
     return;
   }
 
@@ -3503,7 +3505,7 @@ assignmentTemplateSource.addEventListener("change", () => {
   loadAssignmentTemplateBtn.disabled = !assignmentTemplateSource.value;
   if (!assignmentTemplateSource.value) loadedAssignmentTemplateId = "";
 });
-loadAssignmentTemplateBtn.addEventListener("click", loadSelectedAssignmentTemplate);
+loadAssignmentTemplateBtn.addEventListener("click", () => loadSelectedAssignmentTemplate());
 toggleAssignmentBtn.addEventListener("click", toggleAssignment);
 addProjectCheckpointBtn.addEventListener("click", () => addProjectCheckpointRow());
 projectCheckpointRows.addEventListener("click", (event) => {
