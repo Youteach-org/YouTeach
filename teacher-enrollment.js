@@ -56,6 +56,7 @@ let groupsCache = {};
 let studentsCache = {};
 let evaluationTemplatesCache = {};
 let editingGroupName = "";
+let pendingReportSettings = null;
 
 
 function escapeHtml(value) {
@@ -157,6 +158,9 @@ function applyEvaluationTemplate(template) {
   if (!template) return;
   evaluationUnitCountInput.value = String(normalizeEvaluationUnitCount(template.evaluationUnitCount, 3));
   setCriteriaEditor(template.evaluationCriteria || []);
+  pendingReportSettings = template.reportSettings && typeof template.reportSettings === "object"
+    ? { ...template.reportSettings }
+    : null;
   groupEvaluationStatus.textContent = `Loaded template: ${template.name || "Evaluation template"}.`;
   groupEvaluationStatus.className = "status-text ok";
 }
@@ -180,6 +184,9 @@ async function saveCurrentEvaluationAsTemplate() {
     name,
     evaluationUnitCount: normalizeEvaluationUnitCount(evaluationUnitCountInput.value, 3),
     evaluationCriteria: criteriaToFirebaseObject(criteria),
+    reportSettings: editingGroupName
+      ? (groupsCache?.[editingGroupName]?.reportSettings || null)
+      : pendingReportSettings,
     createdAt: now,
     updatedAt: now,
     createdBy: getTeacherName()
@@ -195,6 +202,7 @@ function resetGroupForm() {
   groupNameInput.value = "";
   evaluationUnitCountInput.value = "3";
   evaluationTemplateSelect.value = "";
+  pendingReportSettings = null;
   setCriteriaEditor([]);
   createGroupBtn.textContent = "Create Group";
   cancelGroupEditBtn.hidden = true;
@@ -213,6 +221,9 @@ function beginGroupEvaluationEdit(groupName) {
   groupNameInput.disabled = true;
   evaluationUnitCountInput.value = String(config.unitCount);
   evaluationTemplateSelect.value = "";
+  pendingReportSettings = group.reportSettings && typeof group.reportSettings === "object"
+    ? { ...group.reportSettings }
+    : null;
   setCriteriaEditor(config.criteria);
   createGroupBtn.textContent = "Save Group Settings";
   cancelGroupEditBtn.hidden = false;
@@ -389,6 +400,7 @@ createGroupBtn.addEventListener("click", async () => {
     evaluationUnitCount,
     evaluationCriteria: criteriaToFirebaseObject(evaluationCriteria),
     evaluationWeights: null,
+    ...(pendingReportSettings ? { reportSettings: pendingReportSettings } : {}),
     evaluationConfiguredAt: now,
     evaluationConfiguredBy: getTeacherName()
   });
