@@ -110,6 +110,7 @@ export async function onRequestPost({ request, env }) {
       !canStudentAccessLiveGame({
         connectedGame,
         studentGroup,
+        studentKey: String(launch.studentKey || ""),
         now: Date.now()
       }) ||
       String(connectedGame.gameId || "") !== String(launch.gameId || "") ||
@@ -142,6 +143,7 @@ export async function onRequestPost({ request, env }) {
       gameId: String(connectedGame.gameId || ""),
       gameName: String(connectedGame.gameName || launch.gameName || ""),
       cogSessionId: String(connectedGame.cogSessionId || ""),
+      assignmentId: String(connectedGame.assignmentId || launch.assignmentId || ""),
       iat: now,
       exp: expiresAt,
       nonce: nonce()
@@ -156,6 +158,7 @@ export async function onRequestPost({ request, env }) {
         gameId: String(connectedGame.gameId || ""),
         gameName: String(connectedGame.gameName || launch.gameName || ""),
         cogSessionId: String(connectedGame.cogSessionId || ""),
+        assignmentId: String(connectedGame.assignmentId || launch.assignmentId || ""),
         launchMode: "live-buzzer"
       },
       bridgeToken,
