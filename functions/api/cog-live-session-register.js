@@ -51,6 +51,16 @@ export async function onRequestPost({ request, env }) {
       gameName: game.name,
       cogSessionId,
       groupName: String(currentSession.groupName || ""),
+      assignmentId: String(grant.assignmentId || ""),
+      assignmentCode: String(grant.assignmentCode || ""),
+      assignmentTitle: String(grant.assignmentTitle || ""),
+      recipientStudentKeys: Array.isArray(grant.recipientStudentKeys)
+        ? [...new Set(grant.recipientStudentKeys.map((value) => String(value || "").trim()).filter(Boolean))]
+        : [],
+      recipientTeamLabels: Array.isArray(grant.recipientTeamLabels)
+        ? [...new Set(grant.recipientTeamLabels.map((value) => String(value || "").trim()).filter(Boolean))]
+        : [],
+      recipientTeamTarget: String(grant.recipientTeamTarget || ""),
       status: "active",
       launchMode: "live-buzzer",
       youTeachSessionId: youTeachSessionId(currentSession),
