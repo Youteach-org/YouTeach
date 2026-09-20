@@ -369,3 +369,13 @@ Future instances must preserve:
 - original student submissions are preserved;
 - duplicate grading should be prevented using source revision/fingerprint data, not filename renaming;
 - published student grades must never expose unpublished teacher/AI review data.
+
+
+## Manual grading input order — 2026-09-20
+
+For each rubric criterion in Manual Grading:
+- show the **percentage input first (left)**;
+- show the resulting **criterion points second (right)**;
+- entering a percentage computes the awarded points from that criterion's maximum;
+- entering points may continue to back-calculate the percentage;
+- the purpose of the left-first percentage control is to let the teacher decide, for example, 50% of a criterion before seeing/applying the resulting point value.
