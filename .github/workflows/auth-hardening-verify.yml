@@ -3,8 +3,8 @@ name: Verify auth hardening
 on:
   push:
     branches:
-      - feature/auth-hardening-20260919
-      - feature/cog-youteach-secure-integrated-20260919
+      - feature/cog-youteach-secure-current-20260920
+      - feature/cog-youteach-secure-current-20260920
   workflow_dispatch:
 
 permissions:
