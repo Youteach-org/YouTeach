@@ -1,5 +1,8 @@
 # Assignment Library Firebase Integration Plan
 
+> **UX supersession — 2026-09-20:** The template data model and Firebase integration remain valid, but the visible template selector/Load Template/Save Template controls are no longer part of the primary Create Assignment UI. Create Assignment now follows the canonical form recorded in `docs/superpowers/specs/2026-09-15-youteach-continuity-roadmap.md`: type, name, contextual target/group, due date/time, student instructions, visible evaluation criteria, and teacher-only ChatGPT review instructions. Template/library workflows must remain separate unless explicitly reopened by a later decision.
+
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Persist reusable assignment templates in Firebase and let the existing Teacher Assignments form save and reuse them without introducing a separate library page.
