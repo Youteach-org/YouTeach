@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - feature/cog-official-results-20260919
   pull_request:
     branches:
       - main
