@@ -1,6 +1,7 @@
 # Live Classroom Online Games session bridge
 
 Date: 2026-09-20
+Status: Approved by user on 2026-09-20
 
 This specification is mirrored in both `youteachtk/YouTeach` and `youteachtk/Classroom-Online-Games`. It defines the canonical live-session contract between YouTeach Buzzer and Classroom Online Games (COG).
 
