@@ -48,6 +48,13 @@ function cogOrigin(env) {
   return url.origin;
 }
 
+function normalizeStringArray(raw) {
+  const values = Array.isArray(raw)
+    ? raw
+    : (raw && typeof raw === "object" ? Object.values(raw) : []);
+  return [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))];
+}
+
 export async function onRequestPost({ request, env }) {
   try {
     const signedTeacherSession = bearer(request);
@@ -63,7 +70,20 @@ export async function onRequestPost({ request, env }) {
       return json(401, { ok: false, error: "Your teacher session expired. Sign in again." });
     }
 
-    const currentSession = await firebaseGet("session/current");
+    let body = {};
+    try {
+      body = await request.json();
+    } catch {}
+    const assignmentId = String(body.assignmentId || "").trim();
+    if (!assignmentId) {
+      return json(400, { ok: false, error: "Choose or create a Classroom Online Games assignment first." });
+    }
+
+    const [currentSession, assignment] = await Promise.all([
+      firebaseGet("session/current"),
+      firebaseGet(`assignments/${encodeURIComponent(assignmentId)}`)
+    ]);
+
     const groupName = String(currentSession?.groupName || "").trim();
     const youTeachSessionId = String(
       currentSession?.sessionId || currentSession?.createdAt || ""
@@ -75,6 +95,26 @@ export async function onRequestPost({ request, env }) {
         error: "Create or activate a Buzzer session with a group before opening Classroom Online Games."
       });
     }
+
+    const assignmentGroup = String(assignment?.groupName || "").trim();
+    const assignmentTypeCode = String(assignment?.assignmentTypeCode || "").trim().toUpperCase();
+    if (
+      !assignment ||
+      assignment?.active === false ||
+      assignmentTypeCode !== "COG" ||
+      !assignmentGroup ||
+      assignmentGroup === "ALL" ||
+      assignmentGroup !== groupName
+    ) {
+      return json(409, {
+        ok: false,
+        error: "The selected activity must be an active COG assignment for the current Buzzer group."
+      });
+    }
+
+    const recipientStudentKeys = normalizeStringArray(assignment.recipientStudentKeys);
+    const recipientTeamLabels = normalizeStringArray(assignment.recipientTeamLabels);
+    const recipientTeamTarget = String(assignment.recipientTeamTarget || "").trim();
 
     const now = Date.now();
     const expiresAt = Math.min(now + LAUNCH_TTL_MS, Number(teacher.expiresAt || 0));
@@ -91,6 +131,12 @@ export async function onRequestPost({ request, env }) {
         teacherSessionExpiresAt: Number(teacher.expiresAt || 0),
         youTeachSessionId,
         groupName,
+        assignmentId,
+        assignmentCode: String(assignment.code || "").trim(),
+        assignmentTitle: String(assignment.title || "Classroom Online Games").trim(),
+        recipientStudentKeys,
+        recipientTeamLabels,
+        recipientTeamTarget,
         iat: now,
         exp: expiresAt,
         nonce: nonce()
@@ -106,6 +152,7 @@ export async function onRequestPost({ request, env }) {
     return json(200, {
       ok: true,
       launchUrl: launchUrl.toString(),
+      assignmentId,
       expiresAt
     });
   } catch (error) {
