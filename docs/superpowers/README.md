@@ -14,13 +14,18 @@ GitHub is the source of truth. Chat memory is secondary.
 
 ## Required reading order
 
-1. `docs/superpowers/specs/2026-09-15-youteach-continuity-roadmap.md`
+1. `docs/superpowers/handoffs/2026-09-20-cog-auth-current-state.md`
+   - active YouTeach ↔ Classroom Online Games integration handoff;
+   - current branches/PRs, verification state, blockers, Ghost testing rules and exact next gates;
+   - this is the first file to read while the secure COG/auth work remains open.
+
+2. `docs/superpowers/specs/2026-09-15-youteach-continuity-roadmap.md`
    - current roadmap;
    - accepted product/architecture decisions;
    - implementation order;
    - current next action.
 
-2. `docs/superpowers/specs/2026-09-15-reusable-content-exams-analytics-admin.md`
+3. `docs/superpowers/specs/2026-09-15-reusable-content-exams-analytics-admin.md`
    - reusable Assignment Template vs Assigned Instance;
    - Assignment Library;
    - course/topic analytics;
@@ -28,7 +33,7 @@ GitHub is the source of truth. Chat memory is secondary.
    - manual Exam Bank;
    - Administration.
 
-3. `docs/superpowers/specs/2026-09-16-grading-project-evidence-student-ux.md`
+4. `docs/superpowers/specs/2026-09-16-grading-project-evidence-student-ux.md`
    - canonical AI grade -> teacher review -> publish workflow;
    - exact evidence-type grading rules;
    - duplicate-grading ledger/idempotency;
@@ -38,18 +43,18 @@ GitHub is the source of truth. Chat memory is secondary.
    - manual points/percentage grading;
    - published student grades.
 
-4. `docs/superpowers/specs/2026-09-16-clear-manual-grade.md`
+5. `docs/superpowers/specs/2026-09-16-clear-manual-grade.md`
    - direct Clear grade behavior;
    - grade reset without deleting the student's submission;
    - regrading after reset.
 
-5. `docs/superpowers/specs/2026-09-19-ghost-test-lab.md`
+6. `docs/superpowers/specs/2026-09-19-ghost-test-lab.md`
    - reusable Ghost student test accounts;
    - simulated attendance/presence;
    - real assignment submission and grading verification;
    - Buzzer simulation.
 
-6. Relevant implementation files and recent commits on `main`.
+7. Relevant implementation files and recent commits on `main`.
    - UI micro-decisions that are already implemented are authoritative in code/commit history even when not repeated word-for-word in a spec.
 
 ## Continuity rules
@@ -89,8 +94,9 @@ When asked to continue YouTeach:
 2. Read the current specs above.
 3. Inspect recent commits on `main`.
 4. Check the current implementation before proposing duplicate work.
-5. Continue from the roadmap's "Current next action".
-6. When a new material decision is made, update GitHub before ending the work session.
+5. If an active handoff exists, continue from its first unresolved gate before the broader roadmap.
+6. Continue from the roadmap's "Current next action" only when no active handoff supersedes it.
+7. When a new material decision is made, update GitHub before ending the work session.
 
 ## Source-of-truth summary
 
