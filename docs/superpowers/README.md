@@ -52,6 +52,17 @@ GitHub is the source of truth. Chat memory is secondary.
 6. Relevant implementation files and recent commits on `main`.
    - UI micro-decisions that are already implemented are authoritative in code/commit history even when not repeated word-for-word in a spec.
 
+## Global UI rules
+
+### Global list-selection rule
+
+Whenever a YouTeach page contains a list with multi-selection, the interface must include:
+- individual item selection;
+- a visible **Select all** control;
+- a visible **Deselect all** control (or a clearly equivalent master checkbox that supports both states).
+
+Do not hide deselection behind a toggle whose label changes after selection. This is a standing project-wide UX rule for current and future list-based pages.
+
 ## Continuity rules
 
 1. Material decisions must be written to GitHub.
