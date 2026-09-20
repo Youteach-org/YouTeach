@@ -302,6 +302,18 @@ function publishedGradeHtml(assignmentId, assignment, submission, expanded) {
 
 function assignmentApplies(assignment) {
   if (!currentStudent || !assignment) return false;
+
+  const rawRecipients = assignment?.recipientStudentKeys;
+  const recipientKeys = Array.isArray(rawRecipients)
+    ? rawRecipients.map((value) => String(value || "")).filter(Boolean)
+    : (rawRecipients && typeof rawRecipients === "object"
+      ? Object.values(rawRecipients).map((value) => String(value || "")).filter(Boolean)
+      : []);
+
+  if (recipientKeys.length) {
+    return recipientKeys.includes(String(studentKey));
+  }
+
   const target = String(assignment.groupName || "ALL");
   const group = String(currentStudent.groupName || "GENERAL");
   return target === "ALL" || target === group;
