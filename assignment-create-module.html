@@ -209,6 +209,16 @@
         <div id="assignmentTargetHelp" class="field-help"></div>
       </div>
 
+      <div class="field" id="assignmentGroupCriterionField">
+        <label for="assignmentGroupCriterion">Counts toward group criterion</label>
+        <select id="assignmentGroupCriterion">
+          <option value="">Not linked to a group grade criterion</option>
+        </select>
+        <div id="assignmentGroupCriterionHelp" class="field-help">
+          Optional. Link this assignment to one of the selected group's evaluation criteria.
+        </div>
+      </div>
+
       <div class="field">
         <label for="assignmentDueAt">Due date and time</label>
         <input id="assignmentDueAt" type="datetime-local" required>
@@ -281,6 +291,6 @@
     </div>
   </main>
 
-  <script type="module" src="assignment-create-module.js?v=group-evaluation-20260920"></script>
+  <script type="module" src="assignment-create-module.js?v=dynamic-evaluation-20260920-2"></script>
 </body>
 </html>
