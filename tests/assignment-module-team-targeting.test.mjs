@@ -10,6 +10,9 @@ const buzzerHtml = read('buzzer.html');
 const buzzerJs = read('buzzer.js');
 const assignmentsHtml = read('teacher-assignments.html');
 const assignmentsJs = read('teacher-assignments.js');
+const createModuleHtml = read('assignment-create-module.html');
+const createModuleJs = read('assignment-create-module.js');
+const moduleLauncherJs = read('assignment-module-launcher.js');
 const studentJs = read('student-assignments.js');
 const driveApi = read('functions/api/drive-upload-session.js');
 
@@ -63,4 +66,19 @@ test('Exact team recipients are enforced client-side and server-side', () => {
   assert.match(studentJs, /recipientKeys\.includes\(String\(studentKey\)\)/);
   assert.match(driveApi, /recipientStudentKeys/);
   assert.match(driveApi, /This assignment is not assigned to this student/);
+});
+
+
+test('Assignments popup loads only the dedicated Create Assignment module', () => {
+  assert.match(moduleLauncherJs, /assignment-create-module\.html/);
+  assert.doesNotMatch(moduleLauncherJs, /teacher-assignments\.html\?module=1/);
+  assert.match(createModuleHtml, /<h1>Create Assignment<\/h1>/);
+  assert.match(createModuleHtml, /id="assignmentType"/);
+  assert.match(createModuleHtml, /id="createPresetCriteria"/);
+  assert.match(createModuleHtml, /Instructions for ChatGPT when reviewing/);
+  assert.doesNotMatch(createModuleHtml, /Assignment Browser/);
+  assert.doesNotMatch(createModuleHtml, /Assignment Library/);
+  assert.doesNotMatch(createModuleHtml, /submissionList/);
+  assert.match(createModuleJs, /recipientStudentKeys/);
+  assert.match(assignmentsJs, /openAssignmentsModule\(\{ source: "assignments" \}\)/);
 });
