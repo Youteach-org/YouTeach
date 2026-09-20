@@ -64,7 +64,7 @@
 
     .generator-grid {
       display: grid;
-      grid-template-columns: 1.1fr 1fr;
+      grid-template-columns: 1fr;
       gap: 14px;
     }
 
@@ -137,7 +137,7 @@
 
     .buzzer-main-grid {
       display: grid;
-      grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
+      grid-template-columns: 1fr;
       gap: 18px;
       align-items: start;
     }
@@ -200,7 +200,9 @@
 
     .team-list {
       display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
       gap: 12px;
+      align-items: start;
     }
 
     .team-roster-card {
@@ -215,6 +217,17 @@
       border-color: #2563eb;
       background: #eff6ff;
       box-shadow: 0 8px 18px rgba(37, 99, 235, 0.12);
+      order: -1;
+    }
+
+    #resetSession {
+      background: #b91c1c;
+      color: #ffffff;
+      border-color: #991b1b;
+    }
+
+    #resetSession:hover {
+      background: #991b1b;
     }
 
     .team-roster-card.queued {
@@ -575,16 +588,6 @@
 
       <div class="buzzer-page">
         <section class="buzzer-main-grid">
-          <div class="score-panel">
-            <div class="score-panel-section">
-              <h3 class="teams-title-row">Teams and Members <span id="roundStatusChip" class="round-status-chip">CLOSED</span></h3>
-              <div id="teamRosterList" class="team-list">
-                <div class="empty-state">No active session.</div>
-              </div>
-              <div id="teamSelectionNote" class="selection-note">Use + / - on the team card to change score quickly.</div>
-            </div>
-</div>
-
           <div class="buzz-panel">
             <h3>Buzzer Control</h3>
 
@@ -609,6 +612,16 @@
 
             <p id="teacherStatusNote" class="teacher-note">Ready.</p>
           </div>
+
+          <div class="score-panel">
+            <div class="score-panel-section">
+              <h3 class="teams-title-row">Teams and Members <span id="roundStatusChip" class="round-status-chip">CLOSED</span></h3>
+              <div id="teamRosterList" class="team-list">
+                <div class="empty-state">No active session.</div>
+              </div>
+              <div id="teamSelectionNote" class="selection-note">Use + / - on the team card to change score quickly.</div>
+            </div>
+          </div>
         </section>
 
         <section class="buzzer-generator-card">
@@ -616,18 +629,18 @@
 
           <div class="generator-grid">
             <div class="generator-section">
+              <div class="generator-heading-row">
+                <h4>Team Source</h4>
+                <span id="teamSourceStudentCount" class="team-source-count" aria-live="polite">0</span>
+              </div>
+
               <h4>Working Group</h4>
               <select id="groupSelect">
                 <option value="">Select group</option>
               </select>
               <div class="generator-mini-note">This selector preserves the last group you were working with.</div>
-            </div>
 
-            <div class="generator-section">
-              <div class="generator-heading-row">
-                <h4>Team Source</h4>
-                <span id="teamSourceStudentCount" class="team-source-count" aria-live="polite">0</span>
-              </div>
+              <h4 style="margin-top:12px">Students used for teams</h4>
               <select id="teamSourceSelect">
                 <option value="present">Present Students Only</option>
                 <option value="all">All Students in Group</option>
@@ -677,7 +690,7 @@
     </main>
   </div>
 
-  <script type="module" src="buzzer.js?v=assignments-module-20260920"></script>
+  <script type="module" src="buzzer.js?v=layout-priority-20260920"></script>
   <script defer src="shared-ui-fixes.js?v=titlebar-hamburger-20260916"></script>
   <script type="module" src="attendance-validation.js"></script>
 </body>
