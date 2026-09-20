@@ -115,6 +115,7 @@ function activeLiveGameForStudent() {
   return canStudentAccessLiveGame({
     connectedGame,
     studentGroup: currentStudent.groupName || "GENERAL",
+    studentKey,
     now: Date.now()
   }) ? connectedGame : null;
 }
