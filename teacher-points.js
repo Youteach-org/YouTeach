@@ -15,6 +15,13 @@ const clearGradesBtn = document.getElementById("clearGradesBtn");
 
 const gradesSummaryBox = document.getElementById("gradesSummaryBox");
 const gradesPreviewBody = document.getElementById("gradesPreviewBody");
+const manualCriterionGroupSelect = document.getElementById("manualCriterionGroupSelect");
+const manualCriterionBlockSelect = document.getElementById("manualCriterionBlockSelect");
+const manualCriterionSelect = document.getElementById("manualCriterionSelect");
+const manualCriterionStudentSelect = document.getElementById("manualCriterionStudentSelect");
+const manualCriterionScoreInput = document.getElementById("manualCriterionScoreInput");
+const manualCriterionHelp = document.getElementById("manualCriterionHelp");
+const saveManualCriterionScoreBtn = document.getElementById("saveManualCriterionScoreBtn");
 const exportBlockSelect = document.getElementById("exportBlockSelect");
 const exportGroupSelect = document.getElementById("exportGroupSelect");
 const exportGradesBtn = document.getElementById("exportGradesBtn");
@@ -152,6 +159,86 @@ function renderExportGroups() {
   }
 
   renderBlockSelectors();
+}
+
+function renderManualCriterionGroups() {
+  const previous = manualCriterionGroupSelect.value;
+  const groups = getAllGroupNames();
+  manualCriterionGroupSelect.innerHTML =
+    '<option value="">Select group</option>' +
+    groups.map((groupName) => `<option value="${escapeHtml(groupName)}">${escapeHtml(groupName)}</option>`).join("");
+  if (groups.includes(previous)) manualCriterionGroupSelect.value = previous;
+  renderManualCriterionContext();
+}
+
+function renderManualCriterionContext() {
+  const groupName = manualCriterionGroupSelect.value || "";
+  const group = groupsCache?.[groupName] || null;
+  const config = groupEvaluationConfig(group || {});
+
+  const blocks = group && config.configured ? evaluationBlockNames(group) : ["Block 1"];
+  replaceBlockOptions(manualCriterionBlockSelect, blocks, settingsCache.activeBlock || "Block 1");
+
+  const manualCriteria = config.configured
+    ? config.criteria.filter((criterion) => criterion.source === "manual")
+    : [];
+
+  const previousCriterion = manualCriterionSelect.value;
+  manualCriterionSelect.innerHTML =
+    '<option value="">Select manual criterion</option>' +
+    manualCriteria.map((criterion) =>
+      `<option value="${escapeHtml(criterion.id)}">${escapeHtml(criterion.name)} · ${criterion.weight}%</option>`
+    ).join("");
+  if (manualCriteria.some((criterion) => criterion.id === previousCriterion)) {
+    manualCriterionSelect.value = previousCriterion;
+  }
+
+  const previousStudent = manualCriterionStudentSelect.value;
+  const students = Object.entries(studentsCache || {})
+    .filter(([, student]) => String(student?.groupName || "") === groupName)
+    .sort((a, b) => getDisplayName(a[1]).localeCompare(getDisplayName(b[1]), undefined, { sensitivity: "base" }));
+
+  manualCriterionStudentSelect.innerHTML =
+    '<option value="">Select student</option>' +
+    students.map(([studentKey, student]) =>
+      `<option value="${escapeHtml(studentKey)}">${escapeHtml(getDisplayName(student))}</option>`
+    ).join("");
+  if (students.some(([studentKey]) => studentKey === previousStudent)) {
+    manualCriterionStudentSelect.value = previousStudent;
+  }
+
+  if (!groupName) {
+    manualCriterionHelp.textContent = "Select a group first.";
+  } else if (!config.configured) {
+    manualCriterionHelp.textContent = "This group needs a valid evaluation setup.";
+  } else if (!manualCriteria.length) {
+    manualCriterionHelp.textContent =
+      "This group has no criteria using Manual / imported criterion score.";
+  } else {
+    manualCriterionHelp.textContent =
+      "Enter the student's raw score from 0 to 100. YouTeach applies the criterion percentage automatically.";
+  }
+}
+
+async function saveManualCriterionScore() {
+  const groupName = manualCriterionGroupSelect.value || "";
+  const blockName = manualCriterionBlockSelect.value || "";
+  const criterionId = manualCriterionSelect.value || "";
+  const studentKey = manualCriterionStudentSelect.value || "";
+  const score = Number(manualCriterionScoreInput.value);
+
+  if (!groupName || !blockName || !criterionId || !studentKey) {
+    alert("Select group, block, criterion, and student.");
+    return;
+  }
+  if (!Number.isFinite(score) || score < 0 || score > 100) {
+    alert("Enter a score from 0 to 100.");
+    return;
+  }
+
+  await update(ref(db, `students/${studentKey}/evaluationCriterionScores/${blockName}/${criterionId}`), Number(score.toFixed(2)));
+  manualCriterionScoreInput.value = "";
+  alert("Criterion score saved.");
 }
 
 function findStudent(id, fullName) {
@@ -449,6 +536,10 @@ function exportGrades() {
   downloadTextFile(`${blockName.replace(/\s+/g, "_").toLowerCase()}_${groupSuffix}_grades.csv`, lines.join("\n"));
 }
 
+manualCriterionGroupSelect.addEventListener("change", renderManualCriterionContext);
+manualCriterionBlockSelect.addEventListener("change", renderManualCriterionContext);
+saveManualCriterionScoreBtn.addEventListener("click", saveManualCriterionScore);
+
 exportGroupSelect.addEventListener("change", renderBlockSelectors);
 if (deleteGroupSelect) deleteGroupSelect.addEventListener("change", renderBlockSelectors);
 
@@ -461,6 +552,7 @@ if (deleteGradesBtn) deleteGradesBtn.addEventListener("click", deleteGradesByBlo
 onValue(ref(db, "students"), (snapshot) => {
   studentsCache = snapshot.val() || {};
   renderExportGroups();
+  renderManualCriterionGroups();
 
   if (parsedRowsCache.length) {
     renderPreview(parsedRowsCache);
@@ -471,9 +563,11 @@ onValue(ref(db, "groups"), (snapshot) => {
   groupsCache = snapshot.val() || {};
   renderExportGroups();
   renderBlockSelectors();
+  renderManualCriterionGroups();
 });
 
 onValue(ref(db, "settings"), (snapshot) => {
   settingsCache = snapshot.val() || {};
   renderBlockSelectors();
+  renderManualCriterionContext();
 });
