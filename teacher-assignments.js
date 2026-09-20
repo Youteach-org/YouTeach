@@ -99,7 +99,6 @@ const assignmentLibraryStatus = document.getElementById("assignmentLibraryStatus
 const createAssignmentBtn = document.getElementById("createAssignmentBtn");
 const createAssignmentStatus = document.getElementById("createAssignmentStatus");
 const createAssignmentPanel = document.getElementById("createAssignmentPanel");
-const showCreateAssignmentBtn = document.getElementById("showCreateAssignmentBtn");
 const assignmentActionsMenu = document.getElementById("assignmentActionsMenu");
 const teacherAssignmentList = document.getElementById("teacherAssignmentList");
 const assignmentBrowserCount = document.getElementById("assignmentBrowserCount");
@@ -2820,7 +2819,7 @@ async function saveSelectedAssignmentAsTemplate() {
     await set(target, template);
     assignmentTemplateStatus.textContent = "Template saved.";
     assignmentTemplateStatus.className = "status-text ok";
-    assignmentActionsMenu.open = false;
+    if (assignmentActionsMenu) assignmentActionsMenu.open = false;
   } catch (error) {
     console.error(error);
     assignmentTemplateStatus.textContent = error?.message || "Could not save the template.";
@@ -2875,7 +2874,7 @@ function loadSelectedAssignmentTemplate(templateIdOverride = "") {
 
   loadedAssignmentTemplateId = templateId;
   createAssignmentPanel.hidden = false;
-  assignmentActionsMenu.open = false;
+  if (assignmentActionsMenu) assignmentActionsMenu.open = false;
   createAssignmentStatus.textContent = "Template loaded. Choose group and dates for this assignment.";
   createAssignmentStatus.className = "status-text ok";
   refreshAutomaticTaskCode();
@@ -3057,7 +3056,7 @@ async function createAssignment() {
       window.parent.postMessage({ type: "youteach:assignment-created", assignmentId: target.key }, window.location.origin);
     }
     createAssignmentPanel.hidden = true;
-    assignmentActionsMenu.open = false;
+    if (assignmentActionsMenu) assignmentActionsMenu.open = false;
   } catch (error) {
     console.error(error);
     const code = String(error?.code || "").replace(/^database\//, "");
@@ -3430,11 +3429,6 @@ assignmentTargetSelect?.addEventListener("change", () => {
   refreshAutomaticTaskCode();
 });
 assignmentDueAt.addEventListener("input", refreshAutomaticTaskCode);
-
-showCreateAssignmentBtn.addEventListener("click", () => {
-  assignmentActionsMenu.open = false;
-  openAssignmentsModule({ source: "assignments" });
-});
 
 assignmentFilterCode.addEventListener("input", renderAssignmentList);
 assignmentFilterDate.addEventListener("change", renderAssignmentList);
