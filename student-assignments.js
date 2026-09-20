@@ -144,7 +144,8 @@ async function createCogAssignmentPracticeToken(assignmentId) {
   return String(result.launchUrl);
 }
 
-function cogAssignmentHtml(assignmentId, assignment, submission = null) {
+function cogAssignmentHtml(assignmentId, assignment) {
+  const submission = cogResultCache[assignmentId] || null;
   const config = assignment?.cogActivity || {};
   const game = getCertifiedCogGame(config.gameId);
   const mode = game?.modes?.find((item) => item.id === config.modeId);
@@ -553,7 +554,7 @@ function renderAssignments() {
               : "COG activity · ready to open"}
           </div>
 
-          ${cogAssignmentHtml(assignmentId, assignment, cogSubmission)}
+          ${cogAssignmentHtml(assignmentId, assignment)}
         </article>
       `;
     }
