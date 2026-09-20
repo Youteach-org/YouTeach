@@ -59,7 +59,7 @@ jobs:
           COG_PREVIEW='https://cog-youteach-secure-current.classroom-online-games.pages.dev'
 
           fetch_preview() {
-            curl -fsS --retry 10 --retry-delay 2 --retry-all-errors "$@"
+            curl -fsSL --retry 10 --retry-delay 2 --retry-all-errors "$@"
           }
 
           fetch_preview "$PREVIEW/student-assignments.html" -o /tmp/student-assignments.html
