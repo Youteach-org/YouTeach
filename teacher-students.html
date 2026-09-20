@@ -20,6 +20,15 @@
       font-weight: 700;
       white-space: nowrap;
     }
+    .evaluation-setup-card{grid-column:1/-1}
+    .evaluation-weights{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px}
+    .evaluation-weight-chip{display:inline-flex;gap:5px;align-items:center;padding:5px 8px;border-radius:999px;background:#f1f5f9;font-size:11px;font-weight:800;color:#334155}
+    .evaluation-setup-required{color:#b45309;font-weight:900}
+    .block-grade-cell{min-width:180px}
+    .block-grade-total{display:block;font-size:18px;font-weight:900;line-height:1.1;color:#0f172a}
+    .block-grade-breakdown{display:block;margin-top:4px;font-size:9px;line-height:1.35;color:#64748b;white-space:normal}
+    .block-grade-setup-required{font-size:10px;font-weight:900;color:#b45309}
+
   </style>
 </head>
 <body>
@@ -85,6 +94,16 @@
             <span class="summary-label">Students in Group</span>
             <strong id="studentsInGroupCard">0</strong>
           </div>
+          <div class="summary-card mini">
+            <span class="summary-label">Evaluation Blocks / Units</span>
+            <strong id="evaluationUnitCountCard">---</strong>
+          </div>
+          <div class="summary-card mini evaluation-setup-card">
+            <span class="summary-label">Group Evaluation Criteria</span>
+            <div id="evaluationSetupSummary" class="evaluation-weights">
+              <span class="evaluation-setup-required">Evaluation setup required.</span>
+            </div>
+          </div>
         </div>
 
         <div class="students-actions">
@@ -99,13 +118,11 @@
                 <th style="min-width:320px;">Full Name</th>
                 <th style="min-width:180px;">Nickname</th>
                 <th>Today Active</th>
-                <th>Block 1</th>
-                <th>Block 2</th>
-                <th>Block 3</th>
+                <th id="blockColumnsPlaceholder">Block Grade</th>
               </tr>
             </thead>
             <tbody id="studentsTableBody">
-              <tr><td colspan="7">No students found.</td></tr>
+              <tr><td colspan="5">No students found.</td></tr>
             </tbody>
           </table>
         </div>
@@ -113,7 +130,7 @@
     </main>
   </div>
 
-  <script type="module" src="teacher-students.js?v=teacher-students-total-final-20260424223814"></script>
+  <script type="module" src="teacher-students.js?v=group-evaluation-20260920"></script>
   <script defer src="shared-ui-fixes.js?v=titlebar-hamburger-20260916"></script>
 </body>
 </html>
