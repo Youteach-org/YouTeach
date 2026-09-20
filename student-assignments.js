@@ -25,6 +25,7 @@ const logoutBtn = document.getElementById("logoutBtn");
 let currentStudent = null;
 let assignmentsCache = {};
 let submissionCache = {};
+let cogResultCache = {};
 let projectEvidenceCache = {};
 let renderingToken = 0;
 let expandedAssignmentId = "";
@@ -143,7 +144,7 @@ async function createCogAssignmentPracticeToken(assignmentId) {
   return String(result.launchUrl);
 }
 
-function cogAssignmentHtml(assignmentId, assignment) {
+function cogAssignmentHtml(assignmentId, assignment, submission = null) {
   const config = assignment?.cogActivity || {};
   const game = getCertifiedCogGame(config.gameId);
   const mode = game?.modes?.find((item) => item.id === config.modeId);
@@ -152,6 +153,24 @@ function cogAssignmentHtml(assignmentId, assignment) {
     ? "No minimum"
     : `Minimum ${Number(config.minimumPercent)}%`;
   const points = Number(assignment?.pointValue ?? config.pointValue ?? 100);
+  const officialSubmission = submission?.submissionType === "cog" ? submission : null;
+  const activeOfficial = Boolean(
+    officialSubmission &&
+    officialSubmission.receiptStatus === "active" &&
+    !officialSubmission.withdrawn
+  );
+  const awaitingResubmission = Boolean(
+    officialSubmission &&
+    (officialSubmission.submissionStatus === "awaiting-resubmission" || officialSubmission.withdrawn)
+  );
+  const resultHtml = activeOfficial
+    ? `<div class="published-grade">
+         <div class="published-grade-total">Official COG score: ${escapeHtml(officialSubmission.officialScorePercent)}%</div>
+         <div class="cog-assignment-note">${escapeHtml(officialSubmission.earnedPoints)} / ${escapeHtml(officialSubmission.pointValue)} pts · receipt verified by YouTeach</div>
+       </div>`
+    : (awaitingResubmission
+      ? '<div class="assignment-status warning">Submission undone · reopen the activity to submit a replacement.</div>'
+      : '');
 
   return `
     <div class="cog-assignment-box">
@@ -164,11 +183,16 @@ function cogAssignmentHtml(assignmentId, assignment) {
         <span>${escapeHtml(points)} pts</span>
       </div>
       <div class="cog-assignment-note">
-        Practice launch only. Your assigned race and difficulty are locked by YouTeach. Official submission is not enabled yet.
+        Your assigned race and difficulty are locked by YouTeach. When official submission is enabled, the completed game will show Send to teacher.
       </div>
+      ${resultHtml}
       <button class="cog-open-btn" type="button" data-open-cog-assignment="${escapeHtml(assignmentId)}">
-        Open COG activity
+        ${activeOfficial ? "Open activity again" : "Open COG activity"}
       </button>
+      ${activeOfficial && assignment?.undoSubmissionEnabled !== false
+        ? `<button class="undo-submission-btn" type="button" data-undo-cog-assignment="${escapeHtml(assignmentId)}">Undo Submission</button>`
+        : ""
+      }
       <div id="progress-${escapeHtml(assignmentId)}" class="progress-text"></div>
     </div>
   `;
@@ -383,6 +407,26 @@ async function loadOwnSubmissions(assignments, token) {
   submissionCache = next;
 }
 
+async function loadOwnCogResults(assignments, token) {
+  const next = {};
+  for (const [assignmentId, assignment] of assignments) {
+    if (!isCogAssignment(assignment)) continue;
+    try {
+      const response = await fetch(`/api/cog-result-status?assignmentId=${encodeURIComponent(assignmentId)}`, {
+        headers: { Authorization: `Bearer ${sessionToken}` },
+        cache: "no-store"
+      });
+      const data = await response.json().catch(() => ({}));
+      next[assignmentId] = response.ok && data.ok ? (data.submission || null) : null;
+    } catch (error) {
+      console.warn("Could not load official COG result:", error);
+      next[assignmentId] = null;
+    }
+    if (token !== renderingToken) return;
+  }
+  cogResultCache = next;
+}
+
 function wireOwnSubmissionListeners() {
   if (!currentStudent) return;
 
@@ -482,6 +526,7 @@ function renderAssignments() {
 
   assignmentList.innerHTML = entries.map(([assignmentId, assignment]) => {
     const submission = submissionCache[assignmentId];
+    const cogSubmission = cogResultCache[assignmentId] || null;
     const cogAssignment = isCogAssignment(assignment);
 
     if (cogAssignment) {
@@ -502,11 +547,13 @@ function renderAssignments() {
 
           <div class="assignment-instructions" title="${escapeHtml(instructions)}">${escapeHtml(instructions)}</div>
 
-          <div class="assignment-status pending" id="status-${assignmentId}">
-            COG activity · practice available
+          <div class="assignment-status ${cogSubmission?.receiptStatus === "active" ? "ok" : "pending"}" id="status-${assignmentId}">
+            ${cogSubmission?.receiptStatus === "active"
+              ? `Official result submitted · ${escapeHtml(cogSubmission.officialScorePercent)}%`
+              : "COG activity · ready to open"}
           </div>
 
-          ${cogAssignmentHtml(assignmentId, assignment)}
+          ${cogAssignmentHtml(assignmentId, assignment, cogSubmission)}
         </article>
       `;
     }
@@ -593,7 +640,10 @@ function renderAssignments() {
 async function refreshAssignments() {
   const token = ++renderingToken;
   const applicable = Object.entries(assignmentsCache || {}).filter(([, assignment]) => assignmentApplies(assignment));
-  await loadOwnSubmissions(applicable, token);
+  await Promise.all([
+    loadOwnSubmissions(applicable, token),
+    loadOwnCogResults(applicable, token)
+  ]);
   if (token === renderingToken) renderAssignments();
 }
 
@@ -750,6 +800,45 @@ async function handleUndoSubmission(assignmentId) {
   }
 }
 
+async function handleCogUndoSubmission(assignmentId) {
+  const assignment = assignmentsCache[assignmentId];
+  const button = document.querySelector(`[data-undo-cog-assignment="${CSS.escape(assignmentId)}"]`);
+  const status = document.getElementById(`status-${assignmentId}`);
+  const progress = document.getElementById(`progress-${assignmentId}`);
+  if (!assignment || !button) return;
+
+  if (isClosed(assignment)) {
+    if (status) {
+      status.textContent = "This assignment is closed.";
+      status.className = "assignment-status bad";
+    }
+    return;
+  }
+
+  button.disabled = true;
+  if (progress) progress.textContent = "Undoing official COG submission...";
+  try {
+    const response = await fetch("/api/cog-result-undo", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${sessionToken}`
+      },
+      body: JSON.stringify({ assignmentId })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data.ok !== true) {
+      throw new Error(data.error || "Could not undo the COG submission.");
+    }
+    if (progress) progress.textContent = "";
+    await refreshAssignments();
+  } catch (error) {
+    console.error(error);
+    if (progress) progress.textContent = error?.message || "Could not undo the COG submission.";
+    button.disabled = false;
+  }
+}
+
 assignmentList.addEventListener("change", (event) => {
   const projectInput = event.target.closest("[data-project-evidence-file]");
   if (projectInput) {
@@ -768,6 +857,12 @@ assignmentList.addEventListener("change", (event) => {
 });
 
 assignmentList.addEventListener("click", (event) => {
+  const cogUndoButton = event.target.closest("[data-undo-cog-assignment]");
+  if (cogUndoButton) {
+    handleCogUndoSubmission(String(cogUndoButton.dataset.undoCogAssignment || ""));
+    return;
+  }
+
   const cogButton = event.target.closest("[data-open-cog-assignment]");
   if (cogButton) {
     const assignmentId = String(cogButton.dataset.openCogAssignment || "");
