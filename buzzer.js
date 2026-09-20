@@ -854,9 +854,13 @@ createTeamsBtn.addEventListener("click", async () => {
     }
   }
 
-    await set(ref(db, "session/current"), {
+  const sessionCreatedAt = Date.now();
+  const sessionId = `yt-${sessionCreatedAt}-${Math.random().toString(36).slice(2, 8)}`;
+
+  await set(ref(db, "session/current"), {
     active: true,
-    createdAt: Date.now(),
+    sessionId,
+    createdAt: sessionCreatedAt,
     groupName,
     teamSourceMode: teamSource.mode,
     teams: sessionTeams,
