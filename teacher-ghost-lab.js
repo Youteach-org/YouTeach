@@ -16,8 +16,7 @@ const teacherIdentity = document.getElementById("teacherIdentity");
 const sidebarIdentity = document.getElementById("sidebarIdentity");
 const logoutBtn = document.getElementById("logoutBtn");
 const ghostTableBody = document.getElementById("ghostTableBody");
-const selectAllGhostsBtn = document.getElementById("selectAllGhostsBtn");
-const deselectAllGhostsBtn = document.getElementById("deselectAllGhostsBtn");
+const ghostMasterCheckbox = document.getElementById("ghostMasterCheckbox");
 const activateGhostsBtn = document.getElementById("activateGhostsBtn");
 const deactivateGhostsBtn = document.getElementById("deactivateGhostsBtn");
 const presenceProgress = document.getElementById("presenceProgress");
@@ -144,6 +143,19 @@ function ghostCanBuzz(key) {
   return !Boolean(buzzer.lockedOutTeams?.[team]);
 }
 
+function syncGhostMasterCheckbox() {
+  if (!ghostMasterCheckbox) return;
+  const ghosts = ghostEntries();
+  const selectedCount = ghosts.reduce(
+    (count, [key]) => count + (selectedGhostKeys.has(key) ? 1 : 0),
+    0
+  );
+
+  ghostMasterCheckbox.disabled = ghosts.length === 0;
+  ghostMasterCheckbox.checked = ghosts.length > 0 && selectedCount === ghosts.length;
+  ghostMasterCheckbox.indeterminate = selectedCount > 0 && selectedCount < ghosts.length;
+}
+
 function renderGhosts() {
   const ghosts = ghostEntries();
   if (!selectionInitialized && ghosts.length) {
@@ -153,6 +165,7 @@ function renderGhosts() {
 
   if (!ghosts.length) {
     ghostTableBody.innerHTML = '<tr><td colspan="7" class="ghost-empty">No test students were found in the FANTASMA group.</td></tr>';
+    syncGhostMasterCheckbox();
     return;
   }
 
@@ -178,6 +191,7 @@ function renderGhosts() {
       </tr>
     `;
   }).join("");
+  syncGhostMasterCheckbox();
 }
 
 function renderAssignmentOptions() {
@@ -583,6 +597,7 @@ ghostTableBody.addEventListener("change", (event) => {
   if (!key) return;
   if (checkbox.checked) selectedGhostKeys.add(key);
   else selectedGhostKeys.delete(key);
+  syncGhostMasterCheckbox();
 });
 
 ghostTableBody.addEventListener("click", async (event) => {
@@ -599,13 +614,10 @@ ghostTableBody.addEventListener("click", async (event) => {
   }
 });
 
-selectAllGhostsBtn.addEventListener("click", () => {
-  selectedGhostKeys = new Set(ghostEntries().map(([key]) => key));
-  renderGhosts();
-});
-
-deselectAllGhostsBtn.addEventListener("click", () => {
-  selectedGhostKeys = new Set();
+ghostMasterCheckbox.addEventListener("change", () => {
+  selectedGhostKeys = ghostMasterCheckbox.checked
+    ? new Set(ghostEntries().map(([key]) => key))
+    : new Set();
   renderGhosts();
 });
 activateGhostsBtn.addEventListener("click", () => setGhostPresence(true));
