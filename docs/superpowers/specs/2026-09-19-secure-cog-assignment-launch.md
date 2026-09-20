@@ -123,3 +123,38 @@ A later phase will add:
 7. teacher-side official result display.
 
 Until that phase is complete, COG assignment launches remain practice-only and must not create official grades.
+
+## Status update — 2026-09-20
+
+The "Official submission — intentionally pending" section above is historical design context. The official-result implementation now exists on the active integration branches, but it is **not yet production-enabled**.
+
+Current active branches:
+- YouTeach: `feature/cog-youteach-secure-current-20260920` / PR #11
+- Classroom Online Games: `feature/cog-youteach-secure-current-20260919` / PR #41
+
+Implemented on those branches:
+- Send to teacher;
+- server-authoritative result submission;
+- result/status/undo endpoints;
+- private result receipt storage;
+- validation against signed assignment context;
+- proportional point conversion;
+- teacher-side official-result display;
+- resubmission / Undo Submission.
+
+Production activation remains gated by authentication hardening and Cloudflare KV provisioning.
+
+The required order is:
+1. validate isolated preview auth;
+2. validate at least one real Ghost login;
+3. validate the complete COG result/undo/resubmit path;
+4. provision and validate production auth;
+5. complete real-student credential migration;
+6. enable hardened auth;
+7. deploy compatible COG + YouTeach integrations;
+8. only then enable official COG results.
+
+Do not interpret implementation existence as authorization to enable official grading early.
+
+For exact current state and blockers, read:
+`docs/superpowers/handoffs/2026-09-20-cog-auth-current-state.md`
