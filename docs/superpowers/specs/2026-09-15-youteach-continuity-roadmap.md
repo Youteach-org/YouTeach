@@ -435,13 +435,18 @@ Accepted behavior:
 - opening a new round clears all round lockouts as before.
 
 
-## Buzzer team activity scheduler — 2026-09-20
+## Reusable Assignments module from Team Generator — 2026-09-20
 
 Accepted behavior:
-- Team Source includes a live count that follows the selected source: present students or all students in the group.
-- The standalone Classroom Games button is removed.
-- Activity Type uses the Assignment taxonomy and includes Classroom Online Games (COG).
-- A teacher can schedule a team activity for all generated teams or one specific team.
-- The activity record preserves exact member keys/team snapshot in `teamActivities`.
-- The active Buzzer session references scheduled activities so they are preserved with session history.
-- The live COG security/session bridge remains separate from the assigned-COG lifecycle; COG is now selected through the generic activity workflow.
+- Team Source shows a live count matching Present Students Only or All Students in Group.
+- Team generation happens before activity assignment.
+- Buzzer does not display Assignment Type, Other Type, Target Team, or scheduling fields before teams exist.
+- After teams are generated, an **Assignments** control opens the shared Assignments workspace in a modal.
+- The normal Assignments page can open the same module.
+- Create Assignment is type-first; Other alone reveals custom type input.
+- The former Start from scratch template option is removed; templates are optional and filtered by type.
+- Team-context Assignments can target All Generated Teams or one generated team.
+- All Generated Teams means only students inside the generated teams, never the whole enrollment by implication.
+- Assigned instances store exact recipient student keys and generated-team metadata.
+- Student UI and server upload/evidence validation enforce exact recipients.
+- Classroom Online Games remains one Assignment Type and does not regain a standalone Buzzer button.
