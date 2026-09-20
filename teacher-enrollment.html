@@ -5,6 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>YouTeach - Groups / Import</title>
   <link rel="stylesheet" href="styles.css?v=titlebar-hamburger-20260916">
+  <style>
+    .group-evaluation-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .group-evaluation-grid label{display:grid;gap:5px;font-size:12px;font-weight:800;color:#334155}
+    .group-evaluation-grid input{width:100%}
+    .evaluation-total{font-weight:900;font-size:13px}
+    .evaluation-total.ok{color:#166534}
+    .evaluation-total.bad{color:#b91c1c}
+    .group-form-actions{display:flex;gap:8px;flex-wrap:wrap}
+    .group-evaluation-summary{font-size:11px;color:#475569;line-height:1.4}
+    .setup-required{font-weight:800;color:#b45309}
+    @media(max-width:700px){.group-evaluation-grid{grid-template-columns:1fr}}
+  </style>
 </head>
 <body>
   <button id="menuToggle" class="hamburger-btn" aria-label="Open menu">
@@ -54,7 +66,36 @@
 
           <div class="stack-controls">
             <input id="groupNameInput" placeholder="Group name">
-            <button id="createGroupBtn">Create Group</button>
+
+            <label for="evaluationUnitCountInput"><strong>Evaluation blocks / units</strong></label>
+            <input id="evaluationUnitCountInput" type="number" min="1" max="10" step="1" value="3">
+
+            <div>
+              <strong>Evaluation criteria</strong>
+              <div class="hint-box" style="margin-top:6px;">Set the maximum percentage each category contributes to the block grade. Total must equal 100%.</div>
+            </div>
+
+            <div class="group-evaluation-grid">
+              <label>Tasks %
+                <input id="tasksWeightInput" type="number" min="0" max="100" step="0.1" placeholder="0">
+              </label>
+              <label>Exams %
+                <input id="examsWeightInput" type="number" min="0" max="100" step="0.1" placeholder="0">
+              </label>
+              <label>Participation %
+                <input id="participationWeightInput" type="number" min="0" max="100" step="0.1" placeholder="0">
+              </label>
+              <label>Attendance %
+                <input id="attendanceWeightInput" type="number" min="0" max="100" step="0.1" placeholder="0">
+              </label>
+            </div>
+
+            <div id="evaluationWeightTotal" class="evaluation-total bad">0 / 100%</div>
+            <div class="group-form-actions">
+              <button id="createGroupBtn">Create Group</button>
+              <button id="cancelGroupEditBtn" type="button" hidden>Cancel Edit</button>
+            </div>
+            <div id="groupEvaluationStatus" class="status-text"></div>
           </div>
         </div>
 
@@ -129,10 +170,13 @@
               <tr>
                 <th>Group</th>
                 <th>Students</th>
+                <th>Blocks</th>
+                <th>Evaluation</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody id="groupsTableBody">
-              <tr><td colspan="2">No groups yet.</td></tr>
+              <tr><td colspan="5">No groups yet.</td></tr>
             </tbody>
           </table>
         </div>
@@ -140,7 +184,7 @@
     </main>
   </div>
 
-  <script type="module" src="teacher-enrollment.js"></script>
+  <script type="module" src="teacher-enrollment.js?v=group-evaluation-20260920"></script>
 <script defer src="shared-ui-fixes.js?v=titlebar-hamburger-20260916"></script>
 </body>
 </html>
