@@ -1,3 +1,4 @@
+import { officialCogResultsEnabled } from "../../cog-official-result-policy.mjs";
 import { verifyStudentSession } from "../_shared/student-session.js";
 import { signCogAssignmentLaunch } from "../_shared/cog-assignment-launch.js";
 
@@ -137,6 +138,7 @@ export async function onRequestPost({ request, env }) {
     }
 
     const cogActivity = validateCogConfig(assignment);
+    const officialSubmissionAllowed = officialCogResultsEnabled(env);
     const now = Date.now();
     const expiresAt = now + 5 * 60 * 1000;
     const token = await signCogAssignmentLaunch(
@@ -145,7 +147,7 @@ export async function onRequestPost({ request, env }) {
         assignmentId,
         assignmentCode: String(assignment.code || ""),
         purpose: "assignment-practice",
-        officialSubmissionAllowed: false,
+        officialSubmissionAllowed,
         cogActivity,
         iat: now,
         exp: expiresAt,
@@ -162,7 +164,7 @@ export async function onRequestPost({ request, env }) {
     return json(200, {
       ok: true,
       purpose: "assignment-practice",
-      officialSubmissionAllowed: false,
+      officialSubmissionAllowed,
       expiresAt,
       launchUrl: launchUrl.toString()
     });
