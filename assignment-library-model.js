@@ -35,7 +35,10 @@ const REUSABLE_FIELDS = [
   'unit',
   'topic',
   'subtopic',
-  'resources'
+  'resources',
+  'cogActivity',
+  'pointValue',
+  'undoSubmissionEnabled'
 ];
 
 export function extractReusableAssignmentContent(assignment = {}) {
@@ -118,7 +121,7 @@ export function buildAssignedInstanceFromTemplate({
     groupName: group,
     dueAt: Number(dueAt),
     active: true,
-    storageProvider: 'google-drive',
+    storageProvider: String(snapshot.assignmentTypeCode || '').toUpperCase() === 'COG' ? 'cog' : 'google-drive',
     createdAt: Number.isFinite(timestamp) ? timestamp : Date.now(),
     createdBy: String(actor || '').trim()
   };
