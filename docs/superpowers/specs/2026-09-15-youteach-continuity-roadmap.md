@@ -524,3 +524,10 @@ Buzzer:
 - The team that currently owns the first/current buzz is ordered first and therefore occupies the upper-left grid position; the remaining teams follow in the grid.
 - **Working Group** belongs inside the **Team Source** section, not in a separate generator card/column.
 - **Reset Session** is visually distinct as a destructive/reset action rather than sharing the normal button appearance.
+
+
+### Create Assignment toggle visual state and Assignments resilience — 2026-09-20
+
+- The **From scratch / Assignment Library** toggle must show the selected mode with a clearly different active color; the inactive mode uses a neutral appearance.
+- Removing or relocating Assignment Library UI must never leave required DOM references that crash the normal Assignments page.
+- Legacy template/library compatibility code on the normal Assignments page must be null-safe or backed only by hidden compatibility elements; it must never be required for visible rendering.
