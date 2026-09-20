@@ -489,3 +489,20 @@ Accepted behavior:
 - Assigned instances store exact recipient student keys and generated-team metadata.
 - Student UI and server upload/evidence validation enforce exact recipients.
 - Classroom Online Games remains one Assignment Type and does not regain a standalone Buzzer button.
+
+
+## Buzzer and Create Assignment layout decisions — 2026-09-20
+
+Create Assignment:
+- The custom **Specify other type** control must not be visible or occupy layout space unless Assignment Type = **Other**.
+- The student-instructions field is the dominant text field in Create Assignment because it contains the teacher's instructions to students about what to do and submit.
+- Student instructions span the available form width and use substantially more vertical space than ordinary fields.
+- Teacher-only ChatGPT review instructions remain separate.
+
+Buzzer:
+- **Buzzer Control** is a full-width section immediately below the title/context bar and above **Teams and Members**.
+- Do not keep Buzzer Control in a narrow right column that leaves unused space below it.
+- **Teams and Members** uses a responsive card grid.
+- The team that currently owns the first/current buzz is ordered first and therefore occupies the upper-left grid position; the remaining teams follow in the grid.
+- **Working Group** belongs inside the **Team Source** section, not in a separate generator card/column.
+- **Reset Session** is visually distinct as a destructive/reset action rather than sharing the normal button appearance.
