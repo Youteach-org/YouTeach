@@ -45,10 +45,12 @@ test('COG resolver accepts only COG Pages origins and verifies the signed assign
   assert.match(resolverFn, /classroom-online-games\.pages\.dev/);
   assert.match(resolverFn, /verifyCogAssignmentLaunch/);
   assert.match(resolverFn, /Access-Control-Allow-Origin/);
-  assert.match(resolverFn, /officialSubmissionAllowed:\s*false/);
+  assert.match(resolverFn, /officialCogResultsEnabled/);
+  assert.match(resolverFn, /submissionToken/);
 });
 
-test('COG launch remains practice-only and cannot authorize an official result', () => {
+test('COG launch remains practice by default and official results require explicit security gates', () => {
   assert.match(launchFn, /purpose:\s*"assignment-practice"/);
-  assert.match(launchFn, /officialSubmissionAllowed:\s*false/);
+  assert.match(launchFn, /officialCogResultsEnabled/);
+  assert.match(launchFn, /officialSubmissionAllowed/);
 });
