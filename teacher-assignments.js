@@ -1,6 +1,6 @@
 import { db } from "./firebase.js";
 import { ref, onValue, push, set, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
+import { requireTeacherAuth, getTeacherSessionToken, getTeacherName, logoutTeacher } from "./teacher-auth.js";
 import { openAssignmentsModule, readAssignmentsModuleContext } from "./assignment-module-launcher.js";
 import {
   buildAssignmentTemplateRecord,
@@ -99,7 +99,6 @@ const assignmentLibraryStatus = document.getElementById("assignmentLibraryStatus
 const createAssignmentBtn = document.getElementById("createAssignmentBtn");
 const createAssignmentStatus = document.getElementById("createAssignmentStatus");
 const createAssignmentPanel = document.getElementById("createAssignmentPanel");
-const showCreateAssignmentBtn = document.getElementById("showCreateAssignmentBtn");
 const assignmentActionsMenu = document.getElementById("assignmentActionsMenu");
 const teacherAssignmentList = document.getElementById("teacherAssignmentList");
 const assignmentBrowserCount = document.getElementById("assignmentBrowserCount");
@@ -570,6 +569,49 @@ function assignmentTypeCodeFor(assignment) {
 function isProjectAssignment(assignment) {
   return assignmentTypeCodeFor(assignment) === "PJ";
 }
+
+async function openCogAssignment(assignmentId) {
+  const assignment = assignmentsCache[assignmentId];
+  if (!assignment || assignmentTypeCodeFor(assignment) !== "COG" || assignment.active === false) {
+    window.alert("This Classroom Online Games assignment is not active.");
+    return;
+  }
+
+  const pendingWindow = window.open("about:blank", "_blank");
+  if (pendingWindow) pendingWindow.opener = null;
+
+  try {
+    const teacherSessionToken = getTeacherSessionToken();
+    if (!teacherSessionToken) {
+      throw new Error("Your teacher session expired. Sign in again.");
+    }
+
+    const response = await fetch("/api/cog-live-teacher-launch", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${teacherSessionToken}`
+      },
+      body: JSON.stringify({ assignmentId })
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || payload?.ok !== true || !payload?.launchUrl) {
+      throw new Error(payload?.error || "Could not open Classroom Online Games.");
+    }
+
+    if (pendingWindow && !pendingWindow.closed) {
+      pendingWindow.location.href = payload.launchUrl;
+    } else {
+      window.open(payload.launchUrl, "_blank", "noopener");
+    }
+  } catch (error) {
+    if (pendingWindow && !pendingWindow.closed) pendingWindow.close();
+    console.error("Could not reopen Classroom Online Games", error);
+    window.alert(error?.message || "Could not open Classroom Online Games.");
+  }
+}
+
+
 
 function isExamAssignment(assignment) {
   return assignmentTypeCodeFor(assignment) === "EX" ||
@@ -1963,20 +2005,6 @@ function renderManualGrading() {
               <span class="manual-criterion-name" title="${escapeHtml(criterion.description || criterion.title)}">
                 ${escapeHtml(criterion.title)}
               </span>
-              <span class="manual-points-input">
-                <input
-                  type="number"
-                  min="0"
-                  max="${escapeHtml(criterion.maxPoints)}"
-                  step="0.01"
-                  value="${escapeHtml(value)}"
-                  data-manual-score
-                  data-criterion-id="${escapeHtml(criterion.id)}"
-                  data-max-points="${escapeHtml(criterion.maxPoints)}"
-                  aria-label="${escapeHtml(criterion.title)} points"
-                >
-                <span class="manual-criterion-max">/ ${escapeHtml(criterion.maxPoints)}</span>
-              </span>
               <span class="manual-percent-input">
                 <input
                   type="number"
@@ -1990,6 +2018,20 @@ function renderManualGrading() {
                   aria-label="${escapeHtml(criterion.title)} percentage"
                 >
                 <span>%</span>
+              </span>
+              <span class="manual-points-input">
+                <input
+                  type="number"
+                  min="0"
+                  max="${escapeHtml(criterion.maxPoints)}"
+                  step="0.01"
+                  value="${escapeHtml(value)}"
+                  data-manual-score
+                  data-criterion-id="${escapeHtml(criterion.id)}"
+                  data-max-points="${escapeHtml(criterion.maxPoints)}"
+                  aria-label="${escapeHtml(criterion.title)} points"
+                >
+                <span class="manual-criterion-max">/ ${escapeHtml(criterion.maxPoints)}</span>
               </span>
             </label>
           `;
@@ -2428,6 +2470,14 @@ function renderAssignmentList() {
             ${count ? "" : "disabled"}
             title="${count ? "Grade this activity manually" : "No submissions to grade yet"}"
           >Manual Grading</button>
+          ${assignmentTypeCodeFor(assignment) === "COG" && assignment.active !== false
+            ? `<button
+                type="button"
+                class="manual-grading-btn"
+                data-open-cog-assignment="${escapeHtml(id)}"
+                title="Open this Classroom Online Games activity"
+              >OPEN COG</button>`
+            : ""}
         </div>
 
         <div class="assignment-code-row">
@@ -2820,7 +2870,7 @@ async function saveSelectedAssignmentAsTemplate() {
     await set(target, template);
     assignmentTemplateStatus.textContent = "Template saved.";
     assignmentTemplateStatus.className = "status-text ok";
-    assignmentActionsMenu.open = false;
+    if (assignmentActionsMenu) assignmentActionsMenu.open = false;
   } catch (error) {
     console.error(error);
     assignmentTemplateStatus.textContent = error?.message || "Could not save the template.";
@@ -2875,7 +2925,7 @@ function loadSelectedAssignmentTemplate(templateIdOverride = "") {
 
   loadedAssignmentTemplateId = templateId;
   createAssignmentPanel.hidden = false;
-  assignmentActionsMenu.open = false;
+  if (assignmentActionsMenu) assignmentActionsMenu.open = false;
   createAssignmentStatus.textContent = "Template loaded. Choose group and dates for this assignment.";
   createAssignmentStatus.className = "status-text ok";
   refreshAutomaticTaskCode();
@@ -3057,7 +3107,7 @@ async function createAssignment() {
       window.parent.postMessage({ type: "youteach:assignment-created", assignmentId: target.key }, window.location.origin);
     }
     createAssignmentPanel.hidden = true;
-    assignmentActionsMenu.open = false;
+    if (assignmentActionsMenu) assignmentActionsMenu.open = false;
   } catch (error) {
     console.error(error);
     const code = String(error?.code || "").replace(/^database\//, "");
@@ -3206,6 +3256,12 @@ function wireRubricEditor(presetContainer, customContainer, totalElement, radios
 }
 
 teacherAssignmentList.addEventListener("click", (event) => {
+  const cogButton = event.target.closest("[data-open-cog-assignment]");
+  if (cogButton) {
+    openCogAssignment(cogButton.dataset.openCogAssignment);
+    return;
+  }
+
   const gradeButton = event.target.closest("[data-grade-assignment]");
   if (gradeButton) {
     if (!gradeButton.disabled) openChatGPTGrading(gradeButton.dataset.gradeAssignment);
@@ -3430,11 +3486,6 @@ assignmentTargetSelect?.addEventListener("change", () => {
   refreshAutomaticTaskCode();
 });
 assignmentDueAt.addEventListener("input", refreshAutomaticTaskCode);
-
-showCreateAssignmentBtn.addEventListener("click", () => {
-  assignmentActionsMenu.open = false;
-  openAssignmentsModule({ source: "assignments" });
-});
 
 assignmentFilterCode.addEventListener("input", renderAssignmentList);
 assignmentFilterDate.addEventListener("change", renderAssignmentList);
