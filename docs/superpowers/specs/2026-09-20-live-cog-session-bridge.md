@@ -232,20 +232,31 @@ The implementation is accepted when all of the following are true:
 13. Retries/reconnects cannot duplicate an accepted result.
 14. Existing COG Assignment behavior remains a separate lifecycle.
 
-## Buzzer activity planning update — 2026-09-20
+## Assignments module after Team Generator — 2026-09-20
 
-The standalone **Open Classroom Games** card/button in Buzzer is removed.
+Approved sequence:
 
-The **Team Source** card is now also the activity-planning surface:
+1. The teacher selects the working group and Team Source.
+2. The Team Source count shows present students or all students in the group, depending on the selected source.
+3. The teacher chooses the number of teams and generates them.
+4. Only after generated teams exist does the **Assignments** control become available.
+5. Assignments opens as an in-page modal/workspace; it does not navigate the teacher away from Buzzer.
+6. The modal uses the same Teacher Assignments implementation, not a duplicated simplified assignment form.
 
-- a live student-count badge appears at the right of Team Source;
-- **Present Students Only** shows the current present count for the selected group;
-- **All Students in Group** shows the total enrollment count for the selected group;
-- **Activity Type** uses the same activity taxonomy as Assignments: Classroom Task (CT), Homework (HW), Exam (EX), Project (PJ), Practice (PC), Research (RS), Presentation (PT), Classroom Online Games (COG), and Other;
-- COG is added to the normal Assignments type selector so the taxonomy stays consistent;
-- the teacher may schedule an activity for **all generated teams or one individual team**;
-- every scheduled team activity records the exact member keys and a team snapshot under `teamActivities/{activityId}`;
-- the active Buzzer session stores a lightweight link under `session/current/scheduledActivities/{activityId}`, so closing/completing the session carries the activity references into session history.
+Assignment creation rules:
 
-This planning ledger does **not** merge a live COG session with the separate COG Assignment lifecycle. Selecting **Classroom Online Games (COG)** classifies and records the planned team activity; secure game launch/result rules remain governed by the live-session bridge and the distinct assigned-COG lifecycle.
+- **Assignment Type comes first.**
+- **Other** is the only type that reveals the custom type text field.
+- The obsolete **Start from scratch** template option is removed.
+- Saved templates are optional and filtered by the selected Assignment Type.
+- When opened from Team Generator, the create form receives the exact generated-team context.
+- Only in that context does **Assign to generated teams** appear.
+- Its choices are **All Generated Teams** plus each generated team individually.
+- **All Generated Teams** means the union of students inside the generated teams, not every student enrolled in the group.
+- Team-targeted assigned instances persist exact `recipientStudentKeys`, `recipientTeamLabels`, and `recipientTeamTarget`.
+- Student assignment visibility and upload/evidence APIs enforce those exact recipients server-side.
+- Team-targeted Task Codes add a team scope segment (`TMS` for all generated teams, `T1`, `T2`, etc. for an individual team) to avoid collisions.
 
+The same reusable Assignments module is accessible from the normal Assignments screen. The current Team Generator lives inside Buzzer, so Buzzer/Team Generator share the same team-context launch point.
+
+Classroom Online Games (COG) remains an Assignment Type. Secure COG launch/session behavior remains governed by the live-session bridge; the removed standalone Classroom Games button must not be restored.
