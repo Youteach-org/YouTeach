@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Assignment</title>
+  <style>
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%;font-family:Arial,Helvetica,sans-serif;background:#f8fafc;color:#0f172a}
+    body{padding:14px}
+    .create-assignment-module{display:grid;gap:12px}
+    .module-intro{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+    .module-intro h1{margin:0;font-size:20px}
+    .module-intro p{margin:3px 0 0;font-size:11px;color:#64748b}
+    .create-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:9px;align-items:start}
+    .field{display:grid;gap:4px;min-width:0}
+    .field label,.section-label{font-size:11px;font-weight:800;color:#334155}
+    .field input,.field select,.field textarea,
+    .criteria-row input,.criteria-row textarea,
+    .project-checkpoint-row input,.project-checkpoint-row textarea{
+      width:100%;min-width:0;padding:8px;border:1px solid #cbd5e1;border-radius:8px;
+      font:inherit;font-size:12px;background:#fff
+    }
+    .field textarea{min-height:68px;resize:vertical}
+    .field input[readonly]{background:#f1f5f9;color:#475569;font-weight:700}
+    .field-help{font-size:9px;line-height:1.3;color:#64748b}
+    .title-field{grid-column:span 2}
+    .instructions-field{grid-column:span 3}
+    .full{grid-column:1/-1}
+    .target-field{border:1px solid #bfdbfe;background:#eff6ff;border-radius:9px;padding:8px}
+    .rubric{grid-column:1/-1;border:1px solid #dbeafe;border-radius:10px;background:#f8fafc;padding:10px;display:grid;gap:9px}
+    .rubric-header{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+    .rubric-header h2{margin:0;font-size:14px}
+    .rubric-header p{margin:3px 0 0;font-size:10px;color:#64748b}
+    .rubric-summary{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .distribution-control{display:flex;gap:8px;font-size:10px;font-weight:700}
+    .criteria-total{font-size:12px;font-weight:900}
+    .criteria-total.ok{color:#166534}.criteria-total.bad{color:#b91c1c}
+    .rubric-columns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .rubric-section{border:1px solid #e2e8f0;border-radius:9px;padding:8px;background:#fff;display:grid;gap:7px}
+    .rubric-section-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+    .rubric-section-head h3{margin:0;font-size:11px}
+    button{border:0;border-radius:8px;padding:8px 11px;font:inherit;font-size:11px;font-weight:800;background:#0f172a;color:#fff;cursor:pointer}
+    button:disabled{opacity:.5;cursor:not-allowed}
+    .preset-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+    .preset-card{display:grid;grid-template-columns:minmax(0,1fr) 54px;gap:5px;align-items:center;border:1px solid #e2e8f0;border-radius:8px;padding:6px}
+    .preset-main{display:flex;align-items:flex-start;gap:5px;min-width:0}
+    .preset-main input{width:14px;height:14px;margin:1px 0 0}
+    .preset-copy strong{display:block;font-size:10px}
+    .preset-copy span{display:none}
+    .preset-points{padding:5px!important;font-size:10px!important;text-align:center}
+    .criteria-rows{display:grid;gap:5px}
+    .criteria-row{display:grid;grid-template-columns:minmax(90px,.7fr) minmax(120px,1.2fr) 58px 30px;gap:5px;align-items:start}
+    .criteria-row input,.criteria-row textarea{padding:5px!important;font-size:10px!important}
+    .criteria-row textarea{min-height:40px;resize:vertical}
+    .criteria-remove{min-height:30px;padding:4px}
+    .criteria-help{font-size:9px;color:#64748b}
+    .project-builder{grid-column:1/-1;border:1px solid #dbeafe;border-radius:10px;background:#f8fafc;padding:10px;display:grid;gap:8px}
+    .project-builder[hidden]{display:none!important}
+    .project-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+    .project-head h2{margin:0;font-size:13px}
+    .project-head p{margin:2px 0 0;font-size:9px;color:#64748b}
+    .project-rows{display:grid;gap:7px}
+    .project-checkpoint-row{display:grid;grid-template-columns:1fr 180px 1.4fr 1fr auto;gap:6px;align-items:start}
+    .checkpoint-evidence-types{display:flex;gap:6px;flex-wrap:wrap;font-size:9px}
+    .checkpoint-evidence-types label{display:flex;align-items:center;gap:3px}
+    .checkpoint-evidence-types input{width:auto}
+    .remove-checkpoint-btn{background:#475569}
+    .footer-actions{grid-column:1/-1;display:flex;align-items:center;justify-content:flex-end;gap:10px;padding-top:2px}
+    .status{min-height:18px;font-size:10px;color:#64748b;margin-right:auto}
+    .status.bad{color:#b91c1c}.status.ok{color:#166534}
+    #createAssignmentBtn{min-width:160px;min-height:38px}
+    @media(max-width:1000px){
+      .create-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+      .instructions-field{grid-column:span 2}
+      .preset-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .project-checkpoint-row{grid-template-columns:1fr 1fr}
+    }
+    @media(max-width:650px){
+      body{padding:10px}
+      .create-grid{grid-template-columns:1fr}
+      .title-field,.instructions-field,.full{grid-column:1}
+      .rubric-columns{grid-template-columns:1fr}
+      .preset-grid{grid-template-columns:1fr}
+      .criteria-row{grid-template-columns:1fr 1fr}
+      .project-checkpoint-row{grid-template-columns:1fr}
+      .rubric-header,.module-intro{display:grid}
+      .footer-actions{display:grid;justify-content:stretch}
+      #createAssignmentBtn{width:100%}
+    }
+  </style>
+</head>
+<body>
+  <main class="create-assignment-module">
+    <div class="module-intro">
+      <div>
+        <h1>Create Assignment</h1>
+        <p>Create and assign one activity without leaving the current screen.</p>
+      </div>
+    </div>
+
+    <div class="create-grid">
+      <div class="field">
+        <label for="assignmentType">Assignment type</label>
+        <select id="assignmentType">
+          <option value="CT">Classroom Task (CT)</option>
+          <option value="HW">Homework (HW)</option>
+          <option value="EX">Exam (EX)</option>
+          <option value="PJ">Project (PJ)</option>
+          <option value="PC">Practice (PC)</option>
+          <option value="RS">Research (RS)</option>
+          <option value="PT">Presentation (PT)</option>
+          <option value="COG">Classroom Online Games (COG)</option>
+          <option value="OTHER">Other</option>
+        </select>
+      </div>
+
+      <div class="field" id="assignmentOtherTypeField" hidden>
+        <label for="assignmentOtherType">Specify other type</label>
+        <input id="assignmentOtherType" placeholder="e.g. Lab, Debate">
+      </div>
+
+      <div class="field title-field">
+        <label for="assignmentTitle">Assignment name</label>
+        <input id="assignmentTitle" placeholder="Assignment name">
+      </div>
+
+      <div class="field" id="assignmentGroupField">
+        <label for="assignmentGroup">Assign to</label>
+        <select id="assignmentGroup"><option value="ALL">All groups</option></select>
+        <div id="assignmentGroupHelp" class="field-help"></div>
+      </div>
+
+      <div class="field target-field" id="assignmentTargetField" hidden>
+        <label for="assignmentTargetSelect">Assign to generated teams</label>
+        <select id="assignmentTargetSelect"><option value="all-generated">All Generated Teams</option></select>
+        <div id="assignmentTargetHelp" class="field-help"></div>
+      </div>
+
+      <div class="field">
+        <label for="assignmentDueAt">Due date and time</label>
+        <input id="assignmentDueAt" type="datetime-local" required>
+      </div>
+
+      <div class="field">
+        <label for="assignmentCode">Task code</label>
+        <input id="assignmentCode" readonly aria-readonly="true" placeholder="Generated automatically">
+        <div id="taskCodeStatus" class="field-help">Complete the assignment information to generate the code.</div>
+      </div>
+
+      <div class="field instructions-field">
+        <label for="assignmentInstructions">Instructions for students</label>
+        <textarea id="assignmentInstructions" placeholder="What should students do and submit?"></textarea>
+      </div>
+
+      <section class="rubric" aria-labelledby="criteriaHeading">
+        <div class="rubric-header">
+          <div>
+            <h2 id="criteriaHeading">Evaluation criteria</h2>
+            <p>Use preset and/or custom criteria. When criteria are used, they must total exactly 100 points.</p>
+          </div>
+          <div class="rubric-summary">
+            <div class="distribution-control">
+              <label><input type="radio" name="createDistribution" value="equal" checked> Equal</label>
+              <label><input type="radio" name="createDistribution" value="manual"> Manual</label>
+            </div>
+            <div id="createCriteriaTotal" class="criteria-total">0 / 100</div>
+          </div>
+        </div>
+
+        <div class="rubric-columns">
+          <div class="rubric-section">
+            <div class="rubric-section-head"><h3>Preset criteria</h3></div>
+            <div id="createPresetCriteria" class="preset-grid"></div>
+            <div class="criteria-help">Select the criteria that apply.</div>
+          </div>
+
+          <div class="rubric-section">
+            <div class="rubric-section-head">
+              <h3>Custom criteria</h3>
+              <button id="addCreateCriterionBtn" type="button">+ Add criterion</button>
+            </div>
+            <div id="createCriteriaRows" class="criteria-rows"></div>
+          </div>
+        </div>
+      </section>
+
+      <div class="field instructions-field">
+        <label for="assignmentEvaluationNotes">Instructions for ChatGPT when reviewing</label>
+        <textarea id="assignmentEvaluationNotes" placeholder="Special review/grading instructions, evidence rules, tolerances, deductions, or exceptions."></textarea>
+        <div class="field-help">Teacher-only. Students do not see this text.</div>
+      </div>
+
+      <section id="projectCheckpointBuilder" class="project-builder" hidden>
+        <div class="project-head">
+          <div>
+            <h2>Project checkpoints</h2>
+            <p>Progress reviews before the final project submission.</p>
+          </div>
+          <button id="addProjectCheckpointBtn" type="button">+ Add checkpoint</button>
+        </div>
+        <div id="projectCheckpointRows" class="project-rows"></div>
+      </section>
+
+      <div class="footer-actions">
+        <div id="createAssignmentStatus" class="status" aria-live="polite"></div>
+        <button id="createAssignmentBtn" type="button">Create Assignment</button>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="assignment-create-module.js?v=20260920"></script>
+</body>
+</html>
