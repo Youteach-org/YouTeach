@@ -319,6 +319,21 @@ function getAllTeamLabels() {
   return Array.from(new Set(labels)).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 }
 
+function getActiveTeamLabels() {
+  const assignments = sessionCache?.assignments || {};
+  const labels = new Set();
+
+  Object.entries(assignments).forEach(([studentKey, teamLabel]) => {
+    const student = studentsCache?.[studentKey];
+    const inSessionGroup = !sessionCache?.groupName || (student?.groupName || "") === sessionCache.groupName;
+    if (teamLabel && student?.activeNow === true && inSessionGroup) {
+      labels.add(teamLabel);
+    }
+  });
+
+  return Array.from(labels).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+}
+
 function getBuzzerState() {
   return sessionCache?.buzzer || {
     roundOpen: false,
@@ -444,10 +459,17 @@ function renderResult() {
     teacherStatusNote.textContent = "Round is closed.";
   } else if (isWaiting) {
     teacherStatusNote.textContent = `Waiting for decision: ${currentBuzz.name} · ${currentBuzz.team}.`;
-  } else if (lockedCount >= getAllTeamLabels().length && getAllTeamLabels().length > 0) {
-    teacherStatusNote.textContent = "All teams are locked for this round.";
   } else {
-    teacherStatusNote.textContent = "Round open. Waiting for the first team to buzz.";
+    const activeTeams = getActiveTeamLabels();
+    const activeTeamsAllLocked =
+      activeTeams.length > 0 &&
+      activeTeams.every((teamLabel) => Boolean(getLockedOutTeams()[teamLabel]));
+
+    if (activeTeamsAllLocked) {
+      teacherStatusNote.textContent = "All active teams are locked. Round closed.";
+    } else {
+      teacherStatusNote.textContent = "Round open. Waiting for the first team to buzz.";
+    }
   }
 }
 
@@ -856,14 +878,20 @@ wrongAnswerBtn.addEventListener("click", async () => {
   const lockedOutTeams = { ...(buzzer.lockedOutTeams || {}) };
   lockedOutTeams[currentBuzz.team] = true;
 
-  const allTeams = getAllTeamLabels();
-  const allLocked = allTeams.length > 0 && allTeams.every((teamLabel) => lockedOutTeams[teamLabel]);
+  const activeTeams = getActiveTeamLabels();
+  if (currentBuzz.team && !activeTeams.includes(currentBuzz.team)) {
+    activeTeams.push(currentBuzz.team);
+  }
+
+  const allActiveTeamsLocked =
+    activeTeams.length > 0 &&
+    activeTeams.every((teamLabel) => lockedOutTeams[teamLabel]);
 
   await update(ref(db, "session/current/buzzer"), {
     lockedOutTeams,
     queue: [],
     currentBuzz: null,
-    roundOpen: !allLocked
+    roundOpen: !allActiveTeamsLocked
   });
 });
 
