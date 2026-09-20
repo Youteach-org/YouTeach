@@ -3,7 +3,7 @@ name: Verify live COG integration branch
 on:
   push:
     branches:
-      - feature/live-cog-session-bridge-20260920
+      - feature/live-cog-session-current-20260920
   workflow_dispatch:
 
 permissions:
