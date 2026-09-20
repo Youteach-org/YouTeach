@@ -80,6 +80,71 @@
       font-size: 12px;
     }
 
+    .generator-heading-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .generator-heading-row h4 {
+      margin: 0;
+    }
+
+    .team-source-count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 42px;
+      min-height: 32px;
+      padding: 4px 10px;
+      border: 1px solid #cbd5e1;
+      border-radius: 9px;
+      background: #ffffff;
+      color: #0f172a;
+      font-size: 14px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .activity-fields {
+      display: grid;
+      grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .activity-field {
+      display: grid;
+      gap: 6px;
+    }
+
+    .activity-field.full {
+      grid-column: 1 / -1;
+    }
+
+    .activity-field label {
+      font-size: 12px;
+      font-weight: 700;
+      color: #334155;
+    }
+
+    .activity-field input,
+    .activity-field select,
+    .generator-section > select,
+    .generator-section > input {
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .activity-status {
+      min-height: 18px;
+      margin-top: 8px;
+      font-size: 12px;
+      color: #64748b;
+    }
+
     .generator-mini-note {
       margin-top: 8px;
       font-size: 12px;
@@ -590,21 +655,61 @@
             </div>
 
             <div class="generator-section">
-              <h4>Team Source</h4>
-<select id="teamSourceSelect">
-  <option value="present">Present students only</option>
-  <option value="all">All students in group</option>
-</select>
+              <div class="generator-heading-row">
+                <h4>Team Source</h4>
+                <span id="teamSourceStudentCount" class="team-source-count" aria-live="polite">0</span>
+              </div>
+              <select id="teamSourceSelect">
+                <option value="present">Present Students Only</option>
+                <option value="all">All Students in Group</option>
+              </select>
 
-<h4>Number of Teams</h4>
+              <div class="activity-fields">
+                <div class="activity-field">
+                  <label for="activityTypeSelect">Activity Type</label>
+                  <select id="activityTypeSelect">
+                    <option value="CT">Classroom Task (CT)</option>
+                    <option value="HW">Homework (HW)</option>
+                    <option value="EX">Exam (EX)</option>
+                    <option value="PJ">Project (PJ)</option>
+                    <option value="PC">Practice (PC)</option>
+                    <option value="RS">Research (RS)</option>
+                    <option value="PT">Presentation (PT)</option>
+                    <option value="COG">Classroom Online Games (COG)</option>
+                    <option value="OTHER">Other</option>
+                  </select>
+                </div>
+                <div class="activity-field" id="activityOtherTypeField" hidden>
+                  <label for="activityOtherType">Other Type</label>
+                  <input id="activityOtherType" placeholder="e.g. Lab, Debate">
+                </div>
+                <div class="activity-field full">
+                  <label for="activityTitle">Activity Title</label>
+                  <input id="activityTitle" placeholder="Activity title">
+                </div>
+                <div class="activity-field">
+                  <label for="activityTeamTarget">Target Team</label>
+                  <select id="activityTeamTarget">
+                    <option value="all">All Generated Teams</option>
+                  </select>
+                </div>
+                <div class="activity-field">
+                  <label for="activityScheduledFor">Scheduled For</label>
+                  <input id="activityScheduledFor" type="datetime-local">
+                </div>
+              </div>
+              <div id="activityScheduleStatus" class="activity-status">Generate teams to schedule an activity.</div>
+
+              <h4>Number of Teams</h4>
               <input id="numTeams" type="number" min="1" placeholder="Number of teams">
               <div class="generator-actions">
                 <button id="createTeams">Generate Smart Teams</button>
-<select id="printNameModeSelect">
-  <option value="nickname">Print nicknames</option>
-  <option value="fullName">Print full names</option>
-</select>
-<button id="printTeamsBtn" type="button">Print Teams PDF</button>
+                <button id="scheduleTeamActivityBtn" type="button">Schedule Activity</button>
+                <select id="printNameModeSelect">
+                  <option value="nickname">Print nicknames</option>
+                  <option value="fullName">Print full names</option>
+                </select>
+                <button id="printTeamsBtn" type="button">Print Teams PDF</button>
                 <button id="resetSession">Reset Session</button>
                 <button id="closeSessionBtn">Close Session and Save History</button>
               </div>
@@ -612,12 +717,6 @@
           </div>
         </section>
 
-        <section class="buzzer-generator-card cog-extension-card">
-          <div class="teams-title-row">
-            <div><h3>Classroom Online Games</h3><p class="selection-note">Open the COG teacher monitors. Games that need teams will check them when selected.</p></div>
-            <button id="openCogTeacherBtn" type="button">Open Classroom Games</button>
-          </div>
-        </section>
 
         <section class="buzzer-summary-grid">
           <div class="buzzer-summary-card">
@@ -633,7 +732,7 @@
             <strong id="sessionStatusLabel">No active session</strong>
           </div>
           <div class="buzzer-summary-card">
-            <span class="label">Present in Group</span>
+            <span class="label">Selected Students</span>
             <strong id="studentCountLabel">0</strong>
           </div>
         </section>
@@ -641,7 +740,7 @@
     </main>
   </div>
 
-  <script type="module" src="buzzer.js?v=active-team-auto-close-20260920"></script>
+  <script type="module" src="buzzer.js?v=team-activity-scheduler-20260920"></script>
   <script defer src="shared-ui-fixes.js?v=titlebar-hamburger-20260916"></script>
   <script type="module" src="attendance-validation.js"></script>
 </body>
