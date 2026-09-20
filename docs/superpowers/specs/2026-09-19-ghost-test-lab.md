@@ -25,4 +25,4 @@ Canonical test identity: group `FANTASMA`; external IDs `GHOST01`–`GHOST20`; n
 
 ## Selection UX rule
 
-The Ghost list keeps individual checkboxes and must also expose separate visible `Select all` and `Deselect all` controls. This follows the project-wide list-selection rule in `docs/superpowers/README.md`.
+The Ghost list keeps individual row checkboxes and uses one master checkbox in the checkbox-column header. Checked selects all Ghost rows; unchecked clears all; partial selection displays the indeterminate state. This follows the project-wide list-selection rule in `docs/superpowers/README.md`.
