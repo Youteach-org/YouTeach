@@ -55,14 +55,18 @@ function escapeHtml(value) {
 }
 
 function ghostNumber(student) {
+  const external = String(student?.studentNumber || student?.externalId || student?.id || "").trim();
+  const externalMatch = external.match(/^GHOST0*(\d+)$/i);
+  if (externalMatch) return Number(externalMatch[1]);
+
   const nickname = String(student?.nickname || "").trim();
-  const match = nickname.match(/^ghost0*(\d+)$/i);
-  return match ? Number(match[1]) : Number.MAX_SAFE_INTEGER;
+  const nicknameMatch = nickname.match(/^FAKE-0*(\d+)$/i);
+  return nicknameMatch ? Number(nicknameMatch[1]) : Number.MAX_SAFE_INTEGER;
 }
 
 function isGhostStudent(student) {
-  const nickname = String(student?.nickname || "").trim();
-  return /^ghost\d+$/i.test(nickname);
+  const groupName = String(student?.groupName || "").trim().toUpperCase();
+  return groupName === "FANTASMA";
 }
 
 function ghostEntries() {
@@ -147,7 +151,7 @@ function renderGhosts() {
   }
 
   if (!ghosts.length) {
-    ghostTableBody.innerHTML = '<tr><td colspan="7" class="ghost-empty">No students with nickname Ghost01, Ghost02, etc. were found.</td></tr>';
+    ghostTableBody.innerHTML = '<tr><td colspan="7" class="ghost-empty">No test students were found in the FANTASMA group.</td></tr>';
     return;
   }
 
@@ -192,9 +196,9 @@ function renderAssignmentOptions() {
   }
 
   if (!entries.length) {
-    assignmentStatus.textContent = "No open assignment currently applies to the Ghost students. Create one for their current group, or ALL.";
+    assignmentStatus.textContent = "No open assignment currently applies to the FANTASMA test students. Create one for FANTASMA or ALL.";
   } else if (!selectedAssignmentId) {
-    assignmentStatus.textContent = "Choose an open assignment assigned to the current group of the selected Ghost students, or ALL.";
+    assignmentStatus.textContent = "Choose an open assignment assigned to FANTASMA or ALL.";
   }
 }
 
