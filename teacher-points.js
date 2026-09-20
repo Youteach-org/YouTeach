@@ -236,7 +236,9 @@ async function saveManualCriterionScore() {
     return;
   }
 
-  await update(ref(db, `students/${studentKey}/evaluationCriterionScores/${blockName}/${criterionId}`), Number(score.toFixed(2)));
+  await update(ref(db), {
+    [`students/${studentKey}/evaluationCriterionScores/${blockName}/${criterionId}`]: Number(score.toFixed(2))
+  });
   manualCriterionScoreInput.value = "";
   alert("Criterion score saved.");
 }
