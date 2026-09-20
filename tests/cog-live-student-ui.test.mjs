@@ -25,3 +25,8 @@ test("student can return to the active game while the live session remains activ
   assert.match(js, /RETURN TO GAME|JOIN GAME/);
   assert.match(js, /joinLiveGameBtn/);
 });
+
+
+test("Student Buzzer reevaluates live-game expiry even without a Firebase state change", () => {
+  assert.match(js, /setInterval\([^;]*renderBuzzer[\s\S]*30000|setInterval\(\(\)=>renderBuzzer\(\),30000\)/);
+});
