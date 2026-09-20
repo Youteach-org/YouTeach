@@ -17,3 +17,7 @@ Use the already-existing Ghost students (nicknames such as Ghost01, Ghost02, etc
 - Buzzer simulation uses the same `session/current/buzzer` Firebase transaction used by the student buzzer screen.
 - The lab is teacher-only and is accessed from Teacher Home.
 - GitHub remains the source of truth; Cloudflare Pages deploys from `main`.
+
+## Correction 2026-09-20
+
+The canonical test nicknames are `Ghost01`, `Ghost02`, etc., with no space. The lab matches the `nickname` field only and must not normalize spaced variants such as `Ghost 01` into valid Ghost accounts.
