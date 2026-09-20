@@ -652,42 +652,131 @@ Commit messages:
 
 **Repository:** `youteachtk/Classroom-Online-Games`
 
-**Inspect/modify current native session points:**
+**Create:**
+- `Support-Meter/live-session.js`
+- `Support-Meter/live-session.test.mjs`
+
+**Modify:**
+- `Support-Meter/teacher.html`
+- `Support-Meter/teacher.js`
 - `Support-Meter/firebase-client.js`
-- `Support-Meter/firebase-core.js`
 - `Support-Meter/game.js`
-- `Support-Meter/teacher-core.js`
-- `Support-Meter/teacher/index.html`
-- add `Support-Meter/live-session.test.mjs`
 
-Adapter requirements:
-- teacher start is the moment YouTeach exposure begins;
-- game identity comes from live student credential;
-- teacher monitor/free mode remain available only where explicitly intended outside the YouTeach live path;
-- normalized completion/result is submitted through the shared bridge.
+**Teacher adapter:**
+- `Support-Meter/teacher.js:createSession()` remains the native Support Meter session creator;
+- after `createAssignedSession(...)` succeeds, `live-session.js` calls `registerLiveGameSession(...)` with `gameId: "support-meter"`, `gameName: "Support Meter"`, the Support Meter `sessionId`, and the verified YouTeach teacher context;
+- add `<button id="endLiveActivity">END ACTIVITY</button>` to `teacher.html`;
+- the end button is shown only for a YouTeach live session, requires confirmation, closes the Support Meter session link/state without deleting historical results, then calls the shared bridge end endpoint;
+- the existing Download Results flow may still offer data deletion, but deleting/downloading is not the live-session end signal.
 
-- [ ] write failing adapter tests.
-- [ ] implement.
-- [ ] run Support Meter + COG suite.
-- [ ] commit: `Migrate Support Meter to live session bridge`.
+**Student adapter:**
+- `Support-Meter/game.js` detects a `ytLiveStudent` launch before the existing `join` token/free-mode path;
+- verified identity populates `state.studentName` and `state.sessionId`;
+- live launch skips manual student name/class-code authorization;
+- Support Meter completion in `nextStory()` automatically submits a normalized live result through `live-session.js`;
+- manual/free-mode Support Meter continues using the existing native flow outside YouTeach live launch.
+
+**Result mapping:**
+
+```js
+{
+  resultType: "individual",
+  percentage: Math.round(state.meter),
+  metrics: {
+    supportMeter: state.meter,
+    streak: state.streak,
+    storiesCompleted: stories.length,
+    translationAttempts: state.translationAttemptCount
+  }
+}
+```
+
+- [ ] **Step 1: write failing `Support-Meter/live-session.test.mjs`** asserting teacher start registration, explicit end confirmation hook, verified student identity, and automatic completion submit.
+- [ ] **Step 2: verify RED.**
+
+```bash
+node --test Support-Meter/live-session.test.mjs
+```
+
+- [ ] **Step 3: implement `Support-Meter/live-session.js` and wire the exact teacher/student files above.**
+- [ ] **Step 4: run Support Meter tests plus the full COG suite.**
+
+```bash
+node --test Support-Meter/*.test.js Support-Meter/*.test.mjs
+node --test tests/*.test.mjs
+node --test Verb-Runner/tests/*.test.mjs
+```
+
+- [ ] **Step 5: commit.**
+
+Commit message:
+`Migrate Support Meter to live session bridge`
 
 ## Task 14: Migrate OSASCOMP
 
 **Repository:** `youteachtk/Classroom-Online-Games`
 
-**Inspect/modify:**
-- `OSASCOMP/index.html`
-- `OSASCOMP/teacher/index.html`
-- create a focused adapter module rather than enlarging the existing large HTML scripts if logic is currently inline;
-- create `OSASCOMP/live-session.test.mjs`.
+The current OSASCOMP student and teacher logic is inline in HTML. Extract it before adding the bridge so the integration is testable instead of growing the inline scripts.
 
-Adapter requirements match Tasks 12–13.
+**Create:**
+- `OSASCOMP/game.js` — exact extraction of the current student inline application logic;
+- `OSASCOMP/teacher/monitor.js` — exact extraction of the current teacher inline monitor logic;
+- `OSASCOMP/live-session.js` — student YouTeach live adapter;
+- `OSASCOMP/teacher/live-session.js` — teacher YouTeach live adapter;
+- `OSASCOMP/live-session.test.mjs`.
 
-- [ ] write failing tests for no permanent access, group-scoped identity, explicit start/end.
-- [ ] implement adapter.
-- [ ] run COG suite.
-- [ ] commit: `Migrate OSASCOMP to live session bridge`.
+**Modify:**
+- `OSASCOMP/index.html` — replace the large inline application script with `game.js` + live adapter imports;
+- `OSASCOMP/teacher/index.html` — replace the large inline monitor script with `monitor.js` + teacher live adapter;
+- `teacher/index.html` only if card metadata/copy needs to identify OSASCOMP live-session support.
 
+**Teacher behavior:**
+- the existing room code becomes an internal/native OSASCOMP channel identifier, not the YouTeach authorization mechanism;
+- for a YouTeach launch, add `START LIVE ACTIVITY` and `END ACTIVITY` controls to the monitor;
+- `START LIVE ACTIVITY` creates/selects the OSASCOMP room/channel and registers it as `gameId: "osascomp"` for the verified YouTeach group;
+- `END ACTIVITY` requires confirmation and ends the bridge without relying on browser close.
+
+**Student behavior:**
+- `ytLiveStudent` resolution supplies canonical YouTeach name and the authoritative OSASCOMP room/session id;
+- in live mode, the existing manual `Student name` and `Class code` form is bypassed;
+- the normal standalone/manual OSASCOMP join form remains available outside the YouTeach live path;
+- the teacher sees the canonical YouTeach student name in Supabase presence because the resolved name is the one tracked.
+
+**Result mapping:**
+
+```js
+{
+  resultType: "individual",
+  percentage: attempts ? Math.round(correct / attempts * 100) : 0,
+  metrics: {
+    score,
+    correct,
+    attempts,
+    bestCombo: best,
+    mode
+  }
+}
+```
+
+The existing `finish()` path emits the automatic live result once per `resultId`.
+
+- [ ] **Step 1: extract the inline student/teacher scripts without behavior changes and add a regression test that loads the extracted modules.**
+- [ ] **Step 2: run the extraction test and existing COG suite; keep behavior green before adding bridge logic.**
+- [ ] **Step 3: write failing live-session tests** for no permanent access, verified group/session identity, explicit start/end, and automatic finish result.
+- [ ] **Step 4: implement the two OSASCOMP bridge adapters.**
+- [ ] **Step 5: run:**
+
+```bash
+node --test OSASCOMP/live-session.test.mjs
+node --test tests/*.test.mjs
+node --test Verb-Runner/tests/*.test.mjs
+node --test 100-Students-Said/*.test.js
+```
+
+- [ ] **Step 6: commit.**
+
+Commit message:
+`Migrate OSASCOMP to live session bridge`
 ---
 
 # Phase L — Cross-repository end-to-end verification
@@ -759,7 +848,7 @@ node --check Verb-Runner/prototype.js
 node --test tests/*.test.mjs
 node --test Verb-Runner/tests/*.test.mjs
 node --test Verb-Runner/sentence-run.test.js
-node 100-Students-Said/game-core.test.js
+node --test 100-Students-Said/*.test.js
 ```
 
 Update:
