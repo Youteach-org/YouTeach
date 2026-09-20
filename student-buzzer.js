@@ -305,3 +305,6 @@ onValue(ref(db, "classroomGames/hundredStudentsSaid/current"), (snapshot) => {
   hundredSS = snapshot.val() || null;
   renderBuzzer();
 });
+
+
+setInterval(()=>renderBuzzer(),30000);
