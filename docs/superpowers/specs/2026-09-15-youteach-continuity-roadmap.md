@@ -34,7 +34,7 @@ Working rule:
 
 ### 3.1 Task identity
 - Task Code is generated automatically.
-- Task type provides the prefix, e.g. CT, HW, EX, PJ, PC, RS, PT.
+- Task type provides the prefix, e.g. CT, HW, EX, PJ, PC, RS, PT, COG.
 - Group contributes a compact group key.
 - Date uses DDMMYY.
 - If generated code already exists, the teacher must change task-defining data.
@@ -433,3 +433,15 @@ Accepted behavior:
 - if every active team is locked, the round closes automatically because no eligible team remains to answer;
 - inactive/offline teams must not keep a round artificially open;
 - opening a new round clears all round lockouts as before.
+
+
+## Buzzer team activity scheduler — 2026-09-20
+
+Accepted behavior:
+- Team Source includes a live count that follows the selected source: present students or all students in the group.
+- The standalone Classroom Games button is removed.
+- Activity Type uses the Assignment taxonomy and includes Classroom Online Games (COG).
+- A teacher can schedule a team activity for all generated teams or one specific team.
+- The activity record preserves exact member keys/team snapshot in `teamActivities`.
+- The active Buzzer session references scheduled activities so they are preserved with session history.
+- The live COG security/session bridge remains separate from the assigned-COG lifecycle; COG is now selected through the generic activity workflow.
