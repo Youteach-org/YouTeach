@@ -410,6 +410,9 @@ function applyAssignmentModuleContext() {
   }
 
   renderAssignmentTargetOptions();
+  if (hasGeneratedTeamContext()) {
+    createAssignmentPanel.hidden = false;
+  }
   refreshAutomaticTaskCode();
 }
 
@@ -2409,6 +2412,9 @@ function renderAssignmentList() {
 
         <span class="assignment-item-meta">
           <span class="assignment-mini-chip">${escapeHtml(assignment.groupName || "ALL")}</span>
+          ${assignment.recipientTeamTarget
+            ? `<span class="assignment-mini-chip">${escapeHtml(assignment.recipientTeamTarget)}</span>`
+            : ""}
           <span class="assignment-mini-chip">${escapeHtml(formatCompactDate(assignment.dueAt))}</span>
           <span class="assignment-mini-chip ${assignment.active ? "open" : "closed"}">
             ${assignment.active ? "Open" : "Closed"}
@@ -2466,7 +2472,10 @@ function renderDetail() {
   const codeLockText = assignmentHasSubmissions(selectedAssignmentId)
     ? " · Code locked after first submission"
     : "";
-  detailMeta.textContent = `${assignment.groupName || "ALL"} · Due: ${formatDate(assignment.dueAt)} · ${assignment.active ? "Open" : "Closed"}${codeLockText}`;
+  const recipientScopeText = assignment.recipientTeamTarget
+    ? ` · ${assignment.recipientTeamTarget}`
+    : "";
+  detailMeta.textContent = `${assignment.groupName || "ALL"}${recipientScopeText} · Due: ${formatDate(assignment.dueAt)} · ${assignment.active ? "Open" : "Closed"}${codeLockText}`;
   eligibleCount.textContent = students.length;
   submittedCount.textContent = validSubmissionEntries.length;
   missingCount.textContent = missing.length;
