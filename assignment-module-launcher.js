@@ -13,7 +13,7 @@ function ensureShell() {
     }
     .assignments-module-overlay[hidden]{display:none!important}
     .assignments-module-shell{
-      width:min(1500px,96vw);height:min(940px,94vh);background:#fff;
+      width:min(1180px,96vw);height:min(900px,94vh);background:#fff;
       border-radius:18px;box-shadow:0 24px 70px rgba(15,23,42,.28);
       overflow:hidden;display:grid;grid-template-rows:auto 1fr
     }
@@ -39,12 +39,12 @@ function ensureShell() {
   overlay.className = "assignments-module-overlay";
   overlay.hidden = true;
   overlay.innerHTML = `
-    <section class="assignments-module-shell" role="dialog" aria-modal="true" aria-label="Assignments">
+    <section class="assignments-module-shell" role="dialog" aria-modal="true" aria-label="Create Assignment">
       <div class="assignments-module-head">
-        <strong>Assignments</strong>
-        <button id="assignmentsModuleCloseBtn" class="assignments-module-close" type="button" aria-label="Close Assignments">×</button>
+        <strong>Create Assignment</strong>
+        <button id="assignmentsModuleCloseBtn" class="assignments-module-close" type="button" aria-label="Close Create Assignment">×</button>
       </div>
-      <iframe id="assignmentsModuleFrame" class="assignments-module-frame" title="Assignments module"></iframe>
+      <iframe id="assignmentsModuleFrame" class="assignments-module-frame" title="Create Assignment"></iframe>
     </section>
   `;
   document.body.appendChild(overlay);
@@ -55,6 +55,13 @@ function ensureShell() {
   });
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && !overlay.hidden) closeAssignmentsModule();
+  });
+
+  window.addEventListener("message", (event) => {
+    if (event.origin !== window.location.origin) return;
+    if (event.data?.type !== "youteach:assignment-created") return;
+    window.dispatchEvent(new CustomEvent("youteach:assignment-created", { detail: event.data }));
+    closeAssignmentsModule();
   });
 
   return overlay;
@@ -68,7 +75,7 @@ export function openAssignmentsModule(context = {}) {
 
   const overlay = ensureShell();
   const frame = overlay.querySelector("#assignmentsModuleFrame");
-  frame.src = `teacher-assignments.html?module=1&opened=${Date.now()}`;
+  frame.src = `assignment-create-module.html?opened=${Date.now()}`;
   overlay.hidden = false;
   document.body.style.overflow = "hidden";
 }
