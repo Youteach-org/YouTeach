@@ -33,3 +33,14 @@ test('migration status can prove cutover readiness without handling plaintext cr
   assert.match(source,/publicCredentialFields/);
   assert.doesNotMatch(source,/student\?\.password|student\.password/);
 });
+
+test('bulk student credential migration is bootstrap-protected and clears public passwords only after secure storage',()=>{
+  const path='functions/api/auth-migrate-students.js';
+  assert.equal(existsSync(new URL(path,root)),true,path+' should exist');
+  const source=read(path);
+  assert.match(source,/YOUTEACH_AUTH_BOOTSTRAP_SECRET/);
+  assert.match(source,/putStudentCredential/);
+  assert.match(source,/password\s*:\s*null/);
+  assert.match(source,/YOUTEACH_AUTH/);
+  assert.doesNotMatch(source,/console\.(?:log|info|debug)\([^\n]*password/i);
+});
