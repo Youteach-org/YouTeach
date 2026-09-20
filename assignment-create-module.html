@@ -11,11 +11,22 @@
     body{padding:14px}
     .create-assignment-module{display:grid;gap:12px}
     .creation-source-toggle{
-      display:inline-grid;grid-template-columns:1fr 1fr;gap:3px;padding:3px;
+      display:inline-grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;
       border:1px solid #cbd5e1;border-radius:10px;background:#e2e8f0;width:min(440px,100%)
     }
-    .creation-source-toggle button{background:transparent;color:#475569;border:0;box-shadow:none}
-    .creation-source-toggle button.active{background:#fff;color:#0f172a;box-shadow:0 1px 4px rgba(15,23,42,.12)}
+    .creation-source-toggle button{
+      background:#f8fafc;color:#475569;border:1px solid transparent;box-shadow:none;
+      transition:background .15s ease,color .15s ease,border-color .15s ease,transform .15s ease
+    }
+    .creation-source-toggle button:hover{background:#eef2f7;color:#0f172a}
+    .creation-source-toggle button.active,
+    .creation-source-toggle button[aria-pressed="true"]{
+      background:#2563eb;color:#fff;border-color:#1d4ed8;
+      box-shadow:0 2px 7px rgba(37,99,235,.28);transform:translateY(-1px)
+    }
+    .creation-source-toggle button[aria-pressed="false"]{
+      background:#f8fafc;color:#475569;border-color:transparent;box-shadow:none;transform:none
+    }
     .library-panel{border:1px solid #dbeafe;border-radius:12px;background:#fff;padding:10px;display:grid;gap:8px}
     .library-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
     .library-head h2{margin:0;font-size:15px}
@@ -270,6 +281,6 @@
     </div>
   </main>
 
-  <script type="module" src="assignment-create-module.js?v=popup-library-20260920"></script>
+  <script type="module" src="assignment-create-module.js?v=assignments-repair-20260920"></script>
 </body>
 </html>
