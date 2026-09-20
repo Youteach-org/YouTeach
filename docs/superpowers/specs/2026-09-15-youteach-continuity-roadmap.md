@@ -531,3 +531,50 @@ Buzzer:
 - The **From scratch / Assignment Library** toggle must show the selected mode with a clearly different active color; the inactive mode uses a neutral appearance.
 - Removing or relocating Assignment Library UI must never leave required DOM references that crash the normal Assignments page.
 - Legacy template/library compatibility code on the normal Assignments page must be null-safe or backed only by hidden compatibility elements; it must never be required for visible rendering.
+
+
+## Group evaluation model and Students grade dashboard — 2026-09-20
+
+This supersedes the fixed three-column raw-points interpretation on the Teacher **Students** page.
+
+### Group creation / configuration
+- A group is not complete with only a name and student roster. Each group also owns its evaluation configuration.
+- The teacher sets the number of evaluation blocks/units for the group. The UI uses **Block 1...Block N** for compatibility with the existing grade/points data model.
+- The teacher sets four grading weights:
+  - **Tasks**
+  - **Exams**
+  - **Participation**
+  - **Attendance**
+- The four weights must total exactly **100%** before a new group can be created or an evaluation setup can be saved.
+- Existing groups created before this model remain valid, but are marked **Evaluation setup required** until weights are configured.
+- Existing group evaluation settings must be editable from **Groups / Import** without recreating the group or students.
+
+Canonical group fields:
+```text
+groups/{groupName}/evaluationUnitCount
+groups/{groupName}/evaluationWeights/tasks
+groups/{groupName}/evaluationWeights/exams
+groups/{groupName}/evaluationWeights/participation
+groups/{groupName}/evaluationWeights/attendance
+```
+
+### Students page
+- **Students** becomes the primary group grade overview, not a raw activity-points table.
+- The number of block columns is dynamic and comes from the selected group's `evaluationUnitCount`; do not hard-code three blocks.
+- Each block cell shows the student's **current accumulated grade for that block (0–100)** according to the selected group's evaluation weights.
+- The page also shows the selected group's evaluation setup so the teacher can see how the grade is composed.
+- If the selected group has no evaluation setup, block grades show an explicit **Setup required** state rather than pretending raw points are a final grade.
+
+### Category calculation / backward compatibility
+- Modern Assignment grades use published or teacher-visible `grading.totalScore` values on a 0–100 scale:
+  - `EX` assignments feed the **Exams** category.
+  - other graded assignment types feed the **Tasks** category.
+- New assignments persist the active evaluation block at creation so their grades can be attributed to the correct block.
+- For existing historical data, legacy block stores remain valid fallbacks:
+  - `taskPoints[Block N]` -> Tasks contribution
+  - `examPoints[Block N]` (written + oral + verbs) -> Exams contribution
+  - `blockPoints[Block N]` -> Participation contribution
+  - `attendancePoints[Block N]` -> Attendance contribution
+- If modern graded assignments exist for a Tasks or Exams category in a block, their average 0–100 score is multiplied by that category's configured weight. Otherwise the legacy category points are used as a direct contribution, capped at that category's configured weight.
+- Participation and Attendance legacy points are direct weighted contributions, capped at their configured category weights.
+- Current block grade is the sum of category contributions and is capped at 100.
