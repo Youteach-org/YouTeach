@@ -17,6 +17,7 @@ const sidebarIdentity = document.getElementById("sidebarIdentity");
 const logoutBtn = document.getElementById("logoutBtn");
 const ghostTableBody = document.getElementById("ghostTableBody");
 const selectAllGhostsBtn = document.getElementById("selectAllGhostsBtn");
+const deselectAllGhostsBtn = document.getElementById("deselectAllGhostsBtn");
 const activateGhostsBtn = document.getElementById("activateGhostsBtn");
 const deactivateGhostsBtn = document.getElementById("deactivateGhostsBtn");
 const presenceProgress = document.getElementById("presenceProgress");
@@ -599,11 +600,13 @@ ghostTableBody.addEventListener("click", async (event) => {
 });
 
 selectAllGhostsBtn.addEventListener("click", () => {
-  const ghosts = ghostEntries();
-  const allSelected = ghosts.length > 0 && ghosts.every(([key]) => selectedGhostKeys.has(key));
-  selectedGhostKeys = new Set(allSelected ? [] : ghosts.map(([key]) => key));
+  selectedGhostKeys = new Set(ghostEntries().map(([key]) => key));
   renderGhosts();
-  selectAllGhostsBtn.textContent = allSelected ? "Select all" : "Clear selection";
+});
+
+deselectAllGhostsBtn.addEventListener("click", () => {
+  selectedGhostKeys = new Set();
+  renderGhosts();
 });
 activateGhostsBtn.addEventListener("click", () => setGhostPresence(true));
 deactivateGhostsBtn.addEventListener("click", () => setGhostPresence(false));
