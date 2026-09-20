@@ -246,10 +246,13 @@ Approved sequence:
 Assignment creation rules:
 
 - **Assignment Type comes first.**
-- **Other** is the only type that reveals the custom type text field.
-- The obsolete **Start from scratch** template option is removed.
-- Saved templates are optional and filtered by the selected Assignment Type.
-- When opened from Team Generator, the create form receives the exact generated-team context.
+- **Other** alone reveals the custom type text field.
+- The primary Create Assignment form contains Assignment Name, target/group context, due date/time, student instructions, visible evaluation criteria, and teacher-only instructions for ChatGPT.
+- Evaluation criteria remain visible and keep preset/custom criteria with a required 100-point total and equal/manual distribution.
+- Create Assignment does **not** show Save Template, Load Template, a template selector, or Start from scratch.
+- Template infrastructure remains separate from this primary creation flow.
+- If a working group is already established, that group is used/displayed automatically; the teacher chooses a group only when no specific working group exists.
+- When opened from Team Generator, the form receives exact generated-team context.
 - Only in that context does **Assign to generated teams** appear.
 - Its choices are **All Generated Teams** plus each generated team individually.
 - **All Generated Teams** means the union of students inside the generated teams, not every student enrolled in the group.
