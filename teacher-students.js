@@ -23,6 +23,7 @@ const evaluationSetupSummary = document.getElementById("evaluationSetupSummary")
 const studentsTableBody = document.getElementById("studentsTableBody");
 const studentsTableHeadRow = studentsTableBody.closest("table")?.querySelector("thead tr");
 const saveAllStudentsBtn = document.getElementById("saveAllStudentsBtn");
+const openBlockReportBtn = document.getElementById("openBlockReportBtn");
 
 teacherIdentity.textContent = getTeacherName();
 logoutBtn.addEventListener("click", logoutTeacher);
@@ -225,6 +226,12 @@ function renderStudents(){
     });
   });
 }
+
+openBlockReportBtn.addEventListener("click", () => {
+  const group = selectedGroup || groupFilter.value || "";
+  const query = group ? `?group=${encodeURIComponent(group)}` : "";
+  window.location.href = `teacher-block-report.html${query}`;
+});
 
 saveAllStudentsBtn.addEventListener("click", async () => {
   const updates = {};
