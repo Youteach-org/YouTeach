@@ -638,11 +638,22 @@ groupEvaluationTemplates/{templateId}
 - The cell breakdown uses the teacher-defined criterion names.
 - If the group has no configured criteria totaling 100%, Students shows **Evaluation setup required**.
 
-### CLE Otoño 2026 reusable preset
-The CLE Otoño 2026 manual confirms these four grading rubrics for the current course:
-- Written exam — 35%
-- Oral exam — 40%
-- Tasks — 10%
-- Verbs exam — 15%
+### Institution-specific evaluation setups
+YouTeach remains universal and does **not** hard-code CLE, a school, a course, or any fixed evaluation rubric.
 
-This CLE setup is a reusable preset/template only and must **not** become a universal YouTeach grading rule.
+For the current CLE Otoño 2026 course, the teacher may create and save a personal reusable evaluation template with:
+- Examen escrito — 35%
+- Examen oral / práctica oral — 40%
+- Tareas — 10%
+- Examen de verbos — 15%
+
+Those values live in teacher/group/template data, not as a built-in application preset. Another teacher sees and creates only the criteria relevant to their own groups.
+
+### End-of-block report
+- **Students** provides a **Block Report** action for the selected group.
+- The report generates one column per configured group criterion, then **TOTAL**, plus an optional student signature column.
+- Each criterion may define a short report label (for example a teacher may use E, PR.O, V, T); labels are data, not hard-coded UI.
+- Organization, department, period, course/program, parallel groups, report title, and whether to include signatures are editable report settings saved per group.
+- Report settings may travel with a reusable group evaluation template.
+- The report is printable / Save-to-PDF friendly and uses the same grade calculation as Students.
+- Institution-specific report layouts are represented as data/settings; the calculation engine remains universal.
