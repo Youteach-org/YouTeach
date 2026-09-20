@@ -1,6 +1,6 @@
 import { db } from "./firebase.js";
 import { ref, onValue, push, set } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-import { requireTeacherAuth, getTeacherName } from "./teacher-auth.js";
+import { requireTeacherAuth, getTeacherName, getTeacherSessionToken } from "./teacher-auth.js";
 import { readAssignmentsModuleContext } from "./assignment-module-launcher.js";
 
 if (!requireTeacherAuth()) throw new Error("Teacher authentication required.");
@@ -587,6 +587,30 @@ function setStatus(message, kind = "") {
   createAssignmentStatus.className = `status ${kind}`.trim();
 }
 
+async function launchCogAssignment(assignmentId, targetWindow) {
+  const teacherSessionToken = getTeacherSessionToken();
+  if (!teacherSessionToken) throw new Error("Your teacher session expired. Sign in again.");
+
+  const response = await fetch("/api/cog-live-teacher-launch", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${teacherSessionToken}`
+    },
+    body: JSON.stringify({ assignmentId })
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.ok !== true || !payload?.launchUrl) {
+    throw new Error(payload?.error || "Could not open Classroom Online Games.");
+  }
+
+  if (targetWindow && !targetWindow.closed) {
+    targetWindow.location.href = payload.launchUrl;
+  } else {
+    window.open(payload.launchUrl, "_blank", "noopener");
+  }
+}
+
 async function createAssignment() {
   refreshDistribution();
   refreshAutomaticTaskCode();
@@ -601,8 +625,7 @@ async function createAssignment() {
   const rubric = collectRubric();
   const evaluationDistribution = getDistributionMode();
   const evaluationNotes = assignmentEvaluationNotes.value.trim();
-
-  if (!title) return setStatus("Enter an assignment name.", "bad");
+  if (!title) return setStatus("Enter an assignment name.", "bad"); return setStatus("Enter an assignment name.", "bad");
   if (assignmentType.value === "OTHER" && !assignmentOtherType.value.trim()) {
     return setStatus("Specify the assignment type.", "bad");
   }
@@ -626,6 +649,9 @@ async function createAssignment() {
 
   if (!code) return setStatus("Complete type, name, target, and due date to generate the Task Code.", "bad");
   if (taskCodeExists(code)) return setStatus("That activity already exists. Change the name, target, date, or type.", "bad");
+
+  const cogLaunchWindow = typeCode === "COG" ? window.open("about:blank", "_blank") : null;
+  if (cogLaunchWindow) cogLaunchWindow.opener = null;
 
   createAssignmentBtn.disabled = true;
   setStatus("Creating...");
@@ -663,7 +689,22 @@ async function createAssignment() {
     };
 
     await set(target, payload);
-    setStatus("Assignment created.", "ok");
+
+    if (typeCode === "COG") {
+      setStatus("Assignment created. Opening Classroom Online Games...", "ok");
+      try {
+        await launchCogAssignment(target.key, cogLaunchWindow);
+      } catch (launchError) {
+        if (cogLaunchWindow && !cogLaunchWindow.closed) cogLaunchWindow.close();
+        setStatus(
+          `Assignment created, but Classroom Online Games could not open: ${launchError?.message || "Unknown error"}`,
+          "bad"
+        );
+        throw launchError;
+      }
+    } else {
+      setStatus("Assignment created.", "ok");
+    }
 
     if (window.parent !== window) {
       window.parent.postMessage({
@@ -674,7 +715,12 @@ async function createAssignment() {
     }
   } catch (error) {
     console.error(error);
-    setStatus(error?.message ? `Could not create the assignment: ${error.message}` : "Could not create the assignment.", "bad");
+    if (cogLaunchWindow && !cogLaunchWindow.closed && !cogLaunchWindow.location.href.startsWith("https://classroom-online-games.pages.dev")) {
+      cogLaunchWindow.close();
+    }
+    if (!String(createAssignmentStatus.textContent || "").startsWith("Assignment created, but")) {
+      setStatus(error?.message ? `Could not create the assignment: ${error.message}` : "Could not create the assignment.", "bad");
+    }
   } finally {
     createAssignmentBtn.disabled = false;
   }
