@@ -2,6 +2,7 @@ import { db } from "./firebase.js";
 import { ref, onValue, push, set, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireTeacherAuth, getTeacherName } from "./teacher-auth.js";
 import { readAssignmentsModuleContext } from "./assignment-module-launcher.js?v=popup-library-20260920";
+import { groupEvaluationConfig } from "./group-evaluation-model.js";
 
 if (!requireTeacherAuth()) throw new Error("Teacher authentication required.");
 
@@ -58,6 +59,9 @@ const assignmentGroupHelp = document.getElementById("assignmentGroupHelp");
 const assignmentTargetField = document.getElementById("assignmentTargetField");
 const assignmentTargetSelect = document.getElementById("assignmentTargetSelect");
 const assignmentTargetHelp = document.getElementById("assignmentTargetHelp");
+const assignmentGroupCriterionField = document.getElementById("assignmentGroupCriterionField");
+const assignmentGroupCriterion = document.getElementById("assignmentGroupCriterion");
+const assignmentGroupCriterionHelp = document.getElementById("assignmentGroupCriterionHelp");
 const assignmentDueAt = document.getElementById("assignmentDueAt");
 const assignmentCode = document.getElementById("assignmentCode");
 const taskCodeStatus = document.getElementById("taskCodeStatus");
@@ -284,6 +288,39 @@ function availableGroups() {
   return [...names].sort((a, b) => a.localeCompare(b));
 }
 
+function renderGroupCriterionOptions() {
+  const groupName = String(assignmentGroup.value || "");
+  const group = groupsCache?.[groupName] || null;
+  const config = groupEvaluationConfig(group || {});
+  const previous = String(assignmentGroupCriterion.value || "");
+
+  if (!groupName || groupName === "ALL" || !group || !config.configured) {
+    assignmentGroupCriterion.innerHTML =
+      '<option value="">Not linked to a group grade criterion</option>';
+    assignmentGroupCriterion.value = "";
+    assignmentGroupCriterion.disabled = true;
+    assignmentGroupCriterionHelp.textContent =
+      groupName === "ALL"
+        ? "Choose one group to link this assignment to that group's grading criteria."
+        : "This group does not have a valid evaluation setup yet.";
+    return;
+  }
+
+  assignmentGroupCriterion.disabled = false;
+  assignmentGroupCriterion.innerHTML =
+    '<option value="">Not linked to a group grade criterion</option>' +
+    config.criteria.map((criterion) =>
+      `<option value="${escapeHtml(criterion.id)}">${escapeHtml(criterion.name)} · ${criterion.weight}%</option>`
+    ).join("");
+
+  if (config.criteria.some((criterion) => criterion.id === previous)) {
+    assignmentGroupCriterion.value = previous;
+  }
+
+  assignmentGroupCriterionHelp.textContent =
+    "Optional. This determines which group criterion receives the assignment grade.";
+}
+
 function renderGroupOptions() {
   const workingGroup = getWorkingGroup();
   const groups = availableGroups();
@@ -308,6 +345,7 @@ function renderGroupOptions() {
   }
 
   renderTargetOptions();
+  renderGroupCriterionOptions();
   refreshAutomaticTaskCode();
 }
 
@@ -950,6 +988,9 @@ async function createAssignment() {
   const typeCode = selectedTypeCode();
   const typeLabel = selectedTypeLabel();
   const groupName = assignmentGroup.value || "ALL";
+  const groupCriterionId = String(assignmentGroupCriterion.value || "");
+  const groupConfig = groupEvaluationConfig(groupsCache?.[groupName] || {});
+  const groupCriterion = groupConfig.criteria.find((criterion) => criterion.id === groupCriterionId) || null;
   const dueAt = assignmentDueAt.value ? new Date(assignmentDueAt.value).getTime() : 0;
   const code = assignmentCode.value.trim().toUpperCase();
   const targetMetadata = assignmentTargetMetadata();
@@ -1020,6 +1061,8 @@ async function createAssignment() {
         : {}),
       groupName,
       evaluationBlock: String(settingsCache.activeBlock || "Block 1"),
+      groupEvaluationCriterionId: groupCriterion?.id || "",
+      groupEvaluationCriterionName: groupCriterion?.name || "",
       ...targetMetadata,
       dueAt,
       active: true,
@@ -1090,7 +1133,11 @@ assignmentType.addEventListener("change", () => {
 });
 assignmentOtherType.addEventListener("input", refreshAutomaticTaskCode);
 assignmentTitle.addEventListener("input", refreshAutomaticTaskCode);
-assignmentGroup.addEventListener("change", refreshAutomaticTaskCode);
+assignmentGroup.addEventListener("change", () => {
+  renderGroupCriterionOptions();
+  refreshAutomaticTaskCode();
+});
+assignmentGroupCriterion.addEventListener("change", refreshAutomaticTaskCode);
 assignmentTargetSelect.addEventListener("change", () => {
   renderTargetOptions();
   refreshAutomaticTaskCode();
