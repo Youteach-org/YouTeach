@@ -1,15 +1,12 @@
 import { db } from "./firebase.js";
-import { ref, onValue, update, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireStudentSession, clearStudentSession, saveLeaveLog } from "./student-auth.js";
 
 const session = requireStudentSession();
 if (!session) throw new Error("Student session required.");
-
-const { studentKey } = session;
+const { studentKey, sessionToken } = session;
 
 const logoutBtn = document.getElementById("logoutBtn");
-const menuToggle = document.getElementById("menuToggle");
-const sidebar = document.getElementById("sidebar");
 const studentIdentity = document.getElementById("studentIdentity");
 const nicknameInput = document.getElementById("nicknameInput");
 const saveNicknameBtn = document.getElementById("saveNicknameBtn");
@@ -18,27 +15,17 @@ const newPasswordInput = document.getElementById("newPasswordInput");
 const savePasswordBtn = document.getElementById("savePasswordBtn");
 const settingsMessage = document.getElementById("settingsMessage");
 
-let currentStudent = null;
-
-
-
 function getDisplayName(student) {
   if (!student) return "Student";
-  return (
-    student.nickname ||
-    ((student.fullName || student.name || "").split(" ")[0]) ||
-    "Student"
-  );
+  return student.nickname || ((student.fullName || student.name || "").split(" ")[0]) || "Student";
 }
-
 function getExternalId(student) {
   return student?.studentNumber || student?.externalId || "";
 }
-
 function formatStudentLabel(student) {
   const name = getDisplayName(student);
   const externalId = getExternalId(student);
-  return externalId ? `${name} Â· ${externalId}` : name;
+  return externalId ? `${name} · ${externalId}` : name;
 }
 
 logoutBtn.addEventListener("click", async () => {
@@ -50,12 +37,10 @@ logoutBtn.addEventListener("click", async () => {
 
 saveNicknameBtn.addEventListener("click", async () => {
   const nickname = nicknameInput.value.trim();
-
   if (!nickname) {
     settingsMessage.textContent = "Nickname cannot be empty.";
     return;
   }
-
   await update(ref(db, `students/${studentKey}`), { nickname });
   settingsMessage.textContent = "Nickname updated.";
 });
@@ -63,41 +48,47 @@ saveNicknameBtn.addEventListener("click", async () => {
 savePasswordBtn.addEventListener("click", async () => {
   const currentPassword = currentPasswordInput.value;
   const newPassword = newPasswordInput.value;
-
   if (!newPassword) {
     settingsMessage.textContent = "New password cannot be empty.";
     return;
   }
 
-  const snapshot = await get(ref(db, `students/${studentKey}`));
-  const student = snapshot.val();
+  savePasswordBtn.disabled = true;
+  try {
+    const response = await fetch("/api/student-password", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${sessionToken}`
+      },
+      body: JSON.stringify({ currentPassword, newPassword })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data.ok !== true) {
+      settingsMessage.textContent = data.error || "Could not change the password.";
+      return;
+    }
 
-  if (!student) {
-    settingsMessage.textContent = "Student not found.";
-    return;
+    currentPasswordInput.value = "";
+    newPasswordInput.value = "";
+    settingsMessage.textContent = "Password updated. Sign in again with your new password.";
+    clearStudentSession();
+    setTimeout(() => { window.location.href = "student.html"; }, 500);
+  } catch (error) {
+    console.error(error);
+    settingsMessage.textContent = "Could not change the password.";
+  } finally {
+    savePasswordBtn.disabled = false;
   }
-
-  const validCurrentPassword = student.password || "1234";
-  if (currentPassword !== validCurrentPassword) {
-    settingsMessage.textContent = "Current password is incorrect.";
-    return;
-  }
-
-  await update(ref(db, `students/${studentKey}`), { password: newPassword });
-  currentPasswordInput.value = "";
-  newPasswordInput.value = "";
-  settingsMessage.textContent = "Password updated.";
 });
 
 onValue(ref(db, `students/${studentKey}`), (snapshot) => {
-  currentStudent = snapshot.val();
-  if (!currentStudent) {
+  const student = snapshot.val();
+  if (!student) {
     clearStudentSession();
     window.location.href = "index.html";
     return;
   }
-
-  studentIdentity.textContent = formatStudentLabel(currentStudent);
-  nicknameInput.value = currentStudent.nickname || "";
+  studentIdentity.textContent = formatStudentLabel(student);
+  nicknameInput.value = student.nickname || "";
 });
-
