@@ -42,14 +42,15 @@ Cross-application trust must use explicit short-lived credentials and server val
 
 ## Teacher launch flow
 
-### 1. Open COG from YouTeach Buzzer
+### 1. Launch COG from a Buzzer COG activity
 
 The teacher must have:
 - a valid authenticated YouTeach teacher session;
 - an active YouTeach Buzzer session;
-- a selected/current group.
+- a selected/current group;
+- a Buzzer team activity classified as **Classroom Online Games (COG)**.
 
-When the teacher presses the Classroom Online Games control in Buzzer, YouTeach issues a short-lived teacher launch credential bound to:
+The old standalone Classroom Online Games button is no longer part of the approved UI. When the teacher starts/opens the selected COG activity through the generic activity flow, YouTeach issues a short-lived teacher launch credential bound to:
 - teacher identity;
 - YouTeach session id/context;
 - selected group;
