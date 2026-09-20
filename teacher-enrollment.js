@@ -4,7 +4,6 @@ import { generateId } from "./app.js";
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
 import { migrateExistingStudentsForTeacher } from "./student-auth.js?v=group-evaluation-20260920";
 import {
-  CLE_FALL_2026_EVALUATION_PRESET,
   EVALUATION_SOURCE_OPTIONS,
   criteriaToFirebaseObject,
   groupEvaluationConfig,
@@ -52,9 +51,6 @@ const groupsTableBody = document.getElementById("groupsTableBody");
 
 teacherIdentity.textContent = getTeacherName();
 logoutBtn.addEventListener("click", logoutTeacher);
-
-renderEvaluationTemplateOptions();
-setCriteriaEditor([]);
 
 let groupsCache = {};
 let studentsCache = {};
@@ -139,7 +135,6 @@ function renderEvaluationTemplateOptions() {
 
   evaluationTemplateSelect.innerHTML = `
     <option value="">Start with custom criteria</option>
-    <option value="builtin:${CLE_FALL_2026_EVALUATION_PRESET.id}">${escapeHtml(CLE_FALL_2026_EVALUATION_PRESET.name)}</option>
     ${savedOptions}
   `;
 
@@ -150,9 +145,6 @@ function renderEvaluationTemplateOptions() {
 
 function selectedEvaluationTemplate() {
   const value = String(evaluationTemplateSelect.value || "");
-  if (value === `builtin:${CLE_FALL_2026_EVALUATION_PRESET.id}`) {
-    return CLE_FALL_2026_EVALUATION_PRESET;
-  }
   if (value.startsWith("saved:")) {
     return evaluationTemplatesCache[value.slice(6)] || null;
   }
@@ -533,6 +525,9 @@ importTextBtn.addEventListener("click", async () => {
   bulkTextInput.value = "";
   alert(`${students.length} students imported successfully.`);
 });
+
+renderEvaluationTemplateOptions();
+setCriteriaEditor([]);
 
 (async () => {
   try {
