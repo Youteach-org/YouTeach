@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/auth-hardening-20260919
+      - feature/cog-youteach-secure-integrated-20260919
   workflow_dispatch:
 
 permissions:
