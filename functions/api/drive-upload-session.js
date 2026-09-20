@@ -707,6 +707,16 @@ export async function onRequest(context) {
       return json(403, { ok: false, error: "This assignment is not assigned to your group." });
     }
 
+
+    const rawRecipients = assignment?.recipientStudentKeys;
+    const recipientKeys = Array.isArray(rawRecipients)
+      ? rawRecipients.map((value) => String(value || "")).filter(Boolean)
+      : (rawRecipients && typeof rawRecipients === "object"
+        ? Object.values(rawRecipients).map((value) => String(value || "")).filter(Boolean)
+        : []);
+    if (recipientKeys.length && !recipientKeys.includes(String(studentKey))) {
+      return json(403, { ok: false, error: "This assignment is not assigned to this student." });
+    }
     const accessToken = await getAccessToken(env);
     const taskCode = safeSegment(assignment.code || assignmentId, "TASK");
     const studentName = student.fullName || student.name || student.nickname || expectedExternalId;
