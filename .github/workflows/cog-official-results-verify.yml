@@ -3,8 +3,8 @@ name: Verify COG official results
 on:
   push:
     branches:
-      - feature/cog-official-results-20260919
-      - feature/cog-youteach-secure-integrated-20260919
+      - feature/cog-youteach-secure-current-20260920
+      - feature/cog-youteach-secure-current-20260920
   workflow_dispatch:
 
 permissions:
