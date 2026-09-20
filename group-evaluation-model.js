@@ -9,25 +9,6 @@ export const EVALUATION_SOURCE_OPTIONS = Object.freeze([
   { key: "manual", label: "Manual / imported criterion score" }
 ]);
 
-export const CLE_FALL_2026_EVALUATION_PRESET = Object.freeze({
-  id: "cle-fall-2026",
-  name: "CLE Otoño 2026",
-  evaluationUnitCount: 3,
-  evaluationCriteria: [
-    { id: "written-exam", name: "Examen escrito", weight: 35, source: "writtenExam", order: 0 },
-    { id: "oral-exam", name: "Examen oral", weight: 40, source: "oralExam", order: 1 },
-    { id: "tasks", name: "Tareas", weight: 10, source: "tasks", order: 2 },
-    { id: "verbs-exam", name: "Examen de verbos", weight: 15, source: "verbsExam", order: 3 }
-  ]
-});
-
-const LEGACY_FIXED_CRITERIA = Object.freeze([
-  { id: "legacy-tasks", name: "Tasks", source: "tasks", order: 0, legacyWeightKey: "tasks" },
-  { id: "legacy-exams", name: "Exams", source: "writtenExam", order: 1, legacyWeightKey: "exams" },
-  { id: "legacy-participation", name: "Participation", source: "participation", order: 2, legacyWeightKey: "participation" },
-  { id: "legacy-attendance", name: "Attendance", source: "attendance", order: 3, legacyWeightKey: "attendance" }
-]);
-
 export function normalizeEvaluationUnitCount(value, fallback = 3) {
   const parsed = Number.parseInt(value, 10);
   if (!Number.isFinite(parsed)) return fallback;
@@ -71,19 +52,6 @@ export function normalizeEvaluationCriteria(value = []) {
     .map((criterion, index) => ({ ...criterion, order: index }));
 }
 
-function criteriaFromLegacyWeights(weights = {}) {
-  if (!weights || typeof weights !== "object") return [];
-  return LEGACY_FIXED_CRITERIA
-    .map((criterion) => ({
-      id: criterion.id,
-      name: criterion.name,
-      weight: Number(weights[criterion.legacyWeightKey] || 0),
-      source: criterion.source,
-      order: criterion.order
-    }))
-    .filter((criterion) => criterion.weight > 0);
-}
-
 export function evaluationWeightTotal(criteria = []) {
   return Number(
     normalizeEvaluationCriteria(criteria)
@@ -109,20 +77,20 @@ export function criteriaToFirebaseObject(criteria = []) {
 
 export function groupEvaluationConfig(group = {}) {
   const unitCount = normalizeEvaluationUnitCount(group?.evaluationUnitCount, 3);
-  let criteria = normalizeEvaluationCriteria(group?.evaluationCriteria || []);
-
-  if (!criteria.length && group?.evaluationWeights && typeof group.evaluationWeights === "object") {
-    criteria = criteriaFromLegacyWeights(group.evaluationWeights);
-  }
-
+  const criteria = normalizeEvaluationCriteria(group?.evaluationCriteria || []);
   const total = evaluationWeightTotal(criteria);
   const explicitlyConfigured = criteria.length > 0;
+  const legacyFixedWeightsPresent =
+    !explicitlyConfigured &&
+    group?.evaluationWeights &&
+    typeof group.evaluationWeights === "object";
 
   return {
     unitCount,
     criteria,
     total,
-    configured: Boolean(explicitlyConfigured && Math.abs(total - 100) < 0.01)
+    configured: Boolean(explicitlyConfigured && Math.abs(total - 100) < 0.01),
+    legacyFixedWeightsPresent: Boolean(legacyFixedWeightsPresent)
   };
 }
 
