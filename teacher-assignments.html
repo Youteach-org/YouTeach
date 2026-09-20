@@ -1520,6 +1520,8 @@
       padding:10px!important
     }
     .assignment-module-mode .assignments-page{max-width:none!important;margin:0!important}
+    .assignment-module-mode #assignmentLibraryPanel{display:none!important}
+    .rubric-always-visible .rubric-shell{border-top:0}
     .assignment-target-field{
       border:1px solid #bfdbfe;
       background:#eff6ff;
@@ -1595,24 +1597,20 @@
               <input id="assignmentOtherType" placeholder="e.g. Lab, Portfolio, Case study">
               <div class="field-help">This field appears only when Other is selected.</div>
             </div>
-            <div class="field title-field">
-              <label for="assignmentTemplateSource">Saved template (optional)</label>
-              <select id="assignmentTemplateSource">
+            <div hidden aria-hidden="true">
+              <select id="assignmentTemplateSource" tabindex="-1">
                 <option value="">No template selected</option>
               </select>
-              <div class="field-help">Templates are filtered by the assignment type selected above.</div>
-            </div>
-            <div class="field">
-              <label for="loadAssignmentTemplateBtn">Template action</label>
-              <button id="loadAssignmentTemplateBtn" type="button" disabled>Load template</button>
+              <button id="loadAssignmentTemplateBtn" type="button" disabled tabindex="-1">Load template</button>
             </div>
             <div class="field title-field">
-              <label for="assignmentTitle">Assignment title</label>
-              <input id="assignmentTitle" placeholder="Assignment title">
+              <label for="assignmentTitle">Assignment name</label>
+              <input id="assignmentTitle" placeholder="Assignment name">
             </div>
-            <div class="field">
-              <label for="assignmentGroup">Group</label>
+            <div class="field" id="assignmentGroupField">
+              <label for="assignmentGroup">Assign to</label>
               <select id="assignmentGroup"><option value="ALL">All groups</option></select>
+              <div id="assignmentGroupHelp" class="field-help">Choose a group only when no working group is already active.</div>
             </div>
             <div id="assignmentTargetField" class="field assignment-target-field" hidden>
               <label for="assignmentTargetSelect">Assign to generated teams</label>
@@ -1622,7 +1620,7 @@
               <div id="assignmentTargetHelp" class="field-help">Only students inside the generated teams will receive this assignment.</div>
             </div>
             <div class="field">
-              <label for="assignmentDueAt">Due date</label>
+              <label for="assignmentDueAt">Due date and time</label>
               <input id="assignmentDueAt" type="datetime-local" required>
               <div class="field-help">Required. The code uses DDMMYY.</div>
             </div>
@@ -1636,12 +1634,11 @@
               <textarea id="assignmentInstructions" placeholder="What should students submit?"></textarea>
             </div>
 
-            <details class="rubric-details">
-              <summary>Evaluation criteria <span class="rubric-summary-note">Open to configure · total 100 pts</span></summary>
+            <section class="rubric-details rubric-always-visible" aria-labelledby="createCriteriaHeading">
               <div class="rubric-shell">
               <div class="rubric-header">
                 <div>
-                  <h4>Evaluation criteria</h4>
+                  <h4 id="createCriteriaHeading">Evaluation criteria</h4>
                   <p>Criteria always total 100 points. Distribute them equally or assign weights manually.</p>
                 </div>
                 <div class="rubric-summary">
@@ -1672,12 +1669,14 @@
                 </div>
               </div>
 
-              <div class="rubric-footer">
-                <label class="section-label" for="assignmentEvaluationNotes">Teacher-only grading notes for ChatGPT (optional)</label>
-                <textarea id="assignmentEvaluationNotes" placeholder="Special grading instructions, tolerances, deductions, or exceptions."></textarea>
               </div>
-              </div>
-            </details>
+            </section>
+
+            <div class="field instructions-field">
+              <label for="assignmentEvaluationNotes">Instructions for ChatGPT when reviewing</label>
+              <textarea id="assignmentEvaluationNotes" placeholder="How should ChatGPT review or grade this assignment? Add special instructions, tolerances, deductions, exceptions, or evidence rules."></textarea>
+              <div class="field-help">Teacher-only instructions. Students do not see this text.</div>
+            </div>
 
             <details id="projectCheckpointBuilder" class="rubric-details project-checkpoint-builder" hidden open>
               <summary>Project checkpoints <span class="rubric-summary-note">Progress reviews before the final PDF</span></summary>
@@ -1759,7 +1758,7 @@
                 <summary>Actions</summary>
                 <div class="assignment-actions-popover">
                   <button id="showCreateAssignmentBtn" type="button">+ Create Assignment</button>
-                  <button id="saveSelectedTemplateBtn" type="button">Save selected as template</button>
+                  <button id="saveSelectedTemplateBtn" type="button" hidden tabindex="-1">Save selected as template</button>
                   <div id="assignmentTemplateStatus" class="status-text"></div>
                 </div>
               </details>
@@ -1957,7 +1956,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-  <script type="module" src="teacher-assignments.js?v=assignments-module-20260920"></script>
+  <script type="module" src="teacher-assignments.js?v=canonical-create-assignment-20260920"></script>
   <script defer src="shared-ui-fixes.js?v=titlebar-hamburger-20260916"></script>
 </body>
 </html>
