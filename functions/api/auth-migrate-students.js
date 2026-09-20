@@ -65,11 +65,16 @@ export async function onRequestPost({request,env}){
       return json(401,{ok:false,error:'Unauthorized.'});
     }
 
+    let body={};
+    try{ body=await request.json(); }catch{}
+    const removePublicPasswords=body.removePublicPasswords!==false;
+
     const students=(await firebaseGet('students'))||{};
     let migrated=0;
     let alreadyMigrated=0;
     let pending=0;
     let clearedPublicCredentialFields=0;
+    let publicCredentialFieldsRemaining=0;
     const pendingStudents=[];
 
     for(const [studentKey,studentValue] of Object.entries(students)){
@@ -79,9 +84,11 @@ export async function onRequestPost({request,env}){
 
       if(existing){
         alreadyMigrated++;
-        if(hasPublicPassword){
+        if(hasPublicPassword&&removePublicPasswords){
           await firebasePatch(`students/${encodeURIComponent(studentKey)}`,{password:null});
           clearedPublicCredentialFields++;
+        }else if(hasPublicPassword){
+          publicCredentialFieldsRemaining++;
         }
         continue;
       }
@@ -103,9 +110,11 @@ export async function onRequestPost({request,env}){
         password
       });
 
-      if(hasPublicPassword){
+      if(hasPublicPassword&&removePublicPasswords){
         await firebasePatch(`students/${encodeURIComponent(studentKey)}`,{password:null});
         clearedPublicCredentialFields++;
+      }else if(hasPublicPassword){
+        publicCredentialFieldsRemaining++;
       }
       migrated++;
     }
@@ -117,7 +126,9 @@ export async function onRequestPost({request,env}){
       alreadyMigrated,
       pending,
       clearedPublicCredentialFields,
-      readyForCredentialCutover:pending===0,
+      publicCredentialFieldsRemaining,
+      removePublicPasswords,
+      readyForCredentialCutover:pending===0&&publicCredentialFieldsRemaining===0,
       pendingStudents
     });
   }catch(error){
