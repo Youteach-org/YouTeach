@@ -36,7 +36,7 @@ jobs:
           printf '%s' "$PREVIEW_SESSION_SECRET" | \
             npx wrangler@4 pages secret put YOUTEACH_SESSION_SECRET \
               --project-name=youteach --env preview
-          printf '%s' 'https://feature-youteach-cog-assignm.classroom-online-games.pages.dev' | \
+          printf '%s' 'https://cog-youteach-secure-current.classroom-online-games.pages.dev' | \
             npx wrangler@4 pages secret put COG_ASSIGNMENT_ORIGIN \
               --project-name=youteach --env preview
 
@@ -48,14 +48,14 @@ jobs:
         run: |
           npx wrangler@4 pages deploy dist \
             --project-name=youteach \
-            --branch="${{ github.head_ref }}" \
+            --branch="cog-youteach-secure-integrated" \
             --commit-hash="${{ github.event.pull_request.head.sha }}"
 
       - name: Smoke test YouTeach preview
         if: github.event_name == 'pull_request'
         run: |
-          PREVIEW='https://feature-cog-youteach-assignm.youteach.pages.dev'
-          COG_PREVIEW='https://feature-youteach-cog-assignm.classroom-online-games.pages.dev'
+          PREVIEW='https://cog-youteach-secure-integrated.youteach.pages.dev'
+          COG_PREVIEW='https://cog-youteach-secure-current.classroom-online-games.pages.dev'
 
           curl -fsS --retry 5 --retry-delay 2 "$PREVIEW/student-assignments.html" -o /tmp/student-assignments.html
           grep -q 'cog-assignment-box' /tmp/student-assignments.html
