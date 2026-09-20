@@ -413,3 +413,13 @@ After that, continue in this order:
 10. Course Intelligence / Program Builder when enough historical data exists.
 
 The next **large product feature** after validation/responsive work is the Assignment Template / Assigned Instance lifecycle and Assignment Library.
+
+
+## Teacher Buzzer auditory alert — 2026-09-20
+
+Accepted behavior:
+- the Teacher Buzzer emits a short two-tone audible alert whenever a new `session/current/buzzer/currentBuzz` appears;
+- the alert is driven by the live Firebase buzz state, not by teacher-side buttons;
+- the first Firebase snapshot after page load does not replay an old buzz;
+- clearing `currentBuzz` arms the alert for the next student press;
+- browsers may require one teacher interaction with the page before programmatic audio is allowed, so the audio context is primed on the first pointer or keyboard interaction.
