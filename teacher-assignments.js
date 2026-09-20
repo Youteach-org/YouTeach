@@ -2472,7 +2472,7 @@ function renderDetail() {
     assignmentDetail.hidden = true;
     assignmentDetailEmpty.hidden = false;
     selectedDriveFolderUrl = "";
-    saveSelectedTemplateBtn.disabled = true;
+    if (saveSelectedTemplateBtn) saveSelectedTemplateBtn.disabled = true;
     return;
   }
 
@@ -2517,7 +2517,7 @@ function renderDetail() {
   submittedCount.textContent = validSubmissionEntries.length;
   missingCount.textContent = missing.length;
   const lockedBySubmissions = assignmentHasSubmissions(selectedAssignmentId);
-  saveSelectedTemplateBtn.disabled = false;
+  if (saveSelectedTemplateBtn) saveSelectedTemplateBtn.disabled = false;
   toggleAssignmentBtn.textContent = assignment.active ? "Close Assignment" : "Reopen Assignment";
   editCriteriaBtn.disabled = lockedBySubmissions;
   editCriteriaBtn.title = lockedBySubmissions
@@ -2823,6 +2823,7 @@ function renderAssignmentTemplateOptions() {
 }
 
 async function saveSelectedAssignmentAsTemplate() {
+  if (!saveSelectedTemplateBtn || !assignmentTemplateStatus) return;
   const assignment = assignmentsCache[selectedAssignmentId];
   if (!assignment) {
     assignmentTemplateStatus.textContent = "Select an assignment first.";
@@ -2830,7 +2831,7 @@ async function saveSelectedAssignmentAsTemplate() {
     return;
   }
 
-  saveSelectedTemplateBtn.disabled = true;
+  if (saveSelectedTemplateBtn) saveSelectedTemplateBtn.disabled = true;
   assignmentTemplateStatus.textContent = "Saving template...";
   assignmentTemplateStatus.className = "status-text";
 
@@ -2857,7 +2858,7 @@ async function saveSelectedAssignmentAsTemplate() {
     assignmentTemplateStatus.textContent = error?.message || "Could not save the template.";
     assignmentTemplateStatus.className = "status-text bad";
   } finally {
-    saveSelectedTemplateBtn.disabled = !assignmentsCache[selectedAssignmentId];
+    if (saveSelectedTemplateBtn) saveSelectedTemplateBtn.disabled = !assignmentsCache[selectedAssignmentId];
   }
 }
 
@@ -3492,7 +3493,7 @@ assignmentScrollRightBtn.addEventListener("click", () => {
 });
 
 createAssignmentBtn.addEventListener("click", createAssignment);
-saveSelectedTemplateBtn.addEventListener("click", saveSelectedAssignmentAsTemplate);
+saveSelectedTemplateBtn?.addEventListener("click", saveSelectedAssignmentAsTemplate);
 openAssignmentsModuleBtn?.addEventListener("click", () => {
   if (ASSIGNMENTS_MODULE_MODE) return;
   openAssignmentsModule({ source: "assignments" });
@@ -3584,7 +3585,7 @@ refreshProjectCheckpointBuilder();
 renderAssignmentTemplateOptions();
 renderAssignmentLibraryFilterOptions();
 renderAssignmentLibrary();
-saveSelectedTemplateBtn.disabled = true;
+if (saveSelectedTemplateBtn) saveSelectedTemplateBtn.disabled = true;
 
 logoutBtn.addEventListener("click", logoutTeacher);
 
