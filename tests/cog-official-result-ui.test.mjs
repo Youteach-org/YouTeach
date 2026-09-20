@@ -9,8 +9,9 @@ test('official result endpoint is feature gated and never trusts client scorePer
   assert.match(source,/officialCogResultsEnabled/);
   assert.match(source,/evaluateOfficialCogAttempt/);
   assert.doesNotMatch(source,/earnedPoints\s*=\s*.*body\.scorePercent/);
-  assert.match(source,/cogResultReceipts/);
+  assert.match(source,/saveOfficialCogResult/);
   assert.match(source,/assignmentSubmissions/);
+  assert.match(source,/display cache/);
 });
 
 test('resolver issues an in-memory submission token only when official results are enabled',()=>{
