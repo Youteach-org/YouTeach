@@ -1,7 +1,7 @@
 import { db } from "./firebase.js";
-import { ref, onValue, push, set } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { ref, onValue, push, set, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireTeacherAuth, getTeacherName } from "./teacher-auth.js";
-import { readAssignmentsModuleContext } from "./assignment-module-launcher.js";
+import { readAssignmentsModuleContext } from "./assignment-module-launcher.js?v=popup-library-20260920";
 import { COG_ASSIGNMENT_GAMES, getCertifiedCogGame, validateCogAssignmentDraft } from "./cog-activity-catalog.mjs";
 
 if (!requireTeacherAuth()) throw new Error("Teacher authentication required.");
@@ -81,9 +81,25 @@ const projectCheckpointRows = document.getElementById("projectCheckpointRows");
 const addProjectCheckpointBtn = document.getElementById("addProjectCheckpointBtn");
 const createAssignmentBtn = document.getElementById("createAssignmentBtn");
 const createAssignmentStatus = document.getElementById("createAssignmentStatus");
+const createFromScratchBtn = document.getElementById("createFromScratchBtn");
+const createFromLibraryBtn = document.getElementById("createFromLibraryBtn");
+const assignmentLibraryPanel = document.getElementById("assignmentLibraryPanel");
+const assignmentLibrarySearch = document.getElementById("assignmentLibrarySearch");
+const assignmentLibraryTypeFilter = document.getElementById("assignmentLibraryTypeFilter");
+const assignmentLibraryGroupFilter = document.getElementById("assignmentLibraryGroupFilter");
+const assignmentLibrarySourceFilter = document.getElementById("assignmentLibrarySourceFilter");
+const clearAssignmentLibraryFiltersBtn = document.getElementById("clearAssignmentLibraryFiltersBtn");
+const assignmentLibraryList = document.getElementById("assignmentLibraryList");
+const assignmentLibraryCount = document.getElementById("assignmentLibraryCount");
+const assignmentLibraryStatus = document.getElementById("assignmentLibraryStatus");
+const basedOnSource = document.getElementById("basedOnSource");
+const basedOnSourceChip = document.getElementById("basedOnSourceChip");
 
 let groupsCache = {};
 let assignmentsCache = {};
+let assignmentTemplatesCache = {};
+let loadedLibrarySource = null;
+let creationMode = "scratch";
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, (char) => ({
@@ -93,6 +109,94 @@ function escapeHtml(value) {
     '"': "&quot;",
     "'": "&#39;"
   }[char]));
+}
+
+function decodeRubricMetadata(encoded) {
+  try {
+    const binary = atob(String(encoded || ""));
+    const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+    return JSON.parse(new TextDecoder().decode(bytes));
+  } catch (_) {
+    return {};
+  }
+}
+
+function splitStoredInstructions(value) {
+  const raw = String(value || "");
+  const markerIndex = raw.lastIndexOf(RUBRIC_MARKER);
+  if (markerIndex < 0 || !raw.endsWith(RUBRIC_END)) {
+    return { visibleInstructions: raw, rubric: {} };
+  }
+
+  const encoded = raw.slice(markerIndex + RUBRIC_MARKER.length, -RUBRIC_END.length);
+  return {
+    visibleInstructions: raw.slice(0, markerIndex).trim(),
+    rubric: decodeRubricMetadata(encoded)
+  };
+}
+
+function normalizeCriteria(value) {
+  const raw = Array.isArray(value) ? value : Object.values(value || {});
+  return raw
+    .filter(Boolean)
+    .map((criterion, index) => ({
+      id: String(criterion.id || `criterion-${index + 1}`),
+      type: criterion.type === "preset" ? "preset" : "custom",
+      presetKey: String(criterion.presetKey || ""),
+      title: String(criterion.title || criterion.name || "").trim(),
+      description: String(criterion.description || "").trim(),
+      maxPoints: Number(criterion.maxPoints || criterion.points || 0)
+    }))
+    .filter((criterion) => criterion.title || criterion.description || criterion.maxPoints);
+}
+
+function getAssignmentRubric(source = {}) {
+  const parsed = splitStoredInstructions(source.instructions);
+  const embedded = parsed.rubric || {};
+  return {
+    criteria: normalizeCriteria(source.evaluationCriteria || embedded.criteria || []),
+    distribution: String(source.evaluationDistribution || embedded.distribution || "equal"),
+    notes: String(source.evaluationNotes || embedded.notes || "")
+  };
+}
+
+function reusableProjectCheckpoints(checkpoints) {
+  const result = {};
+  Object.entries(checkpoints || {}).forEach(([id, checkpoint]) => {
+    if (!checkpoint || typeof checkpoint !== "object") return;
+    result[id] = {
+      title: String(checkpoint.title || ""),
+      instructions: String(checkpoint.instructions || ""),
+      requiredEvidenceTypes: Array.isArray(checkpoint.requiredEvidenceTypes)
+        ? checkpoint.requiredEvidenceTypes.map(String)
+        : ["image"]
+    };
+  });
+  return result;
+}
+
+function reusableContentFromAssignment(assignment = {}) {
+  const parsed = splitStoredInstructions(assignment.instructions);
+  const rubric = getAssignmentRubric(assignment);
+  return {
+    title: String(assignment.title || ""),
+    instructions: parsed.visibleInstructions,
+    assignmentType: String(assignment.assignmentType || ""),
+    assignmentTypeCode: String(assignment.assignmentTypeCode || ""),
+    evaluationCriteria: rubric.criteria,
+    evaluationDistribution: rubric.distribution,
+    evaluationNotes: rubric.notes,
+    projectCheckpoints: reusableProjectCheckpoints(assignment.projectCheckpoints),
+    course: assignment.course,
+    subject: assignment.subject,
+    unit: assignment.unit,
+    topic: assignment.topic,
+    subtopic: assignment.subtopic,
+    tags: Array.isArray(assignment.tags) ? assignment.tags : [],
+    cogActivity: assignment.cogActivity || null,
+    pointValue: assignment.pointValue ?? assignment.cogActivity?.pointValue ?? null,
+    undoSubmissionEnabled: assignment.undoSubmissionEnabled !== false
+  };
 }
 
 function normalizeRecipientKeys(raw) {
@@ -349,41 +453,63 @@ function makeCriterionId() {
   return `criterion-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function presetCardHtml(preset) {
+function presetCardHtml(preset, selectedCriterion = null) {
+  const checked = Boolean(selectedCriterion);
+  const points = checked ? Number(selectedCriterion.maxPoints || 0) : "";
   return `
     <div class="preset-card" data-preset-key="${escapeHtml(preset.key)}">
       <label class="preset-main">
-        <input type="checkbox" data-preset-enabled>
+        <input type="checkbox" data-preset-enabled ${checked ? "checked" : ""}>
         <span class="preset-copy">
           <strong>${escapeHtml(preset.title)}</strong>
           <span>${escapeHtml(preset.description)}</span>
         </span>
       </label>
       <input class="preset-points" data-preset-points type="number" min="0.1" step="0.1"
-        aria-label="Points for ${escapeHtml(preset.title)}" disabled>
+        value="${checked && points > 0 ? escapeHtml(points) : ""}"
+        aria-label="Points for ${escapeHtml(preset.title)}" ${checked ? "" : "disabled"}>
     </div>
   `;
 }
 
-function criterionRowHtml() {
+function criterionRowHtml(criterion = {}) {
   return `
-    <div class="criteria-row" data-criterion-id="${escapeHtml(makeCriterionId())}">
-      <input data-criterion-title placeholder="Criterion">
-      <textarea data-criterion-description placeholder="What should be evaluated?"></textarea>
-      <input data-criterion-points type="number" min="0.1" step="0.1" placeholder="Points">
+    <div class="criteria-row" data-criterion-id="${escapeHtml(criterion.id || makeCriterionId())}">
+      <input data-criterion-title placeholder="Criterion" value="${escapeHtml(criterion.title || "")}">
+      <textarea data-criterion-description placeholder="What should be evaluated?">${escapeHtml(criterion.description || "")}</textarea>
+      <input data-criterion-points type="number" min="0.1" step="0.1" placeholder="Points" value="${Number(criterion.maxPoints || 0) > 0 ? escapeHtml(criterion.maxPoints) : ""}">
       <button class="criteria-remove" type="button" data-remove-criterion title="Remove criterion">×</button>
     </div>
   `;
 }
 
-function addCustomCriterionRow() {
-  createCriteriaRows.insertAdjacentHTML("beforeend", criterionRowHtml());
+function addCustomCriterionRow(criterion = {}) {
+  createCriteriaRows.insertAdjacentHTML("beforeend", criterionRowHtml(criterion));
 }
 
-function renderRubricEditors() {
-  createPresetCriteria.innerHTML = PRESET_CRITERIA.map(presetCardHtml).join("");
+function renderRubricEditors(criteria = [], mode = "equal") {
+  const normalized = normalizeCriteria(criteria);
+  const presetMap = new Map(
+    normalized
+      .filter((criterion) => criterion.type === "preset" && criterion.presetKey)
+      .map((criterion) => [criterion.presetKey, criterion])
+  );
+  const approvedPresetKeys = new Set(PRESET_CRITERIA.map((preset) => preset.key));
+  const custom = normalized.filter(
+    (criterion) => criterion.type !== "preset" || !approvedPresetKeys.has(criterion.presetKey)
+  );
+
+  createPresetCriteria.innerHTML = PRESET_CRITERIA.map((preset) =>
+    presetCardHtml(preset, presetMap.get(preset.key) || null)
+  ).join("");
+
   createCriteriaRows.innerHTML = "";
-  addCustomCriterionRow();
+  if (custom.length) custom.forEach((criterion) => addCustomCriterionRow(criterion));
+  else addCustomCriterionRow();
+
+  createDistributionRadios.forEach((radio) => {
+    radio.checked = radio.value === (mode === "manual" ? "manual" : "equal");
+  });
   refreshDistribution();
 }
 
@@ -532,24 +658,29 @@ function makeCheckpointId() {
   return `checkpoint-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function checkpointRowHtml() {
+function checkpointRowHtml(checkpoint = {}) {
+  const evidence = new Set(
+    Array.isArray(checkpoint.requiredEvidenceTypes) && checkpoint.requiredEvidenceTypes.length
+      ? checkpoint.requiredEvidenceTypes
+      : ["image"]
+  );
   return `
-    <div class="project-checkpoint-row" data-project-checkpoint-row data-checkpoint-id="${escapeHtml(makeCheckpointId())}">
-      <input type="text" data-checkpoint-title placeholder="Checkpoint title">
+    <div class="project-checkpoint-row" data-project-checkpoint-row data-checkpoint-id="${escapeHtml(checkpoint.id || makeCheckpointId())}">
+      <input type="text" data-checkpoint-title placeholder="Checkpoint title" value="${escapeHtml(checkpoint.title || "")}">
       <input type="datetime-local" data-checkpoint-due>
-      <textarea data-checkpoint-instructions placeholder="What progress should the student show?"></textarea>
+      <textarea data-checkpoint-instructions placeholder="What progress should the student show?">${escapeHtml(checkpoint.instructions || "")}</textarea>
       <div class="checkpoint-evidence-types">
-        <label><input type="checkbox" data-checkpoint-evidence="image" checked> Photo</label>
-        <label><input type="checkbox" data-checkpoint-evidence="video"> Video</label>
-        <label><input type="checkbox" data-checkpoint-evidence="document"> Document</label>
+        <label><input type="checkbox" data-checkpoint-evidence="image" ${evidence.has("image") ? "checked" : ""}> Photo</label>
+        <label><input type="checkbox" data-checkpoint-evidence="video" ${evidence.has("video") ? "checked" : ""}> Video</label>
+        <label><input type="checkbox" data-checkpoint-evidence="document" ${evidence.has("document") ? "checked" : ""}> Document</label>
       </div>
       <button type="button" class="remove-checkpoint-btn" data-remove-checkpoint>Remove</button>
     </div>
   `;
 }
 
-function addProjectCheckpointRow() {
-  projectCheckpointRows.insertAdjacentHTML("beforeend", checkpointRowHtml());
+function addProjectCheckpointRow(checkpoint = {}) {
+  projectCheckpointRows.insertAdjacentHTML("beforeend", checkpointRowHtml(checkpoint));
 }
 
 function fillCogModeAndDifficultyOptions() {
@@ -580,7 +711,6 @@ function fillCogModeAndDifficultyOptions() {
 function refreshCogActivityConfigPanel() {
   cogActivityConfigPanel.hidden = assignmentType.value !== "COG";
   if (cogActivityConfigPanel.hidden) return;
-
   if (!cogGame.options.length) {
     cogGame.innerHTML = COG_ASSIGNMENT_GAMES
       .filter((game) => game.assignmentCertified === true)
@@ -588,6 +718,18 @@ function refreshCogActivityConfigPanel() {
       .join("");
   }
   fillCogModeAndDifficultyOptions();
+}
+
+function loadCogActivityIntoCreateForm(cogActivity = null, pointValue = null, undoSubmissionEnabled = true) {
+  refreshCogActivityConfigPanel();
+  if (cogActivityConfigPanel.hidden) return;
+  if (cogActivity?.gameId) cogGame.value = String(cogActivity.gameId);
+  fillCogModeAndDifficultyOptions();
+  if (cogActivity?.modeId) cogMode.value = String(cogActivity.modeId);
+  if (cogActivity?.difficultyId) cogDifficulty.value = String(cogActivity.difficultyId);
+  cogMinimumPercent.value = cogActivity?.minimumPercent == null ? "" : String(cogActivity.minimumPercent);
+  cogPointValue.value = String(pointValue ?? cogActivity?.pointValue ?? 100);
+  cogUndoSubmissionEnabled.checked = undoSubmissionEnabled !== false;
 }
 
 function refreshProjectCheckpointBuilder() {
@@ -633,6 +775,229 @@ function collectProjectCheckpoints(finalDueAt) {
   }
 
   return { checkpoints, error: "" };
+}
+
+function libraryEntries() {
+  const entries = [];
+
+  Object.entries(assignmentsCache || {}).forEach(([id, assignment]) => {
+    if (!assignment || typeof assignment !== "object") return;
+    entries.push({
+      key: `assignment:${id}`,
+      kind: "assignment",
+      id,
+      title: String(assignment.title || "Untitled assignment"),
+      type: String(assignment.assignmentTypeCode || assignment.assignmentType || ""),
+      groupName: String(assignment.groupName || ""),
+      createdAt: Number(assignment.createdAt || 0),
+      usageCount: 1,
+      content: reusableContentFromAssignment(assignment)
+    });
+  });
+
+  Object.entries(assignmentTemplatesCache || {}).forEach(([id, template]) => {
+    if (!template || typeof template !== "object" || template.archived) return;
+    const content = template.content || {};
+    entries.push({
+      key: `template:${id}`,
+      kind: "template",
+      id,
+      title: String(content.title || "Untitled library item"),
+      type: String(content.assignmentTypeCode || content.assignmentType || ""),
+      groupName: "",
+      createdAt: Number(template.createdAt || 0),
+      usageCount: Number(template.usageCount || 0),
+      templateVersion: Number(template.version || 1),
+      content: {
+        ...content,
+        instructions: splitStoredInstructions(content.instructions).visibleInstructions,
+        evaluationCriteria: getAssignmentRubric(content).criteria,
+        evaluationDistribution: getAssignmentRubric(content).distribution,
+        evaluationNotes: getAssignmentRubric(content).notes,
+        projectCheckpoints: reusableProjectCheckpoints(content.projectCheckpoints)
+      }
+    });
+  });
+
+  return entries.sort((a, b) => {
+    const byDate = Number(b.createdAt || 0) - Number(a.createdAt || 0);
+    return byDate || a.title.localeCompare(b.title);
+  });
+}
+
+function replaceLibraryOptions(select, values, allLabel) {
+  const previous = select.value;
+  const unique = [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  select.innerHTML =
+    `<option value="">${escapeHtml(allLabel)}</option>` +
+    unique.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("");
+  if (unique.includes(previous)) select.value = previous;
+}
+
+function renderAssignmentLibraryFilters() {
+  const entries = libraryEntries();
+  replaceLibraryOptions(assignmentLibraryTypeFilter, entries.map((entry) => entry.type), "All types");
+  replaceLibraryOptions(assignmentLibraryGroupFilter, entries.map((entry) => entry.groupName), "All original groups");
+}
+
+function filteredLibraryEntries() {
+  const query = String(assignmentLibrarySearch.value || "").trim().toLocaleLowerCase();
+  const type = String(assignmentLibraryTypeFilter.value || "").trim();
+  const group = String(assignmentLibraryGroupFilter.value || "").trim();
+  const source = String(assignmentLibrarySourceFilter.value || "").trim();
+
+  return libraryEntries().filter((entry) => {
+    if (type && entry.type !== type) return false;
+    if (group && entry.groupName !== group) return false;
+    if (source && entry.kind !== source) return false;
+    if (!query) return true;
+
+    const content = entry.content || {};
+    const searchable = [
+      entry.title,
+      entry.type,
+      entry.groupName,
+      content.course,
+      content.subject,
+      content.unit,
+      content.topic,
+      content.subtopic,
+      ...(Array.isArray(content.tags) ? content.tags : [])
+    ].map((value) => String(value || "").toLocaleLowerCase()).join(" ");
+    return searchable.includes(query);
+  });
+}
+
+function renderAssignmentLibrary() {
+  const entries = filteredLibraryEntries();
+  assignmentLibraryCount.textContent = `${entries.length} item${entries.length === 1 ? "" : "s"}`;
+
+  if (!entries.length) {
+    assignmentLibraryList.innerHTML =
+      '<div class="library-empty">No previous assignments match these filters.</div>';
+    return;
+  }
+
+  assignmentLibraryList.innerHTML = entries.map((entry) => {
+    const content = entry.content || {};
+    const meta = [
+      entry.kind === "assignment" ? entry.groupName : "",
+      content.course,
+      content.subject,
+      content.unit,
+      content.topic
+    ].map((value) => String(value || "").trim()).filter(Boolean);
+
+    const selected = loadedLibrarySource?.key === entry.key;
+    return `
+      <article class="library-card${selected ? " selected" : ""}" data-library-key="${escapeHtml(entry.key)}">
+        <div class="library-card-head">
+          <h3>${escapeHtml(entry.title)}</h3>
+          <span class="library-kind">${entry.kind === "assignment" ? "Previous assignment" : "Saved library item"}</span>
+        </div>
+        <div class="library-meta">
+          ${escapeHtml(entry.type || "Assignment")}${meta.length ? " · " + meta.map(escapeHtml).join(" · ") : ""}
+        </div>
+        <button class="library-use" type="button" data-use-library-item="${escapeHtml(entry.key)}">Use as base</button>
+      </article>
+    `;
+  }).join("");
+}
+
+function setCreationMode(mode, { reset = false } = {}) {
+  creationMode = mode === "library" ? "library" : "scratch";
+  const libraryMode = creationMode === "library";
+
+  createFromScratchBtn.classList.toggle("active", !libraryMode);
+  createFromScratchBtn.setAttribute("aria-pressed", String(!libraryMode));
+  createFromLibraryBtn.classList.toggle("active", libraryMode);
+  createFromLibraryBtn.setAttribute("aria-pressed", String(libraryMode));
+  assignmentLibraryPanel.hidden = !libraryMode;
+
+  if (reset && !libraryMode) resetReusableForm();
+  if (libraryMode) {
+    renderAssignmentLibraryFilters();
+    renderAssignmentLibrary();
+    assignmentLibraryStatus.textContent = loadedLibrarySource
+      ? `Based on: ${loadedLibrarySource.title}`
+      : "Choose a previous assignment or saved library item.";
+  }
+}
+
+function resetReusableForm() {
+  loadedLibrarySource = null;
+  basedOnSource.hidden = true;
+  basedOnSourceChip.textContent = "";
+  assignmentType.value = "CT";
+  assignmentOtherType.value = "";
+  assignmentTitle.value = "";
+  assignmentInstructions.value = "";
+  assignmentEvaluationNotes.value = "";
+  assignmentDueAt.value = "";
+  projectCheckpointRows.innerHTML = "";
+  renderRubricEditors([], "equal");
+  renderOtherTypeField();
+  refreshProjectCheckpointBuilder();
+  refreshCogActivityConfigPanel();
+  refreshAutomaticTaskCode();
+  setStatus("");
+}
+
+function findLibraryEntry(key) {
+  return libraryEntries().find((entry) => entry.key === key) || null;
+}
+
+function loadLibraryEntry(key) {
+  const entry = findLibraryEntry(key);
+  if (!entry) return;
+
+  const content = entry.content || {};
+  const typeCode = String(content.assignmentTypeCode || "").trim().toUpperCase();
+  const standardCodes = new Set(["CT", "HW", "EX", "PJ", "PC", "RS", "PT", "COG"]);
+
+  if (standardCodes.has(typeCode)) {
+    assignmentType.value = typeCode;
+    assignmentOtherType.value = "";
+  } else {
+    assignmentType.value = "OTHER";
+    assignmentOtherType.value = String(content.assignmentType || typeCode || "");
+  }
+
+  assignmentTitle.value = String(content.title || "");
+  assignmentInstructions.value = splitStoredInstructions(content.instructions).visibleInstructions;
+  const rubric = getAssignmentRubric(content);
+  assignmentEvaluationNotes.value = rubric.notes || "";
+  renderRubricEditors(rubric.criteria, rubric.distribution);
+
+  assignmentDueAt.value = "";
+  projectCheckpointRows.innerHTML = "";
+  if (assignmentType.value === "PJ") {
+    Object.entries(content.projectCheckpoints || {}).forEach(([id, checkpoint]) => {
+      addProjectCheckpointRow({ id, ...(checkpoint || {}) });
+    });
+  }
+  if (assignmentType.value === "COG") {
+    loadCogActivityIntoCreateForm(content.cogActivity, content.pointValue, content.undoSubmissionEnabled);
+  }
+
+  loadedLibrarySource = {
+    key: entry.key,
+    kind: entry.kind,
+    id: entry.id,
+    title: entry.title,
+    templateVersion: entry.templateVersion || 1,
+    content
+  };
+
+  basedOnSource.hidden = false;
+  basedOnSourceChip.textContent = `Based on: ${entry.title}`;
+  renderOtherTypeField();
+  refreshProjectCheckpointBuilder();
+  refreshAutomaticTaskCode();
+  renderAssignmentLibrary();
+  assignmentLibraryStatus.textContent = `Loaded: ${entry.title}. Choose the new target and due date.`;
+  setStatus("Previous assignment loaded. Review it and choose the new due date.", "ok");
 }
 
 function setStatus(message, kind = "") {
@@ -728,6 +1093,16 @@ async function createAssignment() {
       cogActivity: typeCode === "COG" ? cogActivity : null,
       pointValue: typeCode === "COG" ? cogActivity.pointValue : null,
       undoSubmissionEnabled: typeCode === "COG" ? cogActivity.undoSubmissionEnabled : true,
+      ...(loadedLibrarySource?.kind === "assignment"
+        ? { sourceAssignmentId: loadedLibrarySource.id }
+        : {}),
+      ...(loadedLibrarySource?.kind === "template"
+        ? {
+            templateId: loadedLibrarySource.id,
+            templateVersion: Number(loadedLibrarySource.templateVersion || 1),
+            templateSnapshot: loadedLibrarySource.content
+          }
+        : {}),
       groupName,
       ...targetMetadata,
       dueAt,
@@ -738,6 +1113,17 @@ async function createAssignment() {
     };
 
     await set(target, payload);
+
+    if (loadedLibrarySource?.kind === "template" && assignmentTemplatesCache[loadedLibrarySource.id]) {
+      const sourceTemplate = assignmentTemplatesCache[loadedLibrarySource.id];
+      await update(ref(db, `assignmentTemplates/${loadedLibrarySource.id}`), {
+        usageCount: Number(sourceTemplate.usageCount || 0) + 1,
+        lastUsedAt: now,
+        updatedAt: now,
+        updatedBy: getTeacherName()
+      });
+    }
+
     setStatus("Assignment created.", "ok");
 
     if (window.parent !== window) {
@@ -754,6 +1140,32 @@ async function createAssignment() {
     createAssignmentBtn.disabled = false;
   }
 }
+
+createFromScratchBtn.addEventListener("click", () => {
+  setCreationMode("scratch", { reset: true });
+});
+
+createFromLibraryBtn.addEventListener("click", () => {
+  setCreationMode("library");
+});
+
+assignmentLibrarySearch.addEventListener("input", renderAssignmentLibrary);
+assignmentLibraryTypeFilter.addEventListener("change", renderAssignmentLibrary);
+assignmentLibraryGroupFilter.addEventListener("change", renderAssignmentLibrary);
+assignmentLibrarySourceFilter.addEventListener("change", renderAssignmentLibrary);
+clearAssignmentLibraryFiltersBtn.addEventListener("click", () => {
+  assignmentLibrarySearch.value = "";
+  assignmentLibraryTypeFilter.value = "";
+  assignmentLibraryGroupFilter.value = "";
+  assignmentLibrarySourceFilter.value = "";
+  renderAssignmentLibrary();
+});
+
+assignmentLibraryList.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-use-library-item]");
+  if (!button) return;
+  loadLibraryEntry(String(button.dataset.useLibraryItem || ""));
+});
 
 assignmentType.addEventListener("change", () => {
   renderOtherTypeField();
@@ -807,6 +1219,7 @@ renderRubricEditors();
 renderTargetOptions();
 refreshProjectCheckpointBuilder();
 refreshCogActivityConfigPanel();
+setCreationMode("scratch");
 
 onValue(ref(db, "groups"), (snapshot) => {
   groupsCache = snapshot.val() || {};
@@ -816,4 +1229,12 @@ onValue(ref(db, "groups"), (snapshot) => {
 onValue(ref(db, "assignments"), (snapshot) => {
   assignmentsCache = snapshot.val() || {};
   refreshAutomaticTaskCode();
+  renderAssignmentLibraryFilters();
+  if (creationMode === "library") renderAssignmentLibrary();
+});
+
+onValue(ref(db, "assignmentTemplates"), (snapshot) => {
+  assignmentTemplatesCache = snapshot.val() || {};
+  renderAssignmentLibraryFilters();
+  if (creationMode === "library") renderAssignmentLibrary();
 });
