@@ -1,6 +1,7 @@
 import { db } from "./firebase.js";
 import { ref, onValue, push, set, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
+import { COG_ASSIGNMENT_GAMES, getCertifiedCogGame, validateCogAssignmentDraft } from "./cog-activity-catalog.mjs";
 import {
   buildAssignmentTemplateRecord,
   buildAssignedInstanceFromTemplate,
@@ -67,6 +68,13 @@ const assignmentTitle = document.getElementById("assignmentTitle");
 const assignmentGroup = document.getElementById("assignmentGroup");
 const assignmentInstructions = document.getElementById("assignmentInstructions");
 const assignmentDueAt = document.getElementById("assignmentDueAt");
+const cogActivityConfigPanel = document.getElementById("cogActivityConfigPanel");
+const cogGame = document.getElementById("cogGame");
+const cogMode = document.getElementById("cogMode");
+const cogDifficulty = document.getElementById("cogDifficulty");
+const cogMinimumPercent = document.getElementById("cogMinimumPercent");
+const cogPointValue = document.getElementById("cogPointValue");
+const cogUndoSubmissionEnabled = document.getElementById("cogUndoSubmissionEnabled");
 const createPresetCriteria = document.getElementById("createPresetCriteria");
 const createCriteriaRows = document.getElementById("createCriteriaRows");
 const createCriteriaTotal = document.getElementById("createCriteriaTotal");
@@ -416,6 +424,10 @@ function assignmentTypeCodeFor(assignment) {
     embedded.assignmentTypeCode ||
     ""
   ).trim().toUpperCase();
+}
+
+function isCogAssignment(assignment) {
+  return assignmentTypeCodeFor(assignment) === "COG" || Boolean(assignment?.cogActivity?.gameId);
 }
 
 function isProjectAssignment(assignment) {
@@ -884,6 +896,55 @@ function checkpointRowHtml(checkpoint = {}) {
 
 function addProjectCheckpointRow(checkpoint = {}) {
   projectCheckpointRows.insertAdjacentHTML("beforeend", checkpointRowHtml(checkpoint));
+}
+
+function fillCogModeAndDifficultyOptions() {
+  const game = getCertifiedCogGame(cogGame.value) || COG_ASSIGNMENT_GAMES[0] || null;
+  if (!game) {
+    cogMode.innerHTML = "";
+    cogDifficulty.innerHTML = "";
+    return;
+  }
+
+  const previousMode = cogMode.value;
+  const previousDifficulty = cogDifficulty.value;
+
+  cogMode.innerHTML = game.modes
+    .map((mode) => `<option value="${escapeHtml(mode.id)}">${escapeHtml(mode.name)}</option>`)
+    .join("");
+  cogDifficulty.innerHTML = game.difficulties
+    .map((difficulty) => `<option value="${escapeHtml(difficulty.id)}">${escapeHtml(difficulty.name)}</option>`)
+    .join("");
+
+  cogMode.value = game.modes.some((mode) => mode.id === previousMode) ? previousMode : (game.modes[0]?.id || "");
+  cogDifficulty.value = game.difficulties.some((difficulty) => difficulty.id === previousDifficulty)
+    ? previousDifficulty
+    : (game.difficulties.find((difficulty) => difficulty.id === "medium")?.id || game.difficulties[0]?.id || "");
+}
+
+function refreshCogActivityConfigPanel() {
+  cogActivityConfigPanel.hidden = assignmentType.value !== "COG";
+  if (cogActivityConfigPanel.hidden) return;
+
+  if (!cogGame.options.length) {
+    cogGame.innerHTML = COG_ASSIGNMENT_GAMES
+      .filter((game) => game.assignmentCertified === true)
+      .map((game) => `<option value="${escapeHtml(game.id)}">${escapeHtml(game.name)}</option>`)
+      .join("");
+  }
+  fillCogModeAndDifficultyOptions();
+}
+
+function loadCogActivityIntoCreateForm(cogActivity = null, pointValue = null, undoSubmissionEnabled = true) {
+  refreshCogActivityConfigPanel();
+  if (!cogActivityConfigPanel || cogActivityConfigPanel.hidden) return;
+  if (cogActivity?.gameId) cogGame.value = String(cogActivity.gameId);
+  fillCogModeAndDifficultyOptions();
+  if (cogActivity?.modeId) cogMode.value = String(cogActivity.modeId);
+  if (cogActivity?.difficultyId) cogDifficulty.value = String(cogActivity.difficultyId);
+  cogMinimumPercent.value = cogActivity?.minimumPercent == null ? "" : String(cogActivity.minimumPercent);
+  cogPointValue.value = String(pointValue ?? cogActivity?.pointValue ?? 100);
+  cogUndoSubmissionEnabled.checked = undoSubmissionEnabled !== false;
 }
 
 function refreshProjectCheckpointBuilder() {
@@ -2695,6 +2756,9 @@ function loadSelectedAssignmentTemplate() {
     });
   }
   refreshProjectCheckpointBuilder();
+  if (typeCode === "COG") {
+    loadCogActivityIntoCreateForm(content.cogActivity, content.pointValue, content.undoSubmissionEnabled);
+  }
 
   loadedAssignmentTemplateId = templateId;
   createAssignmentPanel.hidden = false;
@@ -2719,6 +2783,24 @@ async function createAssignment() {
   const rubricResult = collectRubric(createPresetCriteria, createCriteriaRows);
   const evaluationDistribution = getDistributionMode(createDistributionRadios);
   const evaluationNotes = assignmentEvaluationNotes.value.trim();
+
+  let cogActivity = null;
+  if (typeCode === "COG") {
+    try {
+      cogActivity = validateCogAssignmentDraft({
+        gameId: cogGame.value,
+        modeId: cogMode.value,
+        difficultyId: cogDifficulty.value,
+        pointValue: cogPointValue.value,
+        minimumPercent: cogMinimumPercent.value,
+        undoSubmissionEnabled: cogUndoSubmissionEnabled.checked
+      });
+    } catch (error) {
+      createAssignmentStatus.textContent = error?.message || "Complete the COG activity configuration.";
+      createAssignmentStatus.className = "status-text bad";
+      return;
+    }
+  }
 
   if (rubricResult.error) {
     createAssignmentStatus.textContent = rubricResult.error;
@@ -2782,7 +2864,10 @@ async function createAssignment() {
   try {
     const target = push(ref(db, "assignments"));
     const now = Date.now();
-    const storedInstructions = buildStoredInstructions(instructions, {
+    const visibleInstructionsForStorage = typeCode === "COG" && !instructions
+      ? "Complete the assigned COG activity. Practice as needed and send your chosen valid result to your teacher."
+      : instructions;
+    const storedInstructions = buildStoredInstructions(visibleInstructionsForStorage, {
       schemaVersion: 1,
       assignmentType: typeValue,
       assignmentTypeCode: typeCode,
@@ -2800,7 +2885,10 @@ async function createAssignment() {
       evaluationCriteria: rubricResult.criteria,
       evaluationDistribution,
       evaluationNotes,
-      projectCheckpoints: typeCode === "PJ" ? projectResult.checkpoints : null
+      projectCheckpoints: typeCode === "PJ" ? projectResult.checkpoints : null,
+      cogActivity: typeCode === "COG" ? cogActivity : null,
+      pointValue: typeCode === "COG" ? cogActivity.pointValue : null,
+      undoSubmissionEnabled: typeCode === "COG" ? cogActivity.undoSubmissionEnabled : true
     };
 
     const sourceTemplate = loadedAssignmentTemplateId
@@ -2834,7 +2922,7 @@ async function createAssignment() {
         groupName,
         dueAt,
         active: true,
-        storageProvider: "google-drive",
+        storageProvider: typeCode === "COG" ? "cog" : "google-drive",
         createdAt: now,
         createdBy: getTeacherName()
       };
@@ -3228,11 +3316,13 @@ openDriveFolderBtn.addEventListener("click", () => {
 assignmentType.addEventListener("change", () => {
   refreshAutomaticTaskCode();
   refreshProjectCheckpointBuilder();
+  refreshCogActivityConfigPanel();
 });
 assignmentOtherType.addEventListener("input", refreshAutomaticTaskCode);
 assignmentTitle.addEventListener("input", refreshAutomaticTaskCode);
 assignmentGroup.addEventListener("change", refreshAutomaticTaskCode);
 assignmentDueAt.addEventListener("input", refreshAutomaticTaskCode);
+cogGame.addEventListener("change", fillCogModeAndDifficultyOptions);
 
 showCreateAssignmentBtn.addEventListener("click", () => {
   const opening = createAssignmentPanel.hidden;
@@ -3360,6 +3450,7 @@ fillRubricEditor(
 );
 refreshAutomaticTaskCode();
 refreshProjectCheckpointBuilder();
+refreshCogActivityConfigPanel();
 renderAssignmentTemplateOptions();
 renderAssignmentLibraryFilterOptions();
 renderAssignmentLibrary();
