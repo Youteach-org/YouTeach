@@ -3,6 +3,11 @@ import { ref, push, set, onValue, update, remove } from "https://www.gstatic.com
 import { generateId } from "./app.js";
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
 import { migrateExistingStudentsForTeacher } from "./student-auth.js";
+import {
+  groupEvaluationConfig,
+  evaluationWeightTotal,
+  normalizeEvaluationUnitCount
+} from "./group-evaluation-model.js";
 
 requireTeacherAuth();
 
@@ -12,7 +17,15 @@ const teacherIdentity = document.getElementById("teacherIdentity");
 const logoutBtn = document.getElementById("logoutBtn");
 
 const groupNameInput = document.getElementById("groupNameInput");
+const evaluationUnitCountInput = document.getElementById("evaluationUnitCountInput");
+const tasksWeightInput = document.getElementById("tasksWeightInput");
+const examsWeightInput = document.getElementById("examsWeightInput");
+const participationWeightInput = document.getElementById("participationWeightInput");
+const attendanceWeightInput = document.getElementById("attendanceWeightInput");
+const evaluationWeightTotalLabel = document.getElementById("evaluationWeightTotal");
+const groupEvaluationStatus = document.getElementById("groupEvaluationStatus");
 const createGroupBtn = document.getElementById("createGroupBtn");
+const cancelGroupEditBtn = document.getElementById("cancelGroupEditBtn");
 const deleteGroupSelect = document.getElementById("deleteGroupSelect");
 const deleteGroupBtn = document.getElementById("deleteGroupBtn");
 
@@ -35,33 +48,116 @@ const groupsTableBody = document.getElementById("groupsTableBody");
 teacherIdentity.textContent = getTeacherName();
 logoutBtn.addEventListener("click", logoutTeacher);
 
+refreshEvaluationWeightTotal();
+
 
 let groupsCache = {};
 let studentsCache = {};
+let editingGroupName = "";
+
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function evaluationWeightsFromForm() {
+  return {
+    tasks: Number(tasksWeightInput.value || 0),
+    exams: Number(examsWeightInput.value || 0),
+    participation: Number(participationWeightInput.value || 0),
+    attendance: Number(attendanceWeightInput.value || 0)
+  };
+}
+
+function refreshEvaluationWeightTotal() {
+  const total = evaluationWeightTotal(evaluationWeightsFromForm());
+  evaluationWeightTotalLabel.textContent = `${total} / 100%`;
+  evaluationWeightTotalLabel.classList.toggle("ok", Math.abs(total - 100) < 0.01);
+  evaluationWeightTotalLabel.classList.toggle("bad", Math.abs(total - 100) >= 0.01);
+  return total;
+}
+
+function resetGroupForm() {
+  editingGroupName = "";
+  groupNameInput.disabled = false;
+  groupNameInput.value = "";
+  evaluationUnitCountInput.value = "3";
+  tasksWeightInput.value = "";
+  examsWeightInput.value = "";
+  participationWeightInput.value = "";
+  attendanceWeightInput.value = "";
+  createGroupBtn.textContent = "Create Group";
+  cancelGroupEditBtn.hidden = true;
+  groupEvaluationStatus.textContent = "";
+  groupEvaluationStatus.className = "status-text";
+  refreshEvaluationWeightTotal();
+}
+
+function beginGroupEvaluationEdit(groupName) {
+  const group = groupsCache[groupName];
+  if (!group) return;
+
+  const config = groupEvaluationConfig(group);
+  editingGroupName = groupName;
+  groupNameInput.value = groupName;
+  groupNameInput.disabled = true;
+  evaluationUnitCountInput.value = String(config.unitCount);
+  tasksWeightInput.value = String(config.weights.tasks || "");
+  examsWeightInput.value = String(config.weights.exams || "");
+  participationWeightInput.value = String(config.weights.participation || "");
+  attendanceWeightInput.value = String(config.weights.attendance || "");
+  createGroupBtn.textContent = "Save Group Settings";
+  cancelGroupEditBtn.hidden = false;
+  groupEvaluationStatus.textContent = config.configured
+    ? "Editing evaluation settings."
+    : "This group still needs evaluation settings.";
+  groupEvaluationStatus.className = config.configured ? "status-text" : "status-text bad";
+  refreshEvaluationWeightTotal();
+  groupNameInput.scrollIntoView({ behavior: "smooth", block: "center" });
+}
 
 function renderGroupSelectors() {
   const groups = Object.keys(groupsCache || {}).sort();
   const options = ['<option value="">Select group</option>']
-    .concat(groups.map((group) => `<option value="${group}">${group}</option>`))
+    .concat(groups.map((group) => `<option value="${escapeHtml(group)}">${escapeHtml(group)}</option>`))
     .join("");
 
   studentGroupSelect.innerHTML = options;
-  csvGroupSelect.innerHTML = '<option value="">Select group for imported students</option>' + groups.map((group) => `<option value="${group}">${group}</option>`).join("");
-  textGroupSelect.innerHTML = '<option value="">Select group for pasted students</option>' + groups.map((group) => `<option value="${group}">${group}</option>`).join("");
-  deleteGroupSelect.innerHTML = '<option value="">Select group</option>' + groups.map((group) => `<option value="${group}">${group}</option>`).join("");
+  csvGroupSelect.innerHTML = '<option value="">Select group for imported students</option>' + groups.map((group) => `<option value="${escapeHtml(group)}">${escapeHtml(group)}</option>`).join("");
+  textGroupSelect.innerHTML = '<option value="">Select group for pasted students</option>' + groups.map((group) => `<option value="${escapeHtml(group)}">${escapeHtml(group)}</option>`).join("");
+  deleteGroupSelect.innerHTML = '<option value="">Select group</option>' + groups.map((group) => `<option value="${escapeHtml(group)}">${escapeHtml(group)}</option>`).join("");
 }
 
 function renderGroupsTable() {
   const groups = Object.keys(groupsCache || {}).sort();
 
   if (!groups.length) {
-    groupsTableBody.innerHTML = `<tr><td colspan="2">No groups yet.</td></tr>`;
+    groupsTableBody.innerHTML = `<tr><td colspan="5">No groups yet.</td></tr>`;
     return;
   }
 
-  groupsTableBody.innerHTML = groups.map((group) => {
-    const count = Object.values(studentsCache || {}).filter((student) => (student.groupName || "") === group).length;
-    return `<tr><td>${group}</td><td>${count}</td></tr>`;
+  groupsTableBody.innerHTML = groups.map((groupName) => {
+    const group = groupsCache[groupName] || {};
+    const count = Object.values(studentsCache || {}).filter((student) => (student.groupName || "") === groupName).length;
+    const config = groupEvaluationConfig(group);
+    const evaluationSummary = config.configured
+      ? `Tasks ${config.weights.tasks}% · Exams ${config.weights.exams}% · Participation ${config.weights.participation}% · Attendance ${config.weights.attendance}%`
+      : '<span class="setup-required">Evaluation setup required</span>';
+
+    return `
+      <tr>
+        <td>${escapeHtml(groupName)}</td>
+        <td>${count}</td>
+        <td>${config.configured ? config.unitCount : "—"}</td>
+        <td class="group-evaluation-summary">${evaluationSummary}</td>
+        <td><button type="button" data-edit-group-evaluation="${escapeHtml(groupName)}">${config.configured ? "Edit Evaluation" : "Set Evaluation"}</button></td>
+      </tr>
+    `;
   }).join("");
 }
 
@@ -157,15 +253,48 @@ createGroupBtn.addEventListener("click", async () => {
     return;
   }
 
-  await update(ref(db, "groups"), {
-    [groupName]: {
-      name: groupName,
-      createdAt: Date.now()
-    }
+  const evaluationUnitCount = normalizeEvaluationUnitCount(evaluationUnitCountInput.value, 3);
+  const evaluationWeights = evaluationWeightsFromForm();
+  const total = evaluationWeightTotal(evaluationWeights);
+
+  if (Math.abs(total - 100) >= 0.01) {
+    groupEvaluationStatus.textContent = "Evaluation criteria must total exactly 100%.";
+    groupEvaluationStatus.className = "status-text bad";
+    refreshEvaluationWeightTotal();
+    return;
+  }
+
+  if (!editingGroupName && groupsCache[groupName]) {
+    groupEvaluationStatus.textContent = "That group already exists. Use Edit Evaluation in the Groups table.";
+    groupEvaluationStatus.className = "status-text bad";
+    return;
+  }
+
+  const now = Date.now();
+  const existing = groupsCache[groupName] || {};
+  await update(ref(db, `groups/${groupName}`), {
+    name: groupName,
+    createdAt: Number(existing.createdAt || now),
+    evaluationUnitCount,
+    evaluationWeights,
+    evaluationConfiguredAt: now,
+    evaluationConfiguredBy: getTeacherName()
   });
 
-  groupNameInput.value = "";
-  alert("Group created.");
+  const wasEditing = Boolean(editingGroupName);
+  resetGroupForm();
+  alert(wasEditing ? "Group evaluation settings saved." : "Group created.");
+});
+
+[tasksWeightInput, examsWeightInput, participationWeightInput, attendanceWeightInput]
+  .forEach((input) => input.addEventListener("input", refreshEvaluationWeightTotal));
+
+cancelGroupEditBtn.addEventListener("click", resetGroupForm);
+
+groupsTableBody.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-edit-group-evaluation]");
+  if (!button) return;
+  beginGroupEvaluationEdit(String(button.dataset.editGroupEvaluation || ""));
 });
 
 deleteGroupBtn.addEventListener("click", async () => {
