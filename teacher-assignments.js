@@ -69,6 +69,7 @@ const assignmentGroup = document.getElementById("assignmentGroup");
 const assignmentTargetField = document.getElementById("assignmentTargetField");
 const assignmentTargetSelect = document.getElementById("assignmentTargetSelect");
 const assignmentTargetHelp = document.getElementById("assignmentTargetHelp");
+const assignmentGroupHelp = document.getElementById("assignmentGroupHelp");
 const assignmentInstructions = document.getElementById("assignmentInstructions");
 const assignmentDueAt = document.getElementById("assignmentDueAt");
 const createPresetCriteria = document.getElementById("createPresetCriteria");
@@ -391,28 +392,53 @@ function renderAssignmentTargetOptions() {
   }
 }
 
-function applyAssignmentModuleContext() {
-  if (!ASSIGNMENTS_MODULE_MODE) return;
-
+function currentCreateWorkingGroup() {
   if (hasGeneratedTeamContext()) {
-    const groupName = String(assignmentsModuleContext?.groupName || "").trim();
-    if (groupName) {
-      if (![...assignmentGroup.options].some((option) => option.value === groupName)) {
-        const option = document.createElement("option");
-        option.value = groupName;
-        option.textContent = groupName;
-        assignmentGroup.appendChild(option);
-      }
-      assignmentGroup.value = groupName;
-      assignmentGroup.disabled = true;
-      sessionStorage.setItem(WORKING_GROUP_KEY, groupName);
-    }
+    return String(assignmentsModuleContext?.groupName || "").trim();
   }
 
+  const workingGroup = getWorkingGroup();
+  return workingGroup && workingGroup !== "ALL" ? workingGroup : "";
+}
+
+function applyAssignmentGroupContext() {
+  const workingGroup = currentCreateWorkingGroup();
+
+  if (workingGroup) {
+    if (![...assignmentGroup.options].some((option) => option.value === workingGroup)) {
+      const option = document.createElement("option");
+      option.value = workingGroup;
+      option.textContent = workingGroup;
+      assignmentGroup.appendChild(option);
+    }
+
+    assignmentGroup.value = workingGroup;
+    assignmentGroup.disabled = true;
+    if (assignmentGroupHelp) {
+      assignmentGroupHelp.textContent = `Working group: ${workingGroup}. This assignment will use the current group context.`;
+    }
+    return;
+  }
+
+  assignmentGroup.disabled = false;
+  if (assignmentGroupHelp) {
+    assignmentGroupHelp.textContent = "No working group is active. Choose who should receive this assignment.";
+  }
+}
+
+function applyAssignmentModuleContext() {
+  if (hasGeneratedTeamContext()) {
+    const groupName = String(assignmentsModuleContext?.groupName || "").trim();
+    if (groupName) sessionStorage.setItem(WORKING_GROUP_KEY, groupName);
+  }
+
+  applyAssignmentGroupContext();
   renderAssignmentTargetOptions();
+
   if (hasGeneratedTeamContext()) {
     createAssignmentPanel.hidden = false;
   }
+
   refreshAutomaticTaskCode();
 }
 
@@ -2258,8 +2284,8 @@ function renderGroupOptions() {
   if ([...assignmentGroup.options].some((option) => option.value === current)) {
     assignmentGroup.value = current;
   }
+
   applyAssignmentModuleContext();
-  refreshAutomaticTaskCode();
 }
 
 function dateFilterKey(timestamp) {
@@ -3012,6 +3038,7 @@ async function createAssignment() {
     assignmentDueAt.value = "";
     loadedAssignmentTemplateId = "";
     assignmentTemplateSource.value = "";
+    applyAssignmentGroupContext();
     loadAssignmentTemplateBtn.disabled = true;
     projectCheckpointRows.innerHTML = "";
     refreshProjectCheckpointBuilder();
@@ -3392,14 +3419,10 @@ assignmentType.addEventListener("change", () => {
   assignmentOtherTypeField.hidden = assignmentType.value !== "OTHER";
   loadedAssignmentTemplateId = "";
   assignmentTemplateSource.value = "";
-  renderAssignmentTemplateOptions();
   refreshAutomaticTaskCode();
   refreshProjectCheckpointBuilder();
 });
-assignmentOtherType.addEventListener("input", () => {
-  refreshAutomaticTaskCode();
-  if (assignmentType.value === "OTHER") renderAssignmentTemplateOptions();
-});
+assignmentOtherType.addEventListener("input", refreshAutomaticTaskCode);
 assignmentTitle.addEventListener("input", refreshAutomaticTaskCode);
 assignmentGroup.addEventListener("change", refreshAutomaticTaskCode);
 assignmentTargetSelect?.addEventListener("change", () => {
@@ -3415,7 +3438,6 @@ showCreateAssignmentBtn.addEventListener("click", () => {
 
   if (opening) {
     applyAssignmentModuleContext();
-    renderAssignmentTemplateOptions();
     createAssignmentPanel.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 });
