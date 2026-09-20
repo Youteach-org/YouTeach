@@ -62,7 +62,7 @@ test('COG assignment draft validates game, mode, difficulty, points and optional
 });
 
 test('shared Create Assignment module exposes visible COG configuration controls', () => {
-  assert.match(html, /<option value="COG">COG Activity \(COG\)<\/option>/);
+  assert.match(html, /<option value="COG">(?:COG Activity|Classroom Online Games) \(COG\)<\/option>/);
   assert.match(html, /id="cogActivityConfigPanel"/);
   assert.match(html, /id="cogGame"/);
   assert.match(html, /id="cogMode"/);
