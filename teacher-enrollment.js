@@ -82,6 +82,7 @@ function criterionRowHtml(criterion = {}) {
   return `
     <div class="criterion-row" data-evaluation-criterion data-criterion-id="${escapeHtml(id)}">
       <input data-criterion-name value="${escapeHtml(criterion.name || "")}" placeholder="Criterion name">
+      <input data-criterion-short-label value="${escapeHtml(criterion.shortLabel || "")}" placeholder="Short label">
       <input data-criterion-weight type="number" min="0" max="100" step="0.1"
         value="${Number(criterion.weight || 0) || ""}" placeholder="%">
       <select data-criterion-source>${sourceOptionsHtml(criterion.source || "manual")}</select>
@@ -100,6 +101,7 @@ function criteriaFromForm() {
     [...evaluationCriteriaRows.querySelectorAll("[data-evaluation-criterion]")].map((row, order) => ({
       id: String(row.dataset.criterionId || makeCriterionId()),
       name: String(row.querySelector("[data-criterion-name]")?.value || "").trim(),
+      shortLabel: String(row.querySelector("[data-criterion-short-label]")?.value || "").trim(),
       weight: Number(row.querySelector("[data-criterion-weight]")?.value || 0),
       source: String(row.querySelector("[data-criterion-source]")?.value || "manual"),
       order
