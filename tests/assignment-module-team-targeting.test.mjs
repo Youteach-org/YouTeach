@@ -111,3 +111,18 @@ test('Assignment Library lives inside the popup and can reuse previous assignmen
   assert.match(assignmentsHtml, /id="assignmentLibraryCompatibility" hidden/);
   assert.doesNotMatch(assignmentsHtml, /<section id="assignmentLibraryPanel"/);
 });
+
+
+test('Assignments keeps moved Library hooks from crashing normal page', () => {
+  assert.match(assignmentsHtml, /id="saveSelectedTemplateBtn"/);
+  assert.match(assignmentsHtml, /id="assignmentTemplateStatus"/);
+  assert.match(assignmentsJs, /saveSelectedTemplateBtn\?\.addEventListener/);
+  assert.match(assignmentsJs, /if \(saveSelectedTemplateBtn\) saveSelectedTemplateBtn\.disabled/);
+});
+
+test('Create Assignment source toggle has a visible active color state', () => {
+  assert.match(createModuleHtml, /\.creation-source-toggle button\.active/);
+  assert.match(createModuleHtml, /button\[aria-pressed="true"\]/);
+  assert.match(createModuleHtml, /background:#2563eb/);
+  assert.match(createModuleJs, /classList\.toggle\("active"/);
+});
