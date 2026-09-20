@@ -131,6 +131,45 @@ test("student in another group cannot launch the connected game", async () => {
   }
 });
 
+
+test("student outside exact COG assignment recipients cannot launch", async () => {
+  const token = await studentSession();
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    const value = String(url);
+    if (value.endsWith("/students/student-1.json")) {
+      return new Response(JSON.stringify({
+        studentNumber: "A001",
+        groupName: "533-2"
+      }), { status: 200 });
+    }
+    if (value.endsWith("/session/current.json")) {
+      return new Response(JSON.stringify({
+        active: true,
+        sessionId: "yt-123",
+        groupName: "533-2",
+        connectedGame: connectedGame({
+          assignmentId: "assignment-1",
+          recipientStudentKeys: ["student-2"]
+        })
+      }), { status: 200 });
+    }
+    throw new Error("Unexpected fetch: " + value);
+  };
+  try {
+    const response = await createStudentLaunch({
+      request: new Request("https://youteach.pages.dev/api/cog-live-student-launch", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + token }
+      }),
+      env: { YOUTEACH_SESSION_SECRET: SECRET }
+    });
+    assert.equal(response.status, 403);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("student resolver revalidates the same live session and returns canonical identity", async () => {
   const now = Date.now();
   const launchToken = await (async () => {
