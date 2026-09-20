@@ -130,6 +130,17 @@ Rules:
 - If no specific working group exists, the Group control is available so the teacher can choose the target.
 - When opened from Team Generator, the generated-team target further scopes the assignment to All Generated Teams or one generated team; All Generated Teams means only students in those generated teams.
 
+
+### Create Assignment popup architecture — 2026-09-20
+
+- **Create Assignment is a reusable popup module, not the Teacher Assignments page inside a modal.**
+- Both the Teacher Assignments page and Buzzer/Team Generator open the same dedicated module.
+- The popup loads `assignment-create-module.html` and contains only the Create Assignment workflow.
+- It must not include Assignment Browser, Assignment Library, assignment detail/submissions, grading panels, or the rest of `teacher-assignments.html`.
+- The normal Assignments page remains behind the modal and refreshes through the existing Firebase listeners after a new assignment is created.
+- Buzzer passes generated-team context into the same module; the Assignments page opens it with normal working-group context.
+- Closing the popup returns the teacher to the screen from which it was opened.
+
 ## 4. Accepted Teacher Assignments UX
 
 - Assignment cards are compact, not full-page rows.
