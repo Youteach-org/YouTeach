@@ -54,6 +54,15 @@ function getDisplayName(student){
   return student.fullName || student.name || student.nickname || "";
 }
 
+function studentNameFontSize(name) {
+  const length = Array.from(String(name || "").trim()).length;
+  if (length <= 14) return 18;
+  if (length <= 20) return 16;
+  if (length <= 28) return 14;
+  if (length <= 36) return 12;
+  return 10.5;
+}
+
 function formatGradeNumber(value) {
   const number = Number(value || 0);
   return Number(number.toFixed(1)).toString();
@@ -229,7 +238,7 @@ function renderStudents(){
     <tr class="student-row ${student.activeNow ? "active-student" : ""}" data-student-key="${escapeHtml(key)}">
       <td class="student-identity-cell">
         <div class="student-name-line">
-          <span class="student-name">${escapeHtml(getDisplayName(student))}</span>
+          <span class="student-name" style="font-size:${studentNameFontSize(getDisplayName(student))}px" title="${escapeHtml(getDisplayName(student))}">${escapeHtml(getDisplayName(student))}</span>
         </div>
         <div class="student-meta">
           ${student.nickname ? `<span class="student-meta-line">${escapeHtml(student.nickname)}</span>` : ""}
