@@ -83,6 +83,21 @@ export function criterionValue({
 }) {
   const exam = student?.examPoints?.[blockName] || {};
 
+  // Explicit assignment-to-criterion links are universal. A teacher should not
+  // have to expose or understand an internal "source" selector just to make a
+  // custom criterion receive grades from assignments.
+  const linkedScores = assignmentScoresForCriterion({
+    studentKey,
+    student,
+    blockName,
+    criterion,
+    config,
+    assignments,
+    submissions
+  });
+  const linkedScore = average(linkedScores);
+  if (linkedScore !== null) return { value: linkedScore, mode: "score" };
+
   if (criterion.source === "writtenExam") {
     return { value: Number(exam.written || 0), mode: "contribution" };
   }
@@ -100,18 +115,6 @@ export function criterionValue({
   }
 
   if (criterion.source === "tasks" || criterion.source === "assignments") {
-    const scores = assignmentScoresForCriterion({
-      studentKey,
-      student,
-      blockName,
-      criterion,
-      config,
-      assignments,
-      submissions
-    });
-    const score = average(scores);
-    if (score !== null) return { value: score, mode: "score" };
-
     if (criterion.source === "tasks") {
       return { value: Number(student?.taskPoints?.[blockName] || 0), mode: "contribution" };
     }
