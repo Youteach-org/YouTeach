@@ -9,7 +9,7 @@ import {
 import { allowedCogOrigin } from "../functions/_shared/cog-live-http.js";
 
 const CONTRACT = Object.freeze({
-  schemaVersion: 2,
+  schemaVersion: 1,
   teacherTokenPurpose: "cog-live-teacher",
   studentTokenPurpose: "cog-live-student",
   launchMode: "live-buzzer",
