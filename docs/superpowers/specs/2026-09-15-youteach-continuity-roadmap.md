@@ -656,7 +656,7 @@ Those values live in teacher/group/template data, not as a built-in application 
 - The report generates one column per configured group criterion, then **TOTAL**, plus an optional student signature column.
 - Each criterion may define a short report label (for example a teacher may use E, PR.O, V, T); labels are data, not hard-coded UI.
 - Organization, department, period, course/program, parallel groups, report title, and whether to include signatures are editable report settings saved per group.
-- Report settings may travel with a reusable group evaluation template.
+- **SUPERSEDED:** report settings do not travel with a rubric template; templates are criteria-only.
 - The report is printable / Save-to-PDF friendly and uses the same grade calculation as Students.
 - Institution-specific report layouts are represented as data/settings; the calculation engine remains universal.
 
@@ -760,7 +760,7 @@ This supersedes any earlier Group Management wording that implied repeated row-l
 - A template is an independent reusable evaluation-setup object. A group itself is **not** the template and the template must not retain a live association to a source group.
 - When a valid evaluation setup is saved on a group, YouTeach ensures that an equivalent independent reusable template exists under `groupEvaluationTemplates`.
 - Existing configured groups created before this rule may be harvested once into independent reusable templates so their prior criteria are not lost.
-- Template deduplication is based on reusable content (unit count + ordered criteria + reusable report settings), not group identity.
+- **SUPERSEDED by the rubric-template rule below:** template identity is not based on unit count, percentages, report settings, or group identity.
 - The template popup lists only reusable template records. Selecting a template and confirming **Use Selected Template** copies its reusable setup into the current group editor.
 - Templates never copy or reference students, grades, attendance, assignments, enrollment requests, or any other group-specific live data.
 
@@ -787,3 +787,22 @@ This supersedes any earlier Group Management layout that still separated roster 
 - New custom criteria default to manual storage, while assignments explicitly tagged to a criterion feed that criterion regardless of its internal legacy source mapping.
 - **Use Template** opens the reusable-template popup directly. No permanent `Start with custom criteria` selector is shown.
 - When templates exist, the popup selects a usable template by default so the teacher can apply it without first discovering a hidden selection prerequisite.
+
+
+### Rubric-template semantics — 2026-09-21 (latest)
+
+This is the canonical template rule and supersedes earlier wording that treated a whole configured group, its block count, report settings, or percentage distribution as the template.
+
+- An evaluation template is a reusable **ordered set of rubric/criterion names**, independent of every group.
+- Saving a valid group's evaluation criteria automatically ensures a matching template exists. There is no extra Save Template step.
+- Template identity/deduplication uses the ordered normalized criterion names only. **Percentages are not part of template identity.**
+- The template does retain the most recently explicitly saved percentages as editable starting values so another group can apply the template and then change those percentages.
+- Abbreviations and internal source mappings may be copied as defaults, but they do not create a different template.
+- Group name, roster, grades, assignments, attendance, block/unit count, enrollment state, and report settings are never part of the template and are never applied by **Use Template**.
+- The automatic template name is the ordered rubric names joined together, for example:
+  `Written exam · Oral exam · Verbs exam · Tasks`.
+- **Use Template** shows one compact row per template. The row displays each rubric together with its copied starting percentage, for example:
+  `Written exam 35% · Oral exam 40% · Verbs exam 15% · Tasks 10%`.
+- Existing configured groups may be harvested into this criteria-only library for backward compatibility, but the resulting template is not linked back to that group.
+- When an existing old template is encountered, YouTeach normalizes it to this criteria-only contract and removes legacy group-specific fields.
+- Operational reset requested on 2026-09-21: the existing criteria on the group whose normalized name is `E6C Fall 2026` are cleared once, using a persisted maintenance marker. The group itself, its roster, and other group data remain intact. Recreated criteria are not cleared again.
