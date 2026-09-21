@@ -30,8 +30,25 @@ try {
   }
 
   {
-    const { page } = await openPage(browser, `${YT}/teacher.html`);
-    await page.waitForURL(/teacher-login\.html/, { timeout: 15000 });
+    const page = await browser.newPage();
+    const pageErrors = [];
+    const failedRequests = [];
+    const consoleErrors = [];
+    page.on("pageerror", (error) => pageErrors.push(String(error?.message || error)));
+    page.on("requestfailed", (request) => failedRequests.push(`${request.url()} :: ${request.failure()?.errorText || "failed"}`));
+    page.on("console", (msg) => {
+      if (msg.type() === "error") consoleErrors.push(msg.text());
+    });
+    const response = await page.goto(`${YT}/teacher.html`, { waitUntil: "domcontentloaded", timeout: 45000 });
+    assert(response?.status() === 200, `Teacher Home returned ${response?.status()}`);
+    await page.waitForTimeout(5000);
+    console.log("TEACHER_REDIRECT_DIAG URL=" + page.url());
+    console.log("TEACHER_REDIRECT_DIAG PAGE_ERRORS=" + JSON.stringify(pageErrors));
+    console.log("TEACHER_REDIRECT_DIAG FAILED_REQUESTS=" + JSON.stringify(failedRequests));
+    console.log("TEACHER_REDIRECT_DIAG CONSOLE_ERRORS=" + JSON.stringify(consoleErrors));
+    const scriptSrc = await page.locator('script[type="module"]').first().getAttribute("src");
+    console.log("TEACHER_REDIRECT_DIAG MODULE=" + scriptSrc);
+    assert(page.url().includes("teacher-login.html"), "Teacher Home did not redirect without a teacher session.");
     console.log("PASS teacher auth redirect");
     await page.close();
   }
