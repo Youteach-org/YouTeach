@@ -14,6 +14,14 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
+      - name: Check Cloudflare secret presence
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          echo "CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN:+SET}"
+          echo "CLOUDFLARE_ACCOUNT_ID=${CLOUDFLARE_ACCOUNT_ID:+SET}"
+
       - name: Inspect Cloudflare branch and production responses
         shell: bash
         run: |
