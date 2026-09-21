@@ -130,6 +130,14 @@ async function main() {
   await teacherPage.locator("#workingGroupStep").waitFor({ state: "visible", timeout: 15000 });
   await teacherPage.locator("#workingGroupSelect").selectOption({ label: GROUP });
   await teacherPage.locator("#continueWithGroupBtn").click();
+  await new Promise((resolve) => setTimeout(resolve, 2500));
+  console.log("E2E diagnostic after Continue with Group", JSON.stringify({
+    url: teacherPage.url(),
+    title: await teacherPage.title(),
+    workingGroupVisible: await teacherPage.locator("#workingGroupStep").isVisible().catch(() => false),
+    workingGroupMessage: await teacherPage.locator("#workingGroupMessage").textContent().catch(() => ""),
+    loginMessage: await teacherPage.locator("#loginMessage").textContent().catch(() => "")
+  }));
   await teacherPage.waitForURL((u) => u.origin === YT && u.pathname.endsWith("/buzzer.html"), { timeout: 15000 });
   await teacherPage.locator("#groupSelect").selectOption({ label: GROUP });
   await teacherPage.locator("#teamSourceSelect").selectOption("all");
