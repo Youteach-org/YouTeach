@@ -38,3 +38,10 @@ test("Student Buzzer asks YouTeach to persist logical live-game expiry", () => {
   assert.match(js, /Authorization/);
   assert.match(js, /refreshLiveGameExpiry/);
 });
+
+
+test("100 Students Said stays inside Student Buzzer instead of showing a broken external JOIN GAME", () => {
+  assert.match(js, /gameId\s*===\s*"100-students-said"/);
+  assert.match(js, /buzzerNativeGame/);
+  assert.match(js, /liveGameCard\.hidden\s*=\s*!connectedGame\s*\|\|\s*buzzerNativeGame/);
+});
