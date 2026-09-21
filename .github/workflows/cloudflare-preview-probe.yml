@@ -1,0 +1,50 @@
+name: Probe Cloudflare preview aliases
+
+on:
+  push:
+    branches:
+      - feature/live-cog-session-current-20260920
+    paths:
+      - .github/workflows/cloudflare-preview-probe.yml
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe YouTeach and COG branch previews
+        shell: bash
+        run: |
+          set -u
+          YT="https://feature-live-cog-session-current-20260920.youteach.pages.dev"
+          COG="https://feature-live-cog-session-current-20260920.classroom-online-games.pages.dev"
+          failed=0
+
+          probe_page() {
+            local label="$1"
+            local url="$2"
+            local marker="$3"
+            local out="$4"
+            local status
+            status="$(curl -L -sS --connect-timeout 15 --max-time 30 -o "$out" -w '%{http_code}' "$url" || true)"
+            echo "$label URL=$url STATUS=$status BYTES=$(wc -c <"$out" 2>/dev/null || echo 0)"
+            if [ "$status" != "200" ]; then
+              echo "$label preview is not reachable with HTTP 200"
+              failed=1
+              return
+            fi
+            if grep -Fq "$marker" "$out"; then
+              echo "$label marker present: $marker"
+            else
+              echo "$label marker MISSING: $marker"
+              failed=1
+            fi
+          }
+
+          probe_page "YouTeach" "$YT/buzzer.js" "cog-live-teacher-launch" /tmp/youteach-buzzer.js
+          probe_page "COG" "$COG/shared/youteach-live-bridge.mjs" "launchMode: \"live-buzzer\"" /tmp/cog-bridge.mjs
+
+          echo "PROBE_FAILED=$failed"
+          exit "$failed"
