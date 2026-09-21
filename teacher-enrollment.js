@@ -114,6 +114,9 @@ const restoredManagementState = readManagementState();
 
 let groupsCache = {};
 let studentsCache = {};
+let assignmentsCache = {};
+let assignmentSubmissionsCache = {};
+let pointsLogCache = {};
 let enrollmentRequestsCache = {};
 let evaluationTemplatesCache = {};
 let legacyEvaluationTemplatesCache = {};
@@ -468,6 +471,8 @@ function resetGroupForm() {
   groupNameInput.disabled = false;
   groupNameInput.value = "";
   evaluationUnitCountInput.value = "3";
+  evaluationUnitCountInput.min = "1";
+  evaluationUnitCountInput.title = "";
   pendingReportSettings = null;
   setCriteriaEditor([]);
   createGroupBtn.textContent = "Create Group";
@@ -483,6 +488,137 @@ function resetGroupForm() {
   renderSelectedGroupActions();
 }
 
+function blockNumberFromName(value) {
+  const match = String(value || "").match(/block\s*(\d+)/i);
+  return match ? Number.parseInt(match[1], 10) : 0;
+}
+
+function hasRecordedScalar(container, blockName) {
+  return Boolean(
+    container &&
+    Object.prototype.hasOwnProperty.call(container, blockName) &&
+    container[blockName] !== null &&
+    container[blockName] !== ""
+  );
+}
+
+function markRecordedBlock(currentMax, blockName) {
+  const number = blockNumberFromName(blockName);
+  return number > currentMax ? number : currentMax;
+}
+
+function assignmentRecipientKeys(raw) {
+  if (Array.isArray(raw)) return raw.map(String);
+  if (raw && typeof raw === "object") return Object.values(raw).map(String);
+  return [];
+}
+
+function assignmentAppliesToGroupStudent(assignment, studentKey, student) {
+  const assignmentGroup = String(assignment?.groupName || "");
+  if (assignmentGroup && assignmentGroup !== "ALL" && assignmentGroup !== String(student?.groupName || "")) {
+    return false;
+  }
+
+  const recipients = assignmentRecipientKeys(assignment?.recipientStudentKeys);
+  if (recipients.length && !recipients.includes(String(studentKey))) return false;
+  return true;
+}
+
+function minimumEvaluationUnitCountForGroup(groupName) {
+  if (!groupName) return 1;
+
+  const groupEntries = Object.entries(studentsCache || {})
+    .filter(([, student]) => String(student?.groupName || "") === groupName);
+  const groupStudentKeys = new Set(groupEntries.map(([studentKey]) => String(studentKey)));
+  let highestRecorded = 0;
+
+  groupEntries.forEach(([, student]) => {
+    Object.entries(student?.examPoints || {}).forEach(([blockName, exam]) => {
+      if (!exam || typeof exam !== "object") return;
+      const recorded = ["written", "oral", "verbs"].some((key) =>
+        Object.prototype.hasOwnProperty.call(exam, key) &&
+        exam[key] !== null &&
+        exam[key] !== ""
+      );
+      if (recorded) highestRecorded = markRecordedBlock(highestRecorded, blockName);
+    });
+
+    Object.entries(student?.evaluationCriterionScores || {}).forEach(([blockName, scores]) => {
+      if (!scores || typeof scores !== "object") return;
+      const recorded = Object.values(scores).some((value) => value !== null && value !== "");
+      if (recorded) highestRecorded = markRecordedBlock(highestRecorded, blockName);
+    });
+
+    Object.keys(student?.taskPoints || {}).forEach((blockName) => {
+      if (hasRecordedScalar(student.taskPoints, blockName)) {
+        highestRecorded = markRecordedBlock(highestRecorded, blockName);
+      }
+    });
+
+    Object.keys(student?.attendancePoints || {}).forEach((blockName) => {
+      if (hasRecordedScalar(student.attendancePoints, blockName)) {
+        highestRecorded = markRecordedBlock(highestRecorded, blockName);
+      }
+    });
+
+    Object.entries(student?.blockPoints || {}).forEach(([blockName, value]) => {
+      // blockPoints is initialized to zero for new students, so zero alone is
+      // not evidence that the block has actually been graded.
+      if (value !== null && value !== "" && Number(value) !== 0) {
+        highestRecorded = markRecordedBlock(highestRecorded, blockName);
+      }
+    });
+  });
+
+  Object.values(pointsLogCache || {}).forEach((entry) => {
+    const belongsToGroup =
+      String(entry?.groupName || "") === groupName ||
+      groupStudentKeys.has(String(entry?.studentKey || ""));
+    if (!belongsToGroup) return;
+    highestRecorded = markRecordedBlock(highestRecorded, entry?.block || entry?.blockName);
+  });
+
+  Object.entries(assignmentsCache || {}).forEach(([assignmentId, assignment]) => {
+    const blockName = String(assignment?.evaluationBlock || assignment?.block || "");
+    const blockNumber = blockNumberFromName(blockName);
+    if (!blockNumber) return;
+
+    const submissions = assignmentSubmissionsCache?.[assignmentId] || {};
+    const hasRecordedGrade = Object.entries(submissions).some(([studentKey, submission]) => {
+      const student = studentsCache?.[studentKey];
+      if (!student || !groupStudentKeys.has(String(studentKey))) return false;
+      if (!assignmentAppliesToGroupStudent(assignment, studentKey, student)) return false;
+      const raw = submission?.grading?.totalScore;
+      return raw !== null && raw !== undefined && raw !== "" && Number.isFinite(Number(raw));
+    });
+
+    if (hasRecordedGrade) highestRecorded = Math.max(highestRecorded, blockNumber);
+  });
+
+  return Math.max(1, highestRecorded);
+}
+
+function applyEvaluationUnitFloor(groupName, { announce = false } = {}) {
+  const minimum = minimumEvaluationUnitCountForGroup(groupName);
+  evaluationUnitCountInput.min = String(minimum);
+  evaluationUnitCountInput.title = minimum > 1
+    ? `Cannot reduce below ${minimum} because Block ${minimum} already has recorded grades.`
+    : "";
+
+  const requested = normalizeEvaluationUnitCount(evaluationUnitCountInput.value, 3);
+  if (requested < minimum) {
+    evaluationUnitCountInput.value = String(minimum);
+    if (announce) {
+      groupEvaluationStatus.textContent =
+        `Cannot reduce to ${requested} block(s): Block ${minimum} already has recorded grades. Remove those grades first before reducing below ${minimum}.`;
+      groupEvaluationStatus.className = "status-text bad";
+    }
+    return false;
+  }
+
+  return true;
+}
+
 function loadGroupEditor(groupName, { preserveView = false } = {}) {
   const group = groupsCache[groupName];
   if (!group) return;
@@ -494,6 +630,7 @@ function loadGroupEditor(groupName, { preserveView = false } = {}) {
   groupNameInput.value = groupName;
   groupNameInput.disabled = true;
   evaluationUnitCountInput.value = String(config.unitCount);
+  applyEvaluationUnitFloor(groupName);
   pendingReportSettings = group.reportSettings && typeof group.reportSettings === "object"
     ? { ...group.reportSettings }
     : null;
@@ -514,6 +651,7 @@ async function saveExistingGroupEvaluation() {
   if (!groupName || !groupsCache[groupName]) return;
 
   const version = ++evaluationAutosaveVersion;
+  if (!applyEvaluationUnitFloor(groupName, { announce: true })) return;
   const evaluationUnitCount = normalizeEvaluationUnitCount(evaluationUnitCountInput.value, 3);
   const evaluationCriteria = criteriaFromForm();
   const total = evaluationWeightTotal(evaluationCriteria);
@@ -1299,7 +1437,10 @@ addEvaluationCriterionBtn.addEventListener("click", () => {
 });
 
 evaluationUnitCountInput.addEventListener("input", () => scheduleExistingGroupEvaluationSave());
-evaluationUnitCountInput.addEventListener("change", () => scheduleExistingGroupEvaluationSave({ immediate: true }));
+evaluationUnitCountInput.addEventListener("change", () => {
+  if (!applyEvaluationUnitFloor(editingGroupName, { announce: true })) return;
+  scheduleExistingGroupEvaluationSave({ immediate: true });
+});
 
 evaluationCriteriaRows.addEventListener("input", () => {
   refreshEvaluationWeightTotal();
@@ -1605,8 +1746,24 @@ onValue(ref(db, "groupEvaluationTemplates"), (snapshot) => {
 
 onValue(ref(db, "students"), (snapshot) => {
   studentsCache = snapshot.val() || {};
+  if (editingGroupName) applyEvaluationUnitFloor(editingGroupName);
   renderGroupsTable();
   renderManagedStudents();
+});
+
+onValue(ref(db, "assignments"), (snapshot) => {
+  assignmentsCache = snapshot.val() || {};
+  if (editingGroupName) applyEvaluationUnitFloor(editingGroupName);
+});
+
+onValue(ref(db, "assignmentSubmissions"), (snapshot) => {
+  assignmentSubmissionsCache = snapshot.val() || {};
+  if (editingGroupName) applyEvaluationUnitFloor(editingGroupName);
+});
+
+onValue(ref(db, "pointsLog"), (snapshot) => {
+  pointsLogCache = snapshot.val() || {};
+  if (editingGroupName) applyEvaluationUnitFloor(editingGroupName);
 });
 
 onValue(ref(db, "groupEnrollmentRequests"), (snapshot) => {
