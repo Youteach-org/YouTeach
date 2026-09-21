@@ -659,3 +659,73 @@ Those values live in teacher/group/template data, not as a built-in application 
 - Report settings may travel with a reusable group evaluation template.
 - The report is printable / Save-to-PDF friendly and uses the same grade calculation as Students.
 - Institution-specific report layouts are represented as data/settings; the calculation engine remains universal.
+
+
+## Group Management redesign — 2026-09-20
+
+This supersedes the old **Groups / Import** page structure.
+
+### Naming and layout
+- The teacher page is called **Group Management** everywhere in the teacher UI. The legacy URL `teacher-enrollment.html` may remain for compatibility, but visible labels must not say "Groups / Import".
+- **Create / Edit Group** is a full-width card at the top.
+- The standalone **Delete Group** card is removed.
+- The standalone **Add Student** card is removed.
+- Directly below Create / Edit Group is a full-width **Enrolled Students** section.
+- The **Groups** list remains at the bottom and is the place to select/manage/delete a group.
+
+### Group selection and evaluation setup
+- Clicking the **group name** in the Groups list selects that group for management and loads its settings into the single Create/Edit Group card.
+- There must not be a repeated **Set Evaluation** button on every group row.
+- The evaluation editor appears in the single management card for the currently selected group.
+- **Use Template** must include:
+  1. explicitly saved evaluation templates; and
+  2. any existing group whose evaluation criteria are valid (100%), so a configured group can immediately serve as a reusable template.
+- Using another group as a template copies only reusable group setup (block/unit count, evaluation criteria, and reusable report settings), never students, grades, attendance, assignments, or enrollment requests.
+
+### Enrolled Students
+- The section is a vertical list of full-width student/request cards.
+- Each card shows status, student/request name, nickname, External ID when available, and group.
+- External ID is optional at enrollment and remains editable later from the student record.
+- The list supports the standard master checkbox for select/deselect all visible cards.
+- Controls include:
+  - **Create Enrollment Link**
+  - **Add Student**
+  - **Approve**
+  - **Deny**
+  - **Expel**
+- **Add Student** opens a popup/modal containing the existing manual fields (Full name, Nickname, optional External ID); it does not occupy a permanent card.
+- Double-clicking an enrolled student opens that student's existing teacher-view student record.
+- Approve applies only to pending requests; Deny applies only to pending requests; Expel applies only to enrolled students.
+
+### Enrollment links and approval
+- A teacher can create/rotate an enrollment link for the selected group.
+- The public link includes a group identifier and opaque enrollment token.
+- A student following the link submits a **pending enrollment request**, not a Student record.
+- The request asks for Full Name, Nickname, and optional External ID.
+- A pending request becomes a real `students/{studentKey}` record only after teacher approval.
+- Denying a request records the denial/removes it from the active pending list without creating a student.
+- Enrollment request state lives separately from the canonical enrolled-student records.
+
+Canonical paths:
+```text
+groups/{groupName}/enrollment/token
+groups/{groupName}/enrollment/enabled
+groups/{groupName}/enrollment/updatedAt
+groupEnrollmentRequests/{groupName}/{requestId}
+```
+
+### Delete Group with automatic backup
+- Delete is available from the Groups list, not from a standalone card.
+- Deletion requires an explicit confirmation containing the exact group name.
+- Before any destructive database write, the browser automatically downloads a reconstruction-oriented JSON backup.
+- The backup includes, when present:
+  - group configuration and report settings;
+  - students in the group, including grade/point fields;
+  - pending/denied enrollment request records;
+  - assignments targeted to the group;
+  - assignment submissions for those assignments and/or those students;
+  - attendance records for those students;
+  - point-history records attributable to those students/group;
+  - backup schema/version and export timestamp.
+- Only after the backup download has been initiated does YouTeach remove the group and its group-owned/student-owned live records.
+- The backup is meant to make later reconstruction possible; it is not merely a visual report.
