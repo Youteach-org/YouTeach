@@ -11,11 +11,12 @@
     .student-row{cursor:pointer}
     .student-row:hover{background:#f8fafc}
     .group-select{width:100%;margin-top:6px}
-    .students-count-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+    .students-count-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
     .students-count-value{font-size:20px;font-weight:900;color:#0f172a}
-    .search-toggle-btn{min-width:34px;padding:5px 8px;font-size:16px;line-height:1}
-    .student-search-panel{margin-top:7px}
-    .student-search-panel input{width:100%}
+    .student-search-tools{display:flex;align-items:center;justify-content:flex-end;gap:8px;min-width:0}
+    .search-toggle-btn{min-width:42px;min-height:38px;padding:5px 9px;font-size:24px;line-height:1}
+    .student-search-panel{margin:0;min-width:220px;max-width:360px}
+    .student-search-panel input{width:100%;margin:0}
     .students-table-wrap{overflow-x:auto;position:relative}
     .students-table{width:max-content;min-width:100%;border-collapse:separate;border-spacing:0}
     .student-column-header,.student-identity-cell{position:sticky;left:0;min-width:270px;max-width:310px}
@@ -23,9 +24,9 @@
     .student-identity-cell{z-index:2;background:#fff}
     .student-name-line{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
     .student-name{font-weight:900;font-size:12px;line-height:1.25;color:#0f172a}
-    .student-meta{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:3px;font-size:9px;color:#64748b}
-    .student-id-tag{display:inline-flex;padding:2px 5px;border-radius:999px;background:#f1f5f9;font-weight:800;color:#475569}
-    @media(max-width:760px){.students-summary-grid{grid-template-columns:1fr}.student-column-header,.student-identity-cell{min-width:220px;max-width:250px}}
+    .student-meta{display:flex;flex-direction:column;align-items:flex-start;gap:1px;margin-top:3px;font-size:9px;line-height:1.25;color:#64748b}
+    .student-meta-line{font-size:9px;font-weight:500;color:#64748b}
+    @media(max-width:760px){.students-summary-grid{grid-template-columns:1fr}.student-column-header,.student-identity-cell{min-width:220px;max-width:250px}.students-count-head{align-items:flex-start}.student-search-tools{flex:1}.student-search-panel{min-width:0;max-width:none;flex:1}}
     .student-row.active-student{background:#ecfdf5}
     .student-row.active-student:hover{background:#dcfce7}
     .student-row.active-student .student-identity-cell{background:#ecfdf5}
@@ -95,11 +96,13 @@
                 <span class="summary-label">Students in Group</span>
                 <div id="studentsInGroupCard" class="students-count-value">0</div>
               </div>
-              <button id="toggleStudentSearchBtn" class="search-toggle-btn" type="button"
-                aria-label="Search students" aria-expanded="false" title="Search students">🔍</button>
-            </div>
-            <div id="studentSearchPanel" class="student-search-panel" hidden>
-              <input id="searchStudent" placeholder="Search name, nickname, or External ID" autocomplete="off">
+              <div class="student-search-tools">
+                <div id="studentSearchPanel" class="student-search-panel" hidden>
+                  <input id="searchStudent" placeholder="Search name, nickname, or External ID" autocomplete="off">
+                </div>
+                <button id="toggleStudentSearchBtn" class="search-toggle-btn" type="button"
+                  aria-label="Search students" aria-expanded="false" title="Search students">🔍</button>
+              </div>
             </div>
           </div>
         </div>
@@ -125,7 +128,7 @@
     </main>
   </div>
 
-  <script type="module" src="teacher-students.js?v=sticky-student-block-scroll-20260921"></script>
+  <script type="module" src="teacher-students.js?v=search-inline-id-meta-20260921"></script>
   <script defer src="shared-ui-fixes.js?v=titlebar-hamburger-20260916"></script>
 </body>
 </html>
