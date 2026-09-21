@@ -54,8 +54,23 @@ try {
   }
 
   {
-    const { page } = await openPage(browser, `${YT}/student-buzzer.html`);
-    await page.waitForURL(/student\.html/, { timeout: 15000 });
+    const page = await browser.newPage();
+    const pageErrors = [];
+    const failedRequests = [];
+    const consoleErrors = [];
+    page.on("pageerror", (error) => pageErrors.push(String(error?.message || error)));
+    page.on("requestfailed", (request) => failedRequests.push(`${request.url()} :: ${request.failure()?.errorText || "failed"}`));
+    page.on("console", (msg) => {
+      if (msg.type() === "error") consoleErrors.push(msg.text());
+    });
+    const response = await page.goto(`${YT}/student-buzzer.html`, { waitUntil: "domcontentloaded", timeout: 45000 });
+    assert(response?.status() === 200, `Student Buzzer returned ${response?.status()}`);
+    await page.waitForTimeout(5000);
+    console.log("STUDENT_REDIRECT_DIAG URL=" + page.url());
+    console.log("STUDENT_REDIRECT_DIAG PAGE_ERRORS=" + JSON.stringify(pageErrors));
+    console.log("STUDENT_REDIRECT_DIAG FAILED_REQUESTS=" + JSON.stringify(failedRequests));
+    console.log("STUDENT_REDIRECT_DIAG CONSOLE_ERRORS=" + JSON.stringify(consoleErrors));
+    assert(/\/student(?:\.html)?(?:[?#]|$)/.test(page.url()), "Student Buzzer did not redirect without a student session.");
     console.log("PASS student auth redirect");
     await page.close();
   }
