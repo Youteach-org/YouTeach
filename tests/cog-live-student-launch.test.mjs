@@ -81,7 +81,7 @@ test("student launch uses canonical student group and active connected game", as
     assert.equal(response.status, 200);
     const payload = await response.json();
     const url = new URL(payload.launchUrl);
-    assert.equal(url.origin, "https://classroom-online-games.pages.dev");
+    assert.equal(url.origin, "https://utichgion.org");
     assert.equal(url.pathname, "/Verb-Runner/");
     assert.equal(url.searchParams.get("issuer"), "https://preview.youteach.pages.dev");
 
