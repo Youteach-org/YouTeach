@@ -112,7 +112,7 @@ test('group creation UI uses a dynamic criterion editor and reusable templates',
   assert.doesNotMatch(enrollmentJs, /EVALUATION_SOURCE_OPTIONS/);
   assert.doesNotMatch(enrollmentJs, /<select data-criterion-source>/);
   assert.match(enrollmentJs, /data-criterion-source=/);
-  assert.match(enrollmentJs, /Evaluation criteria must total exactly 100%/);
+  assert.match(enrollmentJs, /Complete 100% to enable grading and update the template/);
 });
 
 test('Students renders arbitrary criterion names and dynamic block grades', () => {
@@ -248,4 +248,15 @@ test('using a rubric template leaves the current group block count and report se
   assert.match(block, /setCriteriaEditor\(criteria\)/);
   assert.doesNotMatch(block, /evaluationUnitCountInput\.value/);
   assert.doesNotMatch(block, /pendingReportSettings/);
+});
+
+
+test('incomplete evaluation drafts are persisted but templates update only at valid 100 percent', () => {
+  const start = enrollmentJs.indexOf('async function saveExistingGroupEvaluation');
+  const end = enrollmentJs.indexOf('function scheduleExistingGroupEvaluationSave', start);
+  const block = enrollmentJs.slice(start, end);
+  assert.match(block, /await update\(ref\(db, `groups\/\$\{groupName\}`\), patch\)/);
+  assert.match(block, /const valid = evaluationCriteria\.length > 0 && allNamed && Math\.abs\(total - 100\) < 0\.01/);
+  assert.match(block, /if \(valid\) \{/);
+  assert.match(block, /ensureIndependentTemplate/);
 });
