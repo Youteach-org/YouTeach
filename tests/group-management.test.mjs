@@ -195,3 +195,26 @@ test('template library uses the established writable settings branch with legacy
   assert.match(js, /onValue\(ref\(db, "groupEvaluationTemplates"\)/);
   assert.match(js, /mergedTemplateCache/);
 });
+
+
+test('evaluation unit count cannot shrink below the highest block with recorded grades', () => {
+  assert.match(js, /function minimumEvaluationUnitCountForGroup/);
+  assert.match(js, /function applyEvaluationUnitFloor/);
+  assert.match(js, /student\?\.examPoints/);
+  assert.match(js, /student\?\.evaluationCriterionScores/);
+  assert.match(js, /student\?\.taskPoints/);
+  assert.match(js, /student\?\.attendancePoints/);
+  assert.match(js, /pointsLogCache/);
+  assert.match(js, /assignmentSubmissionsCache/);
+  assert.match(js, /grading\?\.totalScore/);
+  assert.match(js, /Cannot reduce to \$\{requested\} block\(s\)/);
+  assert.match(js, /evaluationUnitCountInput\.min = String\(minimum\)/);
+});
+
+test('initialized zero activity points alone do not lock unused future blocks', () => {
+  const start = js.indexOf('function minimumEvaluationUnitCountForGroup');
+  const end = js.indexOf('function applyEvaluationUnitFloor', start);
+  const block = js.slice(start, end);
+  assert.match(block, /Number\(value\) !== 0/);
+  assert.match(block, /blockPoints is initialized to zero/);
+});
