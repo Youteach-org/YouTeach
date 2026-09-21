@@ -20,12 +20,18 @@
       font-weight: 700;
       white-space: nowrap;
     }
-    .block-grade-cell{min-width:180px;text-align:center}
-    .block-grade-total{display:block;font-size:18px;font-weight:900;line-height:1.1;color:#0f172a}
+    .editable-row.active-student{background:#ecfdf5}
+    .editable-row.active-student:hover{background:#dcfce7}
+    .editable-row.active-student .table-input{background:#f0fdf4}
+    .block-grade-cell{min-width:260px;text-align:center}
     .block-grade-setup-required{font-size:10px;font-weight:900;color:#b45309}
-    .block-grade-header{min-width:220px;text-align:center;vertical-align:top}
+    .block-grade-header{min-width:260px;text-align:center;vertical-align:top}
     .block-header-title{display:block;font-size:13px;font-weight:900;color:#0f172a;white-space:nowrap}
-    .block-header-criteria{display:block;margin-top:4px;font-size:9px;line-height:1.35;font-weight:700;color:#64748b;white-space:normal}
+    .block-criteria-grid,.block-values-grid{display:grid;grid-template-columns:repeat(var(--criterion-columns),minmax(48px,1fr));gap:4px;align-items:center}
+    .block-criteria-grid{margin-top:5px;font-size:9px;line-height:1.25;font-weight:800;color:#64748b}
+    .block-values-grid{font-size:11px;font-weight:800;color:#334155}
+    .block-criterion-label,.block-criterion-value{padding:2px 3px;text-align:center;white-space:nowrap}
+    .block-criterion-total{font-weight:900;color:#0f172a}
 
   </style>
 </head>
@@ -92,10 +98,6 @@
             <span class="summary-label">Students in Group</span>
             <strong id="studentsInGroupCard">0</strong>
           </div>
-          <div class="summary-card mini">
-            <span class="summary-label">Evaluation Blocks / Units</span>
-            <strong id="evaluationUnitCountCard">---</strong>
-          </div>
         </div>
 
         <div class="students-actions">
@@ -110,7 +112,6 @@
                 <th style="min-width:140px;">External ID</th>
                 <th style="min-width:320px;">Full Name</th>
                 <th style="min-width:180px;">Nickname</th>
-                <th>Today Active</th>
                 <th id="blockColumnsPlaceholder">Block Grade</th>
               </tr>
             </thead>
@@ -123,7 +124,7 @@
     </main>
   </div>
 
-  <script type="module" src="teacher-students.js?v=criteria-in-block-headers-20260921"></script>
+  <script type="module" src="teacher-students.js?v=criterion-values-active-row-20260921"></script>
   <script defer src="shared-ui-fixes.js?v=titlebar-hamburger-20260916"></script>
 </body>
 </html>
