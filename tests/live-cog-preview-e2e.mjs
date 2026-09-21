@@ -14,6 +14,7 @@ const resultId = `e2e_vr_${marker}`;
 let browser, teacherContext, studentContext, teacherPage, cogTeacherPage, studentPage;
 let assignmentId = "", cogSessionId = "", ghostKey = "";
 let ghostBefore = null, attendanceBefore = null, sessionBefore = null;
+let sessionMutated = false;
 
 const urlFor = (path) => `${DB}/${String(path).replace(/^\/+|\/+$/g, "")}.json`;
 
@@ -72,8 +73,10 @@ async function cleanup() {
   if (cogSessionId) await fb(`classroomGames/verbRunnerV2/sessions/${cogSessionId}`, "DELETE").catch(() => {});
   if (assignmentId) await fb(`assignments/${assignmentId}`, "DELETE").catch(() => {});
 
-  if (sessionBefore == null) await fb("session/current", "DELETE").catch(() => {});
-  else await fb("session/current", "PUT", sessionBefore).catch(() => {});
+  if (sessionMutated) {
+    if (sessionBefore == null) await fb("session/current", "DELETE").catch(() => {});
+    else await fb("session/current", "PUT", sessionBefore).catch(() => {});
+  }
 
   if (ghostKey && ghostBefore) {
     await fb(`students/${ghostKey}`, "PATCH", {
@@ -104,20 +107,6 @@ async function fillDeployedTeacherCredential(page) {
 
 async function main() {
   sessionBefore = await fb("session/current");
-  if (sessionBefore?.active === true || sessionBefore?.connectedGame?.status === "active") {
-    console.log("E2E_BLOCKED session/current summary", JSON.stringify({
-      sessionId: String(sessionBefore?.sessionId || sessionBefore?.id || ""),
-      groupName: String(sessionBefore?.groupName || sessionBefore?.connectedGame?.groupName || ""),
-      active: Boolean(sessionBefore?.active),
-      connectedGameStatus: String(sessionBefore?.connectedGame?.status || ""),
-      connectedGameId: String(sessionBefore?.connectedGame?.gameId || ""),
-      connectedAssignmentId: String(sessionBefore?.connectedGame?.assignmentId || ""),
-      connectedCogSessionId: String(sessionBefore?.connectedGame?.cogSessionId || ""),
-      startedAt: Number(sessionBefore?.startedAt || sessionBefore?.connectedGame?.startedAt || 0),
-      updatedAt: Number(sessionBefore?.updatedAt || sessionBefore?.connectedGame?.updatedAt || 0)
-    }));
-    throw new Error("E2E_BLOCKED: an active session already occupies session/current; no writes performed.");
-  }
 
   const students = await fb("students");
   const ghost = Object.entries(students || {}).find(([, s]) =>
@@ -150,10 +139,27 @@ async function main() {
     loginMessage: await teacherPage.locator("#loginMessage").textContent().catch(() => "")
   }));
   await teacherPage.waitForURL((u) => u.origin === YT && u.pathname.endsWith("/buzzer.html"), { timeout: 15000 });
+
+  sessionBefore = await fb("session/current");
+  if (sessionBefore?.active === true || sessionBefore?.connectedGame?.status === "active") {
+    console.log("E2E_BLOCKED session/current summary", JSON.stringify({
+      groupName: String(sessionBefore?.groupName || sessionBefore?.connectedGame?.groupName || ""),
+      active: Boolean(sessionBefore?.active),
+      createdAt: Number(sessionBefore?.createdAt || 0),
+      teamSourceMode: String(sessionBefore?.teamSourceMode || ""),
+      connectedGameStatus: String(sessionBefore?.connectedGame?.status || ""),
+      connectedGameId: String(sessionBefore?.connectedGame?.gameId || ""),
+      connectedAssignmentId: String(sessionBefore?.connectedGame?.assignmentId || ""),
+      connectedCogSessionId: String(sessionBefore?.connectedGame?.cogSessionId || "")
+    }));
+    throw new Error("E2E_BLOCKED: an active session already occupies session/current; no writes performed.");
+  }
+
   await teacherPage.locator("#groupSelect").selectOption({ label: GROUP });
   await teacherPage.locator("#teamSourceSelect").selectOption("all");
   await teacherPage.locator("#numTeams").fill("2");
   teacherPage.once("dialog", (d) => d.accept());
+  sessionMutated = true;
   await teacherPage.locator("#createTeams").click();
   await waitFor(() => teacherPage.locator("#openAssignmentsModuleBtn").isEnabled(), "Assignments enable");
 
