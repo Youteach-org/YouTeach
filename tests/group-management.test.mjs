@@ -218,3 +218,15 @@ test('initialized zero activity points alone do not lock unused future blocks', 
   assert.match(block, /Number\(value\) !== 0/);
   assert.match(block, /blockPoints is initialized to zero/);
 });
+
+
+test('block reduction refreshes live grade evidence before saving a lower count', () => {
+  assert.match(js, /async function refreshGradeEvidenceCaches/);
+  assert.match(js, /get\(ref\(db, "students"\)\)/);
+  assert.match(js, /get\(ref\(db, "assignments"\)\)/);
+  assert.match(js, /get\(ref\(db, "assignmentSubmissions"\)\)/);
+  assert.match(js, /get\(ref\(db, "pointsLog"\)\)/);
+  assert.match(js, /if \(evaluationUnitCount < storedUnitCount\)/);
+  assert.match(js, /await refreshGradeEvidenceCaches\(\)/);
+  assert.match(js, /Could not verify existing grades\. Block count was not reduced\./);
+});
