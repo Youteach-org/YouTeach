@@ -8,10 +8,10 @@ Work spans two repositories and MUST stay on the same feature branch until verif
 
 - YouTeach: `Youteach-org/YouTeach`
   - branch: `feature/live-cog-session-current-20260920`
-  - current implementation checkpoint: `b1ee0a3d6bd4f5bbd5ebd83f2f6497a4398e474a`
-- Classroom Online Games: `youteachtk/Classroom-Online-Games`
+  - current verified implementation checkpoint: `5c2cc2f5b16042441581f6685f14c9c095cd9a5f`
+- Classroom Online Games: `Youteach-org/Classroom-Online-Games`
   - branch: `feature/live-cog-session-current-20260920`
-  - HEAD verified at handoff: `9d42a7569f8f3382b262e5d1db636f4f51d35412`
+  - current verified implementation checkpoint: `d2fc95a22a243f803aa0e0afbbffb03434f31d16`
 
 Always verify actual HEADs before changing anything; this handoff can become stale after a push.
 
@@ -149,42 +149,58 @@ Implemented and now present at current branch HEAD:
 
 ## CI status — latest verified checkpoint
 
+Both repositories now belong to `Youteach-org` and use the same feature branch.
+
 ### YouTeach
 
-Repository ownership changed during this work:
-- current repo: `Youteach-org/YouTeach`
-- branch: `feature/live-cog-session-current-20260920`
-
-The old red run was an Actions infrastructure symptom, not a product failure. After moving YouTeach under `Youteach-org`, the same workflow immediately received a hosted runner and could execute normally.
-
-Latest verified YouTeach implementation:
-- HEAD: `b1ee0a3d6bd4f5bbd5ebd83f2f6497a4398e474a`
-- run: `35565318415`
-- runner assigned normally
-- server JavaScript check: GREEN
-- tests: **131/131 GREEN**
+- repo: `Youteach-org/YouTeach`
+- verified HEAD: `5c2cc2f5b16042441581f6685f14c9c095cd9a5f`
+- run: `35568127333`
+- server JavaScript syntax: GREEN
+- tests: **134/134 GREEN**
 - Pages build: GREEN
 
-TDD checkpoints for teacher-facing COG results:
-- `60f12c07cdcbab158556bddd35f0a69297b10c6c` — RED tests for assignment result display; 125 pass / 3 expected fail.
-- `8616af768d475caba503e2a7c27576b3262e2813` — result index + Assignments UI; run `35565020906` GREEN.
-- `c3ffc87421b7d1ba5aace824a64430c438374e75` — RED tests for authenticated result reads; 128 pass / 3 expected fail.
-- `b1ee0a3d6bd4f5bbd5ebd83f2f6497a4398e474a` — authenticated result-read endpoint + UI polling; run `35565318415` GREEN.
+Teacher-facing Results TDD remains verified:
+- `60f12c07cdcbab158556bddd35f0a69297b10c6c` — RED display tests.
+- `8616af768d475caba503e2a7c27576b3262e2813` — first GREEN display/index implementation.
+- `c3ffc87421b7d1ba5aace824a64430c438374e75` — RED authenticated-read tests.
+- `b1ee0a3d6bd4f5bbd5ebd83f2f6497a4398e474a` — authenticated result-read implementation GREEN.
 
 ### Classroom Online Games
 
-COG remains under `youteachtk/Classroom-Online-Games`.
+The repository was transferred from the personal owner to:
+- repo: `Youteach-org/Classroom-Online-Games`
+- branch migration preserved history and refs.
 
-The workflow itself is still blocked before product tests start:
-- original failing run: `35548676940`
-- `runner-probe` was retried by itself
-- retry job: `106223435653`
-- result: failure in about one second with **zero steps**, `runner_id: 0`, empty runner name and no log blob
-- probe contains only `node --version` and `echo "runner-ok"`
+The transfer resolved the Actions runner-allocation failure:
+- transferred checkpoint `9dbf1e3709bc4ac668054f510972f8bb37c62050`;
+- old run `35565450102` was retried under the organization;
+- isolated `runner-probe` received GitHub-hosted runner `1000000019` and passed;
+- rerun split jobs then passed: syntax, shared-bridge, Verb Runner, 100 Students Said, Support Meter, OSASCOMP and build.
 
-Do **not** modify product code to chase this red. Evidence still points to runner allocation / owner-level Actions infrastructure for `youteachtk`. The successful YouTeach rerun after its move to `Youteach-org` is a useful control showing the workflow can receive a normal hosted runner under the new owner.
+Latest verified COG contract checkpoint:
+- HEAD: `d2fc95a22a243f803aa0e0afbbffb03434f31d16`
+- run: `35568129792`
+- runner-probe: GREEN
+- syntax: GREEN
+- shared-bridge: **10/10 GREEN**
+- Verb Runner: GREEN
+- 100 Students Said: GREEN
+- Support Meter: GREEN
+- OSASCOMP: GREEN
+- build: GREEN
 
-Until COG `runner-probe` receives a real runner, COG CI is **not a valid product signal** and the cross-repo branch is not eligible for final merge.
+The prior no-runner failure was therefore an owner-level Actions infrastructure condition, not a product-code failure.
+
+### Task 15 contract verification
+
+Completed RED → GREEN in both repos:
+- YouTeach RED `b88b0a743323c38916f3c4c0114d45a025d8807d`, run `35568075925`: 133/134 with one intentional schema mismatch.
+- COG RED `733de01472f4d5f8e19389cd8d217688c66e261b`, run `35568079733`: shared-bridge 9/10 with one intentional schema mismatch.
+- YouTeach GREEN `5c2cc2f5b16042441581f6685f14c9c095cd9a5f`, run `35568127333`: 134/134 + build.
+- COG GREEN `d2fc95a22a243f803aa0e0afbbffb03434f31d16`, run `35568129792`: full split workflow + build.
+
+Canonical cross-repo contract is pinned to `schemaVersion: 1`.
 
 ## Completed since the original handoff
 
@@ -215,37 +231,31 @@ Teacher read path:
 
 ## Important unfinished work
 
-### 1. End-to-end browser verification after COG CI recovers
+### 1. Task 16 — browser E2E with existing Ghost students
 
-Verify with real YouTeach flow and existing Ghost test students. Do not create duplicate Ghost accounts.
+CI and cross-repository contract tests are now trustworthy and GREEN. The remaining acceptance gate is real browser verification. Reuse the existing Ghost accounts; never create duplicate Ghost students.
 
-Minimum E2E cases:
+Minimum cases:
 
 - Verb Runner:
-  teacher start -> Student Buzzer JOIN GAME -> canonical identity -> heartbeat -> complete -> one result receipt -> retry does not duplicate -> teacher end.
+  teacher start -> Student Buzzer JOIN GAME -> canonical identity -> heartbeat -> complete -> exactly one result receipt -> same receipt retry does not duplicate -> teacher end.
 - Support Meter:
-  teacher creates native assigned session -> YouTeach register -> student auto-identity -> 8 stories -> result receipt -> teacher end closes native link without deleting historical result.
+  create native assigned session -> register YouTeach -> automatic student identity -> complete 8 stories -> result receipt -> END ACTIVITY closes access but retains history.
 - OSASCOMP:
-  teacher start -> deterministic room -> student auto-identity -> finish -> one result receipt -> teacher reopen resumes same room while active -> teacher end.
+  teacher start -> deterministic room -> automatic student identity -> finish -> one result receipt -> reopen monitor resumes same active room -> teacher end.
 - 100 Students Said:
-  teacher starts monitor activity -> students stay in Student Buzzer -> buzzer/turn/points work -> NO external JOIN GAME -> teacher end.
+  teacher start -> students remain inside Student Buzzer -> buzzer/turns/points -> NO external JOIN GAME -> teacher end.
 - Expiry:
-  zero presence must become `expired` after 60 continuous minutes; returning before that clears the zero-presence timer.
+  automated policy verification for 90-second stale presence and 60 continuous minutes of zero presence; any return before expiration resets `noPresenceSince`.
 
-### 2. Restore trustworthy COG CI
+### 2. Task 17 — final verification / documentation / deploy
 
-Before browser E2E/final merge:
-- get `runner-probe` to receive a real hosted runner;
-- then use split jobs `syntax`, `shared-bridge`, `verb-runner`, `hundred-students-said`, `support-meter`, `osascomp`, `build` to identify any actual product failures;
-- do not infer GREEN or RED product state while the runner never starts.
-
-### 3. Documentation / final merge
-
-After true green in both repos + E2E:
-- update plan/ledger/spec with final checkpoints;
-- create/update PR(s) as appropriate;
-- do not merge to main until verification is complete;
-- deploy only after source is settled in GitHub.
+Only after Task 16 passes:
+- update final README/continuity documentation;
+- verify exact final commits GREEN in both repositories;
+- create/update PRs as appropriate;
+- do not merge to `main` before E2E;
+- deploy through the established Cloudflare Pages workflow after source is settled in GitHub.
 
 ## User workflow rules that matter here
 
