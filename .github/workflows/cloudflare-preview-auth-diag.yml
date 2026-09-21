@@ -1,0 +1,50 @@
+name: Diagnose YouTeach preview auth bindings
+
+on:
+  push:
+    branches:
+      - feature/live-cog-session-current-20260920
+    paths:
+      - .github/workflows/cloudflare-preview-auth-diag.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect Pages project bindings without exposing secret values
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          project_json=/tmp/project.json
+          account_id="$(printf '%s' "$CLOUDFLARE_ACCOUNT_ID" | tr -d '[:space:]')"
+
+          curl -fsS             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             -H "Content-Type: application/json"             "https://api.cloudflare.com/client/v4/accounts/$account_id/pages/projects/youteach"             -o "$project_json"
+
+          jq '{
+            success,
+            project: .result.name,
+            production_branch: .result.production_branch,
+            production_kv: (.result.deployment_configs.production.kv_namespaces // {}),
+            preview_kv: (.result.deployment_configs.preview.kv_namespaces // {}),
+            production_env_keys: ((.result.deployment_configs.production.env_vars // {}) | to_entries | map({key: .key, type: .value.type})),
+            preview_env_keys: ((.result.deployment_configs.preview.env_vars // {}) | to_entries | map({key: .key, type: .value.type}))
+          }' "$project_json"
+
+      - name: Reproduce auth storage status
+        shell: bash
+        run: |
+          set -euo pipefail
+          for base in             "https://youteach.pages.dev"             "https://feature-live-cog-session-cur.youteach.pages.dev"
+          do
+            body=/tmp/auth.json
+            status="$(curl -sS -o "$body" -w '%{http_code}'               -X POST               -H 'Content-Type: application/json'               --data '{"username":"__binding_probe__","password":"not-a-real-password"}'               "$base/api/teacher-session")"
+            error="$(jq -r '.error // ""' "$body" 2>/dev/null || true)"
+            printf '%s -> status=%s error=%s\n' "$base" "$status" "$error"
+          done
