@@ -34,6 +34,13 @@ const logoutBtn = document.getElementById("logoutBtn");
 const groupsDialog = document.getElementById("groupsDialog");
 const openGroupsDialogBtn = document.getElementById("openGroupsDialogBtn");
 const closeGroupsDialogBtn = document.getElementById("closeGroupsDialogBtn");
+const deleteGroupDialog = document.getElementById("deleteGroupDialog");
+const deleteGroupDialogSubtitle = document.getElementById("deleteGroupDialogSubtitle");
+const deleteGroupConfirmInput = document.getElementById("deleteGroupConfirmInput");
+const deleteGroupStatus = document.getElementById("deleteGroupStatus");
+const closeDeleteGroupDialogBtn = document.getElementById("closeDeleteGroupDialogBtn");
+const cancelDeleteGroupBtn = document.getElementById("cancelDeleteGroupBtn");
+const confirmDeleteGroupBtn = document.getElementById("confirmDeleteGroupBtn");
 const groupEditorDialog = document.getElementById("groupEditorDialog");
 const groupEditorTitle = document.getElementById("groupEditorTitle");
 const groupEditorSubtitle = document.getElementById("groupEditorSubtitle");
@@ -1628,26 +1635,87 @@ function buildGroupDeletionUpdates(root, backup) {
   return updates;
 }
 
+function groupCleanupPaths(root, backup) {
+  const updates = buildGroupDeletionUpdates(root, backup);
+  delete updates[`groups/${backup.groupName}`];
+  return Object.keys(updates);
+}
+
+async function cleanupDeletedGroupPaths(paths) {
+  const results = await Promise.allSettled(
+    paths.map((path) => set(ref(db, path), null))
+  );
+  return results.filter((result) => result.status === "rejected");
+}
+
+function openDeleteGroupDialog() {
+  const groupName = selectedManagedGroup;
+  if (!groupName || !groupsCache[groupName]) return;
+
+  deleteGroupDialogSubtitle.textContent =
+    `A backup will download before "${groupName}" is deleted.`;
+  deleteGroupConfirmInput.value = "";
+  deleteGroupConfirmInput.placeholder = groupName;
+  deleteGroupStatus.textContent = "";
+  deleteGroupStatus.className = "status-text";
+  confirmDeleteGroupBtn.disabled = false;
+
+  if (groupsDialog.open) groupsDialog.close();
+  deleteGroupDialog.showModal();
+  deleteGroupConfirmInput.focus();
+}
+
 async function deleteGroupWithBackup(groupName) {
-  const typed = String(prompt(
-    `Deleting "${groupName}" will download a reconstruction backup and then remove the group and its live records.\n\nType the exact group name to confirm:`
-  ) || "");
+  const typed = String(deleteGroupConfirmInput.value || "").trim();
 
   if (typed !== groupName) {
-    alert("Group name did not match. Nothing was deleted.");
-    return;
+    deleteGroupStatus.textContent = "Group name does not match.";
+    deleteGroupStatus.className = "status-text bad";
+    return false;
   }
 
-  const rootSnapshot = await get(ref(db));
-  const root = rootSnapshot.val() || {};
-  const backup = buildGroupBackup(root, groupName);
-  const date = new Date().toISOString().slice(0, 10);
-  triggerJsonDownload(`group-backup-${cleanFilePart(groupName)}-${date}.json`, backup);
+  confirmDeleteGroupBtn.disabled = true;
+  deleteGroupStatus.textContent = "Creating backup…";
+  deleteGroupStatus.className = "status-text";
 
-  await update(ref(db), buildGroupDeletionUpdates(root, backup));
+  try {
+    const rootSnapshot = await get(ref(db));
+    const root = rootSnapshot.val() || {};
+    const backup = buildGroupBackup(root, groupName);
+    const date = new Date().toISOString().slice(0, 10);
 
-  if (selectedManagedGroup === groupName) resetGroupForm();
-  alert(`Group "${groupName}" deleted after the backup download was started.`);
+    triggerJsonDownload(`group-backup-${cleanFilePart(groupName)}-${date}.json`, backup);
+
+    deleteGroupStatus.textContent = "Deleting group…";
+
+    // Delete the group record first. Related cleanup must never block this primary action.
+    await set(ref(db, `groups/${groupName}`), null);
+
+    if (groupsCache[groupName]) delete groupsCache[groupName];
+
+    const cleanupFailures = await cleanupDeletedGroupPaths(groupCleanupPaths(root, backup));
+
+    if (selectedManagedGroup === groupName) resetGroupForm();
+    renderGroupsTable();
+
+    deleteGroupStatus.textContent = cleanupFailures.length
+      ? `Group deleted. ${cleanupFailures.length} related record(s) could not be cleaned automatically.`
+      : "Group deleted.";
+    deleteGroupStatus.className = cleanupFailures.length ? "status-text bad" : "status-text ok";
+
+    setTimeout(() => {
+      if (deleteGroupDialog.open) deleteGroupDialog.close();
+    }, cleanupFailures.length ? 1800 : 500);
+
+    return true;
+  } catch (error) {
+    console.error("Delete group failed:", error);
+    deleteGroupStatus.textContent =
+      `Could not delete group: ${error?.message || "unknown Firebase error"}`;
+    deleteGroupStatus.className = "status-text bad";
+    confirmDeleteGroupBtn.disabled = false;
+    return false;
+  }
 }
 
 createGroupBtn.addEventListener("click", async () => {
@@ -1793,8 +1861,16 @@ openGroupEvaluationDialogBtn.addEventListener("click", () => {
   openSelectedGroupEvaluationDialog();
 });
 
-deleteSelectedGroupBtn.addEventListener("click", async () => {
+deleteSelectedGroupBtn.addEventListener("click", openDeleteGroupDialog);
+closeDeleteGroupDialogBtn.addEventListener("click", () => deleteGroupDialog.close());
+cancelDeleteGroupBtn.addEventListener("click", () => deleteGroupDialog.close());
+confirmDeleteGroupBtn.addEventListener("click", async () => {
   if (!selectedManagedGroup) return;
+  await deleteGroupWithBackup(selectedManagedGroup);
+});
+deleteGroupConfirmInput.addEventListener("keydown", async (event) => {
+  if (event.key !== "Enter" || !selectedManagedGroup) return;
+  event.preventDefault();
   await deleteGroupWithBackup(selectedManagedGroup);
 });
 

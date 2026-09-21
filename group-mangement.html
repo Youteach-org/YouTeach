@@ -247,6 +247,27 @@
     </div>
   </dialog>
 
+  <dialog id="deleteGroupDialog">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <h3>Delete Group</h3>
+          <div id="deleteGroupDialogSubtitle" class="status-text"></div>
+        </div>
+        <button id="closeDeleteGroupDialogBtn" class="modal-close" type="button">Cancel</button>
+      </div>
+
+      <label for="deleteGroupConfirmInput"><strong>Type the exact group name to confirm</strong></label>
+      <input id="deleteGroupConfirmInput" autocomplete="off">
+
+      <div class="group-form-actions">
+        <button id="cancelDeleteGroupBtn" class="modal-close" type="button">Cancel</button>
+        <button id="confirmDeleteGroupBtn" class="delete-group-btn" type="button">Delete Group</button>
+      </div>
+      <div id="deleteGroupStatus" class="status-text"></div>
+    </div>
+  </dialog>
+
   <dialog id="groupEditorDialog">
     <div class="modal-card">
       <div class="modal-head">

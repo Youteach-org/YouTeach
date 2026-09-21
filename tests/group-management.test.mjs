@@ -123,21 +123,25 @@ test('enrollment links create pending requests and approval creates canonical st
   assert.match(enrollJs, /groupEnrollmentRequests\/\$\{groupName\}/);
 });
 
-test('group deletion requires exact name and downloads reconstructable backup before delete update', () => {
-  assert.match(js, /Type the exact group name to confirm/);
-  assert.match(js, /youteach-group-backup/);
-  assert.match(js, /schemaVersion: 1/);
+test('group deletion uses a visible confirmation dialog and primary delete is not blocked by cleanup', () => {
+  assert.match(html, /<dialog id="deleteGroupDialog">/);
+  assert.match(html, /id="deleteGroupConfirmInput"/);
+  assert.match(html, /id="confirmDeleteGroupBtn"[^>]*>Delete Group<\/button>/);
+  assert.match(html, /id="cancelDeleteGroupBtn"[^>]*>Cancel<\/button>/);
+  assert.match(js, /function openDeleteGroupDialog/);
+  assert.match(js, /Group name does not match\./);
   assert.match(js, /triggerJsonDownload/);
-  assert.match(js, /assignmentSubmissions/);
-  assert.match(js, /attendance/);
-  assert.match(js, /pointsLog/);
-  assert.match(js, /sessionHistory/);
+  assert.match(js, /await set\(ref\(db, `groups\/\$\{groupName\}`\), null\)/);
+  assert.match(js, /Promise\.allSettled/);
+  assert.match(js, /cleanupDeletedGroupPaths/);
+  assert.match(js, /Could not delete group:/);
+  assert.match(js, /deleteSelectedGroupBtn\.addEventListener\("click", openDeleteGroupDialog\)/);
 
-  const downloadIndex = js.indexOf('triggerJsonDownload(');
-  const deleteUpdateIndex = js.indexOf('await update(ref(db), buildGroupDeletionUpdates');
-  assert.ok(downloadIndex >= 0 && deleteUpdateIndex > downloadIndex);
+  const backupIndex = js.indexOf('triggerJsonDownload(');
+  const primaryDeleteIndex = js.indexOf('await set(ref(db, `groups/${groupName}`), null)');
+  const cleanupIndex = js.indexOf('await cleanupDeletedGroupPaths(');
+  assert.ok(backupIndex >= 0 && primaryDeleteIndex > backupIndex && cleanupIndex > primaryDeleteIndex);
 });
-
 
 test('Group Management selection state survives same-tab page navigation', () => {
   assert.match(js, /MANAGEMENT_STATE_KEY/);

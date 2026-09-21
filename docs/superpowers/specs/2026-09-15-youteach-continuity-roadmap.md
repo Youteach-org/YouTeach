@@ -980,3 +980,12 @@ This supersedes earlier Teacher Students / Group Management navigation and layou
 - In **Enrolled Students**, the identity-display button, **Students** count, search magnifying glass, expanding search textbox, and **Block Report** button stay on the same horizontal header line as the **Enrolled Students** label.
 - Those controls are not repeated in a separate toolbar above the student matrix.
 - Existing enrollment-link, Add Student, and roster collapse controls remain on that same header line; no behavior changes accompany this layout move.
+
+
+### Reliable Delete Group flow — 2026-09-21
+
+- **Delete Group** opens an in-page confirmation dialog instead of relying on the browser's native `prompt()`.
+- The teacher types the exact selected group name, then confirms or cancels.
+- A reconstruction backup is triggered before deletion.
+- The primary `groups/<group>` record is deleted first. Cleanup of students, requests, assignments, submissions, attendance, points, and history is best-effort afterward so a failure on one secondary branch cannot prevent the group itself from being deleted.
+- Deletion errors are shown visibly in the dialog instead of failing silently.
