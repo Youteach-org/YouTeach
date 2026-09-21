@@ -1,0 +1,21 @@
+name: Talk Talk V1 CI
+
+on:
+  push:
+    branches:
+      - feature/talk-talk-v1-20260921
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Talk Talk API syntax
+        run: |
+          find functions -name '*.js' -print0 | xargs -0 -n1 node --check
+      - name: Run Talk Talk tests
+        run: node --test tests/talk-talk-*.test.mjs
