@@ -230,10 +230,10 @@ function renderStudents(){
       <td class="student-identity-cell">
         <div class="student-name-line">
           <span class="student-name">${escapeHtml(getDisplayName(student))}</span>
-          ${student.studentNumber ? `<span class="student-id-tag">ID ${escapeHtml(student.studentNumber)}</span>` : ""}
         </div>
         <div class="student-meta">
-          ${student.nickname ? `<span>${escapeHtml(student.nickname)}</span>` : ""}
+          ${student.nickname ? `<span class="student-meta-line">${escapeHtml(student.nickname)}</span>` : ""}
+          ${student.studentNumber ? `<span class="student-meta-line">ID ${escapeHtml(student.studentNumber)}</span>` : ""}
         </div>
       </td>
       ${blockNames.map((blockName) =>
