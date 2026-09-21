@@ -225,3 +225,98 @@ test("result for another game session is rejected", async () => {
     globalThis.fetch = originalFetch;
   }
 });
+
+
+test("Support Meter metrics are preserved in the canonical live result receipt", async () => {
+  const now = Date.now();
+  const token = await signCogLiveToken({
+    purpose: "cog-live-student-session",
+    studentKey: "student-1",
+    externalId: "A001",
+    groupName: "533-2",
+    youTeachSessionId: "yt-123",
+    assignmentId: "assignment-1",
+    gameId: "support-meter",
+    cogSessionId: "SM123",
+    iat: now - 1000,
+    exp: now + 60_000
+  }, SECRET);
+
+  const supportResult = {
+    schemaVersion: 1,
+    resultId: "sm_SM123_run001",
+    attemptId: "run001",
+    resultType: "individual",
+    completedAt: now,
+    percentage: 88,
+    points: null,
+    metrics: {
+      supportMeter: 88,
+      streak: 6,
+      storiesCompleted: 8,
+      translationAttempts: 1,
+      mode: "support-meter"
+    }
+  };
+
+  const writes = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init = {}) => {
+    const value = String(url);
+    if (value.endsWith("/session/current.json") && (!init.method || init.method === "GET")) {
+      return new Response(JSON.stringify({
+        active: true,
+        sessionId: "yt-123",
+        groupName: "533-2",
+        connectedGame: {
+          gameId: "support-meter",
+          gameName: "Support Meter",
+          cogSessionId: "SM123",
+          groupName: "533-2",
+          assignmentId: "assignment-1",
+          recipientStudentKeys: ["student-1"],
+          status: "active",
+          launchMode: "live-buzzer",
+          startedAt: now - 60_000,
+          updatedAt: now,
+          teacherPresenceAt: now,
+          studentPresence: { "student-1": now },
+          noPresenceSince: null
+        }
+      }), { status: 200 });
+    }
+    if (value.includes("/classroomGameResults/SM123/student-1/sm_SM123_run001.json")) {
+      if (!init.method || init.method === "GET") {
+        return new Response("null", {
+          status: 200,
+          headers: { ETag: '"null-etag"' }
+        });
+      }
+      if (init.method === "PUT") {
+        writes.push(JSON.parse(init.body));
+        return new Response(init.body, { status: 200 });
+      }
+    }
+    throw new Error("Unexpected fetch: " + value + " " + (init.method || "GET"));
+  };
+
+  try {
+    const response = await submitResult({
+      request: new Request("https://youteach.pages.dev/api/cog-live-result-submit", {
+        method: "POST",
+        headers: {
+          Origin: "https://classroom-online-games.pages.dev",
+          Authorization: "Bearer " + token,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ result: supportResult })
+      }),
+      env: { YOUTEACH_SESSION_SECRET: SECRET }
+    });
+    assert.equal(response.status, 200);
+    assert.equal(writes.length, 1);
+    assert.deepEqual(writes[0].metrics, supportResult.metrics);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
