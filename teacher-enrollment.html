@@ -7,59 +7,71 @@
   <link rel="stylesheet" href="styles.css?v=titlebar-hamburger-20260916">
   <style>
     [hidden]{display:none!important}
-    .management-stack{display:grid;gap:16px}
+    .management-stack{display:grid;gap:14px}
     .full-width-card{width:100%}
-    .management-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}
-    .management-head-actions{display:flex;gap:8px;flex-wrap:wrap}
-    .evaluation-template-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
-    .criteria-editor{display:grid;gap:8px}
+    .management-head{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}
+    .management-head-actions,.group-context-actions,.roster-context-actions,.template-actions,.group-form-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .criteria-editor{display:grid;gap:7px}
     .criteria-editor-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
-    .criterion-row{display:grid;grid-template-columns:minmax(170px,1.4fr) 90px 90px minmax(190px,1fr) auto;gap:8px;align-items:center;padding:8px;border:1px solid #dbe3ee;border-radius:9px;background:#f8fafc}
+    .criterion-row{display:grid;grid-template-columns:minmax(170px,1.4fr) 80px 82px minmax(190px,1fr) auto;gap:7px;align-items:center;padding:7px;border:1px solid #dbe3ee;border-radius:8px;background:#f8fafc}
     .criterion-row input,.criterion-row select{width:100%;min-width:0}
     .criterion-remove{background:#fff1f2;color:#be123c;border:1px solid #fecdd3}
     .evaluation-total{font-weight:900;font-size:13px}
-    .evaluation-total.ok{color:#166534}
-    .evaluation-total.bad{color:#b91c1c}
-    .group-form-actions,.template-actions,.student-toolbar,.student-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-    .group-evaluation-summary{font-size:11px;color:#475569;line-height:1.4}
+    .evaluation-total.ok{color:#166534}.evaluation-total.bad{color:#b91c1c}
+    .group-evaluation-summary{font-size:11px;color:#475569;line-height:1.35}
     .setup-required{font-weight:800;color:#b45309}
-    .selected-group-banner{padding:10px 12px;border-radius:10px;background:#f1f5f9;display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}
-    .selected-group-banner strong{font-size:15px}
+    .selected-group-banner{padding:8px 10px;border-radius:9px;background:#f1f5f9;display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+    .selected-group-banner strong{font-size:14px}
+    .collapse-btn{min-width:38px;padding:6px 10px;font-size:17px;line-height:1}
     .enrollment-link-box{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
     .enrollment-link-box input{width:100%}
-    .student-toolbar{justify-content:space-between}
-    .student-toolbar-left,.student-toolbar-right{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-    .student-list{display:grid;gap:8px;margin-top:12px}
-    .student-card{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;border:1px solid #dbe3ee;border-radius:12px;padding:12px;background:#fff;cursor:pointer}
-    .student-card:hover{border-color:#94a3b8;background:#f8fafc}
-    .student-card.selected{outline:2px solid #2563eb;border-color:#2563eb}
-    .student-card.pending{border-left:5px solid #f59e0b}
-    .student-card.enrolled{border-left:5px solid #16a34a}
-    .student-card-main{min-width:0}
-    .student-card-name{font-weight:900;font-size:15px}
-    .student-card-meta{font-size:11px;color:#64748b;margin-top:4px;display:flex;gap:10px;flex-wrap:wrap}
-    .student-status{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:900}
+    .student-toolbar{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;margin-top:9px}
+    .student-toolbar-left,.student-toolbar-right{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+    .roster-context-actions{margin-top:8px;padding:8px;border:1px solid #bfdbfe;border-radius:8px;background:#eff6ff}
+    .roster-context-actions .context-label{font-size:11px;font-weight:900;color:#1e3a8a;margin-right:auto}
+    .external-id-editor{display:flex;gap:5px;align-items:center}
+    .external-id-editor input{width:170px}
+    .student-grid{display:grid;grid-template-columns:34px 92px minmax(200px,1.5fr) minmax(120px,.8fr) minmax(140px,.8fr);align-items:center}
+    .student-list-head{margin-top:9px;padding:5px 8px;font-size:10px;font-weight:900;color:#64748b;text-transform:uppercase;border-bottom:1px solid #cbd5e1}
+    .student-list{display:grid}
+    .student-row{min-height:36px;padding:4px 8px;border-bottom:1px solid #e2e8f0;background:#fff;cursor:pointer;font-size:12px}
+    .student-row:hover{background:#f8fafc}
+    .student-row.selected{background:#eff6ff;box-shadow:inset 3px 0 #2563eb}
+    .student-row.pending{box-shadow:inset 3px 0 #f59e0b}
+    .student-row.pending.selected{box-shadow:inset 3px 0 #2563eb}
+    .student-cell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:8px}
+    .student-name{font-weight:800;color:#0f172a}
+    .student-status{display:inline-flex;justify-content:center;padding:3px 6px;border-radius:999px;font-size:9px;font-weight:900}
     .student-status.pending{background:#fef3c7;color:#92400e}
     .student-status.enrolled{background:#dcfce7;color:#166534}
-    .student-list-empty{padding:22px;text-align:center;color:#64748b;border:1px dashed #cbd5e1;border-radius:12px}
-    .groups-table .group-name-button{background:transparent;color:#1d4ed8;border:0;padding:0;font-weight:900;text-align:left;box-shadow:none}
+    .student-list-empty{padding:16px;text-align:center;color:#64748b;border-bottom:1px solid #e2e8f0}
+    .pending-count{font-weight:900;color:#92400e;font-size:11px}
+    .groups-table .group-select-button{display:flex;align-items:center;gap:7px;background:transparent;color:#1d4ed8;border:0;padding:0;font-weight:900;text-align:left;box-shadow:none}
+    .groups-table .group-chevron{display:inline-block;width:14px;color:#64748b}
     .groups-table tr.selected-group-row{background:#eff6ff}
+    .group-context-actions{margin-top:9px;padding:8px;border-radius:8px;background:#f8fafc;border:1px solid #dbe3ee}
     .delete-group-btn{background:#b91c1c}
     dialog{border:0;border-radius:14px;padding:0;width:min(720px,calc(100vw - 28px));box-shadow:0 22px 70px rgba(15,23,42,.35)}
     dialog::backdrop{background:rgba(15,23,42,.55)}
-    .modal-card{padding:18px;display:grid;gap:14px}
+    .modal-card{padding:18px;display:grid;gap:13px}
     .modal-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
     .modal-head h3{margin:0}
     .modal-close{background:#e2e8f0;color:#0f172a}
     .modal-tabs{display:flex;gap:6px;flex-wrap:wrap}
     .modal-tabs button.active{background:#2563eb;color:white}
     .modal-pane{display:grid;gap:10px}
-    .pending-count{font-weight:900;color:#92400e}
+    .template-list{display:grid;border:1px solid #dbe3ee;border-radius:10px;overflow:hidden;max-height:440px;overflow-y:auto}
+    .template-row{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:center;padding:10px;border-bottom:1px solid #e2e8f0;cursor:pointer;background:#fff}
+    .template-row:last-child{border-bottom:0}
+    .template-row:hover{background:#f8fafc}
+    .template-row.selected{background:#eff6ff;box-shadow:inset 3px 0 #2563eb}
+    .template-name{font-weight:900;font-size:13px}
+    .template-meta{font-size:10px;color:#64748b;margin-top:3px;line-height:1.35}
     @media(max-width:850px){
       .criterion-row{grid-template-columns:1fr}
-      .evaluation-template-row,.enrollment-link-box{grid-template-columns:1fr}
-      .student-card{grid-template-columns:auto minmax(0,1fr)}
-      .student-card .student-status{grid-column:2}
+      .enrollment-link-box{grid-template-columns:1fr}
+      .student-grid{grid-template-columns:30px 78px minmax(150px,1.2fr) minmax(100px,.7fr) minmax(110px,.7fr)}
+      .student-list-head,.student-row{font-size:10px}
     }
   </style>
 </head>
@@ -88,7 +100,7 @@
       <header class="topbar">
         <div>
           <h2>Group Management</h2>
-          <p>Create groups, manage evaluation criteria, enrollment, and enrolled students.</p>
+          <p>Create groups, manage evaluation criteria, enrollment, and students.</p>
         </div>
         <div class="topbar-right"><span id="teacherIdentity" class="teacher-identity">Teacher</span></div>
       </header>
@@ -106,36 +118,24 @@
             </div>
           </div>
 
-          <div class="stack-controls" style="margin-top:12px;">
+          <div class="stack-controls" style="margin-top:10px;">
             <input id="groupNameInput" placeholder="Group name">
 
             <div id="evaluationEditor">
               <label for="evaluationUnitCountInput"><strong>Evaluation blocks / units</strong></label>
               <input id="evaluationUnitCountInput" type="number" min="1" max="10" step="1" value="3">
 
-              <div>
-                <strong>Evaluation setup</strong>
-                <div class="hint-box" style="margin-top:6px;">
-                  Criteria belong to this group. Add, remove, rename, or replace them as needed. Total must equal 100%.
-                </div>
-              </div>
-
-              <div class="evaluation-template-row">
-                <select id="evaluationTemplateSelect">
-                  <option value="">Start with custom criteria</option>
-                </select>
-                <button id="useEvaluationTemplateBtn" type="button">Use Template</button>
-              </div>
-
-              <div class="criteria-editor">
-                <div class="criteria-editor-head">
-                  <strong>Evaluation criteria</strong>
+              <div class="criteria-editor-head">
+                <strong>Evaluation criteria</strong>
+                <div class="management-head-actions">
+                  <button id="useEvaluationTemplateBtn" type="button">Use Template</button>
                   <button id="addEvaluationCriterionBtn" type="button">+ Add Criterion</button>
                 </div>
-                <div id="evaluationCriteriaRows"></div>
               </div>
 
+              <div id="evaluationCriteriaRows" class="criteria-editor"></div>
               <div id="evaluationWeightTotal" class="evaluation-total bad">0 / 100%</div>
+
               <div class="template-actions">
                 <button id="saveEvaluationTemplateBtn" type="button">Save Setup as Template</button>
               </div>
@@ -156,39 +156,51 @@
             </div>
             <div class="management-head-actions">
               <span id="pendingEnrollmentCount" class="pending-count"></span>
+              <button id="toggleRosterBtn" class="collapse-btn" type="button" hidden aria-expanded="false" title="Expand or collapse students">▸</button>
             </div>
           </div>
 
           <div id="enrollmentControls" hidden>
-            <div class="selected-group-banner" style="margin-top:12px;">
-              <div>Managing <strong id="managedGroupName">—</strong></div>
-              <div id="enrollmentLinkStatus" class="status-text"></div>
-            </div>
-
-            <div class="student-toolbar" style="margin-top:12px;">
-              <div class="student-toolbar-left">
-                <button id="createEnrollmentLinkBtn" type="button">Create Enrollment Link</button>
-                <button id="copyEnrollmentLinkBtn" type="button" hidden>Copy Link</button>
-                <button id="openAddStudentModalBtn" type="button">Add Student</button>
+            <div id="rosterBody">
+              <div class="selected-group-banner" style="margin-top:9px;">
+                <div>Managing <strong id="managedGroupName">—</strong></div>
+                <div id="enrollmentLinkStatus" class="status-text"></div>
               </div>
-              <div class="student-toolbar-right">
-                <label><input id="selectAllStudents" type="checkbox"> Select all</label>
-                <span id="selectedStudentCount" class="status-text">0 selected</span>
+
+              <div class="student-toolbar">
+                <div class="student-toolbar-left">
+                  <button id="createEnrollmentLinkBtn" type="button">Create Enrollment Link</button>
+                  <button id="copyEnrollmentLinkBtn" type="button" hidden>Copy Link</button>
+                  <button id="openAddStudentModalBtn" type="button">Add Student</button>
+                </div>
+                <div class="student-toolbar-right">
+                  <label><input id="selectAllStudents" type="checkbox"> Select all</label>
+                  <span id="selectedStudentCount" class="status-text">0 selected</span>
+                </div>
               </div>
-            </div>
 
-            <div id="enrollmentLinkBox" class="enrollment-link-box" hidden style="margin-top:10px;">
-              <input id="enrollmentLinkInput" readonly aria-readonly="true">
-              <button id="rotateEnrollmentLinkBtn" type="button">Rotate Link</button>
-            </div>
+              <div id="enrollmentLinkBox" class="enrollment-link-box" hidden style="margin-top:8px;">
+                <input id="enrollmentLinkInput" readonly aria-readonly="true">
+                <button id="rotateEnrollmentLinkBtn" type="button">Rotate Link</button>
+              </div>
 
-            <div class="student-actions" style="margin-top:10px;">
-              <button id="approveEnrollmentBtn" type="button">Approve</button>
-              <button id="denyEnrollmentBtn" type="button">Deny</button>
-              <button id="expelStudentBtn" type="button">Expel</button>
-            </div>
+              <div id="selectedRosterActions" class="roster-context-actions" hidden>
+                <span id="selectedRosterLabel" class="context-label"></span>
+                <button id="openSelectedStudentBtn" type="button" hidden>Open Record</button>
+                <div id="externalIdEditor" class="external-id-editor" hidden>
+                  <input id="selectedExternalIdInput" placeholder="External ID">
+                  <button id="saveExternalIdBtn" type="button">Save ID</button>
+                </div>
+                <button id="approveEnrollmentBtn" type="button" hidden>Approve</button>
+                <button id="denyEnrollmentBtn" type="button" hidden>Deny</button>
+                <button id="expelStudentBtn" type="button" hidden>Expel</button>
+              </div>
 
-            <div id="managedStudentsList" class="student-list"></div>
+              <div class="student-list-head student-grid" aria-hidden="true">
+                <span></span><span>Status</span><span>Full Name</span><span>Nickname</span><span>External ID</span>
+              </div>
+              <div id="managedStudentsList" class="student-list"></div>
+            </div>
           </div>
         </section>
 
@@ -196,11 +208,16 @@
           <div class="management-head">
             <div>
               <h3>Groups</h3>
-              <div class="status-text">Click a group name to manage it. Delete creates a backup first.</div>
+              <div class="status-text">Select a group to manage it. Select it again to collapse its student list.</div>
             </div>
           </div>
 
-          <div class="table-wrap" style="margin-top:10px;">
+          <div id="selectedGroupActions" class="group-context-actions" hidden>
+            <strong id="selectedGroupActionLabel"></strong>
+            <button id="deleteSelectedGroupBtn" class="delete-group-btn" type="button">Delete Group</button>
+          </div>
+
+          <div class="table-wrap" style="margin-top:8px;">
             <table class="data-table groups-table">
               <thead>
                 <tr>
@@ -209,11 +226,10 @@
                   <th>Pending</th>
                   <th>Blocks</th>
                   <th>Evaluation</th>
-                  <th>Action</th>
                 </tr>
               </thead>
               <tbody id="groupsTableBody">
-                <tr><td colspan="6">No groups yet.</td></tr>
+                <tr><td colspan="5">No groups yet.</td></tr>
               </tbody>
             </table>
           </div>
@@ -221,6 +237,22 @@
       </div>
     </main>
   </div>
+
+  <dialog id="evaluationTemplateDialog">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <h3>Evaluation Templates</h3>
+          <div class="status-text">Previously used evaluation setups. Templates are independent of groups.</div>
+        </div>
+        <button id="closeEvaluationTemplateDialogBtn" class="modal-close" type="button">Close</button>
+      </div>
+      <div id="evaluationTemplateList" class="template-list"></div>
+      <div class="group-form-actions">
+        <button id="useSelectedEvaluationTemplateBtn" type="button" disabled>Use Selected Template</button>
+      </div>
+    </div>
+  </dialog>
 
   <dialog id="addStudentDialog">
     <div class="modal-card">
@@ -259,7 +291,7 @@
     </div>
   </dialog>
 
-  <script type="module" src="teacher-enrollment.js?v=group-management-20260920"></script>
+  <script type="module" src="teacher-enrollment.js?v=group-management-compact-20260920"></script>
   <script defer src="shared-ui-fixes.js?v=titlebar-hamburger-20260916"></script>
 </body>
 </html>
