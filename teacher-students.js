@@ -19,7 +19,6 @@ const searchStudentInput = document.getElementById("searchStudent");
 const selectedGroupCard = document.getElementById("selectedGroupCard");
 const studentsInGroupCard = document.getElementById("studentsInGroupCard");
 const evaluationUnitCountCard = document.getElementById("evaluationUnitCountCard");
-const evaluationSetupSummary = document.getElementById("evaluationSetupSummary");
 const studentsTableBody = document.getElementById("studentsTableBody");
 const studentsTableHeadRow = studentsTableBody.closest("table")?.querySelector("thead tr");
 const saveAllStudentsBtn = document.getElementById("saveAllStudentsBtn");
@@ -74,30 +73,35 @@ function currentBlockGrade(studentKey, student, blockName, config) {
 
 function renderEvaluationSummary(group) {
   const config = groupEvaluationConfig(group);
-
-  if (!config.configured) {
-    evaluationUnitCountCard.textContent = "Setup required";
-    evaluationSetupSummary.innerHTML =
-      '<span class="evaluation-setup-required">Evaluation setup required in Group Management.</span>';
-    return config;
-  }
-
-  evaluationUnitCountCard.textContent = String(config.unitCount);
-  evaluationSetupSummary.innerHTML = config.criteria.map((criterion) =>
-    `<span class="evaluation-weight-chip">${escapeHtml(criterion.name)} <strong>${formatGradeNumber(criterion.weight)}%</strong></span>`
-  ).join("");
-
+  evaluationUnitCountCard.textContent = config.configured ? String(config.unitCount) : "Setup required";
   return config;
 }
 
-function renderBlockHeaders(blockNames) {
+function criterionSummaryHtml(config) {
+  if (!config.configured) {
+    return '<span class="block-grade-setup-required">Evaluation setup required</span>';
+  }
+
+  return config.criteria.map((criterion) =>
+    `${escapeHtml(criterion.name)} ${formatGradeNumber(criterion.weight)}%`
+  ).join(" · ");
+}
+
+function renderBlockHeaders(blockNames, config) {
   if (!studentsTableHeadRow) return;
+  const criteria = criterionSummaryHtml(config);
+
   studentsTableHeadRow.innerHTML = `
     <th style="min-width:140px;">External ID</th>
     <th style="min-width:320px;">Full Name</th>
     <th style="min-width:180px;">Nickname</th>
     <th>Today Active</th>
-    ${blockNames.map((blockName) => `<th>${escapeHtml(blockName)} Grade</th>`).join("")}
+    ${blockNames.map((blockName) => `
+      <th class="block-grade-header">
+        <span class="block-header-title">${escapeHtml(blockName)}</span>
+        <span class="block-header-criteria">${criteria}</span>
+      </th>
+    `).join("")}
   `;
 }
 
@@ -107,14 +111,7 @@ function blockGradeHtml(studentKey, student, blockName, config) {
   }
 
   const result = currentBlockGrade(studentKey, student, blockName, config);
-  const breakdown = result.criteria.map((criterion) =>
-    `${escapeHtml(criterion.name)} ${formatGradeNumber(criterion.contribution)}/${formatGradeNumber(criterion.weight)}`
-  ).join(" · ");
-
-  return `
-    <span class="block-grade-total">${formatGradeNumber(result.total)}</span>
-    <span class="block-grade-breakdown">${breakdown}</span>
-  `;
+  return `<span class="block-grade-total">${formatGradeNumber(result.total)}</span>`;
 }
 
 function getStoredWorkingGroup(){
@@ -194,7 +191,7 @@ function renderStudents(){
   const selectedGroupRecord = groupsCache?.[selectedGroup] || {};
   const config = renderEvaluationSummary(selectedGroupRecord);
   const blockNames = evaluationBlockNames(selectedGroupRecord);
-  renderBlockHeaders(blockNames);
+  renderBlockHeaders(blockNames, config);
 
   selectedGroupCard.textContent = selectedGroup || "No group selected";
   studentsInGroupCard.textContent = String(entries.length);
