@@ -18,8 +18,8 @@ jobs:
         shell: bash
         run: |
           set -u
-          YT="https://feature-live-cog-session-current-20260920.youteach.pages.dev"
-          COG="https://feature-live-cog-session-current-20260920.classroom-online-games.pages.dev"
+          YT="https://feature-live-cog-session-cur.youteach.pages.dev"
+          COG="https://feature-live-cog-session-cur.classroom-online-games.pages.dev"
           failed=0
 
           probe_page() {
