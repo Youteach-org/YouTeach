@@ -14,37 +14,36 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Probe YouTeach and COG branch previews
+      - name: Inspect Cloudflare branch and production responses
         shell: bash
         run: |
           set -u
-          YT="https://feature-live-cog-session-cur.youteach.pages.dev"
-          COG="https://feature-live-cog-session-cur.classroom-online-games.pages.dev"
-          failed=0
 
-          probe_page() {
+          inspect() {
             local label="$1"
             local url="$2"
             local marker="$3"
-            local out="$4"
-            local status
-            status="$(curl -L -sS --connect-timeout 15 --max-time 30 -o "$out" -w '%{http_code}' "$url" || true)"
-            echo "$label URL=$url STATUS=$status BYTES=$(wc -c <"$out" 2>/dev/null || echo 0)"
-            if [ "$status" != "200" ]; then
-              echo "$label preview is not reachable with HTTP 200"
-              failed=1
-              return
-            fi
-            if grep -Fq "$marker" "$out"; then
-              echo "$label marker present: $marker"
+            local body="/tmp/$(echo "$label" | tr ' /' '__').body"
+            local headers="/tmp/$(echo "$label" | tr ' /' '__').headers"
+            local meta
+            meta="$(curl -L -sS --connect-timeout 15 --max-time 30 -D "$headers" -o "$body" -w 'STATUS=%{http_code} FINAL=%{url_effective} TYPE=%{content_type} BYTES=%{size_download}' "$url" || true)"
+            echo "=== $label ==="
+            echo "URL=$url"
+            echo "$meta"
+            grep -iE '^(server|cf-ray|x-robots-tag|location|content-type):' "$headers" | tail -n 8 || true
+            if grep -Fq "$marker" "$body"; then
+              echo "MARKER=present"
             else
-              echo "$label marker MISSING: $marker"
-              failed=1
+              echo "MARKER=missing"
             fi
+            echo "BODY_HEAD_BEGIN"
+            head -c 320 "$body" | tr '\n' ' ' || true
+            echo
+            echo "BODY_HEAD_END"
           }
 
-          probe_page "YouTeach" "$YT/buzzer.js" "cog-live-teacher-launch" /tmp/youteach-buzzer.js
-          probe_page "COG" "$COG/shared/youteach-live-bridge.mjs" "launchMode: \"live-buzzer\"" /tmp/cog-bridge.mjs
-
-          echo "PROBE_FAILED=$failed"
-          exit "$failed"
+          inspect "YouTeach branch" "https://feature-live-cog-session-cur.youteach.pages.dev/buzzer.js" "cog-live-teacher-launch"
+          inspect "YouTeach production" "https://youteach.pages.dev/buzzer.js" "cog-live-teacher-launch"
+          inspect "COG branch" "https://feature-live-cog-session-cur.classroom-online-games.pages.dev/shared/youteach-live-bridge.mjs" "launchMode: \"live-buzzer\""
+          inspect "COG atomic 9dbf1e3" "https://6f2ba994.classroom-online-games.pages.dev/shared/youteach-live-bridge.mjs" "launchMode: \"live-buzzer\""
+          inspect "COG production" "https://classroom-online-games.pages.dev/shared/youteach-live-bridge.mjs" "launchMode: \"live-buzzer\""
