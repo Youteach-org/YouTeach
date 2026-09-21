@@ -822,3 +822,12 @@ This supersedes any earlier flow that required **Save Group Settings**, **Set Ev
 - When the same rubric names remain and only percentages/abbreviations change, the existing template receives those latest valid defaults.
 - Status text describes autosave state (Saving / Saved automatically / current total) and must never instruct the teacher to use a nonexistent **Set Evaluation** control.
 - The selected-group evaluation toggle, when collapsed, is **Show Evaluation**; when expanded, **Hide Evaluation**.
+
+
+### Template-library recovery — 2026-09-21 (latest)
+
+- The canonical reusable rubric-template library is stored under `settings/groupEvaluationTemplates`, alongside other shared YouTeach settings that already use the established writable settings branch.
+- The previous top-level `groupEvaluationTemplates` path is treated as legacy/read-migration input only.
+- **Use Template** never relies solely on a pre-existing template-library record. Before opening, it scans all currently configured groups whose criteria are valid (named and totaling 100%), ensures each rubric exists as an independent template, then renders the popup.
+- Therefore a valid group configuration cannot be saved successfully yet remain invisible in **Use Template** merely because a prior template write/listener was missed.
+- The popup merges canonical templates and any readable legacy templates during migration; group identity is never shown or retained as template identity.
