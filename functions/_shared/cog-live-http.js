@@ -111,3 +111,82 @@ export function canStudentAccessConnectedGame({ studentKey, student, session } =
   if (recipients.length && !recipients.includes(String(studentKey || "").trim())) return false;
   return true;
 }
+
+
+export function allowedCogOrigin(request) {
+  const raw = String(request?.headers?.get?.("Origin") || "").trim();
+  if (!raw) return "";
+  try {
+    const url = new URL(raw);
+    const host = url.hostname.toLowerCase();
+    if (
+      url.protocol === "https:" &&
+      (
+        host === "classroom-online-games.pages.dev" ||
+        host.endsWith(".classroom-online-games.pages.dev")
+      )
+    ) {
+      return url.origin;
+    }
+  } catch {}
+  return null;
+}
+
+export function corsHeaders(origin = "") {
+  return {
+    "Content-Type": "application/json; charset=UTF-8",
+    "Cache-Control": "no-store",
+    "Vary": "Origin",
+    ...(origin ? { "Access-Control-Allow-Origin": origin } : {})
+  };
+}
+
+export function corsJson(request, status, payload) {
+  const origin = allowedCogOrigin(request);
+  if (origin === null) return json(403, { ok: false, error: "Origin is not allowed." });
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: corsHeaders(origin)
+  });
+}
+
+export function optionsResponse(request) {
+  const origin = allowedCogOrigin(request);
+  if (origin === null) return new Response(null, { status: 403 });
+  return new Response(null, {
+    status: 204,
+    headers: {
+      ...(origin ? { "Access-Control-Allow-Origin": origin } : {}),
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      "Access-Control-Max-Age": "600",
+      "Vary": "Origin"
+    }
+  });
+}
+
+export function bearer(request) {
+  const value = String(request?.headers?.get?.("Authorization") || "");
+  const match = value.match(/^Bearer\s+(.+)$/i);
+  return match ? match[1].trim() : "";
+}
+
+export async function firebasePut(path, value) {
+  const response = await fetch(`${DATABASE_URL}/${path}.json`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(value)
+  });
+  if (!response.ok) throw new Error(`Firebase write failed: ${response.status}`);
+  return response.json().catch(() => value);
+}
+
+export async function firebasePatch(path, value) {
+  const response = await fetch(`${DATABASE_URL}/${path}.json`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(value || {})
+  });
+  if (!response.ok) throw new Error(`Firebase patch failed: ${response.status}`);
+  return response.json().catch(() => value);
+}
