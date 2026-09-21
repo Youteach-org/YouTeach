@@ -24,8 +24,9 @@
     .enrolled-head-actions{display:flex;align-items:center;gap:8px;margin-left:auto}
     .active-enrollment-link-btn{background:#fff;color:#334155;border:1px solid #cbd5e1}
     .active-enrollment-link-btn.active{background:#dcfce7;color:#166534;border-color:#86efac;box-shadow:inset 0 0 0 1px #86efac}
-    .enrollment-link-box{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin-top:8px}
-    .enrollment-link-box input{width:100%}
+    .enrollment-link-inline-controls{display:flex;align-items:center;gap:6px;min-width:0}
+    .enrollment-link-inline-controls input{width:min(420px,42vw);min-width:180px}
+    .enrollment-link-inline-controls button{white-space:nowrap}
     .student-toolbar{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;margin-top:9px}
     .student-toolbar-left{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
     .roster-context-actions{margin-top:8px;padding:8px;border:1px solid #bfdbfe;border-radius:8px;background:#eff6ff}
@@ -95,7 +96,8 @@
     .template-summary{font-weight:800;font-size:12px;white-space:nowrap}
     @media(max-width:850px){
       .criterion-row{grid-template-columns:1fr}
-      .enrollment-link-box{grid-template-columns:1fr}
+      .enrollment-link-inline-controls{width:100%}
+      .enrollment-link-inline-controls input{width:100%;min-width:0}
       .pending-request-row{grid-template-columns:30px minmax(150px,1fr) minmax(90px,.55fr) minmax(90px,.55fr)}
       .managed-student-column-header,.managed-student-identity-cell{min-width:220px;max-width:250px}
       .managed-search-panel{min-width:0;max-width:none;flex:1}
@@ -113,8 +115,7 @@
         <div class="sidebar-links">
           <a class="sidebar-link" href="buzzer.html">Buzzer</a>
           <a class="sidebar-link" href="teacher.html">Teacher Home</a>
-          <a class="sidebar-link" href="teacher-students.html">Students</a>
-          <a class="sidebar-link active-link" href="teacher-enrollment.html">Group Management</a>
+          <a class="sidebar-link active-link" href="group-mangement.html">Group Management</a>
           <a class="sidebar-link" href="teacher-active.html">Active Today</a>
           <a class="sidebar-link" href="teacher-points.html">Points / Export</a>
           <a class="sidebar-link" href="teacher-history.html">History</a>
@@ -129,7 +130,10 @@
           <h2>Group Management</h2>
           <p>Create groups, manage evaluation criteria, enrollment, and students.</p>
         </div>
-        <div class="topbar-right"><span id="teacherIdentity" class="teacher-identity">Teacher</span></div>
+        <div class="topbar-right">
+          <button id="openGroupsDialogBtn" type="button">Groups</button>
+          <span id="teacherIdentity" class="teacher-identity">Teacher</span>
+        </div>
       </header>
 
       <div class="management-stack">
@@ -137,6 +141,11 @@
           <div class="management-head">
             <h3>Enrolled Students</h3>
             <div class="enrolled-head-actions">
+              <div id="enrollmentLinkInlineControls" class="enrollment-link-inline-controls" hidden>
+                <input id="enrollmentLinkInput" readonly aria-readonly="true" aria-label="Enrollment link">
+                <button id="copyEnrollmentLinkBtn" type="button">Copy link</button>
+                <button id="rotateEnrollmentLinkBtn" type="button">Rotate link</button>
+              </div>
               <button id="createEnrollmentLinkBtn" class="active-enrollment-link-btn" type="button" hidden aria-expanded="false" aria-pressed="false">Active enrollment link</button>
               <button id="openAddStudentModalBtn" type="button" hidden>Add Student</button>
               <button id="toggleRosterBtn" class="collapse-btn" type="button" hidden aria-expanded="false" title="Expand or collapse students">▸</button>
@@ -145,11 +154,6 @@
 
           <div id="enrollmentControls" hidden>
             <div id="rosterBody">
-              <div id="enrollmentLinkBox" class="enrollment-link-box" hidden>
-                <input id="enrollmentLinkInput" readonly aria-readonly="true">
-                <button id="rotateEnrollmentLinkBtn" type="button">Rotate link</button>
-              </div>
-
               <div id="selectedRosterActions" class="roster-context-actions" hidden>
                 <span id="selectedRosterLabel" class="context-label"></span>
                 <button id="openSelectedStudentBtn" type="button" hidden>Open Record</button>
@@ -172,7 +176,7 @@
 
               <div class="managed-students-tools">
                 <div class="managed-students-left-tools">
-                  <button id="managedStudentDisplayModeBtn" class="managed-display-mode-btn" type="button">Show: Name</button>
+                  <button id="managedStudentDisplayModeBtn" class="managed-display-mode-btn" type="button">Names</button>
                   <div><strong>Students</strong> <span id="managedStudentsCount" class="managed-students-count">0</span></div>
                 </div>
                 <div class="managed-search-tools">
@@ -197,43 +201,33 @@
           </div>
         </section>
 
-        <section class="panel-card full-width-card">
-          <div class="management-head">
-            <div>
-              <h3>Groups</h3>
-              <div class="status-text">Select a group to manage it. Select it again to collapse its student list.</div>
-            </div>
-            <div class="management-head-actions">
-              <button id="openCreateGroupDialogBtn" type="button">+ Create Group</button>
-            </div>
-          </div>
-
-          <div id="selectedGroupActions" class="group-context-actions" hidden>
-            <strong id="selectedGroupActionLabel"></strong>
-            <button id="openGroupEvaluationDialogBtn" type="button">Blocks &amp; Criteria</button>
-            <button id="deleteSelectedGroupBtn" class="delete-group-btn" type="button">Delete Group</button>
-          </div>
-
-          <div class="table-wrap" style="margin-top:8px;">
-            <table class="data-table groups-table">
-              <thead>
-                <tr>
-                  <th>Group</th>
-                  <th>Students</th>
-                  <th>Pending</th>
-                  <th>Blocks</th>
-                  <th>Evaluation</th>
-                </tr>
-              </thead>
-              <tbody id="groupsTableBody">
-                <tr><td colspan="5">No groups yet.</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
       </div>
     </main>
   </div>
+
+
+  <dialog id="groupsDialog">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3>Groups</h3>
+        <button id="closeGroupsDialogBtn" class="modal-close" type="button">Close</button>
+      </div>
+      <div class="management-head-actions">
+        <button id="openCreateGroupDialogBtn" type="button">+ Create Group</button>
+      </div>
+      <div id="selectedGroupActions" class="group-context-actions" hidden>
+        <strong id="selectedGroupActionLabel"></strong>
+        <button id="openGroupEvaluationDialogBtn" type="button">Blocks &amp; Criteria</button>
+        <button id="deleteSelectedGroupBtn" class="delete-group-btn" type="button">Delete Group</button>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table groups-table">
+          <thead><tr><th>Group</th><th>Students</th><th>Pending</th><th>Blocks</th><th>Evaluation</th></tr></thead>
+          <tbody id="groupsTableBody"><tr><td colspan="5">No groups yet.</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </dialog>
 
   <dialog id="groupEditorDialog">
     <div class="modal-card">
@@ -326,7 +320,7 @@
     </div>
   </dialog>
 
-  <script type="module" src="teacher-enrollment.js?v=management-dialogs-lastnamefull-20260921"></script>
+  <script type="module" src="group-mangement.js?v=group-management-popup-enrollment-20260921"></script>
   <script defer src="shared-ui-fixes.js?v=titlebar-hamburger-20260916"></script>
 </body>
 </html>

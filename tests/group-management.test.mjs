@@ -6,8 +6,8 @@ import { dirname, join } from 'node:path';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
-const html = readFileSync(join(root, 'teacher-enrollment.html'), 'utf8');
-const js = readFileSync(join(root, 'teacher-enrollment.js'), 'utf8');
+const html = readFileSync(join(root, 'group-mangement.html'), 'utf8');
+const js = readFileSync(join(root, 'group-mangement.js'), 'utf8');
 const enrollHtml = readFileSync(join(root, 'student-enroll.html'), 'utf8');
 const enrollJs = readFileSync(join(root, 'student-enroll.js'), 'utf8');
 
@@ -35,16 +35,19 @@ test('group rows only select a group; Delete appears once in contextual group ac
   assert.doesNotMatch(js, /data-edit-group-evaluation/);
 });
 
-test('selecting the same group or the chevron collapses and expands its roster', () => {
+test('Groups is a popup and roster collapse stays on its own arrow', () => {
+  assert.match(html, /<dialog id="groupsDialog">/);
+  assert.match(html, /id="openGroupsDialogBtn"/);
+  assert.match(html, /id="closeGroupsDialogBtn"/);
   assert.match(html, /id="toggleRosterBtn"/);
-  assert.match(html, /id="rosterBody"/);
-  assert.match(js, /selectedManagedGroup === groupName/);
+  assert.match(js, /selectedManagedGroup = groupName/);
+  assert.match(js, /if \(groupsDialog\.open\) groupsDialog\.close\(\)/);
+  assert.match(js, /toggleRosterBtn\.addEventListener\("click"/);
   assert.match(js, /rosterCollapsed = !rosterCollapsed/);
-  assert.match(js, /toggleRosterBtn\.setAttribute\("aria-expanded"/);
-  assert.match(js, /group-chevron/);
+  assert.doesNotMatch(js, /group-chevron/);
 });
 
-test('Group Management uses the same student progress matrix as Teacher Students', () => {
+test('Group Management contains the canonical student progress matrix', () => {
   assert.doesNotMatch(html, /id="managedStudentsList"/);
   assert.doesNotMatch(html, /student-list-head student-grid/);
   assert.match(html, /id="managedStudentsTableHeadRow"/);
@@ -254,27 +257,25 @@ test('Blocks and criteria open in the group editor popup instead of an inline ex
   assert.doesNotMatch(js, /EVALUATION_PANEL_STATE_KEY/);
 });
 
-test('Enrolled Students header keeps active enrollment link, Add Student, and collapse controls together', () => {
-  assert.doesNotMatch(html, /id="managedGroupStatus"/);
-  assert.doesNotMatch(html, /Managing <strong/);
-  assert.doesNotMatch(html, /copyEnrollmentLinkBtn/);
+test('Enrolled Students header keeps inline link controls left of Active enrollment link', () => {
   const start = html.indexOf('<section class="panel-card full-width-card" id="enrolledStudentsSection">');
   const end = html.indexOf('<div id="enrollmentControls"', start);
   const header = html.slice(start, end);
+  assert.match(header, /id="enrollmentLinkInlineControls"/);
+  assert.match(header, /id="enrollmentLinkInput"/);
+  assert.match(header, /id="copyEnrollmentLinkBtn"[^>]*>Copy link<\/button>/);
+  assert.match(header, /id="rotateEnrollmentLinkBtn"[^>]*>Rotate link<\/button>/);
   assert.match(header, /id="createEnrollmentLinkBtn"[^>]*>Active enrollment link<\/button>/);
-  assert.match(header, /id="openAddStudentModalBtn"[^>]*>Add Student<\/button>/);
-  assert.match(header, /id="toggleRosterBtn"/);
-  assert.ok(header.indexOf('createEnrollmentLinkBtn') < header.indexOf('openAddStudentModalBtn'));
-  assert.ok(header.indexOf('openAddStudentModalBtn') < header.indexOf('toggleRosterBtn'));
-  assert.match(js, /createEnrollmentLinkBtn\.textContent = "Active enrollment link"/);
-  assert.match(js, /createEnrollmentLinkBtn\.setAttribute\("aria-pressed", String\(active\)\)/);
-  assert.match(js, /enrollmentLinkExpanded = !enrollmentLinkExpanded/);
-  assert.match(js, /await createOrRotateEnrollmentLink\(\)/);
-  assert.doesNotMatch(js, /"Create enrollment link"/);
+  assert.ok(header.indexOf('enrollmentLinkInput') < header.indexOf('createEnrollmentLinkBtn'));
+  assert.ok(header.indexOf('copyEnrollmentLinkBtn') < header.indexOf('createEnrollmentLinkBtn'));
+  assert.ok(header.indexOf('rotateEnrollmentLinkBtn') < header.indexOf('createEnrollmentLinkBtn'));
+  assert.match(js, /copyEnrollmentLinkBtn\.addEventListener\("click", copyEnrollmentLink\)/);
+  assert.match(js, /navigator\.clipboard\.writeText\(link\)/);
+  assert.match(js, /enrollmentLinkInlineControls\.hidden = !\(active && enrollmentLinkExpanded\)/);
 });
-
 test('managed student identity mode is saved on the group and search remains field-independent', () => {
-  assert.match(html, /id="managedStudentDisplayModeBtn"/);
+  assert.match(html, /id="managedStudentDisplayModeBtn"[^>]*>Names<\/button>/);
+  assert.doesNotMatch(html, />Show:/);
   assert.match(js, /MANAGED_DISPLAY_MODES = \["name", "lastNames", "nickname"\]/);
   assert.match(js, /studentListDisplayMode/);
   assert.match(js, /groups\/\$\{groupName\}/);

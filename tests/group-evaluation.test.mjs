@@ -14,10 +14,8 @@ import {
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
-const enrollmentHtml = readFileSync(join(root, 'teacher-enrollment.html'), 'utf8');
-const enrollmentJs = readFileSync(join(root, 'teacher-enrollment.js'), 'utf8');
-const studentsHtml = readFileSync(join(root, 'teacher-students.html'), 'utf8');
-const studentsJs = readFileSync(join(root, 'teacher-students.js'), 'utf8');
+const enrollmentHtml = readFileSync(join(root, 'group-mangement.html'), 'utf8');
+const enrollmentJs = readFileSync(join(root, 'group-mangement.js'), 'utf8');
 const gradeRuntimeJs = readFileSync(join(root, 'group-grade-runtime.js'), 'utf8');
 const createAssignmentHtml = readFileSync(join(root, 'assignment-create-module.html'), 'utf8');
 const createAssignmentJs = readFileSync(join(root, 'assignment-create-module.js'), 'utf8');
@@ -115,45 +113,6 @@ test('group creation UI uses a dynamic criterion editor and reusable templates',
   assert.match(enrollmentJs, /Complete 100% to enable grading and update the template/);
 });
 
-test('Students uses a sticky identity column and scrollable block criteria values', () => {
-  assert.doesNotMatch(studentsHtml, /id="evaluationUnitCountCard"/);
-  assert.doesNotMatch(studentsHtml, /Evaluation Blocks \/ Units/);
-  assert.doesNotMatch(studentsHtml, /Working Group<\/h3>/);
-  assert.doesNotMatch(studentsHtml, /Search Students<\/h3>/);
-  assert.doesNotMatch(studentsHtml, /Today Active/);
-  assert.doesNotMatch(studentsHtml, /saveAllStudentsBtn/);
-  assert.match(studentsHtml, /id="groupFilter" class="group-select"/);
-  assert.match(studentsHtml, /id="toggleStudentSearchBtn"/);
-  assert.match(studentsHtml, /id="studentSearchPanel"[^>]*hidden/);
-  assert.match(studentsHtml, /\.student-column-header,.student-identity-cell\{position:sticky;left:0/);
-  assert.match(studentsHtml, /\.students-table-wrap\{overflow-x:auto/);
-  assert.match(studentsHtml, /\.active-student/);
-  assert.match(studentsJs, /function criterionHeaderLabel/);
-  assert.match(studentsJs, /<br>/);
-  assert.match(studentsJs, /criterion\.contribution/);
-  assert.match(studentsJs, /student-name-line/);
-  assert.match(studentsJs, /student-meta-line/);
-  assert.match(studentsJs, /student\.nickname/);
-  assert.match(studentsJs, /document\.querySelectorAll\("\.student-row"\)/);
-  assert.match(studentsJs, /teacherViewStudentKey/);
-  assert.match(studentsHtml, /student-search-tools/);
-  assert.match(studentsHtml, /font-size:24px/);
-  assert.match(studentsHtml, /\.summary-inline\{display:flex;align-items:center/);
-  assert.match(studentsHtml, /\.students-count-inline\{display:flex;align-items:center/);
-  assert.match(studentsHtml, /background:#fef3c7/);
-  assert.match(studentsJs, /function studentNameFontSize/);
-  assert.match(studentsJs, /length <= 14\) return 18/);
-  assert.match(studentsJs, /font-size:\$\{studentNameFontSize/);
-  assert.match(studentsJs, /toggleStudentSearchBtn\.addEventListener/);
-  assert.match(studentsJs, /searchStudentInput\.addEventListener\("input", renderStudents\)/);
-  assert.doesNotMatch(studentsJs, /student-name-input/);
-  assert.doesNotMatch(studentsJs, /student-nickname-input/);
-  assert.doesNotMatch(studentsJs, /saveAllStudentsBtn/);
-  assert.doesNotMatch(studentsJs, /await update\(ref\(db\), updates\)/);
-  assert.match(gradeRuntimeJs, /calculateBlockGrade/);
-  assert.match(gradeRuntimeJs, /evaluationCriterionScores/);
-  assert.match(gradeRuntimeJs, /groupEvaluationCriterionId/);
-});
 test('new assignments can be linked to a group evaluation criterion', () => {
   assert.match(createAssignmentHtml, /id="assignmentGroupCriterion"/);
   assert.match(createAssignmentJs, /groupEvaluationCriterionId/);
@@ -297,7 +256,7 @@ test('template popup renders the merged canonical and legacy library', () => {
 });
 
 
-test('Group Management grade matrix mirrors Students grade calculation semantics', () => {
+test('Group Management grade matrix uses the canonical grade calculation semantics', () => {
   assert.match(enrollmentHtml, /managed-student-column-header/);
   assert.match(enrollmentHtml, /managed-block-total/);
   assert.match(enrollmentJs, /calculateStudentBlockGrade/);
@@ -309,17 +268,3 @@ test('Group Management grade matrix mirrors Students grade calculation semantics
 });
 
 
-test('Students honors the group-level primary identity mode while search covers all identity fields', () => {
-  assert.match(studentsHtml, /id="studentDisplayModeBtn"/);
-  assert.match(studentsJs, /STUDENT_DISPLAY_MODES = \["name", "lastNames", "nickname"\]/);
-  assert.match(studentsJs, /studentListDisplayMode/);
-  assert.match(studentsJs, /studentNameParts/);
-  assert.match(studentsJs, /parts\.fullName/);
-  assert.match(studentsJs, /parts\.givenNames/);
-  assert.match(studentsJs, /parts\.lastNames/);
-  assert.match(studentsJs, /student\.nickname/);
-  assert.match(studentsJs, /student\.studentNumber/);
-  assert.match(studentsJs, /student\.id/);
-  assert.match(studentsJs, /studentSecondaryDisplay/);
-  assert.match(studentsJs, /pieces\.join\(" · "\)/);
-});

@@ -31,6 +31,9 @@ const REQUESTED_CRITERIA_RESET_MARKER = "criteriaReset20260921";
 const teacherIdentity = document.getElementById("teacherIdentity");
 const logoutBtn = document.getElementById("logoutBtn");
 
+const groupsDialog = document.getElementById("groupsDialog");
+const openGroupsDialogBtn = document.getElementById("openGroupsDialogBtn");
+const closeGroupsDialogBtn = document.getElementById("closeGroupsDialogBtn");
 const groupEditorDialog = document.getElementById("groupEditorDialog");
 const groupEditorTitle = document.getElementById("groupEditorTitle");
 const groupEditorSubtitle = document.getElementById("groupEditorSubtitle");
@@ -56,9 +59,10 @@ const enrollmentControls = document.getElementById("enrollmentControls");
 const rosterBody = document.getElementById("rosterBody");
 const toggleRosterBtn = document.getElementById("toggleRosterBtn");
 const createEnrollmentLinkBtn = document.getElementById("createEnrollmentLinkBtn");
-const rotateEnrollmentLinkBtn = document.getElementById("rotateEnrollmentLinkBtn");
-const enrollmentLinkBox = document.getElementById("enrollmentLinkBox");
+const enrollmentLinkInlineControls = document.getElementById("enrollmentLinkInlineControls");
 const enrollmentLinkInput = document.getElementById("enrollmentLinkInput");
+const copyEnrollmentLinkBtn = document.getElementById("copyEnrollmentLinkBtn");
+const rotateEnrollmentLinkBtn = document.getElementById("rotateEnrollmentLinkBtn");
 const openAddStudentModalBtn = document.getElementById("openAddStudentModalBtn");
 const selectAllStudents = document.getElementById("selectAllStudents");
 const pendingRequestsPanel = document.getElementById("pendingRequestsPanel");
@@ -786,28 +790,25 @@ function selectManagedGroup(groupName) {
   const group = groupsCache[groupName];
   if (!group) return;
 
-  if (selectedManagedGroup === groupName) {
-    rosterCollapsed = !rosterCollapsed;
-    persistManagementState();
-    renderManagedStudents();
-    renderGroupsTable();
-    return;
-  }
-
+  const changedGroup = selectedManagedGroup !== groupName;
   selectedManagedGroup = groupName;
   editingGroupName = groupName;
   sessionStorage.setItem(WORKING_GROUP_KEY, groupName);
-  selectedRosterItems.clear();
-  rosterCollapsed = false;
-  enrollmentLinkExpanded = false;
 
+  if (changedGroup) {
+    selectedRosterItems.clear();
+    rosterCollapsed = false;
+  }
+
+  enrollmentLinkExpanded = Boolean(enrollmentUrl(groupName));
   loadGroupEditor(groupName);
   persistManagementState();
   renderManagedStudents();
   renderGroupsTable();
   renderSelectedGroupActions();
-}
 
+  if (groupsDialog.open) groupsDialog.close();
+}
 function groupStudents(groupName) {
   return Object.entries(studentsCache || {})
     .filter(([, student]) => String(student?.groupName || "") === groupName)
@@ -850,9 +851,8 @@ function renderEnrollmentLink() {
   createEnrollmentLinkBtn.title = active
     ? "Show or hide the active enrollment link"
     : "Create the enrollment link for this group";
-  enrollmentLinkBox.hidden = !(active && enrollmentLinkExpanded);
+  enrollmentLinkInlineControls.hidden = !(active && enrollmentLinkExpanded);
 }
-
 const MANAGED_DISPLAY_MODES = ["name", "lastNames", "nickname"];
 
 function managedFullName(student) {
@@ -939,9 +939,9 @@ function managedSecondaryDisplay(student, mode) {
 }
 
 function managedDisplayModeLabel(mode) {
-  if (mode === "lastNames") return "Last names first";
-  if (mode === "nickname") return "Nickname";
-  return "Name";
+  if (mode === "lastNames") return "Last names";
+  if (mode === "nickname") return "Nicknames";
+  return "Names";
 }
 
 function managedGradeNumber(value) {
@@ -1093,6 +1093,7 @@ function renderManagedStudents() {
     enrollmentControls.hidden = true;
     toggleRosterBtn.hidden = true;
     createEnrollmentLinkBtn.hidden = true;
+    enrollmentLinkInlineControls.hidden = true;
     openAddStudentModalBtn.hidden = true;
     pendingRequestsPanel.hidden = true;
     pendingRequestsList.innerHTML = "";
@@ -1114,8 +1115,8 @@ function renderManagedStudents() {
   const pending = groupPendingRequests(groupName);
   const displayMode = managedDisplayMode(groupName);
   managedStudentsCount.textContent = String(enrolled.length);
-  managedStudentDisplayModeBtn.textContent = `Show: ${managedDisplayModeLabel(displayMode)}`;
-  managedStudentDisplayModeBtn.title = "Cycle primary student display: Name, Last names first, Nickname";
+  managedStudentDisplayModeBtn.textContent = managedDisplayModeLabel(displayMode);
+  managedStudentDisplayModeBtn.title = "Names, Last names, or Nicknames";
 
   const visibleKeys = new Set([
     ...pending.map(([id]) => rosterSelectionKey("request", id)),
@@ -1192,7 +1193,6 @@ function renderGroupsTable() {
     const pending = groupPendingRequests(groupName).length;
     const config = groupEvaluationConfig(group);
     const selected = groupName === selectedManagedGroup;
-    const chevron = selected && !rosterCollapsed ? "▾" : "▸";
     const evaluationSummary = config.configured
       ? config.criteria.map((criterion) =>
           `${escapeHtml(criterion.name)} ${criterion.weight}%`
@@ -1202,9 +1202,7 @@ function renderGroupsTable() {
     return `
       <tr class="${selected ? "selected-group-row" : ""}">
         <td>
-          <button class="group-select-button" type="button" data-manage-group="${escapeHtml(groupName)}"
-            aria-expanded="${selected ? String(!rosterCollapsed) : "false"}">
-            <span class="group-chevron">${chevron}</span>
+          <button class="group-select-button" type="button" data-manage-group="${escapeHtml(groupName)}">
             <span>${escapeHtml(groupName)}</span>
           </button>
         </td>
@@ -1361,6 +1359,24 @@ async function createOrRotateEnrollmentLink({ rotate = false } = {}) {
       }
     };
   }
+}
+
+async function copyEnrollmentLink() {
+  const link = selectedManagedGroup ? enrollmentUrl(selectedManagedGroup) : "";
+  if (!link) return;
+  try {
+    await navigator.clipboard.writeText(link);
+  } catch (_) {
+    enrollmentLinkInput.focus();
+    enrollmentLinkInput.select();
+    document.execCommand("copy");
+    enrollmentLinkInput.setSelectionRange(0, 0);
+  }
+  const previous = copyEnrollmentLinkBtn.textContent;
+  copyEnrollmentLinkBtn.textContent = "Copied";
+  setTimeout(() => {
+    copyEnrollmentLinkBtn.textContent = previous || "Copy link";
+  }, 1200);
 }
 
 function openStudentRecord(studentKey) {
@@ -1754,8 +1770,20 @@ groupsTableBody.addEventListener("click", (event) => {
   selectManagedGroup(String(manageButton.dataset.manageGroup || ""));
 });
 
-openCreateGroupDialogBtn.addEventListener("click", prepareCreateGroupDialog);
-openGroupEvaluationDialogBtn.addEventListener("click", openSelectedGroupEvaluationDialog);
+openGroupsDialogBtn.addEventListener("click", () => {
+  renderGroupsTable();
+  groupsDialog.showModal();
+});
+closeGroupsDialogBtn.addEventListener("click", () => groupsDialog.close());
+
+openCreateGroupDialogBtn.addEventListener("click", () => {
+  if (groupsDialog.open) groupsDialog.close();
+  prepareCreateGroupDialog();
+});
+openGroupEvaluationDialogBtn.addEventListener("click", () => {
+  if (groupsDialog.open) groupsDialog.close();
+  openSelectedGroupEvaluationDialog();
+});
 
 deleteSelectedGroupBtn.addEventListener("click", async () => {
   if (!selectedManagedGroup) return;
@@ -1831,6 +1859,7 @@ openSelectedStudentBtn.addEventListener("click", () => {
 });
 
 saveExternalIdBtn.addEventListener("click", saveSelectedExternalId);
+copyEnrollmentLinkBtn.addEventListener("click", copyEnrollmentLink);
 
 createEnrollmentLinkBtn.addEventListener("click", async () => {
   const activeLink = selectedManagedGroup ? enrollmentUrl(selectedManagedGroup) : "";
