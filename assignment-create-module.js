@@ -980,6 +980,24 @@ function setStatus(message, kind = "") {
   createAssignmentStatus.className = `status ${kind}`.trim();
 }
 
+async function launchCogAssignment(assignmentId, targetWindow) {
+  const response = await fetch("/api/cog-live-teacher-launch", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ assignmentId })
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.ok !== true || !payload?.launchUrl) {
+    throw new Error(payload?.error || "Could not open Classroom Online Games.");
+  }
+
+  if (targetWindow && !targetWindow.closed) {
+    targetWindow.location.href = payload.launchUrl;
+  } else {
+    window.open(payload.launchUrl, "_blank", "noopener");
+  }
+}
+
 async function createAssignment() {
   refreshDistribution();
   refreshAutomaticTaskCode();
@@ -1022,6 +1040,10 @@ async function createAssignment() {
 
   if (!code) return setStatus("Complete type, name, target, and due date to generate the Task Code.", "bad");
   if (taskCodeExists(code)) return setStatus("That activity already exists. Change the name, target, date, or type.", "bad");
+
+  const cogLaunchWindow = typeCode === "COG" ? window.open("about:blank", "_blank") : null;
+  if (cogLaunchWindow) cogLaunchWindow.opener = null;
+  let cogLaunchSucceeded = false;
 
   createAssignmentBtn.disabled = true;
   setStatus("Creating...");
@@ -1083,7 +1105,21 @@ async function createAssignment() {
       });
     }
 
-    setStatus("Assignment created.", "ok");
+    if (typeCode === "COG") {
+      setStatus("Assignment created. Opening Classroom Online Games...", "ok");
+      try {
+        await launchCogAssignment(target.key, cogLaunchWindow);
+        cogLaunchSucceeded = true;
+      } catch (launchError) {
+        if (cogLaunchWindow && !cogLaunchWindow.closed) cogLaunchWindow.close();
+        setStatus(
+          `Assignment created, but Classroom Online Games could not open: ${launchError?.message || "Unknown error"}`,
+          "bad"
+        );
+      }
+    } else {
+      setStatus("Assignment created.", "ok");
+    }
 
     if (window.parent !== window) {
       window.parent.postMessage({
@@ -1094,6 +1130,9 @@ async function createAssignment() {
     }
   } catch (error) {
     console.error(error);
+    if (cogLaunchWindow && !cogLaunchWindow.closed && !cogLaunchSucceeded) {
+      cogLaunchWindow.close();
+    }
     setStatus(error?.message ? `Could not create the assignment: ${error.message}` : "Could not create the assignment.", "bad");
   } finally {
     createAssignmentBtn.disabled = false;
