@@ -176,6 +176,13 @@ async function main() {
 
   console.log("E2E teacher: create COG assignment and consume teacher launch");
   await teacherPage.locator("#openAssignmentsModuleBtn").click();
+  await new Promise((resolve) => setTimeout(resolve, 1500));
+  console.log("E2E diagnostic Assignments module", JSON.stringify({
+    overlayExists: await teacherPage.locator("#assignmentsModuleOverlay").count(),
+    overlayVisible: await teacherPage.locator("#assignmentsModuleOverlay").isVisible().catch(() => false),
+    frameSrc: await teacherPage.locator("#assignmentsModuleFrame").getAttribute("src").catch(() => ""),
+    frameUrls: teacherPage.frames().map((f) => f.url())
+  }));
   const frame = await waitFor(
     () => teacherPage.frames().find((f) => f.url().includes("assignment-create-module.html")),
     "Assignments iframe"
