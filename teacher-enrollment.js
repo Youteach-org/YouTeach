@@ -928,24 +928,26 @@ createGroupBtn.addEventListener("click", async () => {
   const now = Date.now();
   const existing = groupsCache[groupName] || {};
 
-  await update(ref(db, `groups/${groupName}`), {
+  const savedGroupRecord = {
+    ...existing,
     name: groupName,
     createdAt: Number(existing.createdAt || now),
     evaluationUnitCount,
     evaluationCriteria: criteriaToFirebaseObject(evaluationCriteria),
-    evaluationWeights: null,
     ...(pendingReportSettings ? { reportSettings: pendingReportSettings } : {}),
     evaluationConfiguredAt: now,
     evaluationConfiguredBy: getTeacherName()
+  };
+
+  await update(ref(db, `groups/${groupName}`), {
+    ...savedGroupRecord,
+    evaluationWeights: null
   });
 
-  selectedManagedGroup = groupName;
-  editingGroupName = groupName;
-  sessionStorage.setItem(WORKING_GROUP_KEY, groupName);
+  groupsCache[groupName] = savedGroupRecord;
+  manageGroup(groupName);
   groupEvaluationStatus.textContent = existing.createdAt ? "Group settings saved." : "Group created.";
   groupEvaluationStatus.className = "status-text ok";
-
-  setTimeout(() => manageGroup(groupName), 0);
 });
 
 toggleEvaluationBtn.addEventListener("click", () => {
