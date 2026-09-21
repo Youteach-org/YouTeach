@@ -260,3 +260,10 @@ test('incomplete evaluation drafts are persisted but templates update only at va
   assert.match(block, /if \(valid\) \{/);
   assert.match(block, /ensureIndependentTemplate/);
 });
+
+
+test('template popup renders the merged canonical and legacy library', () => {
+  assert.match(enrollmentJs, /function mergedTemplateCache/);
+  assert.match(enrollmentJs, /Object\.entries\(mergedTemplateCache\(\)\)/);
+  assert.match(enrollmentJs, /const template = mergedTemplateCache\(\)\?\.\[selectedTemplateId\]/);
+});
