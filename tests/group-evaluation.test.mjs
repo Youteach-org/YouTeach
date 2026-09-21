@@ -115,34 +115,37 @@ test('group creation UI uses a dynamic criterion editor and reusable templates',
   assert.match(enrollmentJs, /Complete 100% to enable grading and update the template/);
 });
 
-test('Students keeps criteria in block headers and shows only contribution percentages in student rows', () => {
+test('Students uses a sticky identity column and scrollable block criteria values', () => {
   assert.doesNotMatch(studentsHtml, /id="evaluationUnitCountCard"/);
   assert.doesNotMatch(studentsHtml, /Evaluation Blocks \/ Units/);
+  assert.doesNotMatch(studentsHtml, /Working Group<\/h3>/);
+  assert.doesNotMatch(studentsHtml, /Search Students<\/h3>/);
   assert.doesNotMatch(studentsHtml, /Today Active/);
+  assert.doesNotMatch(studentsHtml, /saveAllStudentsBtn/);
+  assert.match(studentsHtml, /id="groupFilter" class="group-select"/);
+  assert.match(studentsHtml, /id="toggleStudentSearchBtn"/);
+  assert.match(studentsHtml, /id="studentSearchPanel"[^>]*hidden/);
+  assert.match(studentsHtml, /\.student-column-header,.student-identity-cell\{position:sticky;left:0/);
+  assert.match(studentsHtml, /\.students-table-wrap\{overflow-x:auto/);
   assert.match(studentsHtml, /\.active-student/);
-  assert.match(studentsHtml, /\.block-criteria-grid/);
-  assert.match(studentsHtml, /\.block-values-grid/);
-  assert.match(studentsJs, /function blockCriteriaHeaderHtml/);
-  assert.match(studentsJs, /criterion\.name/);
-  assert.match(studentsJs, /criterion\.weight/);
+  assert.match(studentsJs, /function criterionHeaderLabel/);
+  assert.match(studentsJs, /<br>/);
   assert.match(studentsJs, /criterion\.contribution/);
-  assert.match(studentsJs, /active-student/);
-  assert.match(studentsJs, /calculateStudentBlockGrade/);
-
-  const gradeStart = studentsJs.indexOf('function blockGradeHtml');
-  const gradeEnd = studentsJs.indexOf('function getStoredWorkingGroup', gradeStart);
-  const gradeBlock = studentsJs.slice(gradeStart, gradeEnd);
-  assert.match(gradeBlock, /criterion\.contribution/);
-  assert.doesNotMatch(gradeBlock, /criterion\.name/);
-  assert.doesNotMatch(gradeBlock, /criterion\.weight/);
-  assert.doesNotMatch(gradeBlock, /Today Active/);
-
+  assert.match(studentsJs, /student-name-line/);
+  assert.match(studentsJs, /student-id-tag/);
+  assert.match(studentsJs, /student\.nickname/);
+  assert.match(studentsJs, /document\.querySelectorAll\("\.student-row"\)/);
+  assert.match(studentsJs, /teacherViewStudentKey/);
+  assert.match(studentsJs, /toggleStudentSearchBtn\.addEventListener/);
+  assert.match(studentsJs, /searchStudentInput\.addEventListener\("input", renderStudents\)/);
+  assert.doesNotMatch(studentsJs, /student-name-input/);
+  assert.doesNotMatch(studentsJs, /student-nickname-input/);
+  assert.doesNotMatch(studentsJs, /saveAllStudentsBtn/);
+  assert.doesNotMatch(studentsJs, /await update\(ref\(db\), updates\)/);
   assert.match(gradeRuntimeJs, /calculateBlockGrade/);
   assert.match(gradeRuntimeJs, /evaluationCriterionScores/);
   assert.match(gradeRuntimeJs, /groupEvaluationCriterionId/);
-  assert.doesNotMatch(studentsJs, /config\.weights/);
 });
-
 test('new assignments can be linked to a group evaluation criterion', () => {
   assert.match(createAssignmentHtml, /id="assignmentGroupCriterion"/);
   assert.match(createAssignmentJs, /groupEvaluationCriterionId/);
