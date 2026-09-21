@@ -24,15 +24,16 @@ test('Group Management keeps its header and moves group editing into dialogs', (
   assert.doesNotMatch(html, /<h3>Add Student<\/h3>/);
 });
 
-test('group rows only select a group; Delete appears once in contextual group actions', () => {
-  assert.match(js, /data-manage-group/);
+test('group rows only mark a popup choice; actions appear once for that marked group', () => {
+  assert.match(js, /data-popup-group/);
   assert.match(html, /id="selectedGroupActions"/);
+  assert.match(html, /id="selectPopupGroupBtn"/);
   assert.match(html, /id="deleteSelectedGroupBtn"/);
-  assert.match(js, /selectManagedGroup\(/);
-  assert.match(js, /deleteGroupWithBackup\(/);
+  assert.match(js, /markPopupGroup\(/);
+  assert.match(js, /selectManagedGroup\(popupSelectedGroup\)/);
+  assert.match(js, /deleteGroupWithBackup\(deletionTargetGroup\)/);
   assert.doesNotMatch(js, /data-delete-group/);
   assert.doesNotMatch(html, /data-delete-group/);
-  assert.doesNotMatch(html, /id="deleteGroupSelect"/);
   assert.doesNotMatch(js, /data-edit-group-evaluation/);
 });
 
