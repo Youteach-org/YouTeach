@@ -54,20 +54,16 @@ const useSelectedEvaluationTemplateBtn = document.getElementById("useSelectedEva
 const enrollmentControls = document.getElementById("enrollmentControls");
 const rosterBody = document.getElementById("rosterBody");
 const toggleRosterBtn = document.getElementById("toggleRosterBtn");
-const managedGroupStatus = document.getElementById("managedGroupStatus");
-const managedGroupName = document.getElementById("managedGroupName");
-const pendingEnrollmentCount = document.getElementById("pendingEnrollmentCount");
 const createEnrollmentLinkBtn = document.getElementById("createEnrollmentLinkBtn");
-const copyEnrollmentLinkBtn = document.getElementById("copyEnrollmentLinkBtn");
 const rotateEnrollmentLinkBtn = document.getElementById("rotateEnrollmentLinkBtn");
 const enrollmentLinkBox = document.getElementById("enrollmentLinkBox");
 const enrollmentLinkInput = document.getElementById("enrollmentLinkInput");
-const enrollmentLinkStatus = document.getElementById("enrollmentLinkStatus");
 const openAddStudentModalBtn = document.getElementById("openAddStudentModalBtn");
 const selectAllStudents = document.getElementById("selectAllStudents");
 const pendingRequestsPanel = document.getElementById("pendingRequestsPanel");
 const pendingRequestsList = document.getElementById("pendingRequestsList");
 const managedStudentsCount = document.getElementById("managedStudentsCount");
+const managedStudentDisplayModeBtn = document.getElementById("managedStudentDisplayModeBtn");
 const managedStudentSearchToggle = document.getElementById("managedStudentSearchToggle");
 const managedStudentSearchPanel = document.getElementById("managedStudentSearchPanel");
 const managedStudentSearch = document.getElementById("managedStudentSearch");
@@ -149,6 +145,7 @@ function persistEvaluationPanelState() {
 
 let evaluationEditorOpen = readEvaluationPanelState();
 let rosterCollapsed = restoredManagementState.rosterCollapsed !== false;
+let enrollmentLinkExpanded = restoredManagementState.enrollmentLinkExpanded === true;
 let selectedTemplateId = "";
 let groupsLoaded = false;
 let templatesLoaded = false;
@@ -173,6 +170,7 @@ function persistManagementState() {
     groupName: selectedManagedGroup,
     rosterCollapsed,
     evaluationEditorOpen,
+    enrollmentLinkExpanded,
     selectedRosterItems: [...selectedRosterItems]
   }));
 }
@@ -792,6 +790,7 @@ function selectManagedGroup(groupName) {
   sessionStorage.setItem(WORKING_GROUP_KEY, groupName);
   selectedRosterItems.clear();
   rosterCollapsed = false;
+  enrollmentLinkExpanded = false;
 
   loadGroupEditor(groupName);
   persistManagementState();
@@ -831,18 +830,78 @@ function enrollmentUrl(groupName) {
 
 function renderEnrollmentLink() {
   const link = selectedManagedGroup ? enrollmentUrl(selectedManagedGroup) : "";
+  const active = Boolean(link);
+
   enrollmentLinkInput.value = link;
-  enrollmentLinkBox.hidden = !link;
-  copyEnrollmentLinkBtn.hidden = !link;
-  createEnrollmentLinkBtn.textContent = link ? "Enrollment Link Active" : "Create Enrollment Link";
-  createEnrollmentLinkBtn.disabled = Boolean(link);
-  enrollmentLinkStatus.textContent = selectedManagedGroup && link
-    ? "Enrollment requests require teacher approval."
-    : "";
+  createEnrollmentLinkBtn.hidden = !selectedManagedGroup;
+  createEnrollmentLinkBtn.textContent = active ? "Active enrollment link" : "Create enrollment link";
+  createEnrollmentLinkBtn.classList.toggle("active", active);
+  createEnrollmentLinkBtn.setAttribute("aria-expanded", String(active && enrollmentLinkExpanded));
+  enrollmentLinkBox.hidden = !(active && enrollmentLinkExpanded);
 }
 
-function managedDisplayName(student) {
-  return student?.fullName || student?.name || student?.nickname || "";
+const MANAGED_DISPLAY_MODES = ["name", "lastNames", "nickname"];
+
+function managedFullName(student) {
+  return String(student?.fullName || student?.name || student?.nickname || "").trim();
+}
+
+function managedNameParts(student) {
+  const fullName = managedFullName(student);
+  const explicitGiven = String(student?.firstName || student?.givenName || "").trim();
+  const explicitLast = String(student?.lastName || student?.lastNames || student?.surname || "").trim();
+  if (explicitGiven || explicitLast) {
+    return {
+      givenNames: explicitGiven || fullName,
+      lastNames: explicitLast,
+      fullName
+    };
+  }
+
+  const tokens = fullName.split(/\s+/).filter(Boolean);
+  if (tokens.length <= 1) return { givenNames: fullName, lastNames: "", fullName };
+  if (tokens.length === 2) {
+    return { givenNames: tokens[0], lastNames: tokens[1], fullName };
+  }
+
+  const letters = fullName.replace(/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/g, "");
+  const surnameFirst = letters && letters === letters.toLocaleUpperCase();
+  return surnameFirst
+    ? { givenNames: tokens.slice(2).join(" "), lastNames: tokens.slice(0, 2).join(" "), fullName }
+    : { givenNames: tokens.slice(0, -2).join(" "), lastNames: tokens.slice(-2).join(" "), fullName };
+}
+
+function managedDisplayMode(groupName) {
+  const raw = String(groupsCache?.[groupName]?.studentListDisplayMode || "name");
+  return MANAGED_DISPLAY_MODES.includes(raw) ? raw : "name";
+}
+
+function managedPrimaryDisplay(student, mode) {
+  const parts = managedNameParts(student);
+  if (mode === "lastNames") return parts.lastNames || parts.fullName;
+  if (mode === "nickname") return String(student?.nickname || "").trim() || parts.givenNames || parts.fullName;
+  return parts.givenNames || parts.fullName;
+}
+
+function managedSecondaryDisplay(student, mode) {
+  const parts = managedNameParts(student);
+  const nickname = String(student?.nickname || "").trim();
+  const id = String(student?.studentNumber || "").trim();
+  const pieces = [];
+
+  if (mode === "nickname") {
+    if (parts.fullName && parts.fullName !== nickname) pieces.push(parts.fullName);
+  } else if (nickname) {
+    pieces.push(nickname);
+  }
+  if (id) pieces.push(`ID ${id}`);
+  return pieces.join(" · ");
+}
+
+function managedDisplayModeLabel(mode) {
+  if (mode === "lastNames") return "Last names";
+  if (mode === "nickname") return "Nickname";
+  return "Name";
 }
 
 function managedGradeNumber(value) {
@@ -924,16 +983,29 @@ function managedBlockGradeHtml(studentKey, student, blockName, config) {
 
 function managedFilteredStudents(groupName) {
   const query = String(managedStudentSearch?.value || "").trim().toLocaleLowerCase();
-  return groupStudents(groupName).filter(([, student]) => {
-    if (!query) return true;
-    const searchable = [
-      managedDisplayName(student),
-      student?.nickname || "",
-      student?.studentNumber || "",
-      student?.id || ""
-    ].join(" ").toLocaleLowerCase();
-    return searchable.includes(query);
-  });
+  const mode = managedDisplayMode(groupName);
+
+  return groupStudents(groupName)
+    .filter(([, student]) => {
+      if (!query) return true;
+      const parts = managedNameParts(student);
+      const searchable = [
+        parts.fullName,
+        parts.givenNames,
+        parts.lastNames,
+        student?.nickname || "",
+        student?.studentNumber || "",
+        student?.id || ""
+      ].join(" ").toLocaleLowerCase();
+      return searchable.includes(query);
+    })
+    .sort((a, b) =>
+      managedPrimaryDisplay(a[1], mode).localeCompare(
+        managedPrimaryDisplay(b[1], mode),
+        undefined,
+        { sensitivity: "base" }
+      )
+    );
 }
 
 function rosterSelectionKey(kind, id) {
@@ -980,8 +1052,7 @@ function renderManagedStudents() {
   if (!groupName || !groupsCache[groupName]) {
     enrollmentControls.hidden = true;
     toggleRosterBtn.hidden = true;
-    managedGroupStatus.textContent = "Select a group from the Groups list below.";
-    pendingEnrollmentCount.textContent = "";
+    createEnrollmentLinkBtn.hidden = true;
     pendingRequestsPanel.hidden = true;
     pendingRequestsList.innerHTML = "";
     managedStudentsTableHeadRow.innerHTML = '<th class="managed-student-column-header">Student</th>';
@@ -997,14 +1068,12 @@ function renderManagedStudents() {
   toggleRosterBtn.setAttribute("aria-expanded", String(!rosterCollapsed));
   rosterBody.hidden = rosterCollapsed;
 
-  managedGroupName.textContent = groupName;
   const enrolled = groupStudents(groupName);
   const pending = groupPendingRequests(groupName);
-  managedGroupStatus.textContent = rosterCollapsed
-    ? `${enrolled.length} enrolled · click the group or arrow to expand`
-    : "Student progress matches the Students page. Double click a row to open the student profile.";
-  pendingEnrollmentCount.textContent = pending.length ? `${pending.length} pending` : "";
+  const displayMode = managedDisplayMode(groupName);
   managedStudentsCount.textContent = String(enrolled.length);
+  managedStudentDisplayModeBtn.textContent = `Show: ${managedDisplayModeLabel(displayMode)}`;
+  managedStudentDisplayModeBtn.title = "Cycle primary student display: Name, Last names, Nickname";
 
   const visibleKeys = new Set([
     ...pending.map(([id]) => rosterSelectionKey("request", id)),
@@ -1037,16 +1106,14 @@ function renderManagedStudents() {
   managedStudentsTableBody.innerHTML = filtered.length
     ? filtered.map(([studentKey, student]) => {
         const selectionKey = rosterSelectionKey("student", studentKey);
-        const displayName = managedDisplayName(student);
+        const displayName = managedPrimaryDisplay(student, displayMode);
+        const secondary = managedSecondaryDisplay(student, displayMode);
         return `
           <tr class="managed-student-row ${student.activeNow ? "active-student" : ""} ${selectedRosterItems.has(selectionKey) ? "selected" : ""}"
             data-selection-key="${escapeHtml(selectionKey)}" data-roster-kind="student" data-roster-id="${escapeHtml(studentKey)}">
             <td class="managed-student-identity-cell">
-              <span class="managed-student-name" style="font-size:${managedStudentNameFontSize(displayName)}px" title="${escapeHtml(displayName)}">${escapeHtml(displayName)}</span>
-              <span class="managed-student-meta">
-                ${student.nickname ? `<span>${escapeHtml(student.nickname)}</span>` : ""}
-                ${student.studentNumber ? `<span>ID ${escapeHtml(student.studentNumber)}</span>` : ""}
-              </span>
+              <span class="managed-student-name" style="font-size:${managedStudentNameFontSize(displayName)}px" title="${escapeHtml(managedFullName(student))}">${escapeHtml(displayName)}</span>
+              ${secondary ? `<span class="managed-student-meta">${escapeHtml(secondary)}</span>` : ""}
             </td>
             ${blockNames.map((blockName) =>
               `<td class="managed-block-grade-cell">${managedBlockGradeHtml(studentKey, student, blockName, config)}</td>`
@@ -1239,21 +1306,17 @@ async function createOrRotateEnrollmentLink({ rotate = false } = {}) {
     updatedBy: getTeacherName()
   });
 
-  enrollmentLinkStatus.textContent = rotate ? "Enrollment link rotated." : "Enrollment link created.";
-}
-
-async function copyEnrollmentLink() {
-  const value = enrollmentLinkInput.value;
-  if (!value) return;
-
-  try {
-    await navigator.clipboard.writeText(value);
-    enrollmentLinkStatus.textContent = "Enrollment link copied.";
-  } catch (_) {
-    enrollmentLinkInput.focus();
-    enrollmentLinkInput.select();
-    document.execCommand("copy");
-    enrollmentLinkStatus.textContent = "Enrollment link copied.";
+  if (groupsCache?.[groupName]) {
+    groupsCache[groupName] = {
+      ...groupsCache[groupName],
+      enrollment: {
+        ...(groupsCache[groupName].enrollment || {}),
+        token,
+        enabled: true,
+        updatedAt: Date.now(),
+        updatedBy: getTeacherName()
+      }
+    };
   }
 }
 
@@ -1592,6 +1655,7 @@ toggleEvaluationBtn.addEventListener("click", () => {
   persistManagementState();
   renderEvaluationEditorVisibility();
 });
+window.addEventListener("pagehide", persistEvaluationPanelState);
 
 cancelGroupEditBtn.addEventListener("click", resetGroupForm);
 addEvaluationCriterionBtn.addEventListener("click", () => {
@@ -1721,9 +1785,50 @@ openSelectedStudentBtn.addEventListener("click", () => {
 });
 
 saveExternalIdBtn.addEventListener("click", saveSelectedExternalId);
-createEnrollmentLinkBtn.addEventListener("click", () => createOrRotateEnrollmentLink());
-rotateEnrollmentLinkBtn.addEventListener("click", () => createOrRotateEnrollmentLink({ rotate: true }));
-copyEnrollmentLinkBtn.addEventListener("click", copyEnrollmentLink);
+
+createEnrollmentLinkBtn.addEventListener("click", async () => {
+  const activeLink = selectedManagedGroup ? enrollmentUrl(selectedManagedGroup) : "";
+  if (activeLink) {
+    enrollmentLinkExpanded = !enrollmentLinkExpanded;
+    persistManagementState();
+    renderEnrollmentLink();
+    return;
+  }
+
+  await createOrRotateEnrollmentLink();
+  enrollmentLinkExpanded = true;
+  persistManagementState();
+  renderEnrollmentLink();
+});
+
+rotateEnrollmentLinkBtn.addEventListener("click", async () => {
+  await createOrRotateEnrollmentLink({ rotate: true });
+  enrollmentLinkExpanded = true;
+  persistManagementState();
+  renderEnrollmentLink();
+});
+
+managedStudentDisplayModeBtn.addEventListener("click", async () => {
+  const groupName = selectedManagedGroup;
+  if (!groupName || !groupsCache[groupName]) return;
+
+  const current = managedDisplayMode(groupName);
+  const index = MANAGED_DISPLAY_MODES.indexOf(current);
+  const next = MANAGED_DISPLAY_MODES[(index + 1) % MANAGED_DISPLAY_MODES.length];
+
+  groupsCache[groupName] = {
+    ...groupsCache[groupName],
+    studentListDisplayMode: next
+  };
+  renderManagedStudents();
+
+  await update(ref(db, `groups/${groupName}`), {
+    studentListDisplayMode: next,
+    studentListDisplayUpdatedAt: Date.now(),
+    studentListDisplayUpdatedBy: getTeacherName()
+  });
+});
+
 approveEnrollmentBtn.addEventListener("click", approveSelectedRequests);
 denyEnrollmentBtn.addEventListener("click", denySelectedRequests);
 expelStudentBtn.addEventListener("click", expelSelectedStudents);
