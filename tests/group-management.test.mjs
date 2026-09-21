@@ -41,20 +41,27 @@ test('selecting the same group or the chevron collapses and expands its roster',
   assert.match(js, /group-chevron/);
 });
 
-test('students and requests render as one compact row with the requested columns', () => {
-  assert.match(html, /\.student-grid\{display:grid/);
-  assert.match(html, /id="managedStudentsList"/);
-  assert.match(html, /id="selectAllStudents"/);
-  assert.match(html, /Full Name<\/span><span>Nickname<\/span><span>External ID<\/span><span>Group<\/span>/);
-  assert.match(js, /student-row pending student-grid/);
-  assert.match(js, /student-row enrolled student-grid/);
-  assert.match(js, /escapeHtml\(groupName\)/);
-  assert.doesNotMatch(js, /student-card-main/);
-  assert.doesNotMatch(js, /inline-external-id/);
-  assert.doesNotMatch(html, /<span>Status<\/span>/);
-  assert.doesNotMatch(html, /student-toolbar-right/);
+test('Group Management uses the same student progress matrix as Teacher Students', () => {
+  assert.doesNotMatch(html, /id="managedStudentsList"/);
+  assert.doesNotMatch(html, /student-list-head student-grid/);
+  assert.match(html, /id="managedStudentsTableHeadRow"/);
+  assert.match(html, /id="managedStudentsTableBody"/);
+  assert.match(html, /managed-student-column-header/);
+  assert.match(html, /managed-students-table-wrap/);
+  assert.match(html, /managed-block-criteria-grid/);
+  assert.match(html, /managed-block-values-grid/);
+  assert.match(html, /managed-block-total/);
+  assert.match(html, /id="managedStudentSearchToggle"/);
+  assert.match(html, /id="managedStudentSearchPanel"[^>]*hidden/);
+  assert.match(html, /id="openManagedBlockReportBtn"/);
+  assert.match(js, /calculateStudentBlockGrade/);
+  assert.match(js, /managedStudentNameFontSize/);
+  assert.match(js, /managedCriterionHeaderLabel/);
+  assert.match(js, /managedBlockGradeHtml/);
+  assert.match(js, /managedStudentSearch\.addEventListener\("input", renderManagedStudents\)/);
+  assert.match(js, /managedStudentsTableBody\.addEventListener\("dblclick"/);
+  assert.match(js, /teacherViewStudentKey/);
 });
-
 test('student actions stay hidden until a row is selected', () => {
   assert.match(html, /id="selectedRosterActions"[^>]*hidden/);
   assert.match(html, /id="openSelectedStudentBtn"[^>]*hidden/);
@@ -134,13 +141,15 @@ test('Group Management selection state survives same-tab page navigation', () =>
   assert.match(js, /loadGroupEditor\(selectedManagedGroup, \{ preserveView: true \}\)/);
 });
 
-test('Select all is in the roster header directly over row checkboxes', () => {
-  const headerIndex = html.indexOf('student-list-head student-grid');
-  const selectAllIndex = html.indexOf('id="selectAllStudents"');
-  const listIndex = html.indexOf('id="managedStudentsList"');
-  assert.ok(headerIndex >= 0 && selectAllIndex > headerIndex && listIndex > selectAllIndex);
+test('pending enrollment requests keep select-all and approval actions outside the student matrix', () => {
+  assert.match(html, /id="pendingRequestsPanel"[^>]*hidden/);
+  assert.match(html, /id="pendingRequestsList"/);
+  assert.match(html, /id="selectAllStudents"/);
+  assert.match(js, /pendingRequestsList\.addEventListener\("click"/);
+  assert.match(js, /selectAllStudents\.addEventListener\("change"/);
+  assert.match(js, /approveSelectedRequests/);
+  assert.match(js, /denySelectedRequests/);
 });
-
 
 test('requested E6C Fall 2026 criteria reset is one-time and preserves the group', () => {
   assert.match(js, /REQUESTED_CRITERIA_RESET_GROUP = "e6c fall 2026"/);
@@ -232,13 +241,22 @@ test('block reduction refreshes live grade evidence before saving a lower count'
 });
 
 
-test('Group Management remembers evaluation criteria expansion and uses one triangle label', () => {
+test('Group Management remembers evaluation criteria expansion in a dedicated persistent preference', () => {
   assert.match(html, /id="toggleEvaluationBtn"[^>]*>▸ Evaluation criteria<\/button>/);
-  assert.match(js, /evaluationEditorOpen = restoredManagementState\.evaluationEditorOpen === true/);
-  assert.match(js, /evaluationEditorOpen,/);
+  assert.match(js, /EVALUATION_PANEL_STATE_KEY = "youteachEvaluationCriteriaOpen"/);
+  assert.match(js, /function readEvaluationPanelState/);
+  assert.match(js, /localStorage\.getItem\(EVALUATION_PANEL_STATE_KEY\)/);
+  assert.match(js, /localStorage\.setItem\(EVALUATION_PANEL_STATE_KEY, evaluationEditorOpen \? "open" : "closed"\)/);
+  assert.match(js, /persistEvaluationPanelState\(\)/);
   assert.match(js, /▾ Evaluation criteria/);
   assert.match(js, /▸ Evaluation criteria/);
   assert.match(js, /setAttribute\("aria-expanded", String\(evaluationEditorOpen\)\)/);
+
+  const visibilityStart = js.indexOf('function renderEvaluationEditorVisibility');
+  const visibilityEnd = js.indexOf('function templateComparable', visibilityStart);
+  const visibilityBlock = js.slice(visibilityStart, visibilityEnd);
+  assert.doesNotMatch(visibilityBlock, /evaluationEditorOpen = true/);
+
   const loadStart = js.indexOf('function loadGroupEditor');
   const loadEnd = js.indexOf('async function refreshGradeEvidenceCaches', loadStart);
   const loadBlock = js.slice(loadStart, loadEnd);
