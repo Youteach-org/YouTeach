@@ -882,3 +882,13 @@ This supersedes any earlier flow that required **Save Group Settings**, **Set Ev
 - Each block header contains the criterion labels and maximum weights. Multiword criterion labels may wrap into two lines (for example `Written` / `exam 35%`).
 - Every student block cell contains only the criterion contribution values in the same horizontal order as the header plus the block total; criterion names are never repeated in the student row.
 - Existing block-protection rule: evaluation unit count may increase freely, but may not be reduced below the highest block that contains recorded grades for that group. A lower reduction becomes possible only after those grades are explicitly removed by a future grade-deletion workflow.
+
+
+### Students typography and evaluation-panel state — 2026-09-21 (latest)
+
+- Student full names scale by name length within the sticky Student cell: short names render larger; progressively longer names reduce in size so the identity column remains compact.
+- The **Total** position inside every block criterion grid uses a distinct visual treatment from individual criteria.
+- **Selected Group** label and its dropdown are on one horizontal line.
+- **Students in Group** label and count are on one horizontal line; search remains on the same row at the right.
+- In Group Management, the evaluation editor expansion state is part of the persisted management state. Navigating away and returning preserves whether the teacher left it open or closed.
+- The existing-group collapse control is labeled only **Evaluation criteria** with a directional triangle: `▸` when collapsed and `▾` when expanded. Do not use `Show Evaluation`, `Hide Evaluation`, or `Set Evaluation`.
