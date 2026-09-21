@@ -34,6 +34,7 @@ test("Student Buzzer uses one dynamic live-game card and removes the permanent V
   assert.match(html, /id="joinLiveGameBtn"/);
 
   assert.doesNotMatch(js, /createVerbRunnerLaunchToken|verbRunnerV2\/launchTokens|createOpaqueLaunchToken/);
+  assert.equal(js.includes("\\nimport"), false, "student-buzzer.js must not contain a literal \\n between imports");
   assert.match(js, /canStudentAccessLiveGame/);
   assert.match(js, /\/api\/cog-live-student-launch/);
   assert.match(js, /JSON\.stringify\(\{\s*studentKey,\s*externalId\s*\}\)/s);
