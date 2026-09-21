@@ -78,7 +78,7 @@ function renderEvaluationSummary(group) {
   if (!config.configured) {
     evaluationUnitCountCard.textContent = "Setup required";
     evaluationSetupSummary.innerHTML =
-      '<span class="evaluation-setup-required">Evaluation setup required in Groups / Import.</span>';
+      '<span class="evaluation-setup-required">Evaluation setup required in Group Management.</span>';
     return config;
   }
 
