@@ -10,6 +10,8 @@ import {
 import { generateId } from "./app.js";
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
 import { migrateExistingStudentsForTeacher } from "./student-auth.js?v=group-evaluation-20260920";
+import { calculateStudentBlockGrade } from "./group-grade-runtime.js";
+
 import {
   criteriaToFirebaseObject,
   evaluationBlockNames,
@@ -23,6 +25,7 @@ requireTeacherAuth();
 
 const WORKING_GROUP_KEY = "youteachWorkingGroup";
 const MANAGEMENT_STATE_KEY = "youteachGroupManagementState";
+const EVALUATION_PANEL_STATE_KEY = "youteachEvaluationCriteriaOpen";
 const REQUESTED_CRITERIA_RESET_GROUP = "e6c fall 2026";
 const REQUESTED_CRITERIA_RESET_MARKER = "criteriaReset20260921";
 
@@ -62,6 +65,15 @@ const enrollmentLinkInput = document.getElementById("enrollmentLinkInput");
 const enrollmentLinkStatus = document.getElementById("enrollmentLinkStatus");
 const openAddStudentModalBtn = document.getElementById("openAddStudentModalBtn");
 const selectAllStudents = document.getElementById("selectAllStudents");
+const pendingRequestsPanel = document.getElementById("pendingRequestsPanel");
+const pendingRequestsList = document.getElementById("pendingRequestsList");
+const managedStudentsCount = document.getElementById("managedStudentsCount");
+const managedStudentSearchToggle = document.getElementById("managedStudentSearchToggle");
+const managedStudentSearchPanel = document.getElementById("managedStudentSearchPanel");
+const managedStudentSearch = document.getElementById("managedStudentSearch");
+const managedStudentsTableHeadRow = document.getElementById("managedStudentsTableHeadRow");
+const managedStudentsTableBody = document.getElementById("managedStudentsTableBody");
+const openManagedBlockReportBtn = document.getElementById("openManagedBlockReportBtn");
 const selectedRosterActions = document.getElementById("selectedRosterActions");
 const selectedRosterLabel = document.getElementById("selectedRosterLabel");
 const openSelectedStudentBtn = document.getElementById("openSelectedStudentBtn");
@@ -71,7 +83,6 @@ const saveExternalIdBtn = document.getElementById("saveExternalIdBtn");
 const approveEnrollmentBtn = document.getElementById("approveEnrollmentBtn");
 const denyEnrollmentBtn = document.getElementById("denyEnrollmentBtn");
 const expelStudentBtn = document.getElementById("expelStudentBtn");
-const managedStudentsList = document.getElementById("managedStudentsList");
 
 const groupsTableBody = document.getElementById("groupsTableBody");
 const selectedGroupActions = document.getElementById("selectedGroupActions");
@@ -125,7 +136,18 @@ let selectedManagedGroup = String(
 );
 let editingGroupName = "";
 let pendingReportSettings = null;
-let evaluationEditorOpen = restoredManagementState.evaluationEditorOpen === true;
+function readEvaluationPanelState() {
+  const stored = localStorage.getItem(EVALUATION_PANEL_STATE_KEY);
+  if (stored === "open") return true;
+  if (stored === "closed") return false;
+  return restoredManagementState.evaluationEditorOpen === true;
+}
+
+function persistEvaluationPanelState() {
+  localStorage.setItem(EVALUATION_PANEL_STATE_KEY, evaluationEditorOpen ? "open" : "closed");
+}
+
+let evaluationEditorOpen = readEvaluationPanelState();
 let rosterCollapsed = restoredManagementState.rosterCollapsed !== false;
 let selectedTemplateId = "";
 let groupsLoaded = false;
@@ -236,7 +258,6 @@ function renderEvaluationEditorVisibility() {
   toggleEvaluationBtn.hidden = !editingGroupName;
 
   if (!editingGroupName) {
-    evaluationEditorOpen = true;
     evaluationEditor.hidden = false;
     return;
   }
@@ -479,7 +500,6 @@ function resetGroupForm() {
   createGroupBtn.textContent = "Create Group";
   createGroupBtn.hidden = false;
   cancelGroupEditBtn.hidden = true;
-  evaluationEditorOpen = true;
   groupEvaluationStatus.textContent = "";
   groupEvaluationStatus.className = "status-text";
 
@@ -820,6 +840,101 @@ function renderEnrollmentLink() {
     : "";
 }
 
+function managedDisplayName(student) {
+  return student?.fullName || student?.name || student?.nickname || "";
+}
+
+function managedGradeNumber(value) {
+  const number = Number(value || 0);
+  return Number(number.toFixed(1)).toString();
+}
+
+function managedStudentNameFontSize(name) {
+  const length = Array.from(String(name || "").trim()).length;
+  if (length <= 14) return 18;
+  if (length <= 20) return 16;
+  if (length <= 28) return 14;
+  if (length <= 36) return 12;
+  return 10.5;
+}
+
+function managedCriterionHeaderLabel(criterion) {
+  const words = String(criterion?.name || "").trim().split(/\s+/).filter(Boolean);
+  const weight = `${managedGradeNumber(criterion?.weight)}%`;
+  if (!words.length) return weight;
+  if (words.length === 1) return `${escapeHtml(words[0])}<br>${weight}`;
+  const firstLine = escapeHtml(words.slice(0, -1).join(" "));
+  const secondLine = `${escapeHtml(words[words.length - 1])} ${weight}`;
+  return `${firstLine}<br>${secondLine}`;
+}
+
+function managedBlockCriteriaHeaderHtml(config) {
+  if (!config.configured) {
+    return '<span class="block-grade-setup-required">Evaluation setup required</span>';
+  }
+  const columns = config.criteria.length + 1;
+  return `
+    <span class="managed-block-criteria-grid" style="--criterion-columns:${columns}">
+      ${config.criteria.map((criterion) =>
+        `<span class="managed-block-label">${managedCriterionHeaderLabel(criterion)}</span>`
+      ).join("")}
+      <span class="managed-block-label managed-block-total">Total</span>
+    </span>
+  `;
+}
+
+function renderManagedBlockHeaders(blockNames, config) {
+  const criteria = managedBlockCriteriaHeaderHtml(config);
+  managedStudentsTableHeadRow.innerHTML = `
+    <th class="managed-student-column-header">Student</th>
+    ${blockNames.map((blockName) => `
+      <th class="managed-block-grade-header">
+        <span class="managed-block-title">${escapeHtml(blockName)}</span>
+        ${criteria}
+      </th>
+    `).join("")}
+  `;
+}
+
+function managedBlockGradeHtml(studentKey, student, blockName, config) {
+  if (!config.configured) {
+    return '<span class="block-grade-setup-required">Setup required</span>';
+  }
+
+  const result = calculateStudentBlockGrade({
+    studentKey,
+    student,
+    blockName,
+    config,
+    assignments: assignmentsCache,
+    submissions: assignmentSubmissionsCache
+  });
+  const columns = result.criteria.length + 1;
+
+  return `
+    <span class="managed-block-values-grid" style="--criterion-columns:${columns}">
+      ${result.criteria.map((criterion) =>
+        `<span class="managed-block-value">${managedGradeNumber(criterion.contribution)}%</span>`
+      ).join("")}
+      <span class="managed-block-value managed-block-total">${managedGradeNumber(result.total)}%</span>
+    </span>
+  `;
+}
+
+function managedFilteredStudents(groupName) {
+  const query = String(managedStudentSearch?.value || "").trim().toLocaleLowerCase();
+  return groupStudents(groupName).filter(([, student]) => {
+    if (!query) return true;
+    const searchable = [
+      managedDisplayName(student),
+      student?.nickname || "",
+      student?.studentNumber || "",
+      student?.id || ""
+    ].join(" ").toLocaleLowerCase();
+    return searchable.includes(query);
+  });
+}
+
 function rosterSelectionKey(kind, id) {
   return `${kind}:${id}`;
 }
@@ -866,7 +981,11 @@ function renderManagedStudents() {
     toggleRosterBtn.hidden = true;
     managedGroupStatus.textContent = "Select a group from the Groups list below.";
     pendingEnrollmentCount.textContent = "";
-    managedStudentsList.innerHTML = "";
+    pendingRequestsPanel.hidden = true;
+    pendingRequestsList.innerHTML = "";
+    managedStudentsTableHeadRow.innerHTML = '<th class="managed-student-column-header">Student</th>';
+    managedStudentsTableBody.innerHTML = '<tr><td>No enrolled students yet.</td></tr>';
+    managedStudentsCount.textContent = "0";
     selectedRosterActions.hidden = true;
     return;
   }
@@ -878,67 +997,75 @@ function renderManagedStudents() {
   rosterBody.hidden = rosterCollapsed;
 
   managedGroupName.textContent = groupName;
-  managedGroupStatus.textContent = rosterCollapsed
-    ? `${groupStudents(groupName).length} enrolled · click the group or arrow to expand`
-    : "Select a row to show the actions for that student or request.";
-
-  const pending = groupPendingRequests(groupName);
   const enrolled = groupStudents(groupName);
+  const pending = groupPendingRequests(groupName);
+  managedGroupStatus.textContent = rosterCollapsed
+    ? `${enrolled.length} enrolled · click the group or arrow to expand`
+    : "Student progress matches the Students page. Double click a row to open the student profile.";
   pendingEnrollmentCount.textContent = pending.length ? `${pending.length} pending` : "";
+  managedStudentsCount.textContent = String(enrolled.length);
 
   const visibleKeys = new Set([
     ...pending.map(([id]) => rosterSelectionKey("request", id)),
     ...enrolled.map(([id]) => rosterSelectionKey("student", id))
   ]);
-
   [...selectedRosterItems].forEach((key) => {
     if (!visibleKeys.has(key)) selectedRosterItems.delete(key);
   });
 
-  const pendingHtml = pending.map(([requestId, request]) => {
+  pendingRequestsPanel.hidden = pending.length === 0;
+  pendingRequestsList.innerHTML = pending.map(([requestId, request]) => {
     const key = rosterSelectionKey("request", requestId);
     return `
-      <div class="student-row pending student-grid ${selectedRosterItems.has(key) ? "selected" : ""}"
-        data-roster-kind="request" data-roster-id="${escapeHtml(requestId)}" data-selection-key="${escapeHtml(key)}"
-        title="Pending enrollment request">
-        <input class="roster-checkbox" type="checkbox" ${selectedRosterItems.has(key) ? "checked" : ""} aria-label="Select pending request">
-        <span class="student-cell student-name">${escapeHtml(request.fullName || request.name || "Pending student")}</span>
-        <span class="student-cell">${escapeHtml(request.nickname || "—")}</span>
-        <span class="student-cell">${escapeHtml(request.externalId || request.studentNumber || "—")}</span>
-        <span class="student-cell">${escapeHtml(groupName)}</span>
+      <div class="pending-request-row ${selectedRosterItems.has(key) ? "selected" : ""}"
+        data-selection-key="${escapeHtml(key)}" data-roster-kind="request" data-roster-id="${escapeHtml(requestId)}">
+        <input class="pending-request-checkbox" type="checkbox" ${selectedRosterItems.has(key) ? "checked" : ""} aria-label="Select pending request">
+        <span>${escapeHtml(request.fullName || request.name || "Pending student")}</span>
+        <span>${escapeHtml(request.nickname || "—")}</span>
+        <span>${escapeHtml(request.externalId || request.studentNumber || "—")}</span>
       </div>
     `;
   }).join("");
 
-  const enrolledHtml = enrolled.map(([studentKey, student]) => {
-    const key = rosterSelectionKey("student", studentKey);
-    return `
-      <div class="student-row enrolled student-grid ${selectedRosterItems.has(key) ? "selected" : ""}"
-        data-roster-kind="student" data-roster-id="${escapeHtml(studentKey)}" data-selection-key="${escapeHtml(key)}">
-        <input class="roster-checkbox" type="checkbox" ${selectedRosterItems.has(key) ? "checked" : ""} aria-label="Select enrolled student">
-        <span class="student-cell student-name">${escapeHtml(student.fullName || student.name || student.nickname || "Student")}</span>
-        <span class="student-cell">${escapeHtml(student.nickname || "—")}</span>
-        <span class="student-cell">${escapeHtml(student.studentNumber || "—")}</span>
-        <span class="student-cell">${escapeHtml(groupName)}</span>
-      </div>
-    `;
-  }).join("");
+  const config = groupEvaluationConfig(groupsCache[groupName] || {});
+  const blockNames = evaluationBlockNames(groupsCache[groupName] || {});
+  renderManagedBlockHeaders(blockNames, config);
 
-  managedStudentsList.innerHTML = pendingHtml + enrolledHtml ||
-    '<div class="student-list-empty">No enrolled students or pending requests yet.</div>';
+  const filtered = managedFilteredStudents(groupName);
+  const columnCount = 1 + blockNames.length;
+  managedStudentsTableBody.innerHTML = filtered.length
+    ? filtered.map(([studentKey, student]) => {
+        const selectionKey = rosterSelectionKey("student", studentKey);
+        const displayName = managedDisplayName(student);
+        return `
+          <tr class="managed-student-row ${student.activeNow ? "active-student" : ""} ${selectedRosterItems.has(selectionKey) ? "selected" : ""}"
+            data-selection-key="${escapeHtml(selectionKey)}" data-roster-kind="student" data-roster-id="${escapeHtml(studentKey)}">
+            <td class="managed-student-identity-cell">
+              <span class="managed-student-name" style="font-size:${managedStudentNameFontSize(displayName)}px" title="${escapeHtml(displayName)}">${escapeHtml(displayName)}</span>
+              <span class="managed-student-meta">
+                ${student.nickname ? `<span>${escapeHtml(student.nickname)}</span>` : ""}
+                ${student.studentNumber ? `<span>ID ${escapeHtml(student.studentNumber)}</span>` : ""}
+              </span>
+            </td>
+            ${blockNames.map((blockName) =>
+              `<td class="managed-block-grade-cell">${managedBlockGradeHtml(studentKey, student, blockName, config)}</td>`
+            ).join("")}
+          </tr>
+        `;
+      }).join("")
+    : `<tr><td colspan="${columnCount}">No students found for this group.</td></tr>`;
 
-  const visibleCheckboxes = [...managedStudentsList.querySelectorAll(".roster-checkbox")];
+  const pendingCheckboxes = [...pendingRequestsList.querySelectorAll(".pending-request-checkbox")];
   selectAllStudents.checked =
-    visibleCheckboxes.length > 0 && visibleCheckboxes.every((checkbox) => checkbox.checked);
+    pendingCheckboxes.length > 0 && pendingCheckboxes.every((checkbox) => checkbox.checked);
   selectAllStudents.indeterminate =
-    visibleCheckboxes.some((checkbox) => checkbox.checked) && !selectAllStudents.checked;
-  persistManagementState();
+    pendingCheckboxes.some((checkbox) => checkbox.checked) && !selectAllStudents.checked;
 
+  persistManagementState();
   renderRosterContextActions();
   renderEnrollmentLink();
   renderSelectedGroupActions();
 }
-
 function renderGroupsTable() {
   const groups = Object.keys(groupsCache || {})
     .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
@@ -1445,8 +1572,8 @@ createGroupBtn.addEventListener("click", async () => {
   rosterCollapsed = false;
   sessionStorage.setItem(WORKING_GROUP_KEY, groupName);
   loadGroupEditor(groupName);
-  evaluationEditorOpen = true;
   renderEvaluationEditorVisibility();
+  persistEvaluationPanelState();
   persistManagementState();
   renderManagedStudents();
   renderGroupsTable();
@@ -1460,6 +1587,7 @@ createGroupBtn.addEventListener("click", async () => {
 
 toggleEvaluationBtn.addEventListener("click", () => {
   evaluationEditorOpen = !evaluationEditorOpen;
+  persistEvaluationPanelState();
   persistManagementState();
   renderEvaluationEditorVisibility();
 });
@@ -1531,30 +1659,36 @@ toggleRosterBtn.addEventListener("click", () => {
   renderGroupsTable();
 });
 
-managedStudentsList.addEventListener("click", (event) => {
+pendingRequestsList.addEventListener("click", (event) => {
   const row = event.target.closest("[data-selection-key]");
   if (!row) return;
-
-  const checkbox = row.querySelector(".roster-checkbox");
+  const checkbox = row.querySelector(".pending-request-checkbox");
   if (event.target !== checkbox) checkbox.checked = !checkbox.checked;
-
   const key = String(row.dataset.selectionKey || "");
   if (checkbox.checked) selectedRosterItems.add(key);
   else selectedRosterItems.delete(key);
-
   persistManagementState();
   renderManagedStudents();
 });
 
-managedStudentsList.addEventListener("dblclick", (event) => {
-  if (event.target.closest("input,button,select,textarea")) return;
+managedStudentsTableBody.addEventListener("click", (event) => {
+  const row = event.target.closest('[data-roster-kind="student"]');
+  if (!row) return;
+  const key = String(row.dataset.selectionKey || "");
+  if (selectedRosterItems.has(key)) selectedRosterItems.delete(key);
+  else selectedRosterItems.add(key);
+  persistManagementState();
+  renderManagedStudents();
+});
+
+managedStudentsTableBody.addEventListener("dblclick", (event) => {
   const row = event.target.closest('[data-roster-kind="student"]');
   if (!row) return;
   openStudentRecord(String(row.dataset.rosterId || ""));
 });
 
 selectAllStudents.addEventListener("change", () => {
-  const rows = [...managedStudentsList.querySelectorAll("[data-selection-key]")];
+  const rows = [...pendingRequestsList.querySelectorAll("[data-selection-key]")];
   rows.forEach((row) => {
     const key = String(row.dataset.selectionKey || "");
     if (selectAllStudents.checked) selectedRosterItems.add(key);
@@ -1562,6 +1696,21 @@ selectAllStudents.addEventListener("change", () => {
   });
   persistManagementState();
   renderManagedStudents();
+});
+
+managedStudentSearchToggle.addEventListener("click", () => {
+  const opening = managedStudentSearchPanel.hidden;
+  managedStudentSearchPanel.hidden = !opening;
+  managedStudentSearchToggle.setAttribute("aria-expanded", String(opening));
+  if (opening) managedStudentSearch.focus();
+});
+
+managedStudentSearch.addEventListener("input", renderManagedStudents);
+
+openManagedBlockReportBtn.addEventListener("click", () => {
+  const group = selectedManagedGroup || "";
+  const query = group ? `?group=${encodeURIComponent(group)}` : "";
+  window.location.href = `teacher-block-report.html${query}`;
 });
 
 openSelectedStudentBtn.addEventListener("click", () => {
@@ -1788,11 +1937,13 @@ onValue(ref(db, "students"), (snapshot) => {
 onValue(ref(db, "assignments"), (snapshot) => {
   assignmentsCache = snapshot.val() || {};
   if (editingGroupName) applyEvaluationUnitFloor(editingGroupName);
+  renderManagedStudents();
 });
 
 onValue(ref(db, "assignmentSubmissions"), (snapshot) => {
   assignmentSubmissionsCache = snapshot.val() || {};
   if (editingGroupName) applyEvaluationUnitFloor(editingGroupName);
+  renderManagedStudents();
 });
 
 onValue(ref(db, "pointsLog"), (snapshot) => {
