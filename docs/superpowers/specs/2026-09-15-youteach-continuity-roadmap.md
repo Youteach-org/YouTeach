@@ -831,3 +831,15 @@ This supersedes any earlier flow that required **Save Group Settings**, **Set Ev
 - **Use Template** never relies solely on a pre-existing template-library record. Before opening, it scans all currently configured groups whose criteria are valid (named and totaling 100%), ensures each rubric exists as an independent template, then renders the popup.
 - Therefore a valid group configuration cannot be saved successfully yet remain invisible in **Use Template** merely because a prior template write/listener was missed.
 - The popup merges canonical templates and any readable legacy templates during migration; group identity is never shown or retained as template identity.
+
+
+### Teacher Students block-header criteria — 2026-09-21 (latest)
+
+- On `teacher-students.html`, evaluation criteria are contextual information for the block columns, not per-student content.
+- Each dynamic block column shows:
+  - the block title (`Block 1`, `Block 2`, etc.);
+  - directly beneath it, the selected Working Group's criterion names and weights.
+- The same criteria must **not** be repeated inside every student's block-grade cell.
+- A student's block cell shows only that student's resulting block grade (or setup-required state).
+- The separate top-level **Group Evaluation Criteria** summary card is removed to avoid duplicating the same information.
+- Changing Working Group updates both the dynamic block count and the criterion summary shown under every block heading.
