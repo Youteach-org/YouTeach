@@ -1,5 +1,26 @@
 # Live COG session bridge implementation plan
 
+> **Architecture ruling — 2026-09-21**
+>
+> YouTeach's current production architecture remains the one documented in
+> `docs/superpowers/specs/2026-09-15-youteach-continuity-roadmap.md`:
+> static frontend on Cloudflare Pages with Firebase Realtime Database as the
+> database/live-state layer. The existing Teacher and Student login flows from
+> current `main` must remain intact in this integration.
+>
+> The authentication-hardening/KV workstream (`YOUTEACH_AUTH`,
+> `/api/teacher-session`, `/api/student-session`, PBKDF2 credential store)
+> is a separate future milestone and MUST NOT be pulled into the Live COG
+> integration branch. COG may use short-lived bridge credentials signed by the
+> server secret after validating canonical Firebase session/student state, but
+> it must not replace YouTeach's current login/storage architecture.
+>
+> The abandoned branch `feature/live-cog-session-current-20260920` mixed the
+> two workstreams at commit `c5809591fd9c6dd04ca7d8193e3e50c46db50588`.
+> Do not reuse its auth-hardening files. Port only COG-specific behavior onto
+> `feature/live-cog-firebase-current-20260921`, which starts from current
+> `main` `4f40c9ca3b2bc944cd822e62f84c36b2566def6a`.
+
 Date: 2026-09-20
 Status: approved design, implementation pending
 
