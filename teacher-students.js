@@ -76,16 +76,42 @@ function studentNameParts(student) {
     : { givenNames: tokens.slice(0, -2).join(" "), lastNames: tokens.slice(-2).join(" "), fullName };
 }
 
+function studentOrderedFullName(student, { lastNamesFirst = false } = {}) {
+  const parts = studentNameParts(student);
+  const fullName = parts.fullName;
+  const lastNames = String(parts.lastNames || "").trim();
+  let givenNames = String(parts.givenNames || "").trim();
+
+  if (!lastNames) return fullName || givenNames;
+  if (!givenNames) return fullName || lastNames;
+
+  if (givenNames === fullName && fullName) {
+    const fullLower = fullName.toLocaleLowerCase();
+    const lastLower = lastNames.toLocaleLowerCase();
+    if (fullLower.endsWith(` ${lastLower}`)) {
+      givenNames = fullName.slice(0, -(lastNames.length + 1)).trim();
+    } else if (fullLower.startsWith(`${lastLower} `)) {
+      givenNames = fullName.slice(lastNames.length + 1).trim();
+    } else {
+      return fullName;
+    }
+  }
+
+  if (!givenNames) return fullName || lastNames;
+  return lastNamesFirst
+    ? `${lastNames} ${givenNames}`.trim()
+    : `${givenNames} ${lastNames}`.trim();
+}
+
 function studentDisplayMode() {
   const raw = String(groupsCache?.[selectedGroup]?.studentListDisplayMode || "name");
   return STUDENT_DISPLAY_MODES.includes(raw) ? raw : "name";
 }
 
 function studentPrimaryDisplay(student, mode) {
-  const parts = studentNameParts(student);
-  if (mode === "lastNames") return parts.lastNames || parts.fullName;
-  if (mode === "nickname") return String(student?.nickname || "").trim() || parts.givenNames || parts.fullName;
-  return parts.givenNames || parts.fullName;
+  if (mode === "lastNames") return studentOrderedFullName(student, { lastNamesFirst: true });
+  if (mode === "nickname") return String(student?.nickname || "").trim() || studentOrderedFullName(student);
+  return studentOrderedFullName(student);
 }
 
 function studentSecondaryDisplay(student, mode) {
@@ -94,7 +120,8 @@ function studentSecondaryDisplay(student, mode) {
   const id = String(student?.studentNumber || "").trim();
   const pieces = [];
   if (mode === "nickname") {
-    if (parts.fullName && parts.fullName !== nickname) pieces.push(parts.fullName);
+    const orderedName = studentOrderedFullName(student);
+    if (orderedName && orderedName !== nickname) pieces.push(orderedName);
   } else if (nickname) {
     pieces.push(nickname);
   }
@@ -103,7 +130,7 @@ function studentSecondaryDisplay(student, mode) {
 }
 
 function studentDisplayModeLabel(mode) {
-  if (mode === "lastNames") return "Last names";
+  if (mode === "lastNames") return "Last names first";
   if (mode === "nickname") return "Nickname";
   return "Name";
 }
