@@ -13,8 +13,8 @@
     .management-head-actions,.group-context-actions,.roster-context-actions,.template-actions,.group-form-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
     .criteria-editor{display:grid;gap:7px}
     .criteria-editor-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
-    .criterion-row{display:grid;grid-template-columns:minmax(170px,1.4fr) 80px 82px minmax(190px,1fr) auto;gap:7px;align-items:center;padding:7px;border:1px solid #dbe3ee;border-radius:8px;background:#f8fafc}
-    .criterion-row input,.criterion-row select{width:100%;min-width:0}
+    .criterion-row{display:grid;grid-template-columns:minmax(220px,1.7fr) 80px 82px auto;gap:7px;align-items:center;padding:7px;border:1px solid #dbe3ee;border-radius:8px;background:#f8fafc}
+    .criterion-row input{width:100%;min-width:0}
     .criterion-remove{background:#fff1f2;color:#be123c;border:1px solid #fecdd3}
     .evaluation-total{font-weight:900;font-size:13px}
     .evaluation-total.ok{color:#166534}.evaluation-total.bad{color:#b91c1c}
@@ -31,7 +31,7 @@
     .roster-context-actions .context-label{font-size:11px;font-weight:900;color:#1e3a8a;margin-right:auto}
     .external-id-editor{display:flex;gap:5px;align-items:center}
     .external-id-editor input{width:170px}
-    .student-grid{display:grid;grid-template-columns:34px 92px minmax(200px,1.5fr) minmax(120px,.8fr) minmax(140px,.8fr);align-items:center}
+    .student-grid{display:grid;grid-template-columns:34px minmax(220px,1.6fr) minmax(140px,.85fr) minmax(140px,.8fr) minmax(130px,.75fr);align-items:center}
     .student-list-head{margin-top:9px;padding:5px 8px;font-size:10px;font-weight:900;color:#64748b;text-transform:uppercase;border-bottom:1px solid #cbd5e1}
     .student-list{display:grid}
     .student-row{min-height:36px;padding:4px 8px;border-bottom:1px solid #e2e8f0;background:#fff;cursor:pointer;font-size:12px}
@@ -70,7 +70,7 @@
     @media(max-width:850px){
       .criterion-row{grid-template-columns:1fr}
       .enrollment-link-box{grid-template-columns:1fr}
-      .student-grid{grid-template-columns:30px 78px minmax(150px,1.2fr) minmax(100px,.7fr) minmax(110px,.7fr)}
+      .student-grid{grid-template-columns:30px minmax(150px,1.35fr) minmax(105px,.8fr) minmax(105px,.75fr) minmax(100px,.7fr)}
       .student-list-head,.student-row{font-size:10px}
     }
   </style>
@@ -170,10 +170,6 @@
                   <button id="copyEnrollmentLinkBtn" type="button" hidden>Copy Link</button>
                   <button id="openAddStudentModalBtn" type="button">Add Student</button>
                 </div>
-                <div class="student-toolbar-right">
-                  <label><input id="selectAllStudents" type="checkbox"> Select all</label>
-                  <span id="selectedStudentCount" class="status-text">0 selected</span>
-                </div>
               </div>
 
               <div id="enrollmentLinkBox" class="enrollment-link-box" hidden style="margin-top:8px;">
@@ -193,8 +189,9 @@
                 <button id="expelStudentBtn" type="button" hidden>Expel</button>
               </div>
 
-              <div class="student-list-head student-grid" aria-hidden="true">
-                <span></span><span>Status</span><span>Full Name</span><span>Nickname</span><span>External ID</span>
+              <div class="student-list-head student-grid">
+                <label title="Select or deselect all visible students"><input id="selectAllStudents" type="checkbox" aria-label="Select or deselect all visible students"></label>
+                <span>Full Name</span><span>Nickname</span><span>External ID</span><span>Group</span>
               </div>
               <div id="managedStudentsList" class="student-list"></div>
             </div>
@@ -288,7 +285,7 @@
     </div>
   </dialog>
 
-  <script type="module" src="teacher-enrollment.js?v=group-management-compact-20260920"></script>
+  <script type="module" src="teacher-enrollment.js?v=group-management-row-state-20260920"></script>
   <script defer src="shared-ui-fixes.js?v=titlebar-hamburger-20260916"></script>
 </body>
 </html>
