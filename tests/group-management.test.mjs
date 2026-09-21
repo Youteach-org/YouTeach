@@ -11,11 +11,14 @@ const js = readFileSync(join(root, 'teacher-enrollment.js'), 'utf8');
 const enrollHtml = readFileSync(join(root, 'student-enroll.html'), 'utf8');
 const enrollJs = readFileSync(join(root, 'student-enroll.js'), 'utf8');
 
-test('Group Management keeps one full-width editor and no standalone delete/add cards', () => {
+test('Group Management keeps its header and moves group editing into dialogs', () => {
   assert.match(html, /<title>YouTeach - Group Management<\/title>/);
   assert.match(html, /<h2>Group Management<\/h2>/);
-  assert.match(html, /id="groupEditorCard"/);
+  assert.match(html, /<dialog id="groupEditorDialog">/);
+  assert.match(html, /id="openCreateGroupDialogBtn"/);
+  assert.match(html, /id="openGroupEvaluationDialogBtn"/);
   assert.match(html, /id="enrolledStudentsSection"/);
+  assert.doesNotMatch(html, /id="groupEditorCard"/);
   assert.doesNotMatch(html, /<h3>Delete Group<\/h3>/);
   assert.doesNotMatch(html, /<h3>Add Student<\/h3>/);
 });
@@ -241,40 +244,33 @@ test('block reduction refreshes live grade evidence before saving a lower count'
 });
 
 
-test('Group Management remembers evaluation criteria expansion in a dedicated persistent preference', () => {
-  assert.match(html, /id="toggleEvaluationBtn"[^>]*>▸ Evaluation criteria<\/button>/);
-  assert.match(js, /EVALUATION_PANEL_STATE_KEY = "youteachEvaluationCriteriaOpen"/);
-  assert.match(js, /function readEvaluationPanelState/);
-  assert.match(js, /localStorage\.getItem\(EVALUATION_PANEL_STATE_KEY\)/);
-  assert.match(js, /localStorage\.setItem\(EVALUATION_PANEL_STATE_KEY, evaluationEditorOpen \? "open" : "closed"\)/);
-  assert.match(js, /persistEvaluationPanelState\(\)/);
-  assert.match(js, /▾ Evaluation criteria/);
-  assert.match(js, /▸ Evaluation criteria/);
-  assert.match(js, /setAttribute\("aria-expanded", String\(evaluationEditorOpen\)\)/);
-
-  const visibilityStart = js.indexOf('function renderEvaluationEditorVisibility');
-  const visibilityEnd = js.indexOf('function templateComparable', visibilityStart);
-  const visibilityBlock = js.slice(visibilityStart, visibilityEnd);
-  assert.doesNotMatch(visibilityBlock, /evaluationEditorOpen = true/);
-
-  const loadStart = js.indexOf('function loadGroupEditor');
-  const loadEnd = js.indexOf('async function refreshGradeEvidenceCaches', loadStart);
-  const loadBlock = js.slice(loadStart, loadEnd);
-  assert.doesNotMatch(loadBlock, /evaluationEditorOpen = false/);
-  assert.doesNotMatch(js, /Show Evaluation|Hide Evaluation|Set Evaluation/);
+test('Blocks and criteria open in the group editor popup instead of an inline expandable section', () => {
+  assert.match(html, /<dialog id="groupEditorDialog">/);
+  assert.match(html, /id="openGroupEvaluationDialogBtn"[^>]*>Blocks &amp; Criteria<\/button>/);
+  assert.match(js, /function openSelectedGroupEvaluationDialog/);
+  assert.match(js, /groupEditorDialog\.showModal\(\)/);
+  assert.match(js, /groupEditorTitle\.textContent = `Blocks & Criteria:/);
+  assert.doesNotMatch(html, /id="toggleEvaluationBtn"/);
+  assert.doesNotMatch(js, /EVALUATION_PANEL_STATE_KEY/);
 });
 
-
-test('Enrolled Students header has only title, active enrollment-link toggle, and collapse arrow', () => {
+test('Enrolled Students header keeps active enrollment link, Add Student, and collapse controls together', () => {
   assert.doesNotMatch(html, /id="managedGroupStatus"/);
   assert.doesNotMatch(html, /Managing <strong/);
   assert.doesNotMatch(html, /copyEnrollmentLinkBtn/);
-  assert.match(html, /id="createEnrollmentLinkBtn"[^>]*aria-expanded="false"/);
-  assert.match(html, /id="toggleRosterBtn"/);
-  assert.match(js, /"Active enrollment link"/);
+  const start = html.indexOf('<section class="panel-card full-width-card" id="enrolledStudentsSection">');
+  const end = html.indexOf('<div id="enrollmentControls"', start);
+  const header = html.slice(start, end);
+  assert.match(header, /id="createEnrollmentLinkBtn"[^>]*>Active enrollment link<\/button>/);
+  assert.match(header, /id="openAddStudentModalBtn"[^>]*>Add Student<\/button>/);
+  assert.match(header, /id="toggleRosterBtn"/);
+  assert.ok(header.indexOf('createEnrollmentLinkBtn') < header.indexOf('openAddStudentModalBtn'));
+  assert.ok(header.indexOf('openAddStudentModalBtn') < header.indexOf('toggleRosterBtn'));
+  assert.match(js, /createEnrollmentLinkBtn\.textContent = "Active enrollment link"/);
+  assert.match(js, /createEnrollmentLinkBtn\.setAttribute\("aria-pressed", String\(active\)\)/);
   assert.match(js, /enrollmentLinkExpanded = !enrollmentLinkExpanded/);
-  assert.match(js, /enrollmentLinkBox\.hidden = !\(active && enrollmentLinkExpanded\)/);
-  assert.match(js, /"Create enrollment link"/);
+  assert.match(js, /await createOrRotateEnrollmentLink\(\)/);
+  assert.doesNotMatch(js, /"Create enrollment link"/);
 });
 
 test('managed student identity mode is saved on the group and search remains field-independent', () => {
@@ -289,6 +285,9 @@ test('managed student identity mode is saved on the group and search remains fie
   assert.match(js, /student\?\.nickname/);
   assert.match(js, /student\?\.studentNumber/);
   assert.match(js, /student\?\.id/);
+  assert.match(js, /function managedOrderedFullName/);
+  assert.match(js, /managedOrderedFullName\(student, \{ lastNamesFirst: true \}\)/);
+  assert.doesNotMatch(js, /mode === "lastNames"\) return parts\.lastNames/);
 });
 
 test('managed student secondary metadata is one line under the primary identity', () => {
@@ -298,8 +297,15 @@ test('managed student secondary metadata is one line under the primary identity'
   assert.match(js, /<span class="managed-student-meta">\$\{escapeHtml\(secondary\)\}<\/span>/);
 });
 
-test('evaluation criteria preference is committed on every toggle and page exit', () => {
-  assert.match(js, /localStorage\.setItem\(EVALUATION_PANEL_STATE_KEY, evaluationEditorOpen \? "open" : "closed"\)/);
-  assert.match(js, /toggleEvaluationBtn\.addEventListener\("click"/);
-  assert.match(js, /window\.addEventListener\("pagehide", persistEvaluationPanelState\)/);
+test('Create Group is a popup with an explicit Cancel action and Add Student tabs expose selection state', () => {
+  assert.match(html, /id="openCreateGroupDialogBtn"[^>]*>\+ Create Group<\/button>/);
+  assert.match(html, /<dialog id="groupEditorDialog">/);
+  assert.match(html, /id="cancelGroupEditBtn"[^>]*>Cancel<\/button>/);
+  assert.match(js, /function prepareCreateGroupDialog/);
+  assert.match(js, /openCreateGroupDialogBtn\.addEventListener\("click", prepareCreateGroupDialog\)/);
+  assert.match(js, /cancelGroupEditBtn\.addEventListener\("click", \(\) => groupEditorDialog\.close\(\)\)/);
+  assert.match(html, /class="modal-tab active" aria-selected="true">Manual<\/button>/);
+  assert.match(html, /\.modal-tabs \.modal-tab\.active::before\{content:"✓ "/);
+  assert.match(js, /button\.setAttribute\("aria-selected", String\(isActive\)\)/);
 });
+
