@@ -2019,7 +2019,7 @@ async function clearRequestedGroupEvaluationOnce() {
       }
     };
 
-    if (selectedManagedGroup === groupName) {
+    if (!creatingGroup && selectedManagedGroup === groupName) {
       loadGroupEditor(groupName, { preserveView: true });
     }
 
