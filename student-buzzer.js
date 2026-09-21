@@ -123,8 +123,9 @@ function activeLiveGameForStudent() {
 function renderLiveGameCard() {
   if (!liveGameCard || !joinLiveGameBtn || !liveGameName) return;
   const connectedGame = activeLiveGameForStudent();
-  liveGameCard.hidden = !connectedGame;
-  if (!connectedGame) return;
+  const buzzerNativeGame = connectedGame?.gameId === "100-students-said";
+  liveGameCard.hidden = !connectedGame || buzzerNativeGame;
+  if (!connectedGame || buzzerNativeGame) return;
 
   liveGameName.textContent = connectedGame.gameName || "Classroom Online Game";
   const lastJoined = localStorage.getItem("youteachLastLiveGameSession") || "";
