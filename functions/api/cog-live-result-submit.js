@@ -23,21 +23,38 @@ function finiteNumber(value, { min = -Infinity, max = Infinity, nullable = false
 
 function cleanMetrics(raw) {
   const source = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
-  const metric = (name, options = {}) => {
-    const value = finiteNumber(source[name], options);
-    return value == null && !options.nullable ? 0 : value;
+  const output = {};
+  const numericFields = {
+    correct: { min: 0, max: 100000 },
+    errors: { min: 0, max: 100000 },
+    grammarErrors: { min: 0, max: 100000 },
+    obstacleHits: { min: 0, max: 100000 },
+    bestStreak: { min: 0, max: 100000 },
+    timeMs: { min: 0, max: 24 * 60 * 60 * 1000 },
+    momentum: { min: 0, max: 100 },
+    level: { min: 0, max: 1000 },
+    supportMeter: { min: 0, max: 100 },
+    streak: { min: 0, max: 100000 },
+    storiesCompleted: { min: 0, max: 10000 },
+    translationAttempts: { min: 0, max: 10000 },
+    score: { min: 0, max: 100000000 },
+    attempts: { min: 0, max: 1000000 },
+    bestCombo: { min: 0, max: 1000000 }
   };
-  return {
-    correct: metric("correct", { min: 0, max: 100000 }),
-    grammarErrors: metric("grammarErrors", { min: 0, max: 100000 }),
-    obstacleHits: metric("obstacleHits", { min: 0, max: 100000 }),
-    bestStreak: metric("bestStreak", { min: 0, max: 100000 }),
-    timeMs: metric("timeMs", { min: 0, max: 24 * 60 * 60 * 1000 }),
-    momentum: metric("momentum", { min: 0, max: 100 }),
-    level: metric("level", { min: 0, max: 1000 }),
-    mode: String(source.mode || "").trim().slice(0, 80),
-    difficulty: String(source.difficulty || "").trim().slice(0, 40)
-  };
+
+  for (const [name, limits] of Object.entries(numericFields)) {
+    if (!Object.prototype.hasOwnProperty.call(source, name)) continue;
+    const value = finiteNumber(source[name], limits);
+    if (value != null) output[name] = value;
+  }
+
+  for (const [name, maxLength] of [["mode", 80], ["difficulty", 40]]) {
+    if (!Object.prototype.hasOwnProperty.call(source, name)) continue;
+    const value = String(source[name] || "").trim().slice(0, maxLength);
+    if (value) output[name] = value;
+  }
+
+  return output;
 }
 
 function normalizeResult(raw) {
