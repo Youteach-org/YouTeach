@@ -22,7 +22,8 @@
     .setup-required{font-weight:800;color:#b45309}
     .collapse-btn{min-width:38px;padding:6px 10px;font-size:17px;line-height:1}
     .enrolled-head-actions{display:flex;align-items:center;gap:8px;margin-left:auto}
-    .active-enrollment-link-btn.active{background:#dcfce7;color:#166534;border:1px solid #86efac}
+    .active-enrollment-link-btn{background:#fff;color:#334155;border:1px solid #cbd5e1}
+    .active-enrollment-link-btn.active{background:#dcfce7;color:#166534;border-color:#86efac;box-shadow:inset 0 0 0 1px #86efac}
     .enrollment-link-box{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin-top:8px}
     .enrollment-link-box input{width:100%}
     .student-toolbar{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;margin-top:9px}
@@ -82,7 +83,9 @@
     .modal-head h3{margin:0}
     .modal-close{background:#e2e8f0;color:#0f172a}
     .modal-tabs{display:flex;gap:6px;flex-wrap:wrap}
-    .modal-tabs button.active{background:#2563eb;color:white}
+    .modal-tabs .modal-tab{background:#fff;color:#334155;border:1px solid #cbd5e1;box-shadow:none}
+    .modal-tabs .modal-tab.active{background:#2563eb;color:#fff;border-color:#1d4ed8;box-shadow:0 0 0 2px rgba(37,99,235,.18);font-weight:900}
+    .modal-tabs .modal-tab.active::before{content:"✓ ";font-weight:900}
     .modal-pane{display:grid;gap:10px}
     .template-list{display:grid;border:1px solid #dbe3ee;border-radius:10px;overflow:auto;max-height:440px}
     .template-row{display:flex;gap:10px;align-items:center;padding:9px 10px;border-bottom:1px solid #e2e8f0;cursor:pointer;background:#fff;white-space:nowrap;min-width:max-content}
@@ -130,50 +133,12 @@
       </header>
 
       <div class="management-stack">
-        <section class="panel-card full-width-card" id="groupEditorCard">
-          <div class="management-head">
-            <div>
-              <h3 id="groupEditorTitle">Create Group</h3>
-              <div id="groupEditorSubtitle" class="status-text">Create a new group and define its evaluation setup.</div>
-            </div>
-            <div class="management-head-actions">
-              <button id="toggleEvaluationBtn" type="button" hidden aria-expanded="false">▸ Evaluation criteria</button>
-              <button id="cancelGroupEditBtn" type="button" hidden>Create New Group</button>
-            </div>
-          </div>
-
-          <div class="stack-controls" style="margin-top:10px;">
-            <input id="groupNameInput" placeholder="Group name">
-
-            <div id="evaluationEditor">
-              <label for="evaluationUnitCountInput"><strong>Evaluation blocks / units</strong></label>
-              <input id="evaluationUnitCountInput" type="number" min="1" max="10" step="1" value="3">
-
-              <div class="criteria-editor-head">
-                <strong>Evaluation criteria</strong>
-                <div class="management-head-actions">
-                  <button id="useEvaluationTemplateBtn" type="button">Use Template</button>
-                  <button id="addEvaluationCriterionBtn" type="button">+ Add Criterion</button>
-                </div>
-              </div>
-
-              <div id="evaluationCriteriaRows" class="criteria-editor"></div>
-              <div id="evaluationWeightTotal" class="evaluation-total bad">0 / 100%</div>
-
-            </div>
-
-            <div class="group-form-actions">
-              <button id="createGroupBtn">Create Group</button>
-            </div>
-            <div id="groupEvaluationStatus" class="status-text"></div>
-          </div>
-        </section>
-
         <section class="panel-card full-width-card" id="enrolledStudentsSection">
           <div class="management-head">
             <h3>Enrolled Students</h3>
             <div class="enrolled-head-actions">
-              <button id="createEnrollmentLinkBtn" class="active-enrollment-link-btn" type="button" hidden aria-expanded="false">Create enrollment link</button>
+              <button id="createEnrollmentLinkBtn" class="active-enrollment-link-btn" type="button" hidden aria-expanded="false" aria-pressed="false">Active enrollment link</button>
+              <button id="openAddStudentModalBtn" type="button" hidden>Add Student</button>
               <button id="toggleRosterBtn" class="collapse-btn" type="button" hidden aria-expanded="false" title="Expand or collapse students">▸</button>
             </div>
           </div>
@@ -183,12 +148,6 @@
               <div id="enrollmentLinkBox" class="enrollment-link-box" hidden>
                 <input id="enrollmentLinkInput" readonly aria-readonly="true">
                 <button id="rotateEnrollmentLinkBtn" type="button">Rotate link</button>
-              </div>
-
-              <div class="student-toolbar">
-                <div class="student-toolbar-left">
-                  <button id="openAddStudentModalBtn" type="button">Add Student</button>
-                </div>
               </div>
 
               <div id="selectedRosterActions" class="roster-context-actions" hidden>
@@ -244,10 +203,14 @@
               <h3>Groups</h3>
               <div class="status-text">Select a group to manage it. Select it again to collapse its student list.</div>
             </div>
+            <div class="management-head-actions">
+              <button id="openCreateGroupDialogBtn" type="button">+ Create Group</button>
+            </div>
           </div>
 
           <div id="selectedGroupActions" class="group-context-actions" hidden>
             <strong id="selectedGroupActionLabel"></strong>
+            <button id="openGroupEvaluationDialogBtn" type="button">Blocks &amp; Criteria</button>
             <button id="deleteSelectedGroupBtn" class="delete-group-btn" type="button">Delete Group</button>
           </div>
 
@@ -271,6 +234,44 @@
       </div>
     </main>
   </div>
+
+  <dialog id="groupEditorDialog">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <h3 id="groupEditorTitle">Create Group</h3>
+          <div id="groupEditorSubtitle" class="status-text">Create a new group and define its evaluation setup.</div>
+        </div>
+      </div>
+
+      <div class="stack-controls">
+        <label for="groupNameInput"><strong>Group name</strong></label>
+        <input id="groupNameInput" placeholder="Group name">
+
+        <div id="evaluationEditor">
+          <label for="evaluationUnitCountInput"><strong>Evaluation blocks / units</strong></label>
+          <input id="evaluationUnitCountInput" type="number" min="1" max="10" step="1" value="3">
+
+          <div class="criteria-editor-head">
+            <strong>Evaluation criteria</strong>
+            <div class="management-head-actions">
+              <button id="useEvaluationTemplateBtn" type="button">Use Template</button>
+              <button id="addEvaluationCriterionBtn" type="button">+ Add Criterion</button>
+            </div>
+          </div>
+
+          <div id="evaluationCriteriaRows" class="criteria-editor"></div>
+          <div id="evaluationWeightTotal" class="evaluation-total bad">0 / 100%</div>
+        </div>
+
+        <div class="group-form-actions">
+          <button id="cancelGroupEditBtn" class="modal-close" type="button">Cancel</button>
+          <button id="createGroupBtn" type="button">Create Group</button>
+        </div>
+        <div id="groupEvaluationStatus" class="status-text"></div>
+      </div>
+    </div>
+  </dialog>
 
   <dialog id="evaluationTemplateDialog">
     <div class="modal-card">
@@ -299,9 +300,9 @@
       </div>
 
       <div class="modal-tabs">
-        <button id="manualStudentTabBtn" type="button" class="active">Manual</button>
-        <button id="csvStudentTabBtn" type="button">CSV</button>
-        <button id="pasteStudentTabBtn" type="button">Paste List</button>
+        <button id="manualStudentTabBtn" type="button" class="modal-tab active" aria-selected="true">Manual</button>
+        <button id="csvStudentTabBtn" type="button" class="modal-tab" aria-selected="false">CSV</button>
+        <button id="pasteStudentTabBtn" type="button" class="modal-tab" aria-selected="false">Paste List</button>
       </div>
 
       <div id="manualStudentPane" class="modal-pane">
@@ -325,7 +326,7 @@
     </div>
   </dialog>
 
-  <script type="module" src="teacher-enrollment.js?v=management-display-enrollment-toggle-20260921"></script>
+  <script type="module" src="teacher-enrollment.js?v=management-dialogs-lastnamefull-20260921"></script>
   <script defer src="shared-ui-fixes.js?v=titlebar-hamburger-20260916"></script>
 </body>
 </html>
