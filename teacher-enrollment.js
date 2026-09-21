@@ -646,13 +646,47 @@ function loadGroupEditor(groupName, { preserveView = false } = {}) {
 }
 
 
+async function refreshGradeEvidenceCaches() {
+  const [studentsSnapshot, assignmentsSnapshot, submissionsSnapshot, pointsLogSnapshot] = await Promise.all([
+    get(ref(db, "students")),
+    get(ref(db, "assignments")),
+    get(ref(db, "assignmentSubmissions")),
+    get(ref(db, "pointsLog"))
+  ]);
+
+  studentsCache = studentsSnapshot.val() || {};
+  assignmentsCache = assignmentsSnapshot.val() || {};
+  assignmentSubmissionsCache = submissionsSnapshot.val() || {};
+  pointsLogCache = pointsLogSnapshot.val() || {};
+}
+
 async function saveExistingGroupEvaluation() {
   const groupName = editingGroupName;
   if (!groupName || !groupsCache[groupName]) return;
 
   const version = ++evaluationAutosaveVersion;
-  if (!applyEvaluationUnitFloor(groupName, { announce: true })) return;
-  const evaluationUnitCount = normalizeEvaluationUnitCount(evaluationUnitCountInput.value, 3);
+  const storedUnitCount = groupEvaluationConfig(groupsCache[groupName]).unitCount;
+  let evaluationUnitCount = normalizeEvaluationUnitCount(evaluationUnitCountInput.value, 3);
+
+  if (evaluationUnitCount < storedUnitCount) {
+    groupEvaluationStatus.textContent = "Checking recorded grades before reducing blocks…";
+    groupEvaluationStatus.className = "status-text";
+    try {
+      await refreshGradeEvidenceCaches();
+    } catch (error) {
+      console.error("Could not refresh grade evidence:", error);
+      groupEvaluationStatus.textContent = "Could not verify existing grades. Block count was not reduced.";
+      groupEvaluationStatus.className = "status-text bad";
+      evaluationUnitCountInput.value = String(storedUnitCount);
+      return;
+    }
+    if (version !== evaluationAutosaveVersion) return;
+    if (!applyEvaluationUnitFloor(groupName, { announce: true })) return;
+    evaluationUnitCount = normalizeEvaluationUnitCount(evaluationUnitCountInput.value, storedUnitCount);
+  } else if (!applyEvaluationUnitFloor(groupName, { announce: true })) {
+    return;
+  }
+
   const evaluationCriteria = criteriaFromForm();
   const total = evaluationWeightTotal(evaluationCriteria);
   const allNamed = evaluationCriteria.every((criterion) => Boolean(String(criterion.name || "").trim()));
