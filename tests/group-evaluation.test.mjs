@@ -307,3 +307,19 @@ test('Group Management grade matrix mirrors Students grade calculation semantics
   assert.match(enrollmentJs, /student\.activeNow \? "active-student"/);
   assert.match(enrollmentJs, /managedStudentNameFontSize/);
 });
+
+
+test('Students honors the group-level primary identity mode while search covers all identity fields', () => {
+  assert.match(studentsHtml, /id="studentDisplayModeBtn"/);
+  assert.match(studentsJs, /STUDENT_DISPLAY_MODES = \["name", "lastNames", "nickname"\]/);
+  assert.match(studentsJs, /studentListDisplayMode/);
+  assert.match(studentsJs, /studentNameParts/);
+  assert.match(studentsJs, /parts\.fullName/);
+  assert.match(studentsJs, /parts\.givenNames/);
+  assert.match(studentsJs, /parts\.lastNames/);
+  assert.match(studentsJs, /student\.nickname/);
+  assert.match(studentsJs, /student\.studentNumber/);
+  assert.match(studentsJs, /student\.id/);
+  assert.match(studentsJs, /studentSecondaryDisplay/);
+  assert.match(studentsJs, /pieces\.join\(" · "\)/);
+});
