@@ -34,7 +34,6 @@ const evaluationEditor = document.getElementById("evaluationEditor");
 const toggleEvaluationBtn = document.getElementById("toggleEvaluationBtn");
 const cancelGroupEditBtn = document.getElementById("cancelGroupEditBtn");
 const evaluationUnitCountInput = document.getElementById("evaluationUnitCountInput");
-const evaluationTemplateSelect = document.getElementById("evaluationTemplateSelect");
 const useEvaluationTemplateBtn = document.getElementById("useEvaluationTemplateBtn");
 const saveEvaluationTemplateBtn = document.getElementById("saveEvaluationTemplateBtn");
 const addEvaluationCriterionBtn = document.getElementById("addEvaluationCriterionBtn");
@@ -43,7 +42,14 @@ const evaluationWeightTotalLabel = document.getElementById("evaluationWeightTota
 const groupEvaluationStatus = document.getElementById("groupEvaluationStatus");
 const createGroupBtn = document.getElementById("createGroupBtn");
 
+const evaluationTemplateDialog = document.getElementById("evaluationTemplateDialog");
+const closeEvaluationTemplateDialogBtn = document.getElementById("closeEvaluationTemplateDialogBtn");
+const evaluationTemplateList = document.getElementById("evaluationTemplateList");
+const useSelectedEvaluationTemplateBtn = document.getElementById("useSelectedEvaluationTemplateBtn");
+
 const enrollmentControls = document.getElementById("enrollmentControls");
+const rosterBody = document.getElementById("rosterBody");
+const toggleRosterBtn = document.getElementById("toggleRosterBtn");
 const managedGroupStatus = document.getElementById("managedGroupStatus");
 const managedGroupName = document.getElementById("managedGroupName");
 const pendingEnrollmentCount = document.getElementById("pendingEnrollmentCount");
@@ -56,12 +62,21 @@ const enrollmentLinkStatus = document.getElementById("enrollmentLinkStatus");
 const openAddStudentModalBtn = document.getElementById("openAddStudentModalBtn");
 const selectAllStudents = document.getElementById("selectAllStudents");
 const selectedStudentCount = document.getElementById("selectedStudentCount");
+const selectedRosterActions = document.getElementById("selectedRosterActions");
+const selectedRosterLabel = document.getElementById("selectedRosterLabel");
+const openSelectedStudentBtn = document.getElementById("openSelectedStudentBtn");
+const externalIdEditor = document.getElementById("externalIdEditor");
+const selectedExternalIdInput = document.getElementById("selectedExternalIdInput");
+const saveExternalIdBtn = document.getElementById("saveExternalIdBtn");
 const approveEnrollmentBtn = document.getElementById("approveEnrollmentBtn");
 const denyEnrollmentBtn = document.getElementById("denyEnrollmentBtn");
 const expelStudentBtn = document.getElementById("expelStudentBtn");
 const managedStudentsList = document.getElementById("managedStudentsList");
 
 const groupsTableBody = document.getElementById("groupsTableBody");
+const selectedGroupActions = document.getElementById("selectedGroupActions");
+const selectedGroupActionLabel = document.getElementById("selectedGroupActionLabel");
+const deleteSelectedGroupBtn = document.getElementById("deleteSelectedGroupBtn");
 
 const addStudentDialog = document.getElementById("addStudentDialog");
 const addStudentGroupLabel = document.getElementById("addStudentGroupLabel");
@@ -93,6 +108,11 @@ let selectedManagedGroup = "";
 let editingGroupName = "";
 let pendingReportSettings = null;
 let evaluationEditorOpen = true;
+let rosterCollapsed = true;
+let selectedTemplateId = "";
+let groupsLoaded = false;
+let templatesLoaded = false;
+let harvestingTemplates = false;
 const selectedRosterItems = new Set();
 
 function escapeHtml(value) {
@@ -193,71 +213,185 @@ function renderEvaluationEditorVisibility() {
     : (config.configured ? "Edit Evaluation" : "Set Evaluation");
 }
 
-function configuredGroupTemplateOptions() {
-  return Object.entries(groupsCache || {})
-    .map(([groupName, group]) => ({ groupName, group, config: groupEvaluationConfig(group) }))
-    .filter(({ config }) => config.configured)
-    .sort((a, b) => a.groupName.localeCompare(b.groupName, undefined, { sensitivity: "base" }))
-    .map(({ groupName }) =>
-      `<option value="group:${escapeHtml(groupName)}">From group: ${escapeHtml(groupName)}</option>`
-    )
-    .join("");
+function reusableReportSettings(value) {
+  if (!value || typeof value !== "object") return null;
+  const result = {
+    title: String(value.title || "").trim(),
+    organization: String(value.organization || "").trim(),
+    department: String(value.department || "").trim(),
+    period: String(value.period || "").trim(),
+    courseProgram: String(value.courseProgram || "").trim(),
+    parallels: String(value.parallels || "").trim(),
+    includeSignature: value.includeSignature !== false
+  };
+  return Object.values(result).some((item) => item !== "" && item !== true) ? result : null;
 }
 
-function renderEvaluationTemplateOptions() {
-  const previous = evaluationTemplateSelect.value;
+function templateComparable({ evaluationUnitCount, evaluationCriteria, reportSettings }) {
+  const criteria = normalizeEvaluationCriteria(evaluationCriteria || []).map((criterion) => ({
+    name: String(criterion.name || "").trim(),
+    shortLabel: String(criterion.shortLabel || "").trim(),
+    weight: Number(criterion.weight || 0),
+    source: String(criterion.source || "manual"),
+    order: Number(criterion.order || 0)
+  }));
 
-  const savedOptions = Object.entries(evaluationTemplatesCache || {})
-    .filter(([, template]) => template && typeof template === "object")
-    .sort((a, b) => String(a[1]?.name || "").localeCompare(String(b[1]?.name || "")))
-    .map(([id, template]) =>
-      `<option value="saved:${escapeHtml(id)}">Saved: ${escapeHtml(template.name || "Evaluation template")}</option>`
-    )
-    .join("");
+  return {
+    evaluationUnitCount: normalizeEvaluationUnitCount(evaluationUnitCount, 3),
+    criteria,
+    reportSettings: reusableReportSettings(reportSettings)
+  };
+}
 
-  evaluationTemplateSelect.innerHTML = `
-    <option value="">Start with custom criteria</option>
-    ${configuredGroupTemplateOptions()}
-    ${savedOptions}
-  `;
+function templateSignature(value) {
+  return JSON.stringify(templateComparable(value));
+}
 
-  if ([...evaluationTemplateSelect.options].some((option) => option.value === previous)) {
-    evaluationTemplateSelect.value = previous;
+function automaticTemplateName(criteria = []) {
+  const text = normalizeEvaluationCriteria(criteria)
+    .map((criterion) => `${criterion.name} ${criterion.weight}%`)
+    .join(" · ");
+  return (text || "Evaluation setup").slice(0, 140);
+}
+
+function equivalentTemplateId(setup) {
+  const signature = templateSignature(setup);
+  return Object.entries(evaluationTemplatesCache || {}).find(([, template]) =>
+    String(template?.signature || templateSignature(template)) === signature
+  )?.[0] || "";
+}
+
+async function ensureIndependentTemplate({
+  evaluationUnitCount,
+  evaluationCriteria,
+  reportSettings = null,
+  name = "",
+  renameExisting = false
+}) {
+  const criteria = normalizeEvaluationCriteria(evaluationCriteria || []);
+  if (!criteria.length || Math.abs(evaluationWeightTotal(criteria) - 100) >= 0.01) return "";
+
+  const setup = {
+    evaluationUnitCount: normalizeEvaluationUnitCount(evaluationUnitCount, 3),
+    evaluationCriteria: criteria,
+    reportSettings: reusableReportSettings(reportSettings)
+  };
+  const signature = templateSignature(setup);
+  const existingId = equivalentTemplateId(setup);
+
+  if (existingId) {
+    if (renameExisting && name && evaluationTemplatesCache?.[existingId]?.name !== name) {
+      await update(ref(db, `groupEvaluationTemplates/${existingId}`), {
+        name,
+        signature,
+        updatedAt: Date.now()
+      });
+      evaluationTemplatesCache[existingId] = {
+        ...evaluationTemplatesCache[existingId],
+        name,
+        signature,
+        updatedAt: Date.now()
+      };
+    }
+    return existingId;
+  }
+
+  const target = push(ref(db, "groupEvaluationTemplates"));
+  const now = Date.now();
+  const record = {
+    name: name || automaticTemplateName(criteria),
+    evaluationUnitCount: setup.evaluationUnitCount,
+    evaluationCriteria: criteriaToFirebaseObject(criteria),
+    reportSettings: setup.reportSettings,
+    signature,
+    createdAt: now,
+    updatedAt: now,
+    createdBy: getTeacherName()
+  };
+
+  await set(target, record);
+  evaluationTemplatesCache[target.key] = record;
+  return target.key;
+}
+
+async function harvestConfiguredGroupsToTemplates() {
+  if (!groupsLoaded || !templatesLoaded || harvestingTemplates) return;
+  harvestingTemplates = true;
+
+  try {
+    for (const group of Object.values(groupsCache || {})) {
+      const config = groupEvaluationConfig(group);
+      if (!config.configured) continue;
+
+      await ensureIndependentTemplate({
+        evaluationUnitCount: config.unitCount,
+        evaluationCriteria: config.criteria,
+        reportSettings: group.reportSettings || null
+      });
+    }
+    renderEvaluationTemplateList();
+  } finally {
+    harvestingTemplates = false;
   }
 }
 
-function selectedEvaluationTemplate() {
-  const value = String(evaluationTemplateSelect.value || "");
+function renderEvaluationTemplateList() {
+  const entries = Object.entries(evaluationTemplatesCache || {})
+    .filter(([, template]) => groupEvaluationConfig(template).configured)
+    .sort((a, b) =>
+      Number(b[1]?.updatedAt || b[1]?.createdAt || 0) - Number(a[1]?.updatedAt || a[1]?.createdAt || 0) ||
+      String(a[1]?.name || "").localeCompare(String(b[1]?.name || ""))
+    );
 
-  if (value.startsWith("group:")) {
-    const groupName = value.slice(6);
-    const source = groupsCache[groupName];
-    if (!source) return null;
-    return {
-      name: groupName,
-      evaluationUnitCount: source.evaluationUnitCount,
-      evaluationCriteria: source.evaluationCriteria,
-      reportSettings: source.reportSettings || null
-    };
+  if (!entries.length) {
+    selectedTemplateId = "";
+    evaluationTemplateList.innerHTML =
+      '<div class="student-list-empty">No reusable evaluation templates yet.</div>';
+    useSelectedEvaluationTemplateBtn.disabled = true;
+    return;
   }
 
-  if (value.startsWith("saved:")) {
-    return evaluationTemplatesCache[value.slice(6)] || null;
-  }
+  if (!entries.some(([id]) => id === selectedTemplateId)) selectedTemplateId = "";
 
-  return null;
+  evaluationTemplateList.innerHTML = entries.map(([id, template]) => {
+    const config = groupEvaluationConfig(template);
+    const summary = config.criteria
+      .map((criterion) => `${criterion.name} ${criterion.weight}%`)
+      .join(" · ");
+
+    return `
+      <div class="template-row ${id === selectedTemplateId ? "selected" : ""}"
+        data-template-id="${escapeHtml(id)}">
+        <input type="radio" name="evaluation-template-choice" value="${escapeHtml(id)}"
+          ${id === selectedTemplateId ? "checked" : ""} aria-label="Select template">
+        <div>
+          <div class="template-name">${escapeHtml(template.name || automaticTemplateName(config.criteria))}</div>
+          <div class="template-meta">${config.unitCount} block(s) · ${escapeHtml(summary)}</div>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  useSelectedEvaluationTemplateBtn.disabled = !selectedTemplateId;
+}
+
+function openEvaluationTemplateDialog() {
+  selectedTemplateId = "";
+  renderEvaluationTemplateList();
+  evaluationTemplateDialog.showModal();
 }
 
 function applyEvaluationTemplate(template) {
   if (!template) return;
-  evaluationUnitCountInput.value = String(normalizeEvaluationUnitCount(template.evaluationUnitCount, 3));
-  setCriteriaEditor(template.evaluationCriteria || []);
+  const config = groupEvaluationConfig(template);
+  evaluationUnitCountInput.value = String(config.unitCount);
+  setCriteriaEditor(config.criteria);
   pendingReportSettings = template.reportSettings && typeof template.reportSettings === "object"
     ? { ...template.reportSettings }
     : null;
   evaluationEditorOpen = true;
   renderEvaluationEditorVisibility();
-  groupEvaluationStatus.textContent = `Loaded template: ${template.name || "Evaluation template"}.`;
+  groupEvaluationStatus.textContent = `Loaded template: ${template.name || "Evaluation setup"}.`;
   groupEvaluationStatus.className = "status-text ok";
 }
 
@@ -271,26 +405,28 @@ async function saveCurrentEvaluationAsTemplate() {
     return;
   }
 
-  const suggested = editingGroupName ? `${editingGroupName} evaluation` : "";
+  const suggested = automaticTemplateName(criteria);
   const name = String(prompt("Template name:", suggested) || "").trim();
   if (!name) return;
 
-  const target = push(ref(db, "groupEvaluationTemplates"));
-  const now = Date.now();
-  await set(target, {
-    name,
+  const id = await ensureIndependentTemplate({
     evaluationUnitCount: normalizeEvaluationUnitCount(evaluationUnitCountInput.value, 3),
-    evaluationCriteria: criteriaToFirebaseObject(criteria),
+    evaluationCriteria: criteria,
     reportSettings: editingGroupName
-      ? (groupsCache?.[editingGroupName]?.reportSettings || null)
+      ? (groupsCache?.[editingGroupName]?.reportSettings || pendingReportSettings)
       : pendingReportSettings,
-    createdAt: now,
-    updatedAt: now,
-    createdBy: getTeacherName()
+    name,
+    renameExisting: true
   });
 
-  groupEvaluationStatus.textContent = `Template saved: ${name}.`;
-  groupEvaluationStatus.className = "status-text ok";
+  groupEvaluationStatus.textContent = id ? `Template ready: ${name}.` : "Template could not be saved.";
+  groupEvaluationStatus.className = id ? "status-text ok" : "status-text bad";
+}
+
+function renderSelectedGroupActions() {
+  const hasGroup = Boolean(selectedManagedGroup && groupsCache[selectedManagedGroup]);
+  selectedGroupActions.hidden = !hasGroup;
+  selectedGroupActionLabel.textContent = hasGroup ? `Selected: ${selectedManagedGroup}` : "";
 }
 
 function resetGroupForm() {
@@ -298,13 +434,13 @@ function resetGroupForm() {
   selectedManagedGroup = "";
   sessionStorage.removeItem(WORKING_GROUP_KEY);
   selectedRosterItems.clear();
+  rosterCollapsed = true;
 
   groupEditorTitle.textContent = "Create Group";
   groupEditorSubtitle.textContent = "Create a new group and define its evaluation setup.";
   groupNameInput.disabled = false;
   groupNameInput.value = "";
   evaluationUnitCountInput.value = "3";
-  evaluationTemplateSelect.value = "";
   pendingReportSettings = null;
   setCriteriaEditor([]);
   createGroupBtn.textContent = "Create Group";
@@ -312,27 +448,24 @@ function resetGroupForm() {
   evaluationEditorOpen = true;
   groupEvaluationStatus.textContent = "";
   groupEvaluationStatus.className = "status-text";
+
   renderEvaluationEditorVisibility();
   renderManagedStudents();
   renderGroupsTable();
+  renderSelectedGroupActions();
 }
 
-function manageGroup(groupName) {
+function loadGroupEditor(groupName) {
   const group = groupsCache[groupName];
   if (!group) return;
 
   const config = groupEvaluationConfig(group);
-  selectedManagedGroup = groupName;
   editingGroupName = groupName;
-  sessionStorage.setItem(WORKING_GROUP_KEY, groupName);
-  selectedRosterItems.clear();
-
   groupEditorTitle.textContent = `Manage Group: ${groupName}`;
-  groupEditorSubtitle.textContent = "Edit group settings here. Evaluation controls are available from this selected group.";
+  groupEditorSubtitle.textContent = "Group actions and evaluation settings appear here only for the selected group.";
   groupNameInput.value = groupName;
   groupNameInput.disabled = true;
   evaluationUnitCountInput.value = String(config.unitCount);
-  evaluationTemplateSelect.value = "";
   pendingReportSettings = group.reportSettings && typeof group.reportSettings === "object"
     ? { ...group.reportSettings }
     : null;
@@ -341,14 +474,33 @@ function manageGroup(groupName) {
   cancelGroupEditBtn.hidden = false;
   evaluationEditorOpen = false;
   groupEvaluationStatus.textContent = config.configured
-    ? "Group selected. Use Edit Evaluation when you need to change criteria."
+    ? "Group selected. Open Edit Evaluation only when you need to change the criteria."
     : "This group needs evaluation settings. Use Set Evaluation.";
   groupEvaluationStatus.className = config.configured ? "status-text" : "status-text bad";
   renderEvaluationEditorVisibility();
+}
+
+function selectManagedGroup(groupName) {
+  const group = groupsCache[groupName];
+  if (!group) return;
+
+  if (selectedManagedGroup === groupName) {
+    rosterCollapsed = !rosterCollapsed;
+    renderManagedStudents();
+    renderGroupsTable();
+    return;
+  }
+
+  selectedManagedGroup = groupName;
+  editingGroupName = groupName;
+  sessionStorage.setItem(WORKING_GROUP_KEY, groupName);
+  selectedRosterItems.clear();
+  rosterCollapsed = false;
+
+  loadGroupEditor(groupName);
   renderManagedStudents();
   renderGroupsTable();
-
-  document.getElementById("groupEditorCard")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  renderSelectedGroupActions();
 }
 
 function groupStudents(groupName) {
@@ -387,16 +539,43 @@ function renderEnrollmentLink() {
   copyEnrollmentLinkBtn.hidden = !link;
   createEnrollmentLinkBtn.textContent = link ? "Enrollment Link Active" : "Create Enrollment Link";
   createEnrollmentLinkBtn.disabled = Boolean(link);
-
-  if (selectedManagedGroup && link) {
-    enrollmentLinkStatus.textContent = "Enrollment requests require teacher approval.";
-  } else {
-    enrollmentLinkStatus.textContent = "";
-  }
+  enrollmentLinkStatus.textContent = selectedManagedGroup && link
+    ? "Enrollment requests require teacher approval."
+    : "";
 }
 
 function rosterSelectionKey(kind, id) {
   return `${kind}:${id}`;
+}
+
+function selectedRosterIds(kind) {
+  const prefix = `${kind}:`;
+  return [...selectedRosterItems]
+    .filter((key) => key.startsWith(prefix))
+    .map((key) => key.slice(prefix.length));
+}
+
+function renderRosterContextActions() {
+  const requests = selectedRosterIds("request");
+  const students = selectedRosterIds("student");
+  const total = requests.length + students.length;
+
+  selectedRosterActions.hidden = total === 0;
+  selectedRosterLabel.textContent = total ? `${total} selected` : "";
+
+  approveEnrollmentBtn.hidden = requests.length === 0;
+  denyEnrollmentBtn.hidden = requests.length === 0;
+  expelStudentBtn.hidden = students.length === 0;
+
+  const singleStudent = total === 1 && students.length === 1 ? students[0] : "";
+  openSelectedStudentBtn.hidden = !singleStudent;
+  externalIdEditor.hidden = !singleStudent;
+
+  if (singleStudent) {
+    selectedExternalIdInput.value = String(studentsCache?.[singleStudent]?.studentNumber || "");
+  } else {
+    selectedExternalIdInput.value = "";
+  }
 }
 
 function renderManagedStudents() {
@@ -404,19 +583,28 @@ function renderManagedStudents() {
 
   if (!groupName || !groupsCache[groupName]) {
     enrollmentControls.hidden = true;
+    toggleRosterBtn.hidden = true;
     managedGroupStatus.textContent = "Select a group from the Groups list below.";
     pendingEnrollmentCount.textContent = "";
     managedStudentsList.innerHTML = "";
+    selectedRosterActions.hidden = true;
     return;
   }
 
   enrollmentControls.hidden = false;
+  toggleRosterBtn.hidden = false;
+  toggleRosterBtn.textContent = rosterCollapsed ? "▸" : "▾";
+  toggleRosterBtn.setAttribute("aria-expanded", String(!rosterCollapsed));
+  rosterBody.hidden = rosterCollapsed;
+
   managedGroupName.textContent = groupName;
-  managedGroupStatus.textContent = "Pending requests and enrolled students are managed together here.";
+  managedGroupStatus.textContent = rosterCollapsed
+    ? `${groupStudents(groupName).length} enrolled · click the group or arrow to expand`
+    : "Select a row to show the actions for that student or request.";
 
   const pending = groupPendingRequests(groupName);
   const enrolled = groupStudents(groupName);
-  pendingEnrollmentCount.textContent = pending.length ? `${pending.length} pending` : "No pending requests";
+  pendingEnrollmentCount.textContent = pending.length ? `${pending.length} pending` : "";
 
   const visibleKeys = new Set([
     ...pending.map(([id]) => rosterSelectionKey("request", id)),
@@ -430,18 +618,13 @@ function renderManagedStudents() {
   const pendingHtml = pending.map(([requestId, request]) => {
     const key = rosterSelectionKey("request", requestId);
     return `
-      <div class="student-card pending ${selectedRosterItems.has(key) ? "selected" : ""}"
+      <div class="student-row pending student-grid ${selectedRosterItems.has(key) ? "selected" : ""}"
         data-roster-kind="request" data-roster-id="${escapeHtml(requestId)}" data-selection-key="${escapeHtml(key)}">
         <input class="roster-checkbox" type="checkbox" ${selectedRosterItems.has(key) ? "checked" : ""} aria-label="Select pending request">
-        <div class="student-card-main">
-          <div class="student-card-name">${escapeHtml(request.fullName || request.name || "Pending student")}</div>
-          <div class="student-card-meta">
-            <span>Nickname: ${escapeHtml(request.nickname || "—")}</span>
-            <span>External ID: ${escapeHtml(request.externalId || request.studentNumber || "Not provided")}</span>
-            <span>Requested: ${request.requestedAt ? new Date(request.requestedAt).toLocaleString() : "—"}</span>
-          </div>
-        </div>
         <span class="student-status pending">PENDING</span>
+        <span class="student-cell student-name">${escapeHtml(request.fullName || request.name || "Pending student")}</span>
+        <span class="student-cell">${escapeHtml(request.nickname || "—")}</span>
+        <span class="student-cell">${escapeHtml(request.externalId || request.studentNumber || "—")}</span>
       </div>
     `;
   }).join("");
@@ -449,21 +632,13 @@ function renderManagedStudents() {
   const enrolledHtml = enrolled.map(([studentKey, student]) => {
     const key = rosterSelectionKey("student", studentKey);
     return `
-      <div class="student-card enrolled ${selectedRosterItems.has(key) ? "selected" : ""}"
+      <div class="student-row enrolled student-grid ${selectedRosterItems.has(key) ? "selected" : ""}"
         data-roster-kind="student" data-roster-id="${escapeHtml(studentKey)}" data-selection-key="${escapeHtml(key)}">
         <input class="roster-checkbox" type="checkbox" ${selectedRosterItems.has(key) ? "checked" : ""} aria-label="Select enrolled student">
-        <div class="student-card-main">
-          <div class="student-card-name">${escapeHtml(student.fullName || student.name || student.nickname || "Student")}</div>
-          <div class="student-card-meta">
-            <span>Nickname: ${escapeHtml(student.nickname || "—")}</span>
-            <label>External ID:
-              <input class="inline-external-id" data-student-key="${escapeHtml(studentKey)}"
-                value="${escapeHtml(student.studentNumber || "")}" placeholder="Add later">
-            </label>
-            <span>Group: ${escapeHtml(groupName)}</span>
-          </div>
-        </div>
         <span class="student-status enrolled">ENROLLED</span>
+        <span class="student-cell student-name">${escapeHtml(student.fullName || student.name || student.nickname || "Student")}</span>
+        <span class="student-cell">${escapeHtml(student.nickname || "—")}</span>
+        <span class="student-cell">${escapeHtml(student.studentNumber || "—")}</span>
       </div>
     `;
   }).join("");
@@ -472,18 +647,24 @@ function renderManagedStudents() {
     '<div class="student-list-empty">No enrolled students or pending requests yet.</div>';
 
   const visibleCheckboxes = [...managedStudentsList.querySelectorAll(".roster-checkbox")];
-  selectAllStudents.checked = visibleCheckboxes.length > 0 && visibleCheckboxes.every((checkbox) => checkbox.checked);
-  selectAllStudents.indeterminate = visibleCheckboxes.some((checkbox) => checkbox.checked) && !selectAllStudents.checked;
+  selectAllStudents.checked =
+    visibleCheckboxes.length > 0 && visibleCheckboxes.every((checkbox) => checkbox.checked);
+  selectAllStudents.indeterminate =
+    visibleCheckboxes.some((checkbox) => checkbox.checked) && !selectAllStudents.checked;
   selectedStudentCount.textContent = `${selectedRosterItems.size} selected`;
 
+  renderRosterContextActions();
   renderEnrollmentLink();
+  renderSelectedGroupActions();
 }
 
 function renderGroupsTable() {
-  const groups = Object.keys(groupsCache || {}).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+  const groups = Object.keys(groupsCache || {})
+    .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
 
   if (!groups.length) {
-    groupsTableBody.innerHTML = '<tr><td colspan="6">No groups yet.</td></tr>';
+    groupsTableBody.innerHTML = '<tr><td colspan="5">No groups yet.</td></tr>';
+    renderSelectedGroupActions();
     return;
   }
 
@@ -492,21 +673,32 @@ function renderGroupsTable() {
     const count = groupStudents(groupName).length;
     const pending = groupPendingRequests(groupName).length;
     const config = groupEvaluationConfig(group);
+    const selected = groupName === selectedManagedGroup;
+    const chevron = selected && !rosterCollapsed ? "▾" : "▸";
     const evaluationSummary = config.configured
-      ? config.criteria.map((criterion) => `${escapeHtml(criterion.name)} ${criterion.weight}%`).join(" · ")
+      ? config.criteria.map((criterion) =>
+          `${escapeHtml(criterion.name)} ${criterion.weight}%`
+        ).join(" · ")
       : '<span class="setup-required">Evaluation setup required</span>';
 
     return `
-      <tr class="${groupName === selectedManagedGroup ? "selected-group-row" : ""}">
-        <td><button class="group-name-button" type="button" data-manage-group="${escapeHtml(groupName)}">${escapeHtml(groupName)}</button></td>
+      <tr class="${selected ? "selected-group-row" : ""}">
+        <td>
+          <button class="group-select-button" type="button" data-manage-group="${escapeHtml(groupName)}"
+            aria-expanded="${selected ? String(!rosterCollapsed) : "false"}">
+            <span class="group-chevron">${chevron}</span>
+            <span>${escapeHtml(groupName)}</span>
+          </button>
+        </td>
         <td>${count}</td>
         <td>${pending}</td>
         <td>${config.configured ? config.unitCount : "—"}</td>
         <td class="group-evaluation-summary">${evaluationSummary}</td>
-        <td><button class="delete-group-btn" type="button" data-delete-group="${escapeHtml(groupName)}">Delete</button></td>
       </tr>
     `;
   }).join("");
+
+  renderSelectedGroupActions();
 }
 
 function parseCsvLine(line) {
@@ -536,7 +728,8 @@ function parseCsvLine(line) {
 }
 
 function parseCsv(text) {
-  const lines = String(text || "").replace(/\r/g, "").split("\n").map((line) => line.trim()).filter(Boolean);
+  const lines = String(text || "").replace(/\r/g, "").split("\n")
+    .map((line) => line.trim()).filter(Boolean);
   if (!lines.length) return [];
 
   return lines.map((line) => {
@@ -550,23 +743,24 @@ function parseCsv(text) {
 }
 
 function parseBulkText(text) {
-  return String(text || "").replace(/\r/g, "").split("\n").map((line) => line.trim()).filter(Boolean).map((line) => {
-    if (line.includes("\t")) {
-      const parts = line.split("\t");
+  return String(text || "").replace(/\r/g, "").split("\n")
+    .map((line) => line.trim()).filter(Boolean).map((line) => {
+      if (line.includes("\t")) {
+        const parts = line.split("\t");
+        return {
+          studentNumber: (parts[0] || "").trim(),
+          fullName: parts.slice(1).join(" ").trim(),
+          nickname: ""
+        };
+      }
+
+      const parts = parseCsvLine(line);
       return {
         studentNumber: (parts[0] || "").trim(),
-        fullName: parts.slice(1).join(" ").trim(),
-        nickname: ""
+        fullName: (parts[1] || "").trim() || line,
+        nickname: (parts[2] || "").trim()
       };
-    }
-
-    const parts = parseCsvLine(line);
-    return {
-      studentNumber: (parts[0] || "").trim(),
-      fullName: (parts[1] || "").trim() || line,
-      nickname: (parts[2] || "").trim()
-    };
-  }).filter((student) => student.fullName);
+    }).filter((student) => student.fullName);
 }
 
 function initialBlockPoints(groupName) {
@@ -654,11 +848,26 @@ async function copyEnrollmentLink() {
   }
 }
 
+function openStudentRecord(studentKey) {
+  if (!studentKey) return;
+  sessionStorage.setItem("teacherViewStudentKey", studentKey);
+  window.location.href = `student-summary.html?teacherViewStudentKey=${encodeURIComponent(studentKey)}`;
+}
+
+async function saveSelectedExternalId() {
+  const students = selectedRosterIds("student");
+  const requests = selectedRosterIds("request");
+  if (students.length !== 1 || requests.length) return;
+
+  const studentKey = students[0];
+  await update(ref(db, `students/${studentKey}`), {
+    studentNumber: String(selectedExternalIdInput.value || "").trim()
+  });
+}
+
 async function approveSelectedRequests() {
   if (!selectedManagedGroup) return;
-  const selectedRequests = [...selectedRosterItems]
-    .filter((key) => key.startsWith("request:"))
-    .map((key) => key.slice(8));
+  const selectedRequests = selectedRosterIds("request");
 
   if (!selectedRequests.length) {
     alert("Select at least one pending enrollment request.");
@@ -690,9 +899,7 @@ async function approveSelectedRequests() {
 
 async function denySelectedRequests() {
   if (!selectedManagedGroup) return;
-  const selectedRequests = [...selectedRosterItems]
-    .filter((key) => key.startsWith("request:"))
-    .map((key) => key.slice(8));
+  const selectedRequests = selectedRosterIds("request");
 
   if (!selectedRequests.length) {
     alert("Select at least one pending enrollment request.");
@@ -713,9 +920,7 @@ async function denySelectedRequests() {
 
 async function expelSelectedStudents() {
   if (!selectedManagedGroup) return;
-  const selectedStudents = [...selectedRosterItems]
-    .filter((key) => key.startsWith("student:"))
-    .map((key) => key.slice(8));
+  const selectedStudents = selectedRosterIds("student");
 
   if (!selectedStudents.length) {
     alert("Select at least one enrolled student.");
@@ -760,10 +965,14 @@ function objectFilter(source, predicate) {
 
 function buildGroupBackup(root, groupName) {
   const group = root?.groups?.[groupName] || {};
-  const students = objectFilter(root?.students, ([, student]) => String(student?.groupName || "") === groupName);
+  const students = objectFilter(root?.students, ([, student]) =>
+    String(student?.groupName || "") === groupName
+  );
   const formerStudents = root?.groupFormerStudents?.[groupName] || {};
   const studentKeys = new Set([...Object.keys(students), ...Object.keys(formerStudents)]);
-  const assignments = objectFilter(root?.assignments, ([, assignment]) => String(assignment?.groupName || "") === groupName);
+  const assignments = objectFilter(root?.assignments, ([, assignment]) =>
+    String(assignment?.groupName || "") === groupName
+  );
   const assignmentIds = new Set(Object.keys(assignments));
 
   const assignmentSubmissions = {};
@@ -785,7 +994,8 @@ function buildGroupBackup(root, groupName) {
   });
 
   const pointsLog = objectFilter(root?.pointsLog, ([, entry]) =>
-    String(entry?.groupName || "") === groupName || studentKeys.has(String(entry?.studentKey || ""))
+    String(entry?.groupName || "") === groupName ||
+    studentKeys.has(String(entry?.studentKey || ""))
   );
 
   const sessionHistory = objectFilter(root?.sessionHistory, ([, session]) =>
@@ -900,6 +1110,7 @@ async function deleteGroupWithBackup(groupName) {
 
 createGroupBtn.addEventListener("click", async () => {
   const groupName = groupNameInput.value.trim();
+
   if (!groupName) {
     groupEvaluationStatus.textContent = "Enter a group name.";
     groupEvaluationStatus.className = "status-text bad";
@@ -935,7 +1146,6 @@ createGroupBtn.addEventListener("click", async () => {
 
   const now = Date.now();
   const existing = groupsCache[groupName] || {};
-
   const savedGroupRecord = {
     ...existing,
     name: groupName,
@@ -953,7 +1163,21 @@ createGroupBtn.addEventListener("click", async () => {
   });
 
   groupsCache[groupName] = savedGroupRecord;
-  manageGroup(groupName);
+
+  await ensureIndependentTemplate({
+    evaluationUnitCount,
+    evaluationCriteria,
+    reportSettings: savedGroupRecord.reportSettings || null
+  });
+
+  selectedManagedGroup = groupName;
+  rosterCollapsed = false;
+  loadGroupEditor(groupName);
+  sessionStorage.setItem(WORKING_GROUP_KEY, groupName);
+  renderManagedStudents();
+  renderGroupsTable();
+  renderSelectedGroupActions();
+
   groupEvaluationStatus.textContent = existing.createdAt ? "Group settings saved." : "Group created.";
   groupEvaluationStatus.className = "status-text ok";
 });
@@ -965,6 +1189,7 @@ toggleEvaluationBtn.addEventListener("click", () => {
 
 cancelGroupEditBtn.addEventListener("click", resetGroupForm);
 addEvaluationCriterionBtn.addEventListener("click", () => addEvaluationCriterionRow());
+
 evaluationCriteriaRows.addEventListener("input", refreshEvaluationWeightTotal);
 evaluationCriteriaRows.addEventListener("change", refreshEvaluationWeightTotal);
 evaluationCriteriaRows.addEventListener("click", (event) => {
@@ -975,75 +1200,81 @@ evaluationCriteriaRows.addEventListener("click", (event) => {
   refreshEvaluationWeightTotal();
 });
 
-useEvaluationTemplateBtn.addEventListener("click", () => {
-  const template = selectedEvaluationTemplate();
-  if (!template) {
-    groupEvaluationStatus.textContent = "Choose a saved template or a configured group first.";
-    groupEvaluationStatus.className = "status-text bad";
-    return;
-  }
+useEvaluationTemplateBtn.addEventListener("click", openEvaluationTemplateDialog);
+closeEvaluationTemplateDialogBtn.addEventListener("click", () => evaluationTemplateDialog.close());
+
+evaluationTemplateList.addEventListener("click", (event) => {
+  const row = event.target.closest("[data-template-id]");
+  if (!row) return;
+  selectedTemplateId = String(row.dataset.templateId || "");
+  renderEvaluationTemplateList();
+});
+
+useSelectedEvaluationTemplateBtn.addEventListener("click", () => {
+  const template = evaluationTemplatesCache?.[selectedTemplateId];
+  if (!template) return;
   applyEvaluationTemplate(template);
+  evaluationTemplateDialog.close();
 });
 
 saveEvaluationTemplateBtn.addEventListener("click", saveCurrentEvaluationAsTemplate);
 
-groupsTableBody.addEventListener("click", async (event) => {
+groupsTableBody.addEventListener("click", (event) => {
   const manageButton = event.target.closest("[data-manage-group]");
-  if (manageButton) {
-    manageGroup(String(manageButton.dataset.manageGroup || ""));
-    return;
-  }
+  if (!manageButton) return;
+  selectManagedGroup(String(manageButton.dataset.manageGroup || ""));
+});
 
-  const deleteButton = event.target.closest("[data-delete-group]");
-  if (deleteButton) {
-    await deleteGroupWithBackup(String(deleteButton.dataset.deleteGroup || ""));
-  }
+deleteSelectedGroupBtn.addEventListener("click", async () => {
+  if (!selectedManagedGroup) return;
+  await deleteGroupWithBackup(selectedManagedGroup);
+});
+
+toggleRosterBtn.addEventListener("click", () => {
+  if (!selectedManagedGroup) return;
+  rosterCollapsed = !rosterCollapsed;
+  renderManagedStudents();
+  renderGroupsTable();
 });
 
 managedStudentsList.addEventListener("click", (event) => {
-  if (event.target.closest(".inline-external-id")) return;
-  const card = event.target.closest("[data-selection-key]");
-  if (!card) return;
+  const row = event.target.closest("[data-selection-key]");
+  if (!row) return;
 
-  const checkbox = card.querySelector(".roster-checkbox");
+  const checkbox = row.querySelector(".roster-checkbox");
   if (event.target !== checkbox) checkbox.checked = !checkbox.checked;
 
-  const key = String(card.dataset.selectionKey || "");
+  const key = String(row.dataset.selectionKey || "");
   if (checkbox.checked) selectedRosterItems.add(key);
   else selectedRosterItems.delete(key);
-  renderManagedStudents();
-});
 
-managedStudentsList.addEventListener("change", async (event) => {
-  const input = event.target.closest(".inline-external-id");
-  if (!input) return;
-  const studentKey = String(input.dataset.studentKey || "");
-  if (!studentKey) return;
-  await update(ref(db, `students/${studentKey}`), {
-    studentNumber: String(input.value || "").trim()
-  });
+  renderManagedStudents();
 });
 
 managedStudentsList.addEventListener("dblclick", (event) => {
   if (event.target.closest("input,button,select,textarea")) return;
-  const card = event.target.closest('[data-roster-kind="student"]');
-  if (!card) return;
-  const studentKey = String(card.dataset.rosterId || "");
-  if (!studentKey) return;
-  sessionStorage.setItem("teacherViewStudentKey", studentKey);
-  window.location.href = `student-summary.html?teacherViewStudentKey=${encodeURIComponent(studentKey)}`;
+  const row = event.target.closest('[data-roster-kind="student"]');
+  if (!row) return;
+  openStudentRecord(String(row.dataset.rosterId || ""));
 });
 
 selectAllStudents.addEventListener("change", () => {
-  const cards = [...managedStudentsList.querySelectorAll("[data-selection-key]")];
-  cards.forEach((card) => {
-    const key = String(card.dataset.selectionKey || "");
+  const rows = [...managedStudentsList.querySelectorAll("[data-selection-key]")];
+  rows.forEach((row) => {
+    const key = String(row.dataset.selectionKey || "");
     if (selectAllStudents.checked) selectedRosterItems.add(key);
     else selectedRosterItems.delete(key);
   });
   renderManagedStudents();
 });
 
+openSelectedStudentBtn.addEventListener("click", () => {
+  const students = selectedRosterIds("student");
+  const requests = selectedRosterIds("request");
+  if (students.length === 1 && !requests.length) openStudentRecord(students[0]);
+});
+
+saveExternalIdBtn.addEventListener("click", saveSelectedExternalId);
 createEnrollmentLinkBtn.addEventListener("click", () => createOrRotateEnrollmentLink());
 rotateEnrollmentLinkBtn.addEventListener("click", () => createOrRotateEnrollmentLink({ rotate: true }));
 copyEnrollmentLinkBtn.addEventListener("click", copyEnrollmentLink);
@@ -1060,6 +1291,7 @@ pasteStudentTabBtn.addEventListener("click", () => setModalPane("paste"));
 createStudentBtn.addEventListener("click", async () => {
   const fullName = studentNameInput.value.trim();
   if (!selectedManagedGroup) return;
+
   if (!fullName) {
     addStudentStatus.textContent = "Enter the student's full name.";
     return;
@@ -1081,6 +1313,7 @@ createStudentBtn.addEventListener("click", async () => {
 
 importCsvBtn.addEventListener("click", async () => {
   const file = csvFileInput.files[0];
+
   if (!selectedManagedGroup || !file) {
     addStudentStatus.textContent = "Choose a CSV file first.";
     return;
@@ -1088,16 +1321,22 @@ importCsvBtn.addEventListener("click", async () => {
 
   const students = parseCsv(await file.text());
   for (const student of students) {
-    await saveStudent(student.fullName, student.nickname, student.studentNumber, selectedManagedGroup, {
-      enrollmentSource: "teacher-csv"
-    });
+    await saveStudent(
+      student.fullName,
+      student.nickname,
+      student.studentNumber,
+      selectedManagedGroup,
+      { enrollmentSource: "teacher-csv" }
+    );
   }
+
   csvFileInput.value = "";
   addStudentStatus.textContent = `${students.length} student(s) imported.`;
 });
 
 importTextBtn.addEventListener("click", async () => {
   if (!selectedManagedGroup) return;
+
   const students = parseBulkText(bulkTextInput.value);
   if (!students.length) {
     addStudentStatus.textContent = "Paste at least one valid student.";
@@ -1105,18 +1344,23 @@ importTextBtn.addEventListener("click", async () => {
   }
 
   for (const student of students) {
-    await saveStudent(student.fullName, student.nickname, student.studentNumber, selectedManagedGroup, {
-      enrollmentSource: "teacher-paste"
-    });
+    await saveStudent(
+      student.fullName,
+      student.nickname,
+      student.studentNumber,
+      selectedManagedGroup,
+      { enrollmentSource: "teacher-paste" }
+    );
   }
+
   bulkTextInput.value = "";
   addStudentStatus.textContent = `${students.length} student(s) imported.`;
 });
 
 setCriteriaEditor([]);
-renderEvaluationTemplateOptions();
 renderEvaluationEditorVisibility();
 renderManagedStudents();
+renderGroupsTable();
 
 (async () => {
   try {
@@ -1128,23 +1372,24 @@ renderManagedStudents();
 
 onValue(ref(db, "groups"), (snapshot) => {
   groupsCache = snapshot.val() || {};
-  renderEvaluationTemplateOptions();
+  groupsLoaded = true;
   renderGroupsTable();
 
   if (selectedManagedGroup && !groupsCache[selectedManagedGroup]) {
     resetGroupForm();
-    return;
-  }
-
-  if (selectedManagedGroup) {
+  } else if (selectedManagedGroup) {
     renderManagedStudents();
     renderEnrollmentLink();
   }
+
+  harvestConfiguredGroupsToTemplates().catch(console.error);
 });
 
 onValue(ref(db, "groupEvaluationTemplates"), (snapshot) => {
   evaluationTemplatesCache = snapshot.val() || {};
-  renderEvaluationTemplateOptions();
+  templatesLoaded = true;
+  renderEvaluationTemplateList();
+  harvestConfiguredGroupsToTemplates().catch(console.error);
 });
 
 onValue(ref(db, "students"), (snapshot) => {
