@@ -7,7 +7,7 @@ import {
 } from "../_shared/cog-live-http.js";
 import { canStudentAccessLiveGame } from "../../cog-live-session-policy.mjs";
 
-const DEFAULT_COG_ORIGIN = "https://classroom-online-games.pages.dev";
+const DEFAULT_COG_ORIGIN = "https://utichgion.org";
 const LAUNCH_TTL_MS = 5 * 60 * 1000;
 
 function json(status, payload) {
@@ -38,6 +38,7 @@ function cogOrigin(env) {
   if (
     url.protocol !== "https:" ||
     !(
+      host === "utichgion.org" ||
       host === "classroom-online-games.pages.dev" ||
       host.endsWith(".classroom-online-games.pages.dev")
     )

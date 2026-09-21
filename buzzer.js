@@ -856,6 +856,16 @@ createTeamsBtn.addEventListener("click", async () => {
 
   const sessionCreatedAt = Date.now();
   const sessionId = `yt-${sessionCreatedAt}-${Math.random().toString(36).slice(2, 8)}`;
+  const teamRevision = `${sessionId}:teams:1`;
+  const teamContexts = Object.fromEntries(smartTeams.map((team) => [
+    team.key,
+    {
+      teamKey: team.key,
+      teamLabel: team.label,
+      memberKeys: [...team.memberKeys],
+      memberNames: [...team.memberNames]
+    }
+  ]));
 
   await set(ref(db, "session/current"), {
     active: true,
@@ -863,6 +873,8 @@ createTeamsBtn.addEventListener("click", async () => {
     createdAt: sessionCreatedAt,
     groupName,
     teamSourceMode: teamSource.mode,
+    teamRevision,
+    teamContexts,
     teams: sessionTeams,
     assignments,
     liveTeamPoints,

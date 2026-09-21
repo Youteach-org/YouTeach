@@ -35,6 +35,7 @@ export function allowedCogOrigin(request) {
     if (
       url.protocol === "https:" &&
       (
+        host === "utichgion.org" ||
         host === "classroom-online-games.pages.dev" ||
         host.endsWith(".classroom-online-games.pages.dev")
       )

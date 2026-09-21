@@ -34,6 +34,58 @@ function identityFor(studentKey, student) {
   };
 }
 
+function labelForTeamKey(teamKey) {
+  const match = String(teamKey || "").match(/^team(\d+)$/i);
+  return match ? `Team ${match[1]}` : String(teamKey || "").trim();
+}
+
+function canonicalTeamContext(session, studentKey) {
+  const key = String(studentKey || "").trim();
+  const assignments = session?.assignments || {};
+  const teamLabel = String(assignments[key] || "").trim();
+  if (!teamLabel) return null;
+
+  const teamContexts = session?.teamContexts || {};
+  const directEntry = Object.entries(teamContexts).find(([, value]) =>
+    value?.teamLabel === teamLabel ||
+    (Array.isArray(value?.memberKeys) && value.memberKeys.includes(key))
+  );
+  if (directEntry) {
+    const [storedKey, value] = directEntry;
+    return {
+      teamKey: String(value?.teamKey || storedKey || ""),
+      teamLabel: String(value?.teamLabel || teamLabel),
+      memberKeys: Array.isArray(value?.memberKeys) ? value.memberKeys.map(String) : [],
+      memberNames: Array.isArray(value?.memberNames) ? value.memberNames.map(String) : [],
+      teamRevision: String(session?.teamRevision || session?.sessionId || session?.createdAt || "")
+    };
+  }
+
+  const teams = session?.teams || {};
+  const teamKey = Object.keys(teams).find(candidate =>
+    labelForTeamKey(candidate).toLowerCase() === teamLabel.toLowerCase()
+  ) || teamLabel.toLowerCase().replace(/[^a-z0-9]+/g, "");
+
+  const memberKeys = Object.entries(assignments)
+    .filter(([, assignedLabel]) => String(assignedLabel || "") === teamLabel)
+    .map(([memberKey]) => String(memberKey));
+
+  const memberNames = Array.isArray(teams?.[teamKey])
+    ? teams[teamKey].map(String)
+    : [];
+
+  return {
+    teamKey,
+    teamLabel,
+    memberKeys,
+    memberNames,
+    teamRevision: String(
+      session?.teamRevision ||
+      `${youTeachSessionId(session)}:${teamKey}:${memberKeys.join(",")}`
+    )
+  };
+}
+
 export function onRequestOptions({ request }) {
   return optionsResponse(request);
 }
@@ -122,6 +174,11 @@ export async function onRequestPost({ request, env }) {
       }, origin);
     }
 
+    const teamContext = canonicalTeamContext(
+      currentSession,
+      String(launch.studentKey || "")
+    );
+
     const now = Date.now();
     const expiresAt = Math.min(
       now + BRIDGE_TTL_MS,
@@ -144,6 +201,8 @@ export async function onRequestPost({ request, env }) {
       gameName: String(connectedGame.gameName || launch.gameName || ""),
       cogSessionId: String(connectedGame.cogSessionId || ""),
       assignmentId: String(connectedGame.assignmentId || launch.assignmentId || ""),
+      teamKey: String(teamContext?.teamKey || ""),
+      teamRevision: String(teamContext?.teamRevision || ""),
       iat: now,
       exp: expiresAt,
       nonce: nonce()
@@ -161,6 +220,7 @@ export async function onRequestPost({ request, env }) {
         assignmentId: String(connectedGame.assignmentId || launch.assignmentId || ""),
         launchMode: "live-buzzer"
       },
+      teamContext,
       bridgeToken,
       bridgeExpiresAt: expiresAt
     }, origin);
