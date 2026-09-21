@@ -274,6 +274,28 @@ test('Enrolled Students header keeps inline link controls left of Active enrollm
   assert.match(js, /navigator\.clipboard\.writeText\(link\)/);
   assert.match(js, /enrollmentLinkInlineControls\.hidden = !\(active && enrollmentLinkExpanded\)/);
 });
+test('student list controls share the Enrolled Students header line', () => {
+  const start = html.indexOf('<section class="panel-card full-width-card" id="enrolledStudentsSection">');
+  const end = html.indexOf('<div id="enrollmentControls"', start);
+  const header = html.slice(start, end);
+  for (const id of [
+    'managedStudentDisplayModeBtn',
+    'managedStudentsCount',
+    'managedStudentSearchToggle',
+    'managedStudentSearchPanel',
+    'managedStudentSearch',
+    'openManagedBlockReportBtn'
+  ]) {
+    assert.match(header, new RegExp(`id="${id}"`));
+  }
+  assert.match(html, /\.enrolled-students-head\{flex-wrap:nowrap;overflow-x:auto\}/);
+  assert.match(html, /\.enrolled-students-inline-tools\{display:flex;align-items:center;gap:8px;flex-wrap:nowrap\}/);
+  const rosterStart = html.indexOf('<div id="enrollmentControls"', start);
+  const tableStart = html.indexOf('<div class="table-wrap managed-students-table-wrap">', rosterStart);
+  const rosterBeforeTable = html.slice(rosterStart, tableStart);
+  assert.doesNotMatch(rosterBeforeTable, /id="managedStudentDisplayModeBtn"|id="managedStudentSearchToggle"|id="openManagedBlockReportBtn"/);
+});
+
 test('managed student identity mode is saved on the group and search remains field-independent', () => {
   assert.match(html, /id="managedStudentDisplayModeBtn"[^>]*>Names<\/button>/);
   assert.doesNotMatch(html, />Show:/);

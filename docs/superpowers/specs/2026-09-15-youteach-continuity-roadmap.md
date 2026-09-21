@@ -973,3 +973,10 @@ This supersedes earlier Teacher Students / Group Management navigation and layou
 - The existing Groups card contents and behavior are preserved; the same card is merely presented inside a popup.
 - The existing `teacher-enrollment` implementation files remain available as the canonical implementation backing the renamed public route.
 - Only explicitly requested UI changes may differ: removal of the standalone Students page/menu entry, inline enrollment textbox with Copy/Rotate controls, Groups presented in a popup, and identity labels without the “Show:” prefix.
+
+
+### Group Management enrolled-student header alignment — 2026-09-21
+
+- In **Enrolled Students**, the identity-display button, **Students** count, search magnifying glass, expanding search textbox, and **Block Report** button stay on the same horizontal header line as the **Enrolled Students** label.
+- Those controls are not repeated in a separate toolbar above the student matrix.
+- Existing enrollment-link, Add Student, and roster collapse controls remain on that same header line; no behavior changes accompany this layout move.
