@@ -666,7 +666,7 @@ Those values live in teacher/group/template data, not as a built-in application 
 This supersedes the old **Group Management** page structure.
 
 ### Naming and layout
-- The teacher page is called **Group Management** everywhere in the teacher UI. The legacy URL `teacher-enrollment.html` may remain for compatibility, but visible labels must not say "Group Management".
+- The teacher page is called **Group Management** everywhere in the teacher UI. The legacy URL `teacher-enrollment.html` may remain for compatibility; visible labels must say **Group Management**, not the old "Groups / Import".
 - **Create / Edit Group** is a full-width card at the top.
 - The standalone **Delete Group** card is removed.
 - The standalone **Add Student** card is removed.
@@ -729,3 +729,37 @@ groupEnrollmentRequests/{groupName}/{requestId}
   - backup schema/version and export timestamp.
 - Only after the backup download has been initiated does YouTeach remove the group and its group-owned/student-owned live records.
 - The backup is meant to make later reconstruction possible; it is not merely a visual report.
+
+
+### Group Management compact-selection UX — 2026-09-20 (latest)
+
+This supersedes any earlier Group Management wording that implied repeated row-level action buttons or a permanently visible template selector.
+
+- **One function = one contextual control area.** Do not repeat Delete, Set/Edit Evaluation, Approve, Deny, Expel, or similar actions on every row.
+- The **Groups** table is selection-first:
+  - clicking a group selects it and loads the single management context;
+  - clicking the already-selected group again toggles/collapses its **Enrolled Students** list;
+  - the selected row shows a chevron/collapse affordance;
+  - group actions such as **Delete Group** appear once in a contextual selected-group action bar, never once per group row.
+- The **Enrolled Students** list is space-efficient:
+  - each student/request is a single horizontal row, comparable to one spreadsheet row;
+  - columns are Status, Full Name, Nickname, External ID (plus selection control);
+  - do not stack a student's name above metadata;
+  - the roster is collapsible.
+- Student/request actions are contextual:
+  - the action bar is hidden when nothing is selected;
+  - selecting pending request(s) reveals only relevant request actions such as Approve / Deny;
+  - selecting enrolled student(s) reveals only relevant enrolled-student actions such as Open Record / Expel / External ID edit;
+  - double-clicking an enrolled row still opens the student record.
+- Group-level controls such as **Create Enrollment Link** and **Add Student** remain available for the selected group without being repeated per student.
+
+### Evaluation template library interaction — 2026-09-20 (latest)
+
+- **Use Template** is the only persistent template control in the group editor. There is no permanently visible template dropdown.
+- Pressing **Use Template** opens a popup/modal containing previously used/saved evaluation templates.
+- A template is an independent reusable evaluation-setup object. A group itself is **not** the template and the template must not retain a live association to a source group.
+- When a valid evaluation setup is saved on a group, YouTeach ensures that an equivalent independent reusable template exists under `groupEvaluationTemplates`.
+- Existing configured groups created before this rule may be harvested once into independent reusable templates so their prior criteria are not lost.
+- Template deduplication is based on reusable content (unit count + ordered criteria + reusable report settings), not group identity.
+- The template popup lists only reusable template records. Selecting a template and confirming **Use Selected Template** copies its reusable setup into the current group editor.
+- Templates never copy or reference students, grades, attendance, assignments, enrollment requests, or any other group-specific live data.
