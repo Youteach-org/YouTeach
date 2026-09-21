@@ -1680,7 +1680,6 @@ createGroupBtn.addEventListener("click", async () => {
   sessionStorage.setItem(WORKING_GROUP_KEY, groupName);
   loadGroupEditor(groupName);
   renderEvaluationEditorVisibility();
-  persistEvaluationPanelState();
   persistManagementState();
   renderManagedStudents();
   renderGroupsTable();
