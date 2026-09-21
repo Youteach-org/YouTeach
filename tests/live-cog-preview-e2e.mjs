@@ -105,6 +105,17 @@ async function fillDeployedTeacherCredential(page) {
 async function main() {
   sessionBefore = await fb("session/current");
   if (sessionBefore?.active === true || sessionBefore?.connectedGame?.status === "active") {
+    console.log("E2E_BLOCKED session/current summary", JSON.stringify({
+      sessionId: String(sessionBefore?.sessionId || sessionBefore?.id || ""),
+      groupName: String(sessionBefore?.groupName || sessionBefore?.connectedGame?.groupName || ""),
+      active: Boolean(sessionBefore?.active),
+      connectedGameStatus: String(sessionBefore?.connectedGame?.status || ""),
+      connectedGameId: String(sessionBefore?.connectedGame?.gameId || ""),
+      connectedAssignmentId: String(sessionBefore?.connectedGame?.assignmentId || ""),
+      connectedCogSessionId: String(sessionBefore?.connectedGame?.cogSessionId || ""),
+      startedAt: Number(sessionBefore?.startedAt || sessionBefore?.connectedGame?.startedAt || 0),
+      updatedAt: Number(sessionBefore?.updatedAt || sessionBefore?.connectedGame?.updatedAt || 0)
+    }));
     throw new Error("E2E_BLOCKED: an active session already occupies session/current; no writes performed.");
   }
 
