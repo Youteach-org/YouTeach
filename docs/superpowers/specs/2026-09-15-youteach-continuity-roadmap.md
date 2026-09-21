@@ -763,3 +763,27 @@ This supersedes any earlier Group Management wording that implied repeated row-l
 - Template deduplication is based on reusable content (unit count + ordered criteria + reusable report settings), not group identity.
 - The template popup lists only reusable template records. Selecting a template and confirming **Use Selected Template** copies its reusable setup into the current group editor.
 - Templates never copy or reference students, grades, attendance, assignments, enrollment requests, or any other group-specific live data.
+
+
+### Group Management row/state correction — 2026-09-20 (latest)
+
+This supersedes any earlier Group Management layout that still separated roster metadata, kept Select all away from the roster, exposed evaluation-source mappings in the normal criterion row, or forgot the teacher's current management context when navigating away.
+
+- Each roster item is exactly one compact horizontal row with these visible columns:
+  `checkbox | Full Name | Nickname | External ID | Group`.
+- Pending versus enrolled state may be indicated by row styling/title and the contextual actions, but must not add another permanent column that expands the row.
+- The **Select all** checkbox lives in the roster header's checkbox column, directly above the row checkboxes it controls.
+- Student/request actions are selection-driven and hidden when nothing is selected:
+  - pending request -> Approve / Deny;
+  - enrolled student -> Open Record / Edit External ID / Expel;
+  - applicable batch actions may appear for multi-selection.
+- Navigating to another YouTeach page and returning must preserve, within the same browser tab/session:
+  - selected managed group;
+  - roster expanded/collapsed state;
+  - evaluation editor expanded/collapsed state;
+  - selected student/request rows that still exist.
+- The basic criterion editor shows only `Criterion name | Abbr. | % | Remove`.
+- Internal criterion grade-source mappings are implementation detail/advanced compatibility data and must not occupy the normal setup UI.
+- New custom criteria default to manual storage, while assignments explicitly tagged to a criterion feed that criterion regardless of its internal legacy source mapping.
+- **Use Template** opens the reusable-template popup directly. No permanent `Start with custom criteria` selector is shown.
+- When templates exist, the popup selects a usable template by default so the teacher can apply it without first discovering a hidden selection prerequisite.
