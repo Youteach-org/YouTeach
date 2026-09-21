@@ -18,7 +18,6 @@ const groupFilter = document.getElementById("groupFilter");
 const searchStudentInput = document.getElementById("searchStudent");
 const selectedGroupCard = document.getElementById("selectedGroupCard");
 const studentsInGroupCard = document.getElementById("studentsInGroupCard");
-const evaluationUnitCountCard = document.getElementById("evaluationUnitCountCard");
 const studentsTableBody = document.getElementById("studentsTableBody");
 const studentsTableHeadRow = studentsTableBody.closest("table")?.querySelector("thead tr");
 const saveAllStudentsBtn = document.getElementById("saveAllStudentsBtn");
@@ -72,34 +71,37 @@ function currentBlockGrade(studentKey, student, blockName, config) {
 }
 
 function renderEvaluationSummary(group) {
-  const config = groupEvaluationConfig(group);
-  evaluationUnitCountCard.textContent = config.configured ? String(config.unitCount) : "Setup required";
-  return config;
+  return groupEvaluationConfig(group);
 }
 
-function criterionSummaryHtml(config) {
+function blockCriteriaHeaderHtml(config) {
   if (!config.configured) {
     return '<span class="block-grade-setup-required">Evaluation setup required</span>';
   }
 
-  return config.criteria.map((criterion) =>
-    `${escapeHtml(criterion.name)} ${formatGradeNumber(criterion.weight)}%`
-  ).join(" · ");
+  const columns = config.criteria.length + 1;
+  return `
+    <span class="block-criteria-grid" style="--criterion-columns:${columns}">
+      ${config.criteria.map((criterion) =>
+        `<span class="block-criterion-label">${escapeHtml(criterion.name)} ${formatGradeNumber(criterion.weight)}%</span>`
+      ).join("")}
+      <span class="block-criterion-label block-criterion-total">Total</span>
+    </span>
+  `;
 }
 
 function renderBlockHeaders(blockNames, config) {
   if (!studentsTableHeadRow) return;
-  const criteria = criterionSummaryHtml(config);
+  const criteria = blockCriteriaHeaderHtml(config);
 
   studentsTableHeadRow.innerHTML = `
     <th style="min-width:140px;">External ID</th>
     <th style="min-width:320px;">Full Name</th>
     <th style="min-width:180px;">Nickname</th>
-    <th>Today Active</th>
     ${blockNames.map((blockName) => `
       <th class="block-grade-header">
         <span class="block-header-title">${escapeHtml(blockName)}</span>
-        <span class="block-header-criteria">${criteria}</span>
+        ${criteria}
       </th>
     `).join("")}
   `;
@@ -111,7 +113,16 @@ function blockGradeHtml(studentKey, student, blockName, config) {
   }
 
   const result = currentBlockGrade(studentKey, student, blockName, config);
-  return `<span class="block-grade-total">${formatGradeNumber(result.total)}</span>`;
+  const columns = result.criteria.length + 1;
+
+  return `
+    <span class="block-values-grid" style="--criterion-columns:${columns}">
+      ${result.criteria.map((criterion) =>
+        `<span class="block-criterion-value">${formatGradeNumber(criterion.contribution)}%</span>`
+      ).join("")}
+      <span class="block-criterion-value block-criterion-total">${formatGradeNumber(result.total)}%</span>
+    </span>
+  `;
 }
 
 function getStoredWorkingGroup(){
@@ -196,18 +207,17 @@ function renderStudents(){
   selectedGroupCard.textContent = selectedGroup || "No group selected";
   studentsInGroupCard.textContent = String(entries.length);
 
-  const columnCount = 4 + blockNames.length;
+  const columnCount = 3 + blockNames.length;
   if(!entries.length){
     studentsTableBody.innerHTML = `<tr><td colspan="${columnCount}">No students found for this group.</td></tr>`;
     return;
   }
 
   studentsTableBody.innerHTML = entries.map(([key, student]) => `
-    <tr class="editable-row" data-student-key="${escapeHtml(key)}">
+    <tr class="editable-row ${student.activeNow ? "active-student" : ""}" data-student-key="${escapeHtml(key)}">
       <td class="external-id-cell">${escapeHtml(student.studentNumber || "")}</td>
       <td><input class="table-input student-name-input name-column-input" data-student-key="${escapeHtml(key)}" value="${escapeHtml(getDisplayName(student))}"></td>
       <td><input class="table-input student-nickname-input" data-student-key="${escapeHtml(key)}" value="${escapeHtml(student.nickname || "")}"></td>
-      <td>${student.activeNow ? "YES" : "NO"}</td>
       ${blockNames.map((blockName) =>
         `<td class="block-grade-cell">${blockGradeHtml(key, student, blockName, config)}</td>`
       ).join("")}
