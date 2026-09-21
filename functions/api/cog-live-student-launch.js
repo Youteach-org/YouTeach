@@ -104,6 +104,13 @@ export async function onRequestPost({ request, env }) {
       return json(409, { ok: false, error: "This live game is not supported." });
     }
 
+    if (!game.studentPath) {
+      return json(409, {
+        ok: false,
+        error: "This activity runs directly inside Student Buzzer."
+      });
+    }
+
     const canonicalSessionId = youTeachSessionId(currentSession);
     if (
       !canonicalSessionId ||
