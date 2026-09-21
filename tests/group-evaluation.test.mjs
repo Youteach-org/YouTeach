@@ -206,3 +206,46 @@ test('template popup preselects an available reusable template', () => {
   assert.match(enrollmentJs, /selectedTemplateId = entries\[0\]\[0\]/);
   assert.match(enrollmentJs, /useSelectedEvaluationTemplateBtn\.disabled = !selectedTemplateId/);
 });
+
+
+test('template identity uses ordered rubric names, not percentages or group settings', () => {
+  const start = enrollmentJs.indexOf('function templateComparable');
+  const end = enrollmentJs.indexOf('function templateSignature', start);
+  const block = enrollmentJs.slice(start, end);
+  assert.match(block, /evaluationCriteria/);
+  assert.match(block, /criterion\.name/);
+  assert.doesNotMatch(block, /criterion\.weight/);
+  assert.doesNotMatch(block, /evaluationUnitCount/);
+  assert.doesNotMatch(block, /reportSettings/);
+  assert.doesNotMatch(block, /shortLabel/);
+  assert.doesNotMatch(block, /criterion\.source/);
+});
+
+test('template stores editable percentage defaults without copying group-specific settings', () => {
+  const start = enrollmentJs.indexOf('async function ensureIndependentTemplate');
+  const end = enrollmentJs.indexOf('async function harvestConfiguredGroupsToTemplates', start);
+  const block = enrollmentJs.slice(start, end);
+  assert.match(block, /evaluationCriteria: criteriaToFirebaseObject\(criteria\)/);
+  assert.match(block, /refreshDefaults/);
+  assert.match(block, /canonicalName = automaticTemplateName\(criteria\)/);
+  assert.doesNotMatch(block, /evaluationUnitCount: setup/);
+  assert.doesNotMatch(block, /reportSettings: setup/);
+});
+
+test('template popup is one line per criteria set with rubric names and copied percentages', () => {
+  assert.match(enrollmentHtml, /\.template-summary\{/);
+  assert.match(enrollmentHtml, /white-space:nowrap/);
+  assert.match(enrollmentJs, /\$\{criterion\.name\} \$\{criterion\.weight\}%/);
+  assert.match(enrollmentJs, /<span class="template-summary">/);
+  assert.doesNotMatch(enrollmentJs, /<div class="template-meta">/);
+  assert.doesNotMatch(enrollmentJs, /block\(s\) ·/);
+});
+
+test('using a rubric template leaves the current group block count and report settings alone', () => {
+  const start = enrollmentJs.indexOf('function applyEvaluationTemplate');
+  const end = enrollmentJs.indexOf('function renderSelectedGroupActions', start);
+  const block = enrollmentJs.slice(start, end);
+  assert.match(block, /setCriteriaEditor\(criteria\)/);
+  assert.doesNotMatch(block, /evaluationUnitCountInput\.value/);
+  assert.doesNotMatch(block, /pendingReportSettings/);
+});
