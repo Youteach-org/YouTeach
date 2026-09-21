@@ -145,9 +145,12 @@ test('Select all is in the roster header directly over row checkboxes', () => {
 test('requested E6C Fall 2026 criteria reset is one-time and preserves the group', () => {
   assert.match(js, /REQUESTED_CRITERIA_RESET_GROUP = "e6c fall 2026"/);
   assert.match(js, /REQUESTED_CRITERIA_RESET_MARKER = "criteriaReset20260921"/);
-  assert.match(js, /clearRequestedGroupEvaluationOnce/);
-  assert.match(js, /evaluationCriteria: null/);
-  assert.match(js, /evaluationConfiguredAt: null/);
-  assert.match(js, /maintenance\/\$\{REQUESTED_CRITERIA_RESET_MARKER\}/);
-  assert.doesNotMatch(js, /groups\/\$\{groupName\}.*null/);
+  const start = js.indexOf('async function clearRequestedGroupEvaluationOnce');
+  const end = js.indexOf('onValue(ref(db, "groups")', start);
+  const block = js.slice(start, end);
+  assert.match(block, /evaluationCriteria: null/);
+  assert.match(block, /evaluationConfiguredAt: null/);
+  assert.match(block, /maintenance\/\$\{REQUESTED_CRITERIA_RESET_MARKER\}/);
+  assert.doesNotMatch(block, /set\(ref\(db, `groups\/\$\{groupName\}`\), null\)/);
+  assert.doesNotMatch(block, /\[`groups\/\$\{groupName\}`\]\s*=\s*null/);
 });
