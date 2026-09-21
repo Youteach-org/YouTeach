@@ -812,7 +812,11 @@ function buildGroupBackup(root, groupName) {
     attendance,
     pointsLog,
     sessionHistory,
-    pairHistory
+    pairHistory,
+    currentSession:
+      String(root?.session?.current?.groupName || "") === groupName
+        ? (root.session.current || null)
+        : null
   };
 }
 
@@ -864,6 +868,10 @@ function buildGroupDeletionUpdates(root, backup) {
   Object.keys(backup.pairHistory || {}).forEach((id) => {
     updates[`pairHistory/${id}`] = null;
   });
+
+  if (backup.currentSession) {
+    updates["session/current"] = null;
+  }
 
   return updates;
 }
