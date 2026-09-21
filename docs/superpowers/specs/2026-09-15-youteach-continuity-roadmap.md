@@ -863,3 +863,22 @@ This supersedes any earlier flow that required **Save Group Settings**, **Set Ev
   - Automatically initialized zero-only `blockPoints` do not by themselves mark a block as graded.
 - A blocked reduction must leave the stored count unchanged and explain that grades in the last used block must be removed before reducing further.
 - Grade deletion/reset is a separate future function; this safeguard must not silently delete any grade data.
+
+
+### Teacher Students compact tracking table — 2026-09-21 (latest)
+
+- Remove the standalone **Working Group** and **Search Students** cards.
+- **Selected Group** is itself the Working Group dropdown; the teacher's manual choice has priority over a live session when rendering this page.
+- **Students in Group** includes the student count and a compact magnifying-glass button. Search input is hidden by default, expands inside that card, and filters live while typing.
+- Remove the redundant **Evaluation Blocks / Units** summary card.
+- The table has one sticky identity column on the left and horizontally scrollable block columns to the right.
+- The sticky Student cell is read-only and contains:
+  - full student name;
+  - External ID as a compact tag beside the name when present;
+  - nickname as secondary metadata.
+- There is no separate External ID or Nickname column and no Save All editing workflow on this page.
+- Double-clicking a student row opens that student's profile/summary.
+- Active students are indicated with a light green row treatment; there is no **Active Today** column.
+- Each block header contains the criterion labels and maximum weights. Multiword criterion labels may wrap into two lines (for example `Written` / `exam 35%`).
+- Every student block cell contains only the criterion contribution values in the same horizontal order as the header plus the block total; criterion names are never repeated in the student row.
+- Existing block-protection rule: evaluation unit count may increase freely, but may not be reduced below the highest block that contains recorded grades for that group. A lower reduction becomes possible only after those grades are explicitly removed by a future grade-deletion workflow.
