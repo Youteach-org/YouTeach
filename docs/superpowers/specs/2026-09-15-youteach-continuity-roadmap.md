@@ -1,7 +1,7 @@
 # YouTeach continuity roadmap
 
 Date: 2026-09-15
-Repository: youteachtk/YouTeach
+Repository: Youteach-org/YouTeach
 Status: active
 Production target: Cloudflare Pages
 
@@ -22,13 +22,30 @@ Working rule:
 
 ## 2. Current architecture
 
-- Frontend: static HTML/CSS/JS from `youteachtk/YouTeach`.
+- Frontend: static HTML/CSS/JS from `Youteach-org/YouTeach`.
 - Production hosting: Cloudflare Pages.
 - Database / live state: Firebase Realtime Database.
 - Assignment evidence storage: Google Drive.
 - Assignment PDFs are not stored in Firebase Storage.
 - Assignment upload route: Cloudflare Pages Function at `/api/drive-upload-session`.
 - AI grade import route: Cloudflare Pages Function at `/api/sync-ai-grades`.
+
+## 2.1 Group Management accepted UX — 2026-09-21
+
+- The **Group Management** page keeps its normal page header/title; do not remove it.
+- **Create Group** is a popup opened from the Groups section, not a permanent inline editor.
+- The Create Group popup includes an explicit **Cancel** button.
+- For an existing selected group, **Blocks & Criteria** opens the same group editor as a popup. Existing-group changes autosave.
+- **Enrolled Students** has no explanatory legend underneath the heading.
+- The Enrolled Students header actions are ordered: **Active enrollment link**, **Add Student**, then the roster expand/collapse arrow.
+- The enrollment control always reads **Active enrollment link**. If the group has no link yet, that control creates it. Once a link exists, the same control shows/hides the link textbox and **Rotate link** button.
+- **Add Student** remains a popup. Its Manual / CSV / Paste List mode buttons must visibly indicate which option is selected.
+- Student primary-display modes are group-level preferences and are shared by Group Management and Students:
+  - **Name** = the student's full name with given name(s) first.
+  - **Last names first** = the student's full name with surname(s) first; never show only the surname(s).
+  - **Nickname** = nickname as the primary identity, with the full name available on the secondary line.
+- Nickname and External ID stay together on one secondary line under the primary identity when applicable.
+- Student search is independent of the selected primary-display mode and searches full name, given names, surnames, nickname, External ID/student number, and internal ID.
 
 ## 3. Assignment decisions already accepted
 
