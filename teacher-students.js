@@ -1,5 +1,5 @@
 import { db } from "./firebase.js";
-import { ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
 import { migrateExistingStudentsForTeacher } from "./student-auth.js?v=group-evaluation-20260920";
 import {
@@ -16,11 +16,11 @@ const teacherIdentity = document.getElementById("teacherIdentity");
 const logoutBtn = document.getElementById("logoutBtn");
 const groupFilter = document.getElementById("groupFilter");
 const searchStudentInput = document.getElementById("searchStudent");
-const selectedGroupCard = document.getElementById("selectedGroupCard");
 const studentsInGroupCard = document.getElementById("studentsInGroupCard");
+const toggleStudentSearchBtn = document.getElementById("toggleStudentSearchBtn");
+const studentSearchPanel = document.getElementById("studentSearchPanel");
 const studentsTableBody = document.getElementById("studentsTableBody");
 const studentsTableHeadRow = studentsTableBody.closest("table")?.querySelector("thead tr");
-const saveAllStudentsBtn = document.getElementById("saveAllStudentsBtn");
 const openBlockReportBtn = document.getElementById("openBlockReportBtn");
 
 teacherIdentity.textContent = getTeacherName();
@@ -74,6 +74,18 @@ function renderEvaluationSummary(group) {
   return groupEvaluationConfig(group);
 }
 
+function criterionHeaderLabel(criterion) {
+  const words = String(criterion?.name || "").trim().split(/\s+/).filter(Boolean);
+  const weight = `${formatGradeNumber(criterion?.weight)}%`;
+
+  if (!words.length) return weight;
+  if (words.length === 1) return `${escapeHtml(words[0])}<br>${weight}`;
+
+  const firstLine = escapeHtml(words.slice(0, -1).join(" "));
+  const secondLine = `${escapeHtml(words[words.length - 1])} ${weight}`;
+  return `${firstLine}<br>${secondLine}`;
+}
+
 function blockCriteriaHeaderHtml(config) {
   if (!config.configured) {
     return '<span class="block-grade-setup-required">Evaluation setup required</span>';
@@ -83,7 +95,7 @@ function blockCriteriaHeaderHtml(config) {
   return `
     <span class="block-criteria-grid" style="--criterion-columns:${columns}">
       ${config.criteria.map((criterion) =>
-        `<span class="block-criterion-label">${escapeHtml(criterion.name)} ${formatGradeNumber(criterion.weight)}%</span>`
+        `<span class="block-criterion-label">${criterionHeaderLabel(criterion)}</span>`
       ).join("")}
       <span class="block-criterion-label block-criterion-total">Total</span>
     </span>
@@ -95,9 +107,7 @@ function renderBlockHeaders(blockNames, config) {
   const criteria = blockCriteriaHeaderHtml(config);
 
   studentsTableHeadRow.innerHTML = `
-    <th style="min-width:140px;">External ID</th>
-    <th style="min-width:320px;">Full Name</th>
-    <th style="min-width:180px;">Nickname</th>
+    <th class="student-column-header">Student</th>
     ${blockNames.map((blockName) => `
       <th class="block-grade-header">
         <span class="block-header-title">${escapeHtml(blockName)}</span>
@@ -177,13 +187,16 @@ function renderGroupFilter(){
   groupFilter.value = selectedGroup;
 }
 
+function getGroupEntries(){
+  return Object.entries(studentsCache || {}).filter(([, student]) =>
+    !selectedGroup || (student.groupName || "") === selectedGroup
+  );
+}
+
 function getFilteredEntries(){
   const query = normalizeText(searchStudentInput.value);
 
-  return Object.entries(studentsCache || {}).filter(([, student]) => {
-    const matchesGroup = !selectedGroup || (student.groupName || "") === selectedGroup;
-    if(!matchesGroup) return false;
-
+  return getGroupEntries().filter(([, student]) => {
     const searchable = normalizeText([
       getDisplayName(student),
       student.nickname || "",
@@ -204,29 +217,32 @@ function renderStudents(){
   const blockNames = evaluationBlockNames(selectedGroupRecord);
   renderBlockHeaders(blockNames, config);
 
-  selectedGroupCard.textContent = selectedGroup || "No group selected";
-  studentsInGroupCard.textContent = String(entries.length);
+  studentsInGroupCard.textContent = String(getGroupEntries().length);
 
-  const columnCount = 3 + blockNames.length;
+  const columnCount = 1 + blockNames.length;
   if(!entries.length){
     studentsTableBody.innerHTML = `<tr><td colspan="${columnCount}">No students found for this group.</td></tr>`;
     return;
   }
 
   studentsTableBody.innerHTML = entries.map(([key, student]) => `
-    <tr class="editable-row ${student.activeNow ? "active-student" : ""}" data-student-key="${escapeHtml(key)}">
-      <td class="external-id-cell">${escapeHtml(student.studentNumber || "")}</td>
-      <td><input class="table-input student-name-input name-column-input" data-student-key="${escapeHtml(key)}" value="${escapeHtml(getDisplayName(student))}"></td>
-      <td><input class="table-input student-nickname-input" data-student-key="${escapeHtml(key)}" value="${escapeHtml(student.nickname || "")}"></td>
+    <tr class="student-row ${student.activeNow ? "active-student" : ""}" data-student-key="${escapeHtml(key)}">
+      <td class="student-identity-cell">
+        <div class="student-name">${escapeHtml(getDisplayName(student))}</div>
+        <div class="student-meta">
+          ${student.nickname ? `<span>${escapeHtml(student.nickname)}</span>` : ""}
+          ${student.studentNumber ? `<span class="student-id-tag">ID ${escapeHtml(student.studentNumber)}</span>` : ""}
+        </div>
+      </td>
       ${blockNames.map((blockName) =>
         `<td class="block-grade-cell">${blockGradeHtml(key, student, blockName, config)}</td>`
       ).join("")}
     </tr>
   `).join("");
 
-  document.querySelectorAll(".editable-row").forEach((row) => {
+  document.querySelectorAll(".student-row").forEach((row) => {
     row.addEventListener("dblclick", (event) => {
-      if(event.target.closest("input, select, button")) return;
+      if(event.target.closest("input, select, button, a")) return;
       const studentKey = row.dataset.studentKey;
       sessionStorage.setItem("teacherViewStudentKey", studentKey);
       window.location.href = `student-summary.html?teacherViewStudentKey=${encodeURIComponent(studentKey)}`;
@@ -240,37 +256,19 @@ openBlockReportBtn.addEventListener("click", () => {
   window.location.href = `teacher-block-report.html${query}`;
 });
 
-saveAllStudentsBtn.addEventListener("click", async () => {
-  const updates = {};
-
-  document.querySelectorAll(".editable-row").forEach((row) => {
-    const key = row.dataset.studentKey;
-    const nameInput = row.querySelector(".student-name-input");
-    const nicknameInput = row.querySelector(".student-nickname-input");
-
-    if(!key || !nameInput || !nicknameInput) return;
-
-    const fullName = nameInput.value.trim();
-    const nickname = nicknameInput.value.trim();
-
-    updates[`students/${key}/fullName`] = fullName;
-    updates[`students/${key}/name`] = fullName;
-    updates[`students/${key}/nickname`] = nickname;
-  });
-
-  if(!Object.keys(updates).length){
-    alert("No visible changes to save.");
-    return;
-  }
-
-  await update(ref(db), updates);
-  alert("All visible student changes saved.");
-});
-
 groupFilter.addEventListener("change", () => {
   selectedGroup = groupFilter.value || "";
   setStoredWorkingGroup(selectedGroup);
   renderStudents();
+});
+
+toggleStudentSearchBtn.addEventListener("click", () => {
+  const opening = studentSearchPanel.hidden;
+  studentSearchPanel.hidden = !opening;
+  toggleStudentSearchBtn.setAttribute("aria-expanded", String(opening));
+  if (opening) {
+    searchStudentInput.focus();
+  }
 });
 
 searchStudentInput.addEventListener("input", renderStudents);
