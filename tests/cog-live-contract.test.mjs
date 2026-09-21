@@ -13,7 +13,7 @@ const CONTRACT = Object.freeze({
   teacherTokenPurpose: "cog-live-teacher",
   studentTokenPurpose: "cog-live-student",
   launchMode: "live-buzzer",
-  idleTtlMs: 59 * 60 * 1000,
+  idleTtlMs: 60 * 60 * 1000,
   youTeachOrigin: "https://youteach.pages.dev",
   cogOrigin: "https://classroom-online-games.pages.dev",
   descriptorFields: [
