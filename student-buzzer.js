@@ -1,6 +1,7 @@
 import { db } from "./firebase.js";
 import { ref, onValue, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-import { requireStudentSession, clearStudentSession, saveLeaveLog } from "./student-auth.js";\nimport { canStudentAccessLiveGame } from "./cog-live-session-policy.mjs";
+import { requireStudentSession, clearStudentSession, saveLeaveLog } from "./student-auth.js";
+import { canStudentAccessLiveGame } from "./cog-live-session-policy.mjs";
 
 const session = requireStudentSession();
 if (!session) throw new Error("Student session required.");
