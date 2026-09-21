@@ -806,3 +806,19 @@ This is the canonical template rule and supersedes earlier wording that treated 
 - Existing configured groups may be harvested into this criteria-only library for backward compatibility, but the resulting template is not linked back to that group.
 - When an existing old template is encountered, YouTeach normalizes it to this criteria-only contract and removes legacy group-specific fields.
 - Operational reset requested on 2026-09-21: the existing criteria on the group whose normalized name is `E6C Fall 2026` are cleared once, using a persisted maintenance marker. The group itself, its roster, and other group data remain intact. Recreated criteria are not cleared again.
+
+
+### Evaluation autosave — 2026-09-21 (latest)
+
+This supersedes any earlier flow that required **Save Group Settings**, **Set Evaluation**, or an explicit save action after editing criteria on an existing group.
+
+- **Create Group** exists only for creating the group record.
+- Once a group exists, its evaluation editor is live/autosaving. There is no **Save Group Settings** button for the selected existing group.
+- Editing criterion name, abbreviation, percentage, adding/removing a criterion, applying a template, or changing the evaluation block/unit count automatically persists the group.
+- Autosave accepts incomplete drafts. A teacher may build the criteria gradually without losing work.
+- The group is considered grading-ready only when every persisted criterion is named and the weights total exactly 100%.
+- A reusable rubric template is created/updated only when the current criterion set is grading-ready. Incomplete drafts never overwrite a valid reusable template.
+- If criteria are later removed from the group, the group draft updates immediately but any reusable template already created remains in the template library.
+- When the same rubric names remain and only percentages/abbreviations change, the existing template receives those latest valid defaults.
+- Status text describes autosave state (Saving / Saved automatically / current total) and must never instruct the teacher to use a nonexistent **Set Evaluation** control.
+- The selected-group evaluation toggle, when collapsed, is **Show Evaluation**; when expanded, **Hide Evaluation**.
