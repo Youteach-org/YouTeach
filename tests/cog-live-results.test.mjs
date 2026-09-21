@@ -105,6 +105,9 @@ test("live result is stored under canonical session/student identity", async () 
         return new Response(JSON.stringify(JSON.parse(init.body)), { status: 200 });
       }
     }
+    if (value.includes("/classroomGameResultsByAssignment/") && init.method === "PUT") {
+      return new Response(init.body || "{}", { status: 200 });
+    }
     throw new Error("Unexpected fetch: " + value + " " + (init.method || "GET"));
   };
 
@@ -165,6 +168,9 @@ test("retrying the same result id returns the existing receipt without a second 
         puts += 1;
         return new Response("{}", { status: 200 });
       }
+    }
+    if (value.includes("/classroomGameResultsByAssignment/") && init.method === "PUT") {
+      return new Response(init.body || "{}", { status: 200 });
     }
     throw new Error("Unexpected fetch: " + value + " " + (init.method || "GET"));
   };
@@ -296,6 +302,9 @@ test("Support Meter metrics are preserved in the canonical live result receipt",
         writes.push(JSON.parse(init.body));
         return new Response(init.body, { status: 200 });
       }
+    }
+    if (value.includes("/classroomGameResultsByAssignment/") && init.method === "PUT") {
+      return new Response(init.body || "{}", { status: 200 });
     }
     throw new Error("Unexpected fetch: " + value + " " + (init.method || "GET"));
   };

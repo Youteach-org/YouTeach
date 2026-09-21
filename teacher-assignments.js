@@ -8,6 +8,13 @@ import {
   filterAssignmentTemplates,
   buildAssignmentTemplateArchivePatch
 } from "./assignment-library-model.js";
+import {
+  cogGameName,
+  cogMetricEntries,
+  cogResultHistoryForStudent,
+  cogResultStudentCount,
+  studentHasCogResult
+} from "./cog-assignment-results.mjs";
 
 if (!requireTeacherAuth()) throw new Error("Teacher authentication required.");
 
@@ -116,6 +123,11 @@ const eligibleCount = document.getElementById("eligibleCount");
 const submittedCount = document.getElementById("submittedCount");
 const missingCount = document.getElementById("missingCount");
 const submissionList = document.getElementById("submissionList");
+const cogResultsPanel = document.getElementById("cogResultsPanel");
+const cogResultsList = document.getElementById("cogResultsList");
+const eligibleCountLabel = document.getElementById("eligibleCountLabel");
+const submittedCountLabel = document.getElementById("submittedCountLabel");
+const missingCountLabel = document.getElementById("missingCountLabel");
 const missingList = document.getElementById("missingList");
 const missingSummary = document.getElementById("missingSummary");
 const openDriveFolderBtn = document.getElementById("openDriveFolderBtn");
@@ -171,6 +183,7 @@ let submissionsCache = {};
 let studentsCache = {};
 let groupsCache = {};
 let projectEvidenceCache = {};
+let cogResultsCache = {};
 let loadedAssignmentTemplateId = "";
 const WORKING_GROUP_KEY = "youteachWorkingGroup";
 const ASSIGNMENTS_MODULE_MODE = new URLSearchParams(window.location.search).get("module") === "1";
@@ -1577,19 +1590,128 @@ function assignmentSubmissions(assignmentId) {
   return submissionsCache?.[assignmentId] || {};
 }
 
+function assignmentCogResults(assignmentId) {
+  return cogResultsCache?.[assignmentId] || {};
+}
+
+function cogResultKeysForStudents(resultsByStudent, students) {
+  return new Set(
+    students
+      .map(([studentKey]) => studentKey)
+      .filter((studentKey) => studentHasCogResult(resultsByStudent, studentKey))
+  );
+}
+
+function cogResultSummary(receipt) {
+  const percentage = Number(receipt?.percentage);
+  const points = receipt?.points === null || receipt?.points === undefined || receipt?.points === ""
+    ? null
+    : Number(receipt.points);
+  const parts = [];
+  if (Number.isFinite(percentage)) parts.push(`${Number(percentage.toFixed(2))}%`);
+  if (Number.isFinite(points)) parts.push(`${Number(points.toFixed(2))} game points`);
+  return parts.join(" · ") || "Completed result";
+}
+
+function cogMetricsHtml(receipt) {
+  const entries = cogMetricEntries(receipt);
+  return entries.length
+    ? `<div class="cog-metric-grid">${entries.map((entry) => `
+        <span class="cog-metric-chip">
+          <small>${escapeHtml(entry.label)}</small>
+          <strong>${escapeHtml(entry.value)}</strong>
+        </span>
+      `).join("")}</div>`
+    : '<div class="status-text">No additional game metrics were reported.</div>';
+}
+
+function renderCogResults(assignment, students) {
+  if (!cogResultsPanel || !cogResultsList) return;
+  const isCogAssignment = assignmentTypeCodeFor(assignment) === "COG";
+  cogResultsPanel.hidden = !isCogAssignment;
+  if (!isCogAssignment) {
+    cogResultsList.innerHTML = "";
+    return;
+  }
+
+  const resultsByStudent = assignmentCogResults(selectedAssignmentId);
+  const completed = students.filter(([studentKey]) => studentHasCogResult(resultsByStudent, studentKey));
+
+  cogResultsList.innerHTML = completed.length
+    ? completed.map(([studentKey, student]) => {
+        const history = cogResultHistoryForStudent(resultsByStudent, studentKey);
+        const latest = history[0];
+        const studentName = student?.fullName || student?.name || student?.nickname || latest?.externalId || "Student";
+        const studentId = student?.studentNumber || student?.externalId || student?.studentId || latest?.externalId || studentKey;
+        const group = student?.groupName || latest?.groupName || assignment?.groupName || "GENERAL";
+        const attemptsLabel = `${history.length} result${history.length === 1 ? "" : "s"}`;
+
+        return `
+          <article class="cog-result-card" data-cog-result-student-key="${escapeHtml(studentKey)}">
+            <div class="cog-result-head">
+              <div>
+                <h4>${escapeHtml(studentName)}</h4>
+                <div class="submission-meta">${escapeHtml(studentId)} · ${escapeHtml(group)} · ${escapeHtml(attemptsLabel)}</div>
+              </div>
+              <div class="cog-result-chip">
+                <small>Latest game result</small>
+                <strong>${escapeHtml(cogResultSummary(latest))}</strong>
+              </div>
+            </div>
+
+            <div class="cog-result-game-row">
+              <strong>${escapeHtml(cogGameName(latest?.gameId))}</strong>
+              <span>Completed ${escapeHtml(formatDate(latest?.completedAt || latest?.acceptedAt))}</span>
+            </div>
+
+            ${cogMetricsHtml(latest)}
+
+            <details class="cog-attempts" ${history.length === 1 ? "open" : ""}>
+              <summary>Result history (${history.length})</summary>
+              <div class="cog-attempt-list">
+                ${history.map((receipt, index) => `
+                  <div class="cog-attempt-row">
+                    <div class="cog-attempt-title">
+                      <strong>${index === 0 ? "Latest" : `Attempt ${history.length - index}`} · ${escapeHtml(cogResultSummary(receipt))}</strong>
+                      <span>${escapeHtml(formatDate(receipt.completedAt || receipt.acceptedAt))}</span>
+                    </div>
+                    ${cogMetricsHtml(receipt)}
+                  </div>
+                `).join("")}
+              </div>
+            </details>
+          </article>
+        `;
+      }).join("")
+    : '<div class="status-text">No verified Classroom Online Games results yet.</div>';
+}
+
 function assignmentHasSubmissions(assignmentId) {
   return Object.values(assignmentSubmissions(assignmentId))
     .some((submission) => Boolean(submission?.driveFileId));
 }
 
 function assignmentEvaluationState(assignmentId, assignment) {
+  const totalStudents = assignmentStudents(assignment).length;
+
+  if (assignmentTypeCodeFor(assignment) === "COG") {
+    const resultCount = cogResultStudentCount(assignmentCogResults(assignmentId));
+    const missing = Math.max(0, totalStudents - resultCount);
+    return {
+      submitted: resultCount,
+      graded: 0,
+      totalStudents,
+      missing,
+      complete: resultCount > 0 && missing === 0,
+      isCog: true
+    };
+  }
+
   const submissions = Object.values(assignmentSubmissions(assignmentId))
     .filter((submission) => submission?.driveFileId);
 
   const submitted = submissions.length;
   const graded = submissions.filter((submission) => submissionIsGraded(submission)).length;
-
-  const totalStudents = assignmentStudents(assignment).length;
   const missing = Math.max(0, totalStudents - submitted);
 
   const complete =
@@ -1597,7 +1719,7 @@ function assignmentEvaluationState(assignmentId, assignment) {
     graded === submitted &&
     (!assignment?.active || missing === 0);
 
-  return { submitted, graded, totalStudents, missing, complete };
+  return { submitted, graded, totalStudents, missing, complete, isCog: false };
 }
 
 function buildChatGPTGradingPrompt(assignmentId) {
@@ -2447,6 +2569,7 @@ function renderAssignmentList() {
     const count = evaluation.submitted;
     const total = evaluation.totalStudents;
     const missing = evaluation.missing;
+    const gradeableCount = evaluation.isCog ? 0 : count;
     const evaluatedClass = evaluation.complete ? "evaluated" : "";
 
     return `
@@ -2460,15 +2583,15 @@ function renderAssignmentList() {
             type="button"
             class="ai-grading-btn"
             data-grade-assignment="${id}"
-            ${count ? "" : "disabled"}
-            title="${count ? "Open ChatGPT to grade this activity" : "No submissions to grade yet"}"
+            ${gradeableCount ? "" : "disabled"}
+            title="${gradeableCount ? "Open ChatGPT to grade this activity" : (evaluation.isCog ? "COG results are shown in the assignment detail" : "No submissions to grade yet")}"
           >AI Grading</button>
           <button
             type="button"
             class="manual-grading-btn"
             data-manual-grade-assignment="${id}"
-            ${count ? "" : "disabled"}
-            title="${count ? "Grade this activity manually" : "No submissions to grade yet"}"
+            ${gradeableCount ? "" : "disabled"}
+            title="${gradeableCount ? "Grade this activity manually" : (evaluation.isCog ? "COG results are shown in the assignment detail" : "No submissions to grade yet")}"
           >Manual Grading</button>
           ${assignmentTypeCodeFor(assignment) === "COG" && assignment.active !== false
             ? `<button
@@ -2495,11 +2618,13 @@ function renderAssignmentList() {
           <span class="assignment-mini-chip ${assignment.active ? "open" : "closed"}">
             ${assignment.active ? "Open" : "Closed"}
           </span>
-          ${evaluation.complete ? '<span class="evaluated-chip">Evaluated</span>' : ""}
+          ${!evaluation.isCog && evaluation.complete ? '<span class="evaluated-chip">Evaluated</span>' : ""}
         </span>
 
         <span class="assignment-progress">
-          ${count}/${total} submitted · ${evaluation.graded}/${count || 0} graded · ${missing} missing
+          ${evaluation.isCog
+            ? `${count}/${total} results · ${missing} no result`
+            : `${count}/${total} submitted · ${evaluation.graded}/${count || 0} graded · ${missing} missing`}
         </span>
       </article>
     `;
@@ -2521,6 +2646,8 @@ function renderDetail() {
   assignmentDetail.hidden = false;
   assignmentDetailEmpty.hidden = true;
 
+  const isCogAssignment = assignmentTypeCodeFor(assignment) === "COG";
+  const cogResults = assignmentCogResults(selectedAssignmentId);
   const students = assignmentStudents(assignment);
   const submissions = assignmentSubmissions(selectedAssignmentId);
   const validSubmissionEntries = Object.entries(submissions)
@@ -2534,15 +2661,26 @@ function renderDetail() {
     });
 
   const submittedKeys = new Set(validSubmissionEntries.map(([studentKey]) => studentKey));
-  const missing = students.filter(([studentKey]) => !submittedKeys.has(studentKey));
+  const cogResultKeys = cogResultKeysForStudents(cogResults, students);
+  const completedKeys = isCogAssignment ? cogResultKeys : submittedKeys;
+  const missing = students.filter(([studentKey]) => !completedKeys.has(studentKey));
 
-  selectedDriveFolderUrl =
-    validSubmissionEntries.find(([, submission]) => submission.driveFolderUrl)?.[1]?.driveFolderUrl || "";
+  selectedDriveFolderUrl = isCogAssignment
+    ? ""
+    : (validSubmissionEntries.find(([, submission]) => submission.driveFolderUrl)?.[1]?.driveFolderUrl || "");
 
-  openDriveFolderBtn.disabled = !selectedDriveFolderUrl;
-  driveStatus.textContent = selectedDriveFolderUrl
-    ? "PDFs are stored in the Google Drive folder for this task."
-    : "The Drive folder is created automatically with the first PDF submission.";
+  openDriveFolderBtn.disabled = isCogAssignment || !selectedDriveFolderUrl;
+  driveStatus.textContent = isCogAssignment
+    ? "Verified Classroom Online Games results are stored in YouTeach; no PDF submission is required."
+    : (selectedDriveFolderUrl
+      ? "PDFs are stored in the Google Drive folder for this task."
+      : "The Drive folder is created automatically with the first PDF submission.");
+  if (syncAiGradesBtn) {
+    syncAiGradesBtn.disabled = isCogAssignment;
+    syncAiGradesBtn.title = isCogAssignment
+      ? "COG receipts are game results, not automatic assignment grades."
+      : "Fallback: check Drive now for the latest AI grading results. Normal AI Grading auto-imports when results are ready.";
+  }
 
   detailTitle.textContent = `${assignment.code || ""} · ${assignment.title || "Assignment"}`;
   const codeLockText = assignmentHasSubmissions(selectedAssignmentId)
@@ -2553,9 +2691,12 @@ function renderDetail() {
     : "";
   detailMeta.textContent = `${assignment.groupName || "ALL"}${recipientScopeText} · Due: ${formatDate(assignment.dueAt)} · ${assignment.active ? "Open" : "Closed"}${codeLockText}`;
   eligibleCount.textContent = students.length;
-  submittedCount.textContent = validSubmissionEntries.length;
+  submittedCount.textContent = isCogAssignment ? cogResultKeys.size : validSubmissionEntries.length;
   missingCount.textContent = missing.length;
-  const lockedBySubmissions = assignmentHasSubmissions(selectedAssignmentId);
+  if (eligibleCountLabel) eligibleCountLabel.textContent = "Students";
+  if (submittedCountLabel) submittedCountLabel.textContent = isCogAssignment ? "Results" : "Submitted";
+  if (missingCountLabel) missingCountLabel.textContent = isCogAssignment ? "No result" : "Missing";
+  const lockedBySubmissions = assignmentHasSubmissions(selectedAssignmentId) || (isCogAssignment && cogResultKeys.size > 0);
   if (saveSelectedTemplateBtn) saveSelectedTemplateBtn.disabled = false;
   toggleAssignmentBtn.textContent = assignment.active ? "Close Assignment" : "Reopen Assignment";
   editCriteriaBtn.disabled = lockedBySubmissions;
@@ -2564,12 +2705,19 @@ function renderDetail() {
     : "Edit evaluation criteria";
   renderEvaluationCriteria(assignment);
   renderProjectProgress(assignment);
+  renderCogResults(assignment, students);
+  submissionList.hidden = isCogAssignment;
+  if (isCogAssignment) {
+    manualGradingPanel.hidden = true;
+    selectedManualStudentKey = "";
+    examAnnotationPanel.hidden = true;
+  }
 
   if (lockedBySubmissions) {
     editCriteriaBtn.title = "Criteria locked after the first submission.";
   }
 
-  submissionList.innerHTML = validSubmissionEntries.length
+  submissionList.innerHTML = isCogAssignment ? "" : validSubmissionEntries.length
     ? validSubmissionEntries.map(([studentKey, submission]) => {
         const graded = submissionIsGraded(submission);
         const gradeTotal = gradingTotalForSubmission(submission);
@@ -2642,7 +2790,9 @@ function renderDetail() {
     : '<div class="status-text">No PDF submissions yet.</div>';
 
   if (missingSummary) {
-    missingSummary.textContent = `Missing submissions (${missing.length})`;
+    missingSummary.textContent = isCogAssignment
+      ? `No result yet (${missing.length})`
+      : `Missing submissions (${missing.length})`;
   }
 
   missingList.innerHTML = missing.length
@@ -2657,13 +2807,13 @@ function renderDetail() {
               <strong>${escapeHtml(name)}</strong>
               <span>${escapeHtml(id)} · ${escapeHtml(group)}</span>
             </div>
-            <span class="missing-student-chip">Not submitted</span>
+            <span class="missing-student-chip">${isCogAssignment ? "No result" : "Not submitted"}</span>
           </article>
         `;
       }).join("")
-    : '<div class="missing-empty-state">No missing submissions.</div>';
+    : `<div class="missing-empty-state">${isCogAssignment ? "Every eligible student has a result." : "No missing submissions."}</div>`;
 
-  if (!manualGradingPanel.hidden) renderManualGrading();
+  if (!isCogAssignment && !manualGradingPanel.hidden) renderManualGrading();
 }
 
 function replaceAssignmentLibraryFilterOptions(select, values, allLabel) {
@@ -3645,6 +3795,11 @@ onValue(ref(db, "assignmentSubmissions"), (snapshot) => {
   submissionsCache = snapshot.val() || {};
   renderAssignmentList();
   requestInitialAiSync();
+});
+
+onValue(ref(db, "classroomGameResultsByAssignment"), (snapshot) => {
+  cogResultsCache = snapshot.val() || {};
+  renderAssignmentList();
 });
 
 onValue(ref(db, "assignmentProjectEvidence"), (snapshot) => {
