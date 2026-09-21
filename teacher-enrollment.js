@@ -242,8 +242,9 @@ function renderEvaluationEditorVisibility() {
   }
 
   toggleEvaluationBtn.textContent = evaluationEditorOpen
-    ? "Hide Evaluation"
-    : "Show Evaluation";
+    ? "▾ Evaluation criteria"
+    : "▸ Evaluation criteria";
+  toggleEvaluationBtn.setAttribute("aria-expanded", String(evaluationEditorOpen));
 }
 
 function templateComparable({ evaluationCriteria } = {}) {
@@ -637,7 +638,6 @@ function loadGroupEditor(groupName, { preserveView = false } = {}) {
   setCriteriaEditor(config.criteria);
   createGroupBtn.hidden = true;
   cancelGroupEditBtn.hidden = false;
-  if (!preserveView) evaluationEditorOpen = false;
   groupEvaluationStatus.textContent = config.configured
     ? "Evaluation settings are saved automatically."
     : "Evaluation settings are saved automatically as you edit. Complete 100% to enable grading and update the reusable template.";
