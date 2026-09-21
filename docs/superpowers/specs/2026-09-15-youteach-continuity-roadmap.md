@@ -843,3 +843,23 @@ This supersedes any earlier flow that required **Save Group Settings**, **Set Ev
 - A student's block cell shows only that student's resulting block grade (or setup-required state).
 - The separate top-level **Group Evaluation Criteria** summary card is removed to avoid duplicating the same information.
 - Changing Working Group updates both the dynamic block count and the criterion summary shown under every block heading.
+
+
+### Teacher Students compact grade matrix + protected block count — 2026-09-21 (latest)
+
+- On Teacher → Students, remove the **Today Active** column. Presence is represented visually: an active student row uses a light-green background.
+- Remove the **Evaluation Blocks / Units** summary card. The dynamic `Block 1`, `Block 2`, ... columns already communicate the configured block count.
+- Each block header is a grade matrix header:
+  - block title at the top;
+  - ordered criterion names with their maximum weights directly underneath;
+  - a final **Total** heading.
+- Each student cell for that block aligns to the same criterion order and displays only the student's earned weighted contribution for each criterion, followed by the block total. Criterion titles are never repeated in student rows.
+- Example header: `Written 35% | Oral 40% | Verbs 15% | Tasks 10% | Total`.
+- Example student row values: `28% | 32% | 15% | 0% | 75%`.
+- Evaluation block/unit count may always be increased.
+- Reducing the block/unit count is allowed only down to the highest block that has recorded grading evidence for that group.
+  - If Blocks 1 and 2 contain grades and Block 3 is unused, 3 → 2 is allowed; 2 → 1 is blocked.
+  - Recorded evidence includes legacy exam/task/attendance/manual criterion data, graded assignment submissions attributed to the block, and activity point history.
+  - Automatically initialized zero-only `blockPoints` do not by themselves mark a block as graded.
+- A blocked reduction must leave the stored count unchanged and explain that grades in the last used block must be removed before reducing further.
+- Grade deletion/reset is a separate future function; this safeguard must not silently delete any grade data.
