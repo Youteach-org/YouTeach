@@ -68,8 +68,7 @@ function setupTeacherViewShell() {
     sidebarLinks.innerHTML = `
       <a class="sidebar-link" href="buzzer.html">Buzzer</a>
       <a class="sidebar-link" href="teacher.html">Teacher Home</a>
-      <a class="sidebar-link active-link" href="teacher-students.html">Students</a>
-      <a class="sidebar-link" href="teacher-enrollment.html">Group Management</a>
+      <a class="sidebar-link active-link" href="group-mangement.html">Group Management</a>
       <a class="sidebar-link" href="teacher-active.html">Active Today</a>
       <a class="sidebar-link" href="teacher-points.html">Points / Export</a>
       <a class="sidebar-link" href="teacher-history.html">History</a>
@@ -290,7 +289,7 @@ onValue(ref(db, `students/${studentKey}`), (snapshot) => {
   if (!currentStudent) {
     if (isTeacherView) {
       alert("Student not found.");
-      window.location.href = "teacher-students.html";
+      window.location.href = "group-mangement.html";
     } else {
       clearStudentSession();
       window.location.href = "index.html";

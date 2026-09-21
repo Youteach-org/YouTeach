@@ -953,3 +953,15 @@ This supersedes the earlier compact spreadsheet roster inside Group Management.
 - The secondary identity line is exactly one compact line below the primary identity. Normally it contains `nickname · ID ...`; when Nickname is primary, it uses the full name plus External ID to avoid useless duplication.
 - Search is independent of the display mode and matches full name, parsed given names, parsed surnames, nickname, External ID, and internal ID.
 - The **Evaluation criteria** expanded/collapsed preference is persisted separately in local storage and is also flushed on `pagehide`, so leaving and returning to Group Management preserves the last open/closed state.
+
+
+### Group Management consolidation — 2026-09-21 (latest)
+
+This supersedes earlier Teacher Students / Group Management navigation and layout notes where they conflict.
+
+- The standalone Teacher **Students** page and route are removed. There is no Students item in the teacher menu or Teacher Home.
+- The canonical Group Management route is **/group-mangement**. Legacy `teacher-enrollment` URLs redirect to it.
+- The old inline **Groups** card is a popup opened by the **Groups** button. Selecting a group immediately switches Group Management to that group and closes the popup. Roster expansion/collapse is controlled only by the Enrolled Students arrow.
+- The Enrolled Students header keeps the enrollment-link textbox and **Copy link** / **Rotate link** controls immediately to the left of **Active enrollment link**.
+- **Active enrollment link** still creates the link if the selected group has none and toggles the inline link controls when a link exists.
+- The student identity display button shows only **Names**, **Last names**, or **Nicknames**. It never prefixes the choice with “Show:”.
