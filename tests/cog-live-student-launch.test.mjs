@@ -254,3 +254,48 @@ test("student resolver revalidates the same live session and returns canonical i
     globalThis.fetch = originalFetch;
   }
 });
+
+
+test("100 Students Said is explicitly handled inside Student Buzzer and never emits an external student URL", async () => {
+  const token = await studentSession();
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    const value = String(url);
+    if (value.endsWith("/students/student-1.json")) {
+      return new Response(JSON.stringify({
+        studentNumber: "A001",
+        groupName: "533-2"
+      }), { status: 200 });
+    }
+    if (value.endsWith("/session/current.json")) {
+      return new Response(JSON.stringify({
+        active: true,
+        sessionId: "yt-123",
+        groupName: "533-2",
+        connectedGame: connectedGame({
+          gameId: "100-students-said",
+          gameName: "100 Students Said",
+          assignmentId: "assignment-1",
+          recipientStudentKeys: ["student-1"]
+        })
+      }), { status: 200 });
+    }
+    throw new Error("Unexpected fetch: " + value);
+  };
+
+  try {
+    const response = await createStudentLaunch({
+      request: new Request("https://youteach.pages.dev/api/cog-live-student-launch", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + token }
+      }),
+      env: { YOUTEACH_SESSION_SECRET: SECRET }
+    });
+    assert.equal(response.status, 409);
+    const payload = await response.json();
+    assert.match(payload.error, /Student Buzzer/i);
+    assert.equal(payload.launchUrl, undefined);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
