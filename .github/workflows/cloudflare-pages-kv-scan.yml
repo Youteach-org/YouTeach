@@ -1,0 +1,37 @@
+name: Find auth KV through Pages projects
+
+on:
+  push:
+    branches:
+      - feature/live-cog-session-current-20260920
+    paths:
+      - .github/workflows/cloudflare-pages-kv-scan.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Scan Pages project KV bindings
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          account_id="$(printf '%s' "$CLOUDFLARE_ACCOUNT_ID" | tr -d '[:space:]')"
+          curl -fsS             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             "https://api.cloudflare.com/client/v4/accounts/$account_id/pages/projects?per_page=100"             | jq '{
+                success,
+                projects: [
+                  .result[] |
+                  {
+                    name,
+                    production_branch,
+                    production_kv: (.deployment_configs.production.kv_namespaces // {}),
+                    preview_kv: (.deployment_configs.preview.kv_namespaces // {})
+                  }
+                ]
+              }'
