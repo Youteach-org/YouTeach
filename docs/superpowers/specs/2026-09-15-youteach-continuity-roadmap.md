@@ -619,7 +619,7 @@ Supported source identifiers are implementation mappings, not user-visible manda
 ### Evaluation templates
 - Group evaluation setups can be saved as reusable templates independently of student rosters.
 - Create Group provides a template selector plus **Use Template**; choosing a template preloads blocks/units and all criterion definitions.
-- Editing an existing group provides **Save as Template**.
+- **SUPERSEDED:** there is no separate Save as Template action. Saving a valid group evaluation setup automatically ensures an independent reusable template exists.
 - A teacher can finish a course, replace the old criteria for the same group, or reuse the old setup when creating a new group.
 - Templates never copy students, grades, attendance, assignments, or other historical student data.
 
@@ -755,7 +755,7 @@ This supersedes any earlier Group Management wording that implied repeated row-l
 
 ### Evaluation template library interaction — 2026-09-20 (latest)
 
-- **Use Template** is the only persistent template control in the group editor. There is no permanently visible template dropdown.
+- **Use Template** is the only persistent template control in the group editor. There is no permanently visible template dropdown and no separate **Save as Template** button.
 - Pressing **Use Template** opens a popup/modal containing previously used/saved evaluation templates.
 - A template is an independent reusable evaluation-setup object. A group itself is **not** the template and the template must not retain a live association to a source group.
 - When a valid evaluation setup is saved on a group, YouTeach ensures that an equivalent independent reusable template exists under `groupEvaluationTemplates`.
