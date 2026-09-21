@@ -20,10 +20,10 @@
     .evaluation-total.ok{color:#166534}.evaluation-total.bad{color:#b91c1c}
     .group-evaluation-summary{font-size:11px;color:#475569;line-height:1.35}
     .setup-required{font-weight:800;color:#b45309}
-    .selected-group-banner{padding:8px 10px;border-radius:9px;background:#f1f5f9;display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
-    .selected-group-banner strong{font-size:14px}
     .collapse-btn{min-width:38px;padding:6px 10px;font-size:17px;line-height:1}
-    .enrollment-link-box{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
+    .enrolled-head-actions{display:flex;align-items:center;gap:8px;margin-left:auto}
+    .active-enrollment-link-btn.active{background:#dcfce7;color:#166534;border:1px solid #86efac}
+    .enrollment-link-box{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin-top:8px}
     .enrollment-link-box input{width:100%}
     .student-toolbar{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;margin-top:9px}
     .student-toolbar-left{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
@@ -37,7 +37,9 @@
     .pending-request-row.selected{background:#eff6ff;box-shadow:inset 3px 0 #2563eb}
     .pending-request-head{font-weight:900;color:#92400e;text-transform:uppercase;font-size:9px}
     .pending-count{font-weight:900;color:#92400e;font-size:11px}
-    .managed-students-tools{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px}
+    .managed-students-tools{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px;flex-wrap:wrap}
+    .managed-students-left-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .managed-display-mode-btn{white-space:nowrap}
     .managed-students-count{font-size:18px;font-weight:900;color:#0f172a}
     .managed-search-tools{display:flex;align-items:center;gap:8px;min-width:0}
     .managed-search-toggle{min-width:42px;min-height:38px;padding:5px 9px;font-size:24px;line-height:1}
@@ -56,7 +58,7 @@
     .managed-student-row.active-student .managed-student-identity-cell{background:#ecfdf5}
     .managed-student-row.selected .managed-student-identity-cell{background:#eff6ff}
     .managed-student-name{font-weight:900;line-height:1.15;color:#0f172a;display:block;max-width:100%;overflow-wrap:anywhere}
-    .managed-student-meta{display:flex;flex-direction:column;align-items:flex-start;gap:1px;margin-top:3px;font-size:9px;line-height:1.25;color:#64748b}
+    .managed-student-meta{display:flex;align-items:center;gap:5px;margin-top:3px;font-size:9px;line-height:1.25;color:#64748b;white-space:nowrap}
     .managed-block-grade-cell{min-width:260px;text-align:center}
     .managed-block-grade-header{min-width:260px;text-align:center;vertical-align:top}
     .managed-block-title{display:block;font-size:13px;font-weight:900;color:#0f172a;white-space:nowrap}
@@ -169,34 +171,24 @@
 
         <section class="panel-card full-width-card" id="enrolledStudentsSection">
           <div class="management-head">
-            <div>
-              <h3>Enrolled Students</h3>
-              <div id="managedGroupStatus" class="status-text">Select a group from the Groups list below.</div>
-            </div>
-            <div class="management-head-actions">
-              <span id="pendingEnrollmentCount" class="pending-count"></span>
+            <h3>Enrolled Students</h3>
+            <div class="enrolled-head-actions">
+              <button id="createEnrollmentLinkBtn" class="active-enrollment-link-btn" type="button" hidden aria-expanded="false">Create enrollment link</button>
               <button id="toggleRosterBtn" class="collapse-btn" type="button" hidden aria-expanded="false" title="Expand or collapse students">▸</button>
             </div>
           </div>
 
           <div id="enrollmentControls" hidden>
             <div id="rosterBody">
-              <div class="selected-group-banner" style="margin-top:9px;">
-                <div>Managing <strong id="managedGroupName">—</strong></div>
-                <div id="enrollmentLinkStatus" class="status-text"></div>
+              <div id="enrollmentLinkBox" class="enrollment-link-box" hidden>
+                <input id="enrollmentLinkInput" readonly aria-readonly="true">
+                <button id="rotateEnrollmentLinkBtn" type="button">Rotate link</button>
               </div>
 
               <div class="student-toolbar">
                 <div class="student-toolbar-left">
-                  <button id="createEnrollmentLinkBtn" type="button">Create Enrollment Link</button>
-                  <button id="copyEnrollmentLinkBtn" type="button" hidden>Copy Link</button>
                   <button id="openAddStudentModalBtn" type="button">Add Student</button>
                 </div>
-              </div>
-
-              <div id="enrollmentLinkBox" class="enrollment-link-box" hidden style="margin-top:8px;">
-                <input id="enrollmentLinkInput" readonly aria-readonly="true">
-                <button id="rotateEnrollmentLinkBtn" type="button">Rotate Link</button>
               </div>
 
               <div id="selectedRosterActions" class="roster-context-actions" hidden>
@@ -220,7 +212,10 @@
               </div>
 
               <div class="managed-students-tools">
-                <div><strong>Students</strong> <span id="managedStudentsCount" class="managed-students-count">0</span></div>
+                <div class="managed-students-left-tools">
+                  <button id="managedStudentDisplayModeBtn" class="managed-display-mode-btn" type="button">Show: Name</button>
+                  <div><strong>Students</strong> <span id="managedStudentsCount" class="managed-students-count">0</span></div>
+                </div>
                 <div class="managed-search-tools">
                   <div id="managedStudentSearchPanel" class="managed-search-panel" hidden>
                     <input id="managedStudentSearch" placeholder="Search name, nickname, or External ID" autocomplete="off">
@@ -330,7 +325,7 @@
     </div>
   </dialog>
 
-  <script type="module" src="teacher-enrollment.js?v=students-matrix-persistent-eval-20260921"></script>
+  <script type="module" src="teacher-enrollment.js?v=management-display-enrollment-toggle-20260921"></script>
   <script defer src="shared-ui-fixes.js?v=titlebar-hamburger-20260916"></script>
 </body>
 </html>
