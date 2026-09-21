@@ -25,19 +25,20 @@ requireTeacherAuth();
 
 const WORKING_GROUP_KEY = "youteachWorkingGroup";
 const MANAGEMENT_STATE_KEY = "youteachGroupManagementState";
-const EVALUATION_PANEL_STATE_KEY = "youteachEvaluationCriteriaOpen";
 const REQUESTED_CRITERIA_RESET_GROUP = "e6c fall 2026";
 const REQUESTED_CRITERIA_RESET_MARKER = "criteriaReset20260921";
 
 const teacherIdentity = document.getElementById("teacherIdentity");
 const logoutBtn = document.getElementById("logoutBtn");
 
+const groupEditorDialog = document.getElementById("groupEditorDialog");
 const groupEditorTitle = document.getElementById("groupEditorTitle");
 const groupEditorSubtitle = document.getElementById("groupEditorSubtitle");
 const groupNameInput = document.getElementById("groupNameInput");
 const evaluationEditor = document.getElementById("evaluationEditor");
-const toggleEvaluationBtn = document.getElementById("toggleEvaluationBtn");
 const cancelGroupEditBtn = document.getElementById("cancelGroupEditBtn");
+const openCreateGroupDialogBtn = document.getElementById("openCreateGroupDialogBtn");
+const openGroupEvaluationDialogBtn = document.getElementById("openGroupEvaluationDialogBtn");
 const evaluationUnitCountInput = document.getElementById("evaluationUnitCountInput");
 const useEvaluationTemplateBtn = document.getElementById("useEvaluationTemplateBtn");
 const addEvaluationCriterionBtn = document.getElementById("addEvaluationCriterionBtn");
@@ -132,18 +133,7 @@ let selectedManagedGroup = String(
 );
 let editingGroupName = "";
 let pendingReportSettings = null;
-function readEvaluationPanelState() {
-  const stored = localStorage.getItem(EVALUATION_PANEL_STATE_KEY);
-  if (stored === "open") return true;
-  if (stored === "closed") return false;
-  return restoredManagementState.evaluationEditorOpen === true;
-}
-
-function persistEvaluationPanelState() {
-  localStorage.setItem(EVALUATION_PANEL_STATE_KEY, evaluationEditorOpen ? "open" : "closed");
-}
-
-let evaluationEditorOpen = readEvaluationPanelState();
+let creatingGroup = false;
 let rosterCollapsed = restoredManagementState.rosterCollapsed !== false;
 let enrollmentLinkExpanded = restoredManagementState.enrollmentLinkExpanded === true;
 let selectedTemplateId = "";
@@ -169,7 +159,6 @@ function persistManagementState() {
   sessionStorage.setItem(MANAGEMENT_STATE_KEY, JSON.stringify({
     groupName: selectedManagedGroup,
     rosterCollapsed,
-    evaluationEditorOpen,
     enrollmentLinkExpanded,
     selectedRosterItems: [...selectedRosterItems]
   }));
@@ -252,18 +241,7 @@ function refreshEvaluationWeightTotal() {
 }
 
 function renderEvaluationEditorVisibility() {
-  evaluationEditor.hidden = Boolean(editingGroupName && !evaluationEditorOpen);
-  toggleEvaluationBtn.hidden = !editingGroupName;
-
-  if (!editingGroupName) {
-    evaluationEditor.hidden = false;
-    return;
-  }
-
-  toggleEvaluationBtn.textContent = evaluationEditorOpen
-    ? "▾ Evaluation criteria"
-    : "▸ Evaluation criteria";
-  toggleEvaluationBtn.setAttribute("aria-expanded", String(evaluationEditorOpen));
+  evaluationEditor.hidden = false;
 }
 
 function templateComparable({ evaluationCriteria } = {}) {
@@ -466,8 +444,6 @@ function applyEvaluationTemplate(template) {
   const criteria = normalizeEvaluationCriteria(template.evaluationCriteria || []);
   if (!criteria.length) return;
   setCriteriaEditor(criteria);
-  evaluationEditorOpen = true;
-  persistEvaluationPanelState();
   renderEvaluationEditorVisibility();
   groupEvaluationStatus.textContent = `Loaded template: ${automaticTemplateName(criteria)}. Adjust percentages if needed.`;
   groupEvaluationStatus.className = "status-text ok";
@@ -480,6 +456,7 @@ function renderSelectedGroupActions() {
 }
 
 function resetGroupForm() {
+  creatingGroup = false;
   editingGroupName = "";
   selectedManagedGroup = "";
   sessionStorage.removeItem(WORKING_GROUP_KEY);
@@ -487,6 +464,7 @@ function resetGroupForm() {
   selectedRosterItems.clear();
   rosterCollapsed = true;
 
+  if (groupEditorDialog.open) groupEditorDialog.close();
   groupEditorTitle.textContent = "Create Group";
   groupEditorSubtitle.textContent = "Create a new group and define its evaluation setup.";
   groupNameInput.disabled = false;
@@ -498,7 +476,8 @@ function resetGroupForm() {
   setCriteriaEditor([]);
   createGroupBtn.textContent = "Create Group";
   createGroupBtn.hidden = false;
-  cancelGroupEditBtn.hidden = true;
+  cancelGroupEditBtn.hidden = false;
+  cancelGroupEditBtn.textContent = "Cancel";
   groupEvaluationStatus.textContent = "";
   groupEvaluationStatus.className = "status-text";
 
@@ -506,6 +485,34 @@ function resetGroupForm() {
   renderManagedStudents();
   renderGroupsTable();
   renderSelectedGroupActions();
+}
+
+function prepareCreateGroupDialog() {
+  creatingGroup = true;
+  editingGroupName = "";
+  groupEditorTitle.textContent = "Create Group";
+  groupEditorSubtitle.textContent = "Create a new group and define its evaluation blocks and criteria.";
+  groupNameInput.disabled = false;
+  groupNameInput.value = "";
+  evaluationUnitCountInput.value = "3";
+  evaluationUnitCountInput.min = "1";
+  evaluationUnitCountInput.title = "";
+  pendingReportSettings = null;
+  setCriteriaEditor([]);
+  createGroupBtn.textContent = "Create Group";
+  createGroupBtn.hidden = false;
+  cancelGroupEditBtn.hidden = false;
+  cancelGroupEditBtn.textContent = "Cancel";
+  groupEvaluationStatus.textContent = "";
+  groupEvaluationStatus.className = "status-text";
+  renderEvaluationEditorVisibility();
+  groupEditorDialog.showModal();
+}
+
+function openSelectedGroupEvaluationDialog() {
+  if (!selectedManagedGroup || !groupsCache[selectedManagedGroup]) return;
+  loadGroupEditor(selectedManagedGroup);
+  if (!groupEditorDialog.open) groupEditorDialog.showModal();
 }
 
 function blockNumberFromName(value) {
@@ -644,9 +651,10 @@ function loadGroupEditor(groupName, { preserveView = false } = {}) {
   if (!group) return;
 
   const config = groupEvaluationConfig(group);
+  creatingGroup = false;
   editingGroupName = groupName;
-  groupEditorTitle.textContent = `Manage Group: ${groupName}`;
-  groupEditorSubtitle.textContent = "Group actions and evaluation settings appear here only for the selected group.";
+  groupEditorTitle.textContent = `Blocks & Criteria: ${groupName}`;
+  groupEditorSubtitle.textContent = "Changes are saved automatically for this group.";
   groupNameInput.value = groupName;
   groupNameInput.disabled = true;
   evaluationUnitCountInput.value = String(config.unitCount);
@@ -657,6 +665,7 @@ function loadGroupEditor(groupName, { preserveView = false } = {}) {
   setCriteriaEditor(config.criteria);
   createGroupBtn.hidden = true;
   cancelGroupEditBtn.hidden = false;
+  cancelGroupEditBtn.textContent = "Close";
   groupEvaluationStatus.textContent = config.configured
     ? "Evaluation settings are saved automatically."
     : "Evaluation settings are saved automatically as you edit. Complete 100% to enable grading and update the reusable template.";
@@ -834,9 +843,13 @@ function renderEnrollmentLink() {
 
   enrollmentLinkInput.value = link;
   createEnrollmentLinkBtn.hidden = !selectedManagedGroup;
-  createEnrollmentLinkBtn.textContent = active ? "Active enrollment link" : "Create enrollment link";
+  createEnrollmentLinkBtn.textContent = "Active enrollment link";
   createEnrollmentLinkBtn.classList.toggle("active", active);
+  createEnrollmentLinkBtn.setAttribute("aria-pressed", String(active));
   createEnrollmentLinkBtn.setAttribute("aria-expanded", String(active && enrollmentLinkExpanded));
+  createEnrollmentLinkBtn.title = active
+    ? "Show or hide the active enrollment link"
+    : "Create the enrollment link for this group";
   enrollmentLinkBox.hidden = !(active && enrollmentLinkExpanded);
 }
 
@@ -871,16 +884,42 @@ function managedNameParts(student) {
     : { givenNames: tokens.slice(0, -2).join(" "), lastNames: tokens.slice(-2).join(" "), fullName };
 }
 
+function managedOrderedFullName(student, { lastNamesFirst = false } = {}) {
+  const parts = managedNameParts(student);
+  const fullName = parts.fullName;
+  const lastNames = String(parts.lastNames || "").trim();
+  let givenNames = String(parts.givenNames || "").trim();
+
+  if (!lastNames) return fullName || givenNames;
+  if (!givenNames) return fullName || lastNames;
+
+  if (givenNames === fullName && fullName) {
+    const fullLower = fullName.toLocaleLowerCase();
+    const lastLower = lastNames.toLocaleLowerCase();
+    if (fullLower.endsWith(` ${lastLower}`)) {
+      givenNames = fullName.slice(0, -(lastNames.length + 1)).trim();
+    } else if (fullLower.startsWith(`${lastLower} `)) {
+      givenNames = fullName.slice(lastNames.length + 1).trim();
+    } else {
+      return fullName;
+    }
+  }
+
+  if (!givenNames) return fullName || lastNames;
+  return lastNamesFirst
+    ? `${lastNames} ${givenNames}`.trim()
+    : `${givenNames} ${lastNames}`.trim();
+}
+
 function managedDisplayMode(groupName) {
   const raw = String(groupsCache?.[groupName]?.studentListDisplayMode || "name");
   return MANAGED_DISPLAY_MODES.includes(raw) ? raw : "name";
 }
 
 function managedPrimaryDisplay(student, mode) {
-  const parts = managedNameParts(student);
-  if (mode === "lastNames") return parts.lastNames || parts.fullName;
-  if (mode === "nickname") return String(student?.nickname || "").trim() || parts.givenNames || parts.fullName;
-  return parts.givenNames || parts.fullName;
+  if (mode === "lastNames") return managedOrderedFullName(student, { lastNamesFirst: true });
+  if (mode === "nickname") return String(student?.nickname || "").trim() || managedOrderedFullName(student);
+  return managedOrderedFullName(student);
 }
 
 function managedSecondaryDisplay(student, mode) {
@@ -890,7 +929,8 @@ function managedSecondaryDisplay(student, mode) {
   const pieces = [];
 
   if (mode === "nickname") {
-    if (parts.fullName && parts.fullName !== nickname) pieces.push(parts.fullName);
+    const orderedName = managedOrderedFullName(student);
+    if (orderedName && orderedName !== nickname) pieces.push(orderedName);
   } else if (nickname) {
     pieces.push(nickname);
   }
@@ -899,7 +939,7 @@ function managedSecondaryDisplay(student, mode) {
 }
 
 function managedDisplayModeLabel(mode) {
-  if (mode === "lastNames") return "Last names";
+  if (mode === "lastNames") return "Last names first";
   if (mode === "nickname") return "Nickname";
   return "Name";
 }
@@ -1053,6 +1093,7 @@ function renderManagedStudents() {
     enrollmentControls.hidden = true;
     toggleRosterBtn.hidden = true;
     createEnrollmentLinkBtn.hidden = true;
+    openAddStudentModalBtn.hidden = true;
     pendingRequestsPanel.hidden = true;
     pendingRequestsList.innerHTML = "";
     managedStudentsTableHeadRow.innerHTML = '<th class="managed-student-column-header">Student</th>';
@@ -1064,6 +1105,7 @@ function renderManagedStudents() {
 
   enrollmentControls.hidden = false;
   toggleRosterBtn.hidden = false;
+  openAddStudentModalBtn.hidden = false;
   toggleRosterBtn.textContent = rosterCollapsed ? "▸" : "▾";
   toggleRosterBtn.setAttribute("aria-expanded", String(!rosterCollapsed));
   rosterBody.hidden = rosterCollapsed;
@@ -1073,7 +1115,7 @@ function renderManagedStudents() {
   const displayMode = managedDisplayMode(groupName);
   managedStudentsCount.textContent = String(enrolled.length);
   managedStudentDisplayModeBtn.textContent = `Show: ${managedDisplayModeLabel(displayMode)}`;
-  managedStudentDisplayModeBtn.title = "Cycle primary student display: Name, Last names, Nickname";
+  managedStudentDisplayModeBtn.title = "Cycle primary student display: Name, Last names first, Nickname";
 
   const visibleKeys = new Set([
     ...pending.map(([id]) => rosterSelectionKey("request", id)),
@@ -1279,6 +1321,7 @@ function setModalPane(active) {
   Object.entries(panes).forEach(([key, [button, pane]]) => {
     const isActive = key === active;
     button.classList.toggle("active", isActive);
+    button.setAttribute("aria-selected", String(isActive));
     pane.hidden = !isActive;
   });
 }
@@ -1647,17 +1690,18 @@ createGroupBtn.addEventListener("click", async () => {
     ? "Group created. Evaluation settings are saved automatically."
     : "Group created. Evaluation settings will save automatically as you edit.";
   groupEvaluationStatus.className = "status-text ok";
+  creatingGroup = false;
+  if (groupEditorDialog.open) groupEditorDialog.close();
 });
 
-toggleEvaluationBtn.addEventListener("click", () => {
-  evaluationEditorOpen = !evaluationEditorOpen;
-  persistEvaluationPanelState();
-  persistManagementState();
-  renderEvaluationEditorVisibility();
+cancelGroupEditBtn.addEventListener("click", () => groupEditorDialog.close());
+groupEditorDialog.addEventListener("close", () => {
+  const wasCreating = creatingGroup;
+  creatingGroup = false;
+  if (wasCreating && selectedManagedGroup && groupsCache[selectedManagedGroup]) {
+    loadGroupEditor(selectedManagedGroup);
+  }
 });
-window.addEventListener("pagehide", persistEvaluationPanelState);
-
-cancelGroupEditBtn.addEventListener("click", resetGroupForm);
 addEvaluationCriterionBtn.addEventListener("click", () => {
   addEvaluationCriterionRow();
   scheduleExistingGroupEvaluationSave({ immediate: true });
@@ -1710,6 +1754,9 @@ groupsTableBody.addEventListener("click", (event) => {
   if (!manageButton) return;
   selectManagedGroup(String(manageButton.dataset.manageGroup || ""));
 });
+
+openCreateGroupDialogBtn.addEventListener("click", prepareCreateGroupDialog);
+openGroupEvaluationDialogBtn.addEventListener("click", openSelectedGroupEvaluationDialog);
 
 deleteSelectedGroupBtn.addEventListener("click", async () => {
   if (!selectedManagedGroup) return;
@@ -1999,7 +2046,7 @@ onValue(ref(db, "groups"), async (snapshot) => {
   if (selectedManagedGroup && !groupsCache[selectedManagedGroup]) {
     resetGroupForm();
   } else if (selectedManagedGroup) {
-    if (editingGroupName !== selectedManagedGroup) {
+    if (!creatingGroup && editingGroupName !== selectedManagedGroup) {
       editingGroupName = selectedManagedGroup;
       loadGroupEditor(selectedManagedGroup, { preserveView: true });
     }
