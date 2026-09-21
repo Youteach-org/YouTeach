@@ -22,7 +22,58 @@ function finiteNumber(value, { min = -Infinity, max = Infinity, nullable = false
   return number;
 }
 
-function cleanMetrics(raw) {
+function cleanTalkTalkMetrics(raw) {
+  const source = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : null;
+  if (!source) return null;
+
+  const allowed = new Set([
+    "pronunciation",
+    "fluency",
+    "grammarVocabulary",
+    "interaction",
+    "taskCompletion",
+    "evidenceConfidence",
+    "unitId",
+    "cefr",
+    "primaryFocus"
+  ]);
+  if (Object.keys(source).some((key) => !allowed.has(key))) return null;
+
+  const output = {};
+  for (const name of [
+    "pronunciation",
+    "fluency",
+    "grammarVocabulary",
+    "interaction",
+    "taskCompletion",
+    "evidenceConfidence"
+  ]) {
+    if (!Object.prototype.hasOwnProperty.call(source, name)) continue;
+    const value = finiteNumber(source[name], { min: 0, max: 100, nullable: true });
+    if (source[name] != null && source[name] !== "" && value == null) return null;
+    output[name] = value;
+  }
+
+  const unitId = String(source.unitId || "").trim();
+  if (unitId !== "tell-me-what-happened") return null;
+  output.unitId = unitId;
+
+  const cefr = String(source.cefr || "").trim();
+  if (!["A2","B1"].includes(cefr)) return null;
+  output.cefr = cefr;
+
+  const primaryFocus = String(source.primaryFocus || "").trim();
+  if (!["past-ed-t","past-ed-d","past-ed-id","follow-up-question","fluency"].includes(primaryFocus)) {
+    return null;
+  }
+  output.primaryFocus = primaryFocus;
+
+  return output;
+}
+
+function cleanMetrics(raw, gameId = "") {
+  if (String(gameId || "") === "talk-talk") return cleanTalkTalkMetrics(raw);
+
   const source = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
   const output = {};
   const numericFields = {
@@ -58,7 +109,7 @@ function cleanMetrics(raw) {
   return output;
 }
 
-function normalizeResult(raw) {
+function normalizeResult(raw, gameId = "") {
   const result = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
   const resultId = String(result.resultId || "").trim();
   const attemptId = String(result.attemptId || "").trim();
@@ -79,6 +130,11 @@ function normalizeResult(raw) {
     return null;
   }
 
+  const metrics = cleanMetrics(result.metrics, gameId);
+  if (String(gameId || "") === "talk-talk" && (resultType !== "individual" || metrics == null)) {
+    return null;
+  }
+
   return {
     schemaVersion: 1,
     resultId,
@@ -87,7 +143,7 @@ function normalizeResult(raw) {
     completedAt,
     percentage,
     points,
-    metrics: cleanMetrics(result.metrics)
+    metrics
   };
 }
 
@@ -173,7 +229,7 @@ export async function onRequestPost({ request, env }) {
     try {
       body = await request.json();
     } catch {}
-    const result = normalizeResult(body.result);
+    const result = normalizeResult(body.result, grant.gameId);
     if (!result) {
       return json(400, { ok: false, error: "Invalid Classroom Online Games result payload." }, origin);
     }
