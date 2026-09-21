@@ -14,8 +14,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Check Talk Talk API syntax
-        run: |
-          find functions -name '*.js' -print0 | xargs -0 -n1 node --check
-      - name: Run Talk Talk tests
+      - name: Check YouTeach function syntax
+        run: find functions -name '*.js' -print0 | xargs -0 -n1 node --check
+      - name: Run Live COG and Talk Talk tests
         run: node --test tests/cog-live-*.test.mjs tests/talk-talk-*.test.mjs
+      - name: Build Cloudflare Pages bundle
+        run: sh build-pages.sh
