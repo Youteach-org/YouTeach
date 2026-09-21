@@ -23,6 +23,8 @@ requireTeacherAuth();
 
 const WORKING_GROUP_KEY = "youteachWorkingGroup";
 const MANAGEMENT_STATE_KEY = "youteachGroupManagementState";
+const REQUESTED_CRITERIA_RESET_GROUP = "e6c fall 2026";
+const REQUESTED_CRITERIA_RESET_MARKER = "criteriaReset20260921";
 
 const teacherIdentity = document.getElementById("teacherIdentity");
 const logoutBtn = document.getElementById("logoutBtn");
@@ -125,6 +127,8 @@ let selectedTemplateId = "";
 let groupsLoaded = false;
 let templatesLoaded = false;
 let harvestingTemplates = false;
+let requestedCriteriaResetChecked = false;
+let requestedCriteriaResetInProgress = false;
 const selectedRosterItems = new Set(
   Array.isArray(restoredManagementState.selectedRosterItems)
     ? restoredManagementState.selectedRosterItems.map(String)
@@ -237,33 +241,11 @@ function renderEvaluationEditorVisibility() {
     : (config.configured ? "Edit Evaluation" : "Set Evaluation");
 }
 
-function reusableReportSettings(value) {
-  if (!value || typeof value !== "object") return null;
-  const result = {
-    title: String(value.title || "").trim(),
-    organization: String(value.organization || "").trim(),
-    department: String(value.department || "").trim(),
-    period: String(value.period || "").trim(),
-    courseProgram: String(value.courseProgram || "").trim(),
-    parallels: String(value.parallels || "").trim(),
-    includeSignature: value.includeSignature !== false
-  };
-  return Object.values(result).some((item) => item !== "" && item !== true) ? result : null;
-}
-
-function templateComparable({ evaluationUnitCount, evaluationCriteria, reportSettings }) {
-  const criteria = normalizeEvaluationCriteria(evaluationCriteria || []).map((criterion) => ({
-    name: String(criterion.name || "").trim(),
-    shortLabel: String(criterion.shortLabel || "").trim(),
-    weight: Number(criterion.weight || 0),
-    source: String(criterion.source || "manual"),
-    order: Number(criterion.order || 0)
-  }));
-
+function templateComparable({ evaluationCriteria } = {}) {
   return {
-    evaluationUnitCount: normalizeEvaluationUnitCount(evaluationUnitCount, 3),
-    criteria,
-    reportSettings: reusableReportSettings(reportSettings)
+    criteria: normalizeEvaluationCriteria(evaluationCriteria || []).map((criterion) =>
+      String(criterion.name || "").trim().toLocaleLowerCase()
+    )
   };
 }
 
@@ -273,60 +255,65 @@ function templateSignature(value) {
 
 function automaticTemplateName(criteria = []) {
   const text = normalizeEvaluationCriteria(criteria)
-    .map((criterion) => `${criterion.name} ${criterion.weight}%`)
+    .map((criterion) => String(criterion.name || "").trim())
+    .filter(Boolean)
     .join(" · ");
-  return (text || "Evaluation setup").slice(0, 140);
+  return (text || "Evaluation criteria").slice(0, 180);
 }
 
 function equivalentTemplateId(setup) {
   const signature = templateSignature(setup);
   return Object.entries(evaluationTemplatesCache || {}).find(([, template]) =>
-    String(template?.signature || templateSignature(template)) === signature
+    templateSignature(template) === signature
   )?.[0] || "";
 }
 
 async function ensureIndependentTemplate({
-  evaluationUnitCount,
   evaluationCriteria,
-  reportSettings = null,
-  name = "",
-  renameExisting = false
+  refreshDefaults = false
 }) {
   const criteria = normalizeEvaluationCriteria(evaluationCriteria || []);
   if (!criteria.length || Math.abs(evaluationWeightTotal(criteria) - 100) >= 0.01) return "";
 
-  const setup = {
-    evaluationUnitCount: normalizeEvaluationUnitCount(evaluationUnitCount, 3),
-    evaluationCriteria: criteria,
-    reportSettings: reusableReportSettings(reportSettings)
-  };
+  const setup = { evaluationCriteria: criteria };
   const signature = templateSignature(setup);
+  const canonicalName = automaticTemplateName(criteria);
   const existingId = equivalentTemplateId(setup);
+  const now = Date.now();
 
   if (existingId) {
-    if (renameExisting && name && evaluationTemplatesCache?.[existingId]?.name !== name) {
-      await update(ref(db, `groupEvaluationTemplates/${existingId}`), {
-        name,
-        signature,
-        updatedAt: Date.now()
-      });
-      evaluationTemplatesCache[existingId] = {
-        ...evaluationTemplatesCache[existingId],
-        name,
-        signature,
-        updatedAt: Date.now()
-      };
+    const existing = evaluationTemplatesCache?.[existingId] || {};
+    const patch = {
+      name: canonicalName,
+      signature,
+      updatedAt: now,
+      evaluationUnitCount: null,
+      reportSettings: null,
+      sourceGroup: null
+    };
+
+    if (refreshDefaults) {
+      patch.evaluationCriteria = criteriaToFirebaseObject(criteria);
     }
+
+    await update(ref(db, `groupEvaluationTemplates/${existingId}`), patch);
+    evaluationTemplatesCache[existingId] = {
+      ...existing,
+      name: canonicalName,
+      signature,
+      ...(refreshDefaults ? { evaluationCriteria: criteriaToFirebaseObject(criteria) } : {}),
+      updatedAt: now
+    };
+    delete evaluationTemplatesCache[existingId].evaluationUnitCount;
+    delete evaluationTemplatesCache[existingId].reportSettings;
+    delete evaluationTemplatesCache[existingId].sourceGroup;
     return existingId;
   }
 
   const target = push(ref(db, "groupEvaluationTemplates"));
-  const now = Date.now();
   const record = {
-    name: name || automaticTemplateName(criteria),
-    evaluationUnitCount: setup.evaluationUnitCount,
+    name: canonicalName,
     evaluationCriteria: criteriaToFirebaseObject(criteria),
-    reportSettings: setup.reportSettings,
     signature,
     createdAt: now,
     updatedAt: now,
@@ -339,7 +326,7 @@ async function ensureIndependentTemplate({
 }
 
 async function harvestConfiguredGroupsToTemplates() {
-  if (!groupsLoaded || !templatesLoaded || harvestingTemplates) return;
+  if (!groupsLoaded || !templatesLoaded || harvestingTemplates || !requestedCriteriaResetChecked || requestedCriteriaResetInProgress) return;
   harvestingTemplates = true;
 
   try {
@@ -348,9 +335,8 @@ async function harvestConfiguredGroupsToTemplates() {
       if (!config.configured) continue;
 
       await ensureIndependentTemplate({
-        evaluationUnitCount: config.unitCount,
         evaluationCriteria: config.criteria,
-        reportSettings: group.reportSettings || null
+        refreshDefaults: false
       });
     }
     renderEvaluationTemplateList();
@@ -361,10 +347,14 @@ async function harvestConfiguredGroupsToTemplates() {
 
 function renderEvaluationTemplateList() {
   const entries = Object.entries(evaluationTemplatesCache || {})
-    .filter(([, template]) => groupEvaluationConfig(template).configured)
+    .map(([id, template]) => [id, template, normalizeEvaluationCriteria(template?.evaluationCriteria || [])])
+    .filter(([, , criteria]) => criteria.length > 0 && Math.abs(evaluationWeightTotal(criteria) - 100) < 0.01)
     .sort((a, b) =>
-      Number(b[1]?.updatedAt || b[1]?.createdAt || 0) - Number(a[1]?.updatedAt || a[1]?.createdAt || 0) ||
-      String(a[1]?.name || "").localeCompare(String(b[1]?.name || ""))
+      String(a[1]?.name || automaticTemplateName(a[2])).localeCompare(
+        String(b[1]?.name || automaticTemplateName(b[2])),
+        undefined,
+        { sensitivity: "base" }
+      )
     );
 
   if (!entries.length) {
@@ -379,22 +369,18 @@ function renderEvaluationTemplateList() {
     selectedTemplateId = entries[0][0];
   }
 
-  evaluationTemplateList.innerHTML = entries.map(([id, template]) => {
-    const config = groupEvaluationConfig(template);
-    const summary = config.criteria
+  evaluationTemplateList.innerHTML = entries.map(([id, template, criteria]) => {
+    const summary = criteria
       .map((criterion) => `${criterion.name} ${criterion.weight}%`)
       .join(" · ");
 
     return `
-      <div class="template-row ${id === selectedTemplateId ? "selected" : ""}"
-        data-template-id="${escapeHtml(id)}">
+      <label class="template-row ${id === selectedTemplateId ? "selected" : ""}"
+        data-template-id="${escapeHtml(id)}" title="${escapeHtml(automaticTemplateName(criteria))}">
         <input type="radio" name="evaluation-template-choice" value="${escapeHtml(id)}"
           ${id === selectedTemplateId ? "checked" : ""} aria-label="Select template">
-        <div>
-          <div class="template-name">${escapeHtml(template.name || automaticTemplateName(config.criteria))}</div>
-          <div class="template-meta">${config.unitCount} block(s) · ${escapeHtml(summary)}</div>
-        </div>
-      </div>
+        <span class="template-summary">${escapeHtml(summary)}</span>
+      </label>
     `;
   }).join("");
 
@@ -408,15 +394,12 @@ function openEvaluationTemplateDialog() {
 
 function applyEvaluationTemplate(template) {
   if (!template) return;
-  const config = groupEvaluationConfig(template);
-  evaluationUnitCountInput.value = String(config.unitCount);
-  setCriteriaEditor(config.criteria);
-  pendingReportSettings = template.reportSettings && typeof template.reportSettings === "object"
-    ? { ...template.reportSettings }
-    : null;
+  const criteria = normalizeEvaluationCriteria(template.evaluationCriteria || []);
+  if (!criteria.length) return;
+  setCriteriaEditor(criteria);
   evaluationEditorOpen = true;
   renderEvaluationEditorVisibility();
-  groupEvaluationStatus.textContent = `Loaded template: ${template.name || "Evaluation setup"}.`;
+  groupEvaluationStatus.textContent = `Loaded template: ${automaticTemplateName(criteria)}. Adjust percentages if needed.`;
   groupEvaluationStatus.className = "status-text ok";
 }
 
@@ -1173,9 +1156,8 @@ createGroupBtn.addEventListener("click", async () => {
   groupsCache[groupName] = savedGroupRecord;
 
   await ensureIndependentTemplate({
-    evaluationUnitCount,
     evaluationCriteria,
-    reportSettings: savedGroupRecord.reportSettings || null
+    refreshDefaults: true
   });
 
   selectedManagedGroup = groupName;
@@ -1381,10 +1363,77 @@ renderGroupsTable();
   }
 })();
 
-onValue(ref(db, "groups"), (snapshot) => {
+
+function normalizedGroupName(value) {
+  return String(value || "").trim().toLocaleLowerCase();
+}
+
+async function clearRequestedGroupEvaluationOnce() {
+  if (requestedCriteriaResetChecked || requestedCriteriaResetInProgress) return false;
+
+  const entry = Object.entries(groupsCache || {}).find(([groupName]) =>
+    normalizedGroupName(groupName) === REQUESTED_CRITERIA_RESET_GROUP
+  );
+
+  if (!entry) {
+    requestedCriteriaResetChecked = true;
+    return false;
+  }
+
+  const [groupName, group] = entry;
+  if (group?.maintenance?.[REQUESTED_CRITERIA_RESET_MARKER]) {
+    requestedCriteriaResetChecked = true;
+    return false;
+  }
+
+  requestedCriteriaResetInProgress = true;
+  const now = Date.now();
+  const marker = {
+    completedAt: now,
+    completedBy: getTeacherName(),
+    reason: "Requested one-time reset before recreating reusable evaluation criteria"
+  };
+
+  await update(ref(db, `groups/${groupName}`), {
+    evaluationCriteria: null,
+    evaluationWeights: null,
+    evaluationConfiguredAt: null,
+    evaluationConfiguredBy: null,
+    [`maintenance/${REQUESTED_CRITERIA_RESET_MARKER}`]: marker
+  });
+
+  groupsCache[groupName] = {
+    ...group,
+    evaluationCriteria: null,
+    evaluationWeights: null,
+    evaluationConfiguredAt: null,
+    evaluationConfiguredBy: null,
+    maintenance: {
+      ...(group?.maintenance || {}),
+      [REQUESTED_CRITERIA_RESET_MARKER]: marker
+    }
+  };
+
+  if (selectedManagedGroup === groupName) {
+    loadGroupEditor(groupName, { preserveView: true });
+  }
+
+  requestedCriteriaResetInProgress = false;
+  requestedCriteriaResetChecked = true;
+  return true;
+}
+
+onValue(ref(db, "groups"), async (snapshot) => {
   groupsCache = snapshot.val() || {};
   groupsLoaded = true;
+
+  const resetPerformed = await clearRequestedGroupEvaluationOnce();
   renderGroupsTable();
+  if (resetPerformed) {
+    renderManagedStudents();
+    renderEvaluationTemplateList();
+    return;
+  }
 
   if (selectedManagedGroup && !groupsCache[selectedManagedGroup]) {
     resetGroupForm();
