@@ -16,7 +16,8 @@ export const LIVE_COG_GAMES = Object.freeze({
   "100-students-said": Object.freeze({
     id: "100-students-said",
     name: "100 Students Said",
-    studentPath: "/100-Students-Said/"
+    studentPath: null,
+    studentSurface: "buzzer"
   }),
   "osascomp": Object.freeze({
     id: "osascomp",
