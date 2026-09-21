@@ -109,6 +109,9 @@ test('group creation UI uses a dynamic criterion editor and reusable templates',
   assert.match(enrollmentJs, /harvestConfiguredGroupsToTemplates/);
   assert.match(enrollmentJs, /data-evaluation-criterion/);
   assert.doesNotMatch(enrollmentHtml, /id="evaluationTemplateSelect"/);
+  assert.doesNotMatch(enrollmentJs, /EVALUATION_SOURCE_OPTIONS/);
+  assert.doesNotMatch(enrollmentJs, /<select data-criterion-source>/);
+  assert.match(enrollmentJs, /data-criterion-source=/);
   assert.match(enrollmentJs, /Evaluation criteria must total exactly 100%/);
 });
 
@@ -171,4 +174,35 @@ test('block report is universal and generated from group criteria', () => {
   assert.match(blockReportJs, /calculateStudentBlockGrade/);
   assert.match(blockReportJs, /reportCriterionLabel/);
   assert.doesNotMatch(blockReportJs, /CLE|35%|40%|15%|10%/);
+});
+
+
+test('explicit assignment links feed custom criteria without exposing a source selector', async () => {
+  const { criterionValue } = await import('../group-grade-runtime.js');
+  const value = criterionValue({
+    studentKey: 's1',
+    student: { groupName: 'G' },
+    blockName: 'Block 1',
+    criterion: { id: 'portfolio', name: 'Portfolio', weight: 30, source: 'manual', order: 0 },
+    config: { criteria: [{ id: 'portfolio', source: 'manual' }] },
+    assignments: {
+      a1: {
+        groupName: 'G',
+        evaluationBlock: 'Block 1',
+        groupEvaluationCriterionId: 'portfolio'
+      }
+    },
+    submissions: {
+      a1: {
+        s1: { grading: { totalScore: 84 } }
+      }
+    }
+  });
+
+  assert.deepEqual(value, { value: 84, mode: 'score' });
+});
+
+test('template popup preselects an available reusable template', () => {
+  assert.match(enrollmentJs, /selectedTemplateId = entries\[0\]\[0\]/);
+  assert.match(enrollmentJs, /useSelectedEvaluationTemplateBtn\.disabled = !selectedTemplateId/);
 });
