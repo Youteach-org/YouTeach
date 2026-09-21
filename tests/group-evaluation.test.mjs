@@ -91,8 +91,10 @@ test('score-mode criteria convert a 0-100 score into weighted contribution', () 
 test('group creation UI uses a dynamic criterion editor and reusable templates', () => {
   for (const id of [
     'evaluationUnitCountInput',
-    'evaluationTemplateSelect',
     'useEvaluationTemplateBtn',
+    'evaluationTemplateDialog',
+    'evaluationTemplateList',
+    'useSelectedEvaluationTemplateBtn',
     'saveEvaluationTemplateBtn',
     'addEvaluationCriterionBtn',
     'evaluationCriteriaRows',
@@ -103,7 +105,10 @@ test('group creation UI uses a dynamic criterion editor and reusable templates',
   assert.doesNotMatch(enrollmentHtml, /tasksWeightInput|examsWeightInput|participationWeightInput|attendanceWeightInput/);
   assert.match(enrollmentJs, /criteriaToFirebaseObject/);
   assert.match(enrollmentJs, /groupEvaluationTemplates/);
+  assert.match(enrollmentJs, /ensureIndependentTemplate/);
+  assert.match(enrollmentJs, /harvestConfiguredGroupsToTemplates/);
   assert.match(enrollmentJs, /data-evaluation-criterion/);
+  assert.doesNotMatch(enrollmentHtml, /id="evaluationTemplateSelect"/);
   assert.match(enrollmentJs, /Evaluation criteria must total exactly 100%/);
 });
 
