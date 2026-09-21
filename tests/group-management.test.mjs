@@ -76,14 +76,13 @@ test('Group Management contains the canonical student progress matrix', () => {
   assert.match(js, /managedStudentsTableBody\.addEventListener\("dblclick"/);
   assert.match(js, /teacherViewStudentKey/);
 });
-test('student actions stay hidden until a row is selected', () => {
-  assert.match(html, /id="selectedRosterActions"[^>]*hidden/);
-  assert.match(html, /id="openSelectedStudentBtn"[^>]*hidden/);
-  assert.match(html, /id="approveEnrollmentBtn"[^>]*hidden/);
-  assert.match(html, /id="denyEnrollmentBtn"[^>]*hidden/);
-  assert.match(html, /id="expelStudentBtn"[^>]*hidden/);
-  assert.match(js, /renderRosterContextActions/);
-  assert.match(js, /selectedRosterActions\.hidden = total === 0/);
+test('pending request actions remain separate while enrolled students have no contextual action ribbon', () => {
+  assert.match(html, /id="pendingRequestActions"[^>]*hidden/);
+  assert.match(html, /id="approveEnrollmentBtn"/);
+  assert.match(html, /id="denyEnrollmentBtn"/);
+  assert.doesNotMatch(html, /id="selectedRosterActions"|id="openSelectedStudentBtn"|id="saveExternalIdBtn"|id="expelStudentBtn"/);
+  assert.match(js, /renderPendingRequestActions/);
+  assert.match(js, /pendingRequestActions\.hidden = requests\.length === 0/);
   assert.match(js, /teacherViewStudentKey/);
 });
 
@@ -123,7 +122,6 @@ test('enrollment links create pending requests and approval creates canonical st
   assert.match(js, /status: "approved"/);
   assert.match(js, /approveSelectedRequests/);
   assert.match(js, /denySelectedRequests/);
-  assert.match(js, /expelSelectedStudents/);
   assert.match(enrollHtml, /Request Group Enrollment/);
   assert.match(enrollJs, /status: "pending"/);
   assert.match(enrollJs, /groups\/\$\{groupName\}/);
@@ -305,8 +303,9 @@ test('student list controls share the Enrolled Students header line', () => {
   ]) {
     assert.match(header, new RegExp(`id="${id}"`));
   }
-  assert.match(html, /\.enrolled-students-head\{flex-wrap:nowrap;overflow-x:auto\}/);
-  assert.match(html, /\.enrolled-students-inline-tools\{display:flex;align-items:center;gap:8px;flex-wrap:nowrap\}/);
+  assert.match(html, /\.enrolled-students-head\{display:flex;align-items:center;gap:10px;flex-wrap:nowrap;overflow-x:auto\}/);
+  assert.match(html, /\.enrolled-students-left\{display:flex;align-items:center;gap:8px;flex:0 0 auto;white-space:nowrap\}/);
+  assert.match(html, /\.managed-search-tools\{display:flex;align-items:center;gap:8px;margin-left:auto;flex-wrap:nowrap\}/);
   const rosterStart = html.indexOf('<div id="enrollmentControls"', start);
   const tableStart = html.indexOf('<div class="table-wrap managed-students-table-wrap">', rosterStart);
   const rosterBeforeTable = html.slice(rosterStart, tableStart);
