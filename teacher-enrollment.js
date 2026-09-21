@@ -283,30 +283,31 @@ async function ensureIndependentTemplate({
 
   if (existingId) {
     const existing = evaluationTemplatesCache?.[existingId] || {};
-    const patch = {
-      name: canonicalName,
-      signature,
-      updatedAt: now,
-      evaluationUnitCount: null,
-      reportSettings: null,
-      sourceGroup: null
-    };
+    const patch = {};
+    const defaults = criteriaToFirebaseObject(criteria);
 
-    if (refreshDefaults) {
-      patch.evaluationCriteria = criteriaToFirebaseObject(criteria);
+    if (String(existing.name || "") !== canonicalName) patch.name = canonicalName;
+    if (String(existing.signature || "") !== signature) patch.signature = signature;
+    if (Object.prototype.hasOwnProperty.call(existing, "evaluationUnitCount")) patch.evaluationUnitCount = null;
+    if (Object.prototype.hasOwnProperty.call(existing, "reportSettings")) patch.reportSettings = null;
+    if (Object.prototype.hasOwnProperty.call(existing, "sourceGroup")) patch.sourceGroup = null;
+    if (refreshDefaults) patch.evaluationCriteria = defaults;
+
+    if (Object.keys(patch).length) {
+      patch.updatedAt = now;
+      await update(ref(db, `groupEvaluationTemplates/${existingId}`), patch);
+      evaluationTemplatesCache[existingId] = {
+        ...existing,
+        ...(patch.name ? { name: patch.name } : {}),
+        ...(patch.signature ? { signature: patch.signature } : {}),
+        ...(refreshDefaults ? { evaluationCriteria: defaults } : {}),
+        updatedAt: now
+      };
+      if (patch.evaluationUnitCount === null) delete evaluationTemplatesCache[existingId].evaluationUnitCount;
+      if (patch.reportSettings === null) delete evaluationTemplatesCache[existingId].reportSettings;
+      if (patch.sourceGroup === null) delete evaluationTemplatesCache[existingId].sourceGroup;
     }
 
-    await update(ref(db, `groupEvaluationTemplates/${existingId}`), patch);
-    evaluationTemplatesCache[existingId] = {
-      ...existing,
-      name: canonicalName,
-      signature,
-      ...(refreshDefaults ? { evaluationCriteria: criteriaToFirebaseObject(criteria) } : {}),
-      updatedAt: now
-    };
-    delete evaluationTemplatesCache[existingId].evaluationUnitCount;
-    delete evaluationTemplatesCache[existingId].reportSettings;
-    delete evaluationTemplatesCache[existingId].sourceGroup;
     return existingId;
   }
 
@@ -1387,40 +1388,43 @@ async function clearRequestedGroupEvaluationOnce() {
   }
 
   requestedCriteriaResetInProgress = true;
-  const now = Date.now();
-  const marker = {
-    completedAt: now,
-    completedBy: getTeacherName(),
-    reason: "Requested one-time reset before recreating reusable evaluation criteria"
-  };
+  try {
+    const now = Date.now();
+    const marker = {
+      completedAt: now,
+      completedBy: getTeacherName(),
+      reason: "Requested one-time reset before recreating reusable evaluation criteria"
+    };
 
-  await update(ref(db, `groups/${groupName}`), {
-    evaluationCriteria: null,
-    evaluationWeights: null,
-    evaluationConfiguredAt: null,
-    evaluationConfiguredBy: null,
-    [`maintenance/${REQUESTED_CRITERIA_RESET_MARKER}`]: marker
-  });
+    await update(ref(db, `groups/${groupName}`), {
+      evaluationCriteria: null,
+      evaluationWeights: null,
+      evaluationConfiguredAt: null,
+      evaluationConfiguredBy: null,
+      [`maintenance/${REQUESTED_CRITERIA_RESET_MARKER}`]: marker
+    });
 
-  groupsCache[groupName] = {
-    ...group,
-    evaluationCriteria: null,
-    evaluationWeights: null,
-    evaluationConfiguredAt: null,
-    evaluationConfiguredBy: null,
-    maintenance: {
-      ...(group?.maintenance || {}),
-      [REQUESTED_CRITERIA_RESET_MARKER]: marker
+    groupsCache[groupName] = {
+      ...group,
+      evaluationCriteria: null,
+      evaluationWeights: null,
+      evaluationConfiguredAt: null,
+      evaluationConfiguredBy: null,
+      maintenance: {
+        ...(group?.maintenance || {}),
+        [REQUESTED_CRITERIA_RESET_MARKER]: marker
+      }
+    };
+
+    if (selectedManagedGroup === groupName) {
+      loadGroupEditor(groupName, { preserveView: true });
     }
-  };
 
-  if (selectedManagedGroup === groupName) {
-    loadGroupEditor(groupName, { preserveView: true });
+    requestedCriteriaResetChecked = true;
+    return true;
+  } finally {
+    requestedCriteriaResetInProgress = false;
   }
-
-  requestedCriteriaResetInProgress = false;
-  requestedCriteriaResetChecked = true;
-  return true;
 }
 
 onValue(ref(db, "groups"), async (snapshot) => {
