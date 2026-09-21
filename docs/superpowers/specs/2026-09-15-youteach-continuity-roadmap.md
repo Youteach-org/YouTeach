@@ -892,3 +892,27 @@ This supersedes any earlier flow that required **Save Group Settings**, **Set Ev
 - **Students in Group** label and count are on one horizontal line; search remains on the same row at the right.
 - In Group Management, the evaluation editor expansion state is part of the persisted management state. Navigating away and returning preserves whether the teacher left it open or closed.
 - The existing-group collapse control is labeled only **Evaluation criteria** with a directional triangle: `▸` when collapsed and `▾` when expanded. Do not use `Show Evaluation`, `Hide Evaluation`, or `Set Evaluation`.
+
+
+### Group Management shared student matrix + evaluation panel persistence — 2026-09-21 (latest)
+
+This supersedes the earlier compact spreadsheet roster inside Group Management.
+
+- Group Management no longer maintains a separate enrolled-student roster design.
+- For enrolled students it uses the same progress-matrix behavior as Teacher → Students:
+  - sticky Student identity column;
+  - adaptive student-name size;
+  - nickname and External ID as secondary metadata;
+  - active student highlighted light green;
+  - dynamic Block columns from the selected group's evaluation-unit count;
+  - criterion names/weights in block headers;
+  - earned criterion contributions and distinct Total cells in each student row;
+  - horizontal scrolling for blocks while the Student column remains fixed;
+  - magnifying-glass live search;
+  - Block Report action;
+  - double-click a student row to open the student profile/summary.
+- Group-specific administration remains available around that shared matrix. Enrollment Link and Add Student remain group-level controls.
+- Pending enrollment requests are shown separately from the enrolled-student grade matrix so Approve/Deny and pending Select All remain available without reverting to the old enrolled-student roster.
+- Clicking an enrolled student in Group Management may still select that student for contextual management actions such as Open Record, External ID edit, or Expel; this is an administrative addition around the shared visual matrix.
+- The Evaluation criteria expanded/collapsed state uses a dedicated persistent preference key (`youteachEvaluationCriteriaOpen`) rather than depending on the transient roster/group state.
+- Initial Create Group rendering must never force the stored Evaluation criteria preference open. The stored `open`/`closed` value is restored when an existing group is loaded.
