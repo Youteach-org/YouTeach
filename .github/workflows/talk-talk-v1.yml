@@ -33,3 +33,29 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+  verify-preview:
+    needs: deploy-preview
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe YouTeach preview and Live COG functions
+        run: |
+          set -eu
+          BASE="https://talk-talk-v1-20260921.youteach.pages.dev"
+          curl -fsS --retry 8 --retry-delay 3 "$BASE/" -o /tmp/youteach.html
+          curl -fsS --retry 8 --retry-delay 3 "$BASE/assignment-create-module.js" -o /tmp/assignment.js
+          grep -Fq '<title>YouTeach</title>' /tmp/youteach.html
+          grep -Fq '/api/cog-live-teacher-launch' /tmp/assignment.js
+          TEACHER_STATUS="$(curl -sS -o /tmp/teacher-api.json -w '%{http_code}' -X POST "$BASE/api/cog-live-teacher-launch" -H 'Content-Type: application/json' --data '{"assignmentId":"smoke"}')"
+          STUDENT_STATUS="$(curl -sS -o /tmp/student-api.json -w '%{http_code}' -X POST "$BASE/api/cog-live-student-launch")"
+          test "$TEACHER_STATUS" = "401"
+          test "$STUDENT_STATUS" = "401"
+          grep -Fq 'Sign in again' /tmp/teacher-api.json
+          grep -Fq 'Sign in again' /tmp/student-api.json
+      - name: Browser-load YouTeach landing shell
+        run: |
+          set -eu
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
+          test -n "$CHROME" || (echo "::error::No Chrome browser on runner" && exit 1)
+          "$CHROME" --headless --no-sandbox --disable-gpu --virtual-time-budget=2500 --dump-dom             https://talk-talk-v1-20260921.youteach.pages.dev/ > /tmp/youteach-dom.html
+          grep -Fq 'Choose your access point' /tmp/youteach-dom.html
