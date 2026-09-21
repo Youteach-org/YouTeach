@@ -469,6 +469,7 @@ function applyEvaluationTemplate(template) {
   if (!criteria.length) return;
   setCriteriaEditor(criteria);
   evaluationEditorOpen = true;
+  persistEvaluationPanelState();
   renderEvaluationEditorVisibility();
   groupEvaluationStatus.textContent = `Loaded template: ${automaticTemplateName(criteria)}. Adjust percentages if needed.`;
   groupEvaluationStatus.className = "status-text ok";
