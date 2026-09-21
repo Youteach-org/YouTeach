@@ -10,4 +10,10 @@ for file in *.html *.js *.css; do
   fi
 done
 
+for control_file in _headers _redirects; do
+  if [ -f "$control_file" ]; then
+    cp "$control_file" dist/
+  fi
+done
+
 echo "Prepared Cloudflare Pages static output in ./dist"
