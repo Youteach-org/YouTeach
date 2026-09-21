@@ -115,11 +115,17 @@ test('group creation UI uses a dynamic criterion editor and reusable templates',
   assert.match(enrollmentJs, /Complete 100% to enable grading and update the template/);
 });
 
-test('Students renders arbitrary criterion names and dynamic block grades', () => {
+test('Students shows group criteria once under each block header, not inside every student grade cell', () => {
   assert.match(studentsHtml, /id="evaluationUnitCountCard"/);
-  assert.match(studentsHtml, /id="evaluationSetupSummary"/);
+  assert.doesNotMatch(studentsHtml, /id="evaluationSetupSummary"/);
+  assert.match(studentsHtml, /\.block-header-criteria/);
+  assert.match(studentsJs, /function criterionSummaryHtml/);
+  assert.match(studentsJs, /<span class="block-header-title">/);
+  assert.match(studentsJs, /<span class="block-header-criteria">/);
   assert.match(studentsJs, /config\.criteria\.map/);
   assert.match(studentsJs, /calculateStudentBlockGrade/);
+  assert.doesNotMatch(studentsJs, /block-grade-breakdown/);
+  assert.doesNotMatch(studentsJs, /criterion\.contribution/);
   assert.match(gradeRuntimeJs, /calculateBlockGrade/);
   assert.match(gradeRuntimeJs, /evaluationCriterionScores/);
   assert.match(gradeRuntimeJs, /groupEvaluationCriterionId/);
