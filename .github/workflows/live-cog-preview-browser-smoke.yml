@@ -1,0 +1,27 @@
+name: Live COG preview browser smoke
+
+on:
+  push:
+    branches:
+      - feature/live-cog-session-current-20260920
+    paths:
+      - .github/workflows/live-cog-preview-browser-smoke.yml
+      - .github/scripts/live-cog-preview-smoke.mjs
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+
+      - name: Run preview browser smoke
+        run: node .github/scripts/live-cog-preview-smoke.mjs
