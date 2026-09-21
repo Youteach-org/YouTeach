@@ -226,7 +226,7 @@ async function main() {
   await studentPage.locator("#studentId").fill(GHOST_ID);
   await studentPage.locator("#studentPassword").fill("1234");
   await studentPage.locator("#studentLoginBtn").click();
-  await studentPage.waitForURL((u) => u.origin === YT && u.pathname.endsWith("/student-buzzer.html"), { timeout: 20000 });
+  await studentPage.waitForURL((u) => u.origin === YT && (u.pathname === "/student-buzzer" || u.pathname.endsWith("/student-buzzer.html")), { timeout: 20000 });
   assert.equal(await studentPage.locator("#liveGameCard").isHidden(), true);
 
   console.log("E2E teacher: CREATE SESSION → canonical connectedGame");
