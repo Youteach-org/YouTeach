@@ -138,6 +138,12 @@ test('Students uses a sticky identity column and scrollable block criteria value
   assert.match(studentsJs, /teacherViewStudentKey/);
   assert.match(studentsHtml, /student-search-tools/);
   assert.match(studentsHtml, /font-size:24px/);
+  assert.match(studentsHtml, /\.summary-inline\{display:flex;align-items:center/);
+  assert.match(studentsHtml, /\.students-count-inline\{display:flex;align-items:center/);
+  assert.match(studentsHtml, /background:#fef3c7/);
+  assert.match(studentsJs, /function studentNameFontSize/);
+  assert.match(studentsJs, /length <= 14\) return 18/);
+  assert.match(studentsJs, /font-size:\$\{studentNameFontSize/);
   assert.match(studentsJs, /toggleStudentSearchBtn\.addEventListener/);
   assert.match(studentsJs, /searchStudentInput\.addEventListener\("input", renderStudents\)/);
   assert.doesNotMatch(studentsJs, /student-name-input/);
