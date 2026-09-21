@@ -138,7 +138,7 @@ async function main() {
     workingGroupMessage: await teacherPage.locator("#workingGroupMessage").textContent().catch(() => ""),
     loginMessage: await teacherPage.locator("#loginMessage").textContent().catch(() => "")
   }));
-  await teacherPage.waitForURL((u) => u.origin === YT && u.pathname.endsWith("/buzzer.html"), { timeout: 15000 });
+  await teacherPage.waitForURL((u) => u.origin === YT && (u.pathname === "/buzzer" || u.pathname.endsWith("/buzzer.html")), { timeout: 15000 });
 
   sessionBefore = await fb("session/current");
   if (sessionBefore?.active === true || sessionBefore?.connectedGame?.status === "active") {
