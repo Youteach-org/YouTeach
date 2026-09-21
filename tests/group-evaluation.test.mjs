@@ -115,17 +115,28 @@ test('group creation UI uses a dynamic criterion editor and reusable templates',
   assert.match(enrollmentJs, /Complete 100% to enable grading and update the template/);
 });
 
-test('Students shows group criteria once under each block header, not inside every student grade cell', () => {
-  assert.match(studentsHtml, /id="evaluationUnitCountCard"/);
-  assert.doesNotMatch(studentsHtml, /id="evaluationSetupSummary"/);
-  assert.match(studentsHtml, /\.block-header-criteria/);
-  assert.match(studentsJs, /function criterionSummaryHtml/);
-  assert.match(studentsJs, /<span class="block-header-title">/);
-  assert.match(studentsJs, /<span class="block-header-criteria">/);
-  assert.match(studentsJs, /config\.criteria\.map/);
+test('Students keeps criteria in block headers and shows only contribution percentages in student rows', () => {
+  assert.doesNotMatch(studentsHtml, /id="evaluationUnitCountCard"/);
+  assert.doesNotMatch(studentsHtml, /Evaluation Blocks \/ Units/);
+  assert.doesNotMatch(studentsHtml, /Today Active/);
+  assert.match(studentsHtml, /\.active-student/);
+  assert.match(studentsHtml, /\.block-criteria-grid/);
+  assert.match(studentsHtml, /\.block-values-grid/);
+  assert.match(studentsJs, /function blockCriteriaHeaderHtml/);
+  assert.match(studentsJs, /criterion\.name/);
+  assert.match(studentsJs, /criterion\.weight/);
+  assert.match(studentsJs, /criterion\.contribution/);
+  assert.match(studentsJs, /active-student/);
   assert.match(studentsJs, /calculateStudentBlockGrade/);
-  assert.doesNotMatch(studentsJs, /block-grade-breakdown/);
-  assert.doesNotMatch(studentsJs, /criterion\.contribution/);
+
+  const gradeStart = studentsJs.indexOf('function blockGradeHtml');
+  const gradeEnd = studentsJs.indexOf('function getStoredWorkingGroup', gradeStart);
+  const gradeBlock = studentsJs.slice(gradeStart, gradeEnd);
+  assert.match(gradeBlock, /criterion\.contribution/);
+  assert.doesNotMatch(gradeBlock, /criterion\.name/);
+  assert.doesNotMatch(gradeBlock, /criterion\.weight/);
+  assert.doesNotMatch(gradeBlock, /Today Active/);
+
   assert.match(gradeRuntimeJs, /calculateBlockGrade/);
   assert.match(gradeRuntimeJs, /evaluationCriterionScores/);
   assert.match(gradeRuntimeJs, /groupEvaluationCriterionId/);
