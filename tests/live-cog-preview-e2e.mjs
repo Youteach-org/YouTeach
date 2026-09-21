@@ -184,7 +184,14 @@ async function main() {
     frameUrls: teacherPage.frames().map((f) => f.url())
   }));
   const frame = await waitFor(
-    () => teacherPage.frames().find((f) => f.url().includes("assignment-create-module.html")),
+    () => teacherPage.frames().find((f) => {
+      try {
+        const url = new URL(f.url());
+        return url.origin === YT && (url.pathname === "/assignment-create-module" || url.pathname.endsWith("/assignment-create-module.html"));
+      } catch {
+        return false;
+      }
+    }),
     "Assignments iframe"
   );
   await frame.locator("#assignmentType").selectOption("COG");
