@@ -154,3 +154,26 @@ test('requested E6C Fall 2026 criteria reset is one-time and preserves the group
   assert.doesNotMatch(block, /set\(ref\(db, `groups\/\$\{groupName\}`\), null\)/);
   assert.doesNotMatch(block, /\[`groups\/\$\{groupName\}`\]\s*=\s*null/);
 });
+
+
+test('existing group evaluation settings autosave with no Save Group Settings flow', () => {
+  assert.match(js, /async function saveExistingGroupEvaluation/);
+  assert.match(js, /function scheduleExistingGroupEvaluationSave/);
+  assert.match(js, /evaluationCriteriaRows\.addEventListener\("input"/);
+  assert.match(js, /evaluationCriteriaRows\.addEventListener\("change"/);
+  assert.match(js, /evaluationUnitCountInput\.addEventListener\("input"/);
+  assert.match(js, /scheduleExistingGroupEvaluationSave\(\{ immediate: true \}\)/);
+  assert.match(js, /createGroupBtn\.hidden = true/);
+  assert.doesNotMatch(js, /Save Group Settings/);
+  assert.doesNotMatch(js, /Use Set Evaluation/);
+});
+
+test('deleting criteria saves the group draft while preserving previously created templates', () => {
+  const autosaveStart = js.indexOf('async function saveExistingGroupEvaluation');
+  const autosaveEnd = js.indexOf('function scheduleExistingGroupEvaluationSave', autosaveStart);
+  const autosave = js.slice(autosaveStart, autosaveEnd);
+  assert.match(autosave, /evaluationCriteria: evaluationCriteria\.length \? criteriaToFirebaseObject\(evaluationCriteria\) : null/);
+  assert.match(autosave, /if \(valid\) \{/);
+  assert.match(autosave, /ensureIndependentTemplate/);
+  assert.doesNotMatch(autosave, /groupEvaluationTemplates\/.*null/);
+});
