@@ -303,7 +303,8 @@ test('Create Group is a popup with an explicit Cancel action and Add Student tab
   assert.match(html, /<dialog id="groupEditorDialog">/);
   assert.match(html, /id="cancelGroupEditBtn"[^>]*>Cancel<\/button>/);
   assert.match(js, /function prepareCreateGroupDialog/);
-  assert.match(js, /openCreateGroupDialogBtn\.addEventListener\("click", prepareCreateGroupDialog\)/);
+  assert.match(js, /openCreateGroupDialogBtn\.addEventListener\("click", \(\) => \{/);
+  assert.match(js, /prepareCreateGroupDialog\(\)/);
   assert.match(js, /cancelGroupEditBtn\.addEventListener\("click", \(\) => groupEditorDialog\.close\(\)\)/);
   assert.match(html, /class="modal-tab active" aria-selected="true">Manual<\/button>/);
   assert.match(html, /\.modal-tabs \.modal-tab\.active::before\{content:"✓ "/);
