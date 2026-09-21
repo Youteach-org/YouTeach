@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="styles.css?v=titlebar-hamburger-20260916">
   <style>
     .students-summary-grid{display:grid;grid-template-columns:minmax(240px,.8fr) minmax(260px,1fr);gap:12px;margin-bottom:12px}
-    .students-actions{display:flex;justify-content:flex-end;margin:8px 0}
+    .students-actions{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:8px 0;flex-wrap:wrap}
     .student-row{cursor:pointer}
     .student-row:hover{background:#f8fafc}
     .summary-inline{display:flex;align-items:center;gap:10px;min-width:0}
@@ -27,7 +27,7 @@
     .student-identity-cell{z-index:2;background:#fff}
     .student-name-line{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
     .student-name{font-weight:900;line-height:1.15;color:#0f172a;display:block;max-width:100%;overflow-wrap:anywhere}
-    .student-meta{display:flex;flex-direction:column;align-items:flex-start;gap:1px;margin-top:3px;font-size:9px;line-height:1.25;color:#64748b}
+    .student-meta{display:flex;align-items:center;gap:5px;margin-top:3px;font-size:9px;line-height:1.25;color:#64748b;white-space:nowrap}
     .student-meta-line{font-size:9px;font-weight:500;color:#64748b}
     @media(max-width:760px){.students-summary-grid{grid-template-columns:1fr}.student-column-header,.student-identity-cell{min-width:220px;max-width:250px}.students-count-head{align-items:flex-start}.student-search-tools{flex:1}.student-search-panel{min-width:0;max-width:none;flex:1}}
     .student-row.active-student{background:#ecfdf5}
@@ -113,6 +113,7 @@
         </div>
 
         <div class="students-actions">
+          <button id="studentDisplayModeBtn" type="button">Show: Name</button>
           <button id="openBlockReportBtn" type="button">Block Report</button>
         </div>
 
@@ -133,7 +134,7 @@
     </main>
   </div>
 
-  <script type="module" src="teacher-students.js?v=adaptive-name-total-panel-20260921"></script>
+  <script type="module" src="teacher-students.js?v=group-display-mode-20260921"></script>
   <script defer src="shared-ui-fixes.js?v=titlebar-hamburger-20260916"></script>
 </body>
 </html>
