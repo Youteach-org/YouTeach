@@ -141,18 +141,29 @@ async function main() {
   await teacherPage.waitForURL((u) => u.origin === YT && (u.pathname === "/buzzer" || u.pathname.endsWith("/buzzer.html")), { timeout: 15000 });
 
   sessionBefore = await fb("session/current");
-  if (sessionBefore?.active === true || sessionBefore?.connectedGame?.status === "active") {
+  const hasOccupiedSession = sessionBefore?.active === true || sessionBefore?.connectedGame?.status === "active";
+  const isRestorableIdleGhostLab =
+    sessionBefore?.active === true &&
+    String(sessionBefore?.groupName || "") === GROUP &&
+    sessionBefore?.connectedGame?.status !== "active" &&
+    sessionBefore?.buzzer?.roundOpen !== true &&
+    !sessionBefore?.buzzer?.currentBuzz;
+
+  if (hasOccupiedSession && !isRestorableIdleGhostLab) {
     console.log("E2E_BLOCKED session/current summary", JSON.stringify({
       groupName: String(sessionBefore?.groupName || sessionBefore?.connectedGame?.groupName || ""),
       active: Boolean(sessionBefore?.active),
       createdAt: Number(sessionBefore?.createdAt || 0),
-      teamSourceMode: String(sessionBefore?.teamSourceMode || ""),
+      roundOpen: Boolean(sessionBefore?.buzzer?.roundOpen),
+      hasCurrentBuzz: Boolean(sessionBefore?.buzzer?.currentBuzz),
       connectedGameStatus: String(sessionBefore?.connectedGame?.status || ""),
-      connectedGameId: String(sessionBefore?.connectedGame?.gameId || ""),
-      connectedAssignmentId: String(sessionBefore?.connectedGame?.assignmentId || ""),
-      connectedCogSessionId: String(sessionBefore?.connectedGame?.cogSessionId || "")
+      connectedGameId: String(sessionBefore?.connectedGame?.gameId || "")
     }));
-    throw new Error("E2E_BLOCKED: an active session already occupies session/current; no writes performed.");
+    throw new Error("E2E_BLOCKED: a non-restorable active session occupies session/current; no writes performed.");
+  }
+
+  if (isRestorableIdleGhostLab) {
+    console.log("E2E: preserving idle FANTASMA session and restoring it after the smoke.");
   }
 
   await teacherPage.locator("#groupSelect").selectOption({ label: GROUP });
