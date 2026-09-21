@@ -175,9 +175,9 @@ function renderGroupFilter(){
   }
 
   const preferredGroup =
-    (sessionCache?.groupName && groups.includes(sessionCache.groupName) ? sessionCache.groupName : "") ||
+    (selectedGroup && groups.includes(selectedGroup) ? selectedGroup : "") ||
     (getStoredWorkingGroup() && groups.includes(getStoredWorkingGroup()) ? getStoredWorkingGroup() : "") ||
-    selectedGroup ||
+    (sessionCache?.groupName && groups.includes(sessionCache.groupName) ? sessionCache.groupName : "") ||
     groups[0];
 
   selectedGroup = preferredGroup;
@@ -228,10 +228,12 @@ function renderStudents(){
   studentsTableBody.innerHTML = entries.map(([key, student]) => `
     <tr class="student-row ${student.activeNow ? "active-student" : ""}" data-student-key="${escapeHtml(key)}">
       <td class="student-identity-cell">
-        <div class="student-name">${escapeHtml(getDisplayName(student))}</div>
+        <div class="student-name-line">
+          <span class="student-name">${escapeHtml(getDisplayName(student))}</span>
+          ${student.studentNumber ? `<span class="student-id-tag">ID ${escapeHtml(student.studentNumber)}</span>` : ""}
+        </div>
         <div class="student-meta">
           ${student.nickname ? `<span>${escapeHtml(student.nickname)}</span>` : ""}
-          ${student.studentNumber ? `<span class="student-id-tag">ID ${escapeHtml(student.studentNumber)}</span>` : ""}
         </div>
       </td>
       ${blockNames.map((blockName) =>
