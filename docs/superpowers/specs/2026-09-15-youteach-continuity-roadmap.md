@@ -916,3 +916,23 @@ This supersedes the earlier compact spreadsheet roster inside Group Management.
 - Clicking an enrolled student in Group Management may still select that student for contextual management actions such as Open Record, External ID edit, or Expel; this is an administrative addition around the shared visual matrix.
 - The Evaluation criteria expanded/collapsed state uses a dedicated persistent preference key (`youteachEvaluationCriteriaOpen`) rather than depending on the transient roster/group state.
 - Initial Create Group rendering must never force the stored Evaluation criteria preference open. The stored `open`/`closed` value is restored when an existing group is loaded.
+
+
+### Group Management enrollment header and student display preference — 2026-09-21 (latest)
+
+- The **Enrolled Students** heading has no explanatory legend underneath it.
+- Its header row contains, in order, the heading, the enrollment-link control, and the roster expand/collapse arrow.
+- When a group has a live enrollment link, the control reads **Active enrollment link**. It is a toggle:
+  - collapsed -> link details hidden;
+  - expanded -> read-only link textbox and **Rotate link** button visible.
+- When no link exists, the same control reads **Create enrollment link** and creates/opens it.
+- Do not add a separate always-visible copy-link button or a separate "Managing <group>" banner.
+- The enrolled-student matrix has a group-level primary identity preference controlled by a compact button above the list:
+  - **Show: Name**
+  - **Show: Last names**
+  - **Show: Nickname**
+- That preference is persisted on the group as `studentListDisplayMode` so the selected representation becomes the group's default in both Group Management and Teacher Students.
+- The primary identity is sorted by the selected mode.
+- The secondary identity line is exactly one compact line below the primary identity. Normally it contains `nickname · ID ...`; when Nickname is primary, it uses the full name plus External ID to avoid useless duplication.
+- Search is independent of the display mode and matches full name, parsed given names, parsed surnames, nickname, External ID, and internal ID.
+- The **Evaluation criteria** expanded/collapsed preference is persisted separately in local storage and is also flushed on `pagehide`, so leaving and returning to Group Management preserves the last open/closed state.
