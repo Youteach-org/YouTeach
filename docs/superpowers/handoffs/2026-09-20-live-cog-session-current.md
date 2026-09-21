@@ -6,9 +6,9 @@ Date: 2026-09-20 (America/Mexico_City)
 
 Work spans two repositories and MUST stay on the same feature branch until verification is complete.
 
-- YouTeach: `youteachtk/YouTeach`
+- YouTeach: `Youteach-org/YouTeach`
   - branch: `feature/live-cog-session-current-20260920`
-  - HEAD verified at handoff: `fa93fa5f2e35a3c8af38234a8c42d68b3315c542`
+  - current implementation checkpoint: `b1ee0a3d6bd4f5bbd5ebd83f2f6497a4398e474a`
 - Classroom Online Games: `youteachtk/Classroom-Online-Games`
   - branch: `feature/live-cog-session-current-20260920`
   - HEAD verified at handoff: `9d42a7569f8f3382b262e5d1db636f4f51d35412`
@@ -147,61 +147,75 @@ Implemented and now present at current branch HEAD:
   - `1f3fe4bdea` — OSASCOMP live verification
   - `9d42a7569f8f3382b262e5d1db636f4f51d35412` — canonical game catalog contract
 
-## CI status at handoff
+## CI status — latest verified checkpoint
 
-DO NOT interpret the current red Actions state as proof of product/test failures yet.
+### YouTeach
 
-Classroom Online Games latest run at handoff:
-- run `35548676940`
-- HEAD `9d42a7569f8f3382b262e5d1db636f4f51d35412`
-- all jobs report failure, INCLUDING `runner-probe`
-- jobs expose no steps/logs through the connector
-- `runner-probe` only runs:
-  - `node --version`
-  - `echo "runner-ok"`
-- therefore first suspect GitHub Actions runner/infrastructure execution, not game code.
+Repository ownership changed during this work:
+- current repo: `Youteach-org/YouTeach`
+- branch: `feature/live-cog-session-current-20260920`
 
-The workflow was deliberately split into jobs:
-- runner-probe
-- syntax
-- shared-bridge
-- verb-runner
-- hundred-students-said
-- support-meter
-- osascomp
-- build
+The old red run was an Actions infrastructure symptom, not a product failure. After moving YouTeach under `Youteach-org`, the same workflow immediately received a hosted runner and could execute normally.
 
-Current workflow uses `actions/checkout@v5` for checkout jobs.
+Latest verified YouTeach implementation:
+- HEAD: `b1ee0a3d6bd4f5bbd5ebd83f2f6497a4398e474a`
+- run: `35565318415`
+- runner assigned normally
+- server JavaScript check: GREEN
+- tests: **131/131 GREEN**
+- Pages build: GREEN
 
-YouTeach latest run at handoff:
-- run `35548673538`
-- HEAD `fa93fa5f2e35a3c8af38234a8c42d68b3315c542`
-- failure with no exposed steps/logs through the connector
-- last clearly GREEN YouTeach checkpoint in this work: `47efb15c6d855477d6b10d679e67f538b904cb0d`, run `35547999655`.
+TDD checkpoints for teacher-facing COG results:
+- `60f12c07cdcbab158556bddd35f0a69297b10c6c` — RED tests for assignment result display; 125 pass / 3 expected fail.
+- `8616af768d475caba503e2a7c27576b3262e2813` — result index + Assignments UI; run `35565020906` GREEN.
+- `c3ffc87421b7d1ba5aace824a64430c438374e75` — RED tests for authenticated result reads; 128 pass / 3 expected fail.
+- `b1ee0a3d6bd4f5bbd5ebd83f2f6497a4398e474a` — authenticated result-read endpoint + UI polling; run `35565318415` GREEN.
 
-### First action for the next instance
+### Classroom Online Games
 
-1. Verify both HEADs.
-2. Check Actions again.
-3. If `runner-probe` still fails before exposing steps, DO NOT start rewriting product code to chase the red status.
-4. Retry or diagnose Actions infrastructure first.
-5. Once runner-probe works, use the split jobs to fix any actual failing suite one game at a time.
+COG remains under `youteachtk/Classroom-Online-Games`.
+
+The workflow itself is still blocked before product tests start:
+- original failing run: `35548676940`
+- `runner-probe` was retried by itself
+- retry job: `106223435653`
+- result: failure in about one second with **zero steps**, `runner_id: 0`, empty runner name and no log blob
+- probe contains only `node --version` and `echo "runner-ok"`
+
+Do **not** modify product code to chase this red. Evidence still points to runner allocation / owner-level Actions infrastructure for `youteachtk`. The successful YouTeach rerun after its move to `Youteach-org` is a useful control showing the workflow can receive a normal hosted runner under the new owner.
+
+Until COG `runner-probe` receives a real runner, COG CI is **not a valid product signal** and the cross-repo branch is not eligible for final merge.
+
+## Completed since the original handoff
+
+### Teacher-facing result display in YouTeach
+
+The visible Results loop is now implemented and verified.
+
+Canonical idempotent receipt storage remains:
+`classroomGameResults/{cogSessionId}/{studentKey}/{resultId}`
+
+A display-oriented assignment index is mirrored from the canonical receipt:
+`classroomGameResultsByAssignment/{assignmentId}/{studentKey}/{resultId}`
+
+Rules:
+- canonical receipt remains the idempotency authority;
+- duplicate/retry requests reuse the existing canonical receipt and backfill the assignment index;
+- attempt history is preserved; no attempt is silently discarded;
+- Assignments highlights the latest receipt but exposes full result history;
+- game-specific allowlisted metrics are shown;
+- percentages and game points are labeled as game results, **not assignment grades**;
+- AI/manual grading controls do not treat COG receipts as PDF submissions or fabricate a grade.
+
+Teacher read path:
+- endpoint: `/api/cog-assignment-results`
+- requires a valid signed teacher session;
+- the browser does not attach a direct Firebase listener to the COG result index;
+- Assignments refreshes the authenticated result cache periodically while COG assignments exist.
 
 ## Important unfinished work
 
-### 1. Teacher-facing result display in YouTeach
-
-Result ingestion exists, but the full user-facing loop is NOT complete until the teacher can see COG results in the appropriate YouTeach Assignments review/results surface.
-
-Do not assume that writing `classroomGameResults` is sufficient.
-
-Required next work:
-- inspect current Assignments review UI
-- decide/read plan for how live COG receipts join the assignment/student rows
-- show canonical result + game-specific metrics without fabricating grading
-- preserve idempotent receipt semantics
-
-### 2. End-to-end browser verification after CI recovers
+### 1. End-to-end browser verification after COG CI recovers
 
 Verify with real YouTeach flow and existing Ghost test students. Do not create duplicate Ghost accounts.
 
@@ -218,13 +232,20 @@ Minimum E2E cases:
 - Expiry:
   zero presence must become `expired` after 60 continuous minutes; returning before that clears the zero-presence timer.
 
+### 2. Restore trustworthy COG CI
+
+Before browser E2E/final merge:
+- get `runner-probe` to receive a real hosted runner;
+- then use split jobs `syntax`, `shared-bridge`, `verb-runner`, `hundred-students-said`, `support-meter`, `osascomp`, `build` to identify any actual product failures;
+- do not infer GREEN or RED product state while the runner never starts.
+
 ### 3. Documentation / final merge
 
-After true green + E2E:
-- update plan/ledger/spec with final checkpoints
-- create/update PR(s) as appropriate
-- do not merge to main until verification is complete
-- deploy only after source is settled in GitHub
+After true green in both repos + E2E:
+- update plan/ledger/spec with final checkpoints;
+- create/update PR(s) as appropriate;
+- do not merge to main until verification is complete;
+- deploy only after source is settled in GitHub.
 
 ## User workflow rules that matter here
 

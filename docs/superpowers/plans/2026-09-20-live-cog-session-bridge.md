@@ -893,3 +893,29 @@ The implementation plan is amended as follows:
 - team-context Assignments can target All Generated Teams or one generated team and persist exact recipient student keys;
 - there is no separate `teamActivities` planning ledger for this flow; the normal `assignments` instance is the canonical activity record;
 - a future/remaining authenticated COG launch action must originate from a COG assignment/activity in this shared flow, not from a permanent COG-only button.
+
+---
+
+## Implementation checkpoint — teacher-facing COG results — 2026-09-20
+
+This checkpoint closes the previously missing visible Results loop without defining an automatic grading policy.
+
+Verified behavior:
+- canonical result receipts remain idempotent at `classroomGameResults/{cogSessionId}/{studentKey}/{resultId}`;
+- accepted receipts are mirrored into `classroomGameResultsByAssignment/{assignmentId}/{studentKey}/{resultId}` for teacher review;
+- retrying an already-accepted receipt backfills the assignment index from the canonical receipt instead of creating a duplicate;
+- teacher Assignments shows result history and game-specific metrics per eligible student;
+- COG result percentage / points remain game-result data and are not silently converted into assignment grades;
+- teacher result reads go through authenticated `/api/cog-assignment-results`, not a direct client Firebase listener;
+- browser refresh interval is 10 seconds while COG assignments exist.
+
+TDD evidence:
+- RED display tests: `60f12c07cdcbab158556bddd35f0a69297b10c6c`;
+- first GREEN display implementation: `8616af768d475caba503e2a7c27576b3262e2813`, run `35565020906`;
+- RED authenticated-read tests: `c3ffc87421b7d1ba5aace824a64430c438374e75`;
+- authenticated GREEN implementation: `b1ee0a3d6bd4f5bbd5ebd83f2f6497a4398e474a`, run `35565318415`, **131/131 tests passed**, build GREEN.
+
+CI ruling:
+- YouTeach moved to `Youteach-org/YouTeach` and now receives GitHub-hosted runners normally.
+- COG remains under `youteachtk/Classroom-Online-Games`; its isolated `runner-probe` retry still receives `runner_id: 0`, exposes no steps/logs and fails before execution.
+- Do not modify COG product code for that infrastructure red. Resume COG product diagnosis only after `runner-probe` actually starts.
