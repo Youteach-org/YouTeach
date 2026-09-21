@@ -1008,3 +1008,11 @@ This supersedes earlier Teacher Students / Group Management navigation and layou
 - Pending enrollment requests keep their own separate Approve/Deny selection actions.
 - The **Students** text label is removed. The enrolled-student count appears immediately beside **Enrolled Students**, followed immediately by the **Names / Last names / Nicknames** toggle on the left.
 - Search is aligned to the right of the header. When expanded, its textbox appears immediately to the **left** of the magnifying-glass button.
+
+
+### Group Management search / reports header order — 2026-09-21
+
+- In the **Enrolled Students** header, the search control and the report button exchange positions.
+- The search textbox remains immediately to the **left** of the magnifying-glass button.
+- The report button occupies the former search position at the right side of the header and is labeled simply **Reports**.
+- Its underlying action remains the existing block-report navigation.

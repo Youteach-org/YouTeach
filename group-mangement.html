@@ -25,7 +25,7 @@
     .enrolled-students-left{display:flex;align-items:center;gap:8px;flex:0 0 auto;white-space:nowrap}
     .enrolled-students-left h3{margin:0}
     .enrolled-head-actions{display:flex;align-items:center;gap:8px;margin-left:auto;flex-wrap:nowrap;min-width:max-content}
-    .managed-search-tools{display:flex;align-items:center;gap:8px;margin-left:auto;flex-wrap:nowrap}
+    .managed-search-tools{display:flex;align-items:center;gap:8px;flex-wrap:nowrap}
     .managed-search-panel{min-width:220px;max-width:360px}
     .active-enrollment-link-btn{background:#fff;color:#334155;border:1px solid #cbd5e1}
     .active-enrollment-link-btn.active{background:#dcfce7;color:#166534;border-color:#86efac;box-shadow:inset 0 0 0 1px #86efac}
@@ -150,7 +150,13 @@
               <button id="managedStudentDisplayModeBtn" class="managed-display-mode-btn" type="button">Names</button>
             </div>
             <div class="enrolled-head-actions">
-              <button id="openManagedBlockReportBtn" type="button">Block Report</button>
+              <div class="managed-search-tools">
+                <div id="managedStudentSearchPanel" class="managed-search-panel" hidden>
+                  <input id="managedStudentSearch" placeholder="Search name, nickname, or External ID" autocomplete="off">
+                </div>
+                <button id="managedStudentSearchToggle" class="managed-search-toggle" type="button"
+                  aria-label="Search students" aria-expanded="false" title="Search students">🔍</button>
+              </div>
               <div id="enrollmentLinkInlineControls" class="enrollment-link-inline-controls" hidden>
                 <input id="enrollmentLinkInput" readonly aria-readonly="true" aria-label="Enrollment link">
                 <button id="copyEnrollmentLinkBtn" type="button">Copy link</button>
@@ -159,13 +165,7 @@
               <button id="createEnrollmentLinkBtn" class="active-enrollment-link-btn" type="button" hidden aria-expanded="false" aria-pressed="false">Active enrollment link</button>
               <button id="openAddStudentModalBtn" type="button" hidden>Add Student</button>
               <button id="toggleRosterBtn" class="collapse-btn" type="button" hidden aria-expanded="false" title="Expand or collapse students">▸</button>
-              <div class="managed-search-tools">
-                <div id="managedStudentSearchPanel" class="managed-search-panel" hidden>
-                  <input id="managedStudentSearch" placeholder="Search name, nickname, or External ID" autocomplete="off">
-                </div>
-                <button id="managedStudentSearchToggle" class="managed-search-toggle" type="button"
-                  aria-label="Search students" aria-expanded="false" title="Search students">🔍</button>
-              </div>
+              <button id="openManagedBlockReportBtn" type="button">Reports</button>
             </div>
           </div>
 

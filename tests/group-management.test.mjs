@@ -305,7 +305,7 @@ test('student list controls share the Enrolled Students header line', () => {
   }
   assert.match(html, /\.enrolled-students-head\{display:flex;align-items:center;gap:10px;flex-wrap:nowrap;overflow-x:auto\}/);
   assert.match(html, /\.enrolled-students-left\{display:flex;align-items:center;gap:8px;flex:0 0 auto;white-space:nowrap\}/);
-  assert.match(html, /\.managed-search-tools\{display:flex;align-items:center;gap:8px;margin-left:auto;flex-wrap:nowrap\}/);
+  assert.match(html, /\.managed-search-tools\{display:flex;align-items:center;gap:8px;flex-wrap:nowrap\}/);
   const rosterStart = html.indexOf('<div id="enrollmentControls"', start);
   const tableStart = html.indexOf('<div class="table-wrap managed-students-table-wrap">', rosterStart);
   const rosterBeforeTable = html.slice(rosterStart, tableStart);
@@ -370,5 +370,16 @@ test('Enrolled Students header keeps count and identity toggle on the left and s
   assert.match(header, /<h3>Enrolled Students<\/h3>[\s\S]*id="managedStudentsCount"[\s\S]*id="managedStudentDisplayModeBtn"/);
   assert.doesNotMatch(header, /<strong>Students<\/strong>/);
   assert.ok(header.indexOf('managedStudentSearchPanel') < header.indexOf('managedStudentSearchToggle'));
-  assert.match(html, /\.managed-search-tools\{display:flex;align-items:center;gap:8px;margin-left:auto/);
+  assert.match(html, /\.managed-search-tools\{display:flex;align-items:center;gap:8px;flex-wrap:nowrap\}/);
+});
+
+
+test('search and Reports swap positions in the Enrolled Students header', () => {
+  const start = html.indexOf('<div class="management-head enrolled-students-head">');
+  const end = html.indexOf('</div>\n\n          <div id="enrollmentControls"', start);
+  const header = html.slice(start, end);
+  assert.ok(header.indexOf('managedStudentSearchPanel') < header.indexOf('managedStudentSearchToggle'));
+  assert.ok(header.indexOf('managedStudentSearchToggle') < header.indexOf('openManagedBlockReportBtn'));
+  assert.match(header, /id="openManagedBlockReportBtn"[^>]*>Reports<\/button>/);
+  assert.doesNotMatch(header, />Block Report<\/button>/);
 });
