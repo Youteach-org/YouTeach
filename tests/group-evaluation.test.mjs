@@ -295,3 +295,15 @@ test('template popup renders the merged canonical and legacy library', () => {
   assert.match(enrollmentJs, /Object\.entries\(mergedTemplateCache\(\)\)/);
   assert.match(enrollmentJs, /const template = mergedTemplateCache\(\)\?\.\[selectedTemplateId\]/);
 });
+
+
+test('Group Management grade matrix mirrors Students grade calculation semantics', () => {
+  assert.match(enrollmentHtml, /managed-student-column-header/);
+  assert.match(enrollmentHtml, /managed-block-total/);
+  assert.match(enrollmentJs, /calculateStudentBlockGrade/);
+  assert.match(enrollmentJs, /assignments: assignmentsCache/);
+  assert.match(enrollmentJs, /submissions: assignmentSubmissionsCache/);
+  assert.match(enrollmentJs, /criterion\.contribution/);
+  assert.match(enrollmentJs, /student\.activeNow \? "active-student"/);
+  assert.match(enrollmentJs, /managedStudentNameFontSize/);
+});
