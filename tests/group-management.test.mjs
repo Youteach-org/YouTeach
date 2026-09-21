@@ -263,3 +263,43 @@ test('Group Management remembers evaluation criteria expansion in a dedicated pe
   assert.doesNotMatch(loadBlock, /evaluationEditorOpen = false/);
   assert.doesNotMatch(js, /Show Evaluation|Hide Evaluation|Set Evaluation/);
 });
+
+
+test('Enrolled Students header has only title, active enrollment-link toggle, and collapse arrow', () => {
+  assert.doesNotMatch(html, /id="managedGroupStatus"/);
+  assert.doesNotMatch(html, /Managing <strong/);
+  assert.doesNotMatch(html, /copyEnrollmentLinkBtn/);
+  assert.match(html, /id="createEnrollmentLinkBtn"[^>]*aria-expanded="false"/);
+  assert.match(html, /id="toggleRosterBtn"/);
+  assert.match(js, /"Active enrollment link"/);
+  assert.match(js, /enrollmentLinkExpanded = !enrollmentLinkExpanded/);
+  assert.match(js, /enrollmentLinkBox\.hidden = !\(active && enrollmentLinkExpanded\)/);
+  assert.match(js, /"Create enrollment link"/);
+});
+
+test('managed student identity mode is saved on the group and search remains field-independent', () => {
+  assert.match(html, /id="managedStudentDisplayModeBtn"/);
+  assert.match(js, /MANAGED_DISPLAY_MODES = \["name", "lastNames", "nickname"\]/);
+  assert.match(js, /studentListDisplayMode/);
+  assert.match(js, /groups\/\$\{groupName\}/);
+  assert.match(js, /studentListDisplayUpdatedAt/);
+  assert.match(js, /parts\.fullName/);
+  assert.match(js, /parts\.givenNames/);
+  assert.match(js, /parts\.lastNames/);
+  assert.match(js, /student\?\.nickname/);
+  assert.match(js, /student\?\.studentNumber/);
+  assert.match(js, /student\?\.id/);
+});
+
+test('managed student secondary metadata is one line under the primary identity', () => {
+  assert.match(html, /\.managed-student-meta\{display:flex;align-items:center/);
+  assert.match(html, /white-space:nowrap/);
+  assert.match(js, /pieces\.join\(" · "\)/);
+  assert.match(js, /<span class="managed-student-meta">\$\{escapeHtml\(secondary\)\}<\/span>/);
+});
+
+test('evaluation criteria preference is committed on every toggle and page exit', () => {
+  assert.match(js, /localStorage\.setItem\(EVALUATION_PANEL_STATE_KEY, evaluationEditorOpen \? "open" : "closed"\)/);
+  assert.match(js, /toggleEvaluationBtn\.addEventListener\("click"/);
+  assert.match(js, /window\.addEventListener\("pagehide", persistEvaluationPanelState\)/);
+});
