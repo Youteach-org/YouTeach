@@ -35,7 +35,6 @@ const toggleEvaluationBtn = document.getElementById("toggleEvaluationBtn");
 const cancelGroupEditBtn = document.getElementById("cancelGroupEditBtn");
 const evaluationUnitCountInput = document.getElementById("evaluationUnitCountInput");
 const useEvaluationTemplateBtn = document.getElementById("useEvaluationTemplateBtn");
-const saveEvaluationTemplateBtn = document.getElementById("saveEvaluationTemplateBtn");
 const addEvaluationCriterionBtn = document.getElementById("addEvaluationCriterionBtn");
 const evaluationCriteriaRows = document.getElementById("evaluationCriteriaRows");
 const evaluationWeightTotalLabel = document.getElementById("evaluationWeightTotal");
@@ -393,34 +392,6 @@ function applyEvaluationTemplate(template) {
   renderEvaluationEditorVisibility();
   groupEvaluationStatus.textContent = `Loaded template: ${template.name || "Evaluation setup"}.`;
   groupEvaluationStatus.className = "status-text ok";
-}
-
-async function saveCurrentEvaluationAsTemplate() {
-  const criteria = criteriaFromForm();
-  const total = evaluationWeightTotal(criteria);
-
-  if (!criteria.length || Math.abs(total - 100) >= 0.01) {
-    groupEvaluationStatus.textContent = "Complete criteria totaling 100% before saving a template.";
-    groupEvaluationStatus.className = "status-text bad";
-    return;
-  }
-
-  const suggested = automaticTemplateName(criteria);
-  const name = String(prompt("Template name:", suggested) || "").trim();
-  if (!name) return;
-
-  const id = await ensureIndependentTemplate({
-    evaluationUnitCount: normalizeEvaluationUnitCount(evaluationUnitCountInput.value, 3),
-    evaluationCriteria: criteria,
-    reportSettings: editingGroupName
-      ? (groupsCache?.[editingGroupName]?.reportSettings || pendingReportSettings)
-      : pendingReportSettings,
-    name,
-    renameExisting: true
-  });
-
-  groupEvaluationStatus.textContent = id ? `Template ready: ${name}.` : "Template could not be saved.";
-  groupEvaluationStatus.className = id ? "status-text ok" : "status-text bad";
 }
 
 function renderSelectedGroupActions() {
@@ -1217,7 +1188,6 @@ useSelectedEvaluationTemplateBtn.addEventListener("click", () => {
   evaluationTemplateDialog.close();
 });
 
-saveEvaluationTemplateBtn.addEventListener("click", saveCurrentEvaluationAsTemplate);
 
 groupsTableBody.addEventListener("click", (event) => {
   const manageButton = event.target.closest("[data-manage-group]");
