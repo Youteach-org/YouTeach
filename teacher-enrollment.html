@@ -31,21 +31,43 @@
     .roster-context-actions .context-label{font-size:11px;font-weight:900;color:#1e3a8a;margin-right:auto}
     .external-id-editor{display:flex;gap:5px;align-items:center}
     .external-id-editor input{width:170px}
-    .student-grid{display:grid;grid-template-columns:34px minmax(220px,1.6fr) minmax(140px,.85fr) minmax(140px,.8fr) minmax(130px,.75fr);align-items:center}
-    .student-list-head{margin-top:9px;padding:5px 8px;font-size:10px;font-weight:900;color:#64748b;text-transform:uppercase;border-bottom:1px solid #cbd5e1}
-    .student-list{display:grid}
-    .student-row{min-height:36px;padding:4px 8px;border-bottom:1px solid #e2e8f0;background:#fff;cursor:pointer;font-size:12px}
-    .student-row:hover{background:#f8fafc}
-    .student-row.selected{background:#eff6ff;box-shadow:inset 3px 0 #2563eb}
-    .student-row.pending{box-shadow:inset 3px 0 #f59e0b}
-    .student-row.pending.selected{box-shadow:inset 3px 0 #2563eb}
-    .student-cell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:8px}
-    .student-name{font-weight:800;color:#0f172a}
-    .student-status{display:inline-flex;justify-content:center;padding:3px 6px;border-radius:999px;font-size:9px;font-weight:900}
-    .student-status.pending{background:#fef3c7;color:#92400e}
-    .student-status.enrolled{background:#dcfce7;color:#166534}
-    .student-list-empty{padding:16px;text-align:center;color:#64748b;border-bottom:1px solid #e2e8f0}
+    .pending-requests{display:grid;margin-top:9px;border:1px solid #fde68a;border-radius:9px;overflow:hidden}
+    .pending-request-row{display:grid;grid-template-columns:34px minmax(190px,1fr) minmax(110px,.55fr) minmax(110px,.55fr);gap:8px;align-items:center;padding:6px 8px;border-bottom:1px solid #fde68a;background:#fffbeb;cursor:pointer;font-size:11px}
+    .pending-request-row:last-child{border-bottom:0}
+    .pending-request-row.selected{background:#eff6ff;box-shadow:inset 3px 0 #2563eb}
+    .pending-request-head{font-weight:900;color:#92400e;text-transform:uppercase;font-size:9px}
     .pending-count{font-weight:900;color:#92400e;font-size:11px}
+    .managed-students-tools{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px}
+    .managed-students-count{font-size:18px;font-weight:900;color:#0f172a}
+    .managed-search-tools{display:flex;align-items:center;gap:8px;min-width:0}
+    .managed-search-toggle{min-width:42px;min-height:38px;padding:5px 9px;font-size:24px;line-height:1}
+    .managed-search-panel{min-width:220px;max-width:360px}
+    .managed-search-panel input{width:100%;margin:0}
+    .managed-students-table-wrap{overflow-x:auto;position:relative;margin-top:8px}
+    .managed-students-table{width:max-content;min-width:100%;border-collapse:separate;border-spacing:0}
+    .managed-student-column-header,.managed-student-identity-cell{position:sticky;left:0;min-width:270px;max-width:310px}
+    .managed-student-column-header{z-index:5;background:#f8fafc}
+    .managed-student-identity-cell{z-index:2;background:#fff}
+    .managed-student-row{cursor:pointer}
+    .managed-student-row:hover{background:#f8fafc}
+    .managed-student-row.selected{background:#eff6ff;box-shadow:inset 3px 0 #2563eb}
+    .managed-student-row.active-student{background:#ecfdf5}
+    .managed-student-row.active-student:hover{background:#dcfce7}
+    .managed-student-row.active-student .managed-student-identity-cell{background:#ecfdf5}
+    .managed-student-row.selected .managed-student-identity-cell{background:#eff6ff}
+    .managed-student-name{font-weight:900;line-height:1.15;color:#0f172a;display:block;max-width:100%;overflow-wrap:anywhere}
+    .managed-student-meta{display:flex;flex-direction:column;align-items:flex-start;gap:1px;margin-top:3px;font-size:9px;line-height:1.25;color:#64748b}
+    .managed-block-grade-cell{min-width:260px;text-align:center}
+    .managed-block-grade-header{min-width:260px;text-align:center;vertical-align:top}
+    .managed-block-title{display:block;font-size:13px;font-weight:900;color:#0f172a;white-space:nowrap}
+    .managed-block-criteria-grid,.managed-block-values-grid{display:grid;grid-template-columns:repeat(var(--criterion-columns),minmax(48px,1fr));gap:4px;align-items:center}
+    .managed-block-criteria-grid{margin-top:5px;font-size:9px;line-height:1.25;font-weight:800;color:#64748b}
+    .managed-block-values-grid{font-size:11px;font-weight:800;color:#334155}
+    .managed-block-label,.managed-block-value{padding:2px 3px;text-align:center}
+    .managed-block-label{white-space:normal;line-height:1.15}
+    .managed-block-value{white-space:nowrap}
+    .managed-block-total{font-weight:900;color:#92400e;background:#fef3c7;border-radius:6px;padding:4px 5px}
+    .student-list-empty{padding:16px;text-align:center;color:#64748b}
     .groups-table .group-select-button{display:flex;align-items:center;gap:7px;background:transparent;color:#1d4ed8;border:0;padding:0;font-weight:900;text-align:left;box-shadow:none}
     .groups-table .group-chevron{display:inline-block;width:14px;color:#64748b}
     .groups-table tr.selected-group-row{background:#eff6ff}
@@ -69,8 +91,9 @@
     @media(max-width:850px){
       .criterion-row{grid-template-columns:1fr}
       .enrollment-link-box{grid-template-columns:1fr}
-      .student-grid{grid-template-columns:30px minmax(150px,1.35fr) minmax(105px,.8fr) minmax(105px,.75fr) minmax(100px,.7fr)}
-      .student-list-head,.student-row{font-size:10px}
+      .pending-request-row{grid-template-columns:30px minmax(150px,1fr) minmax(90px,.55fr) minmax(90px,.55fr)}
+      .managed-student-column-header,.managed-student-identity-cell{min-width:220px;max-width:250px}
+      .managed-search-panel{min-width:0;max-width:none;flex:1}
     }
   </style>
 </head>
@@ -188,11 +211,34 @@
                 <button id="expelStudentBtn" type="button" hidden>Expel</button>
               </div>
 
-              <div class="student-list-head student-grid">
-                <label title="Select or deselect all visible students"><input id="selectAllStudents" type="checkbox" aria-label="Select or deselect all visible students"></label>
-                <span>Full Name</span><span>Nickname</span><span>External ID</span><span>Group</span>
+              <div id="pendingRequestsPanel" class="pending-requests" hidden>
+                <div class="pending-request-row pending-request-head">
+                  <label title="Select or deselect all pending requests"><input id="selectAllStudents" type="checkbox" aria-label="Select or deselect all pending requests"></label>
+                  <span>Pending request</span><span>Nickname</span><span>External ID</span>
+                </div>
+                <div id="pendingRequestsList"></div>
               </div>
-              <div id="managedStudentsList" class="student-list"></div>
+
+              <div class="managed-students-tools">
+                <div><strong>Students</strong> <span id="managedStudentsCount" class="managed-students-count">0</span></div>
+                <div class="managed-search-tools">
+                  <div id="managedStudentSearchPanel" class="managed-search-panel" hidden>
+                    <input id="managedStudentSearch" placeholder="Search name, nickname, or External ID" autocomplete="off">
+                  </div>
+                  <button id="managedStudentSearchToggle" class="managed-search-toggle" type="button"
+                    aria-label="Search students" aria-expanded="false" title="Search students">🔍</button>
+                  <button id="openManagedBlockReportBtn" type="button">Block Report</button>
+                </div>
+              </div>
+
+              <div class="table-wrap managed-students-table-wrap">
+                <table class="data-table managed-students-table">
+                  <thead><tr id="managedStudentsTableHeadRow"><th class="managed-student-column-header">Student</th></tr></thead>
+                  <tbody id="managedStudentsTableBody">
+                    <tr><td>No enrolled students yet.</td></tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </section>
@@ -284,7 +330,7 @@
     </div>
   </dialog>
 
-  <script type="module" src="teacher-enrollment.js?v=protected-block-count-20260921"></script>
+  <script type="module" src="teacher-enrollment.js?v=students-matrix-persistent-eval-20260921"></script>
   <script defer src="shared-ui-fixes.js?v=titlebar-hamburger-20260916"></script>
 </body>
 </html>
