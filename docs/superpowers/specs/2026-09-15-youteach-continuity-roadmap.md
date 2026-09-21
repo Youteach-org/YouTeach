@@ -549,7 +549,7 @@ This supersedes the fixed three-column raw-points interpretation on the Teacher 
   - **Attendance**
 - The four weights must total exactly **100%** before a new group can be created or an evaluation setup can be saved.
 - Existing groups created before this model remain valid, but are marked **Evaluation setup required** until weights are configured.
-- Existing group evaluation settings must be editable from **Groups / Import** without recreating the group or students.
+- Existing group evaluation settings must be editable from **Group Management** without recreating the group or students.
 
 Canonical group fields:
 ```text
@@ -663,10 +663,10 @@ Those values live in teacher/group/template data, not as a built-in application 
 
 ## Group Management redesign — 2026-09-20
 
-This supersedes the old **Groups / Import** page structure.
+This supersedes the old **Group Management** page structure.
 
 ### Naming and layout
-- The teacher page is called **Group Management** everywhere in the teacher UI. The legacy URL `teacher-enrollment.html` may remain for compatibility, but visible labels must not say "Groups / Import".
+- The teacher page is called **Group Management** everywhere in the teacher UI. The legacy URL `teacher-enrollment.html` may remain for compatibility, but visible labels must not say "Group Management".
 - **Create / Edit Group** is a full-width card at the top.
 - The standalone **Delete Group** card is removed.
 - The standalone **Add Student** card is removed.
