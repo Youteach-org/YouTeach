@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - feature/live-cog-session-current-20260920
   workflow_dispatch:
 
 permissions:
@@ -23,7 +24,7 @@ jobs:
         run: sh build-pages.sh
 
       - name: Deploy to Cloudflare Pages
-        run: npx wrangler@4 pages deploy dist --project-name=youteach --branch=main
+        run: npx wrangler@4 pages deploy dist --project-name=youteach --branch="${GITHUB_REF_NAME}"
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
