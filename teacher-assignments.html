@@ -1529,7 +1529,31 @@
       padding:7px
     }
 
-  </style>
+  
+    .cog-results-panel{display:grid;gap:14px;margin-bottom:18px}
+    .cog-results-panel[hidden]{display:none}
+    .cog-results-head h4,.cog-result-card h4{margin:0}
+    .cog-results-head p{margin:4px 0 0;color:#64748b;font-size:.9rem}
+    .cog-results-list{display:grid;gap:12px}
+    .cog-result-card{border:1px solid #d7dee9;border-radius:14px;padding:14px;background:#fff;display:grid;gap:12px}
+    .cog-result-head,.cog-result-game-row,.cog-attempt-title{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .cog-result-chip{border:1px solid #cbd5e1;border-radius:12px;padding:8px 10px;text-align:right;min-width:150px}
+    .cog-result-chip small,.cog-result-chip strong{display:block}
+    .cog-result-game-row{color:#334155;font-size:.9rem}
+    .cog-metric-grid{display:flex;flex-wrap:wrap;gap:8px}
+    .cog-metric-chip{border:1px solid #e2e8f0;border-radius:10px;padding:7px 9px;min-width:92px;background:#f8fafc}
+    .cog-metric-chip small,.cog-metric-chip strong{display:block}
+    .cog-metric-chip small{color:#64748b;font-size:.72rem}
+    .cog-attempts{border-top:1px solid #e2e8f0;padding-top:10px}
+    .cog-attempts summary{cursor:pointer;font-weight:700}
+    .cog-attempt-list{display:grid;gap:10px;margin-top:10px}
+    .cog-attempt-row{border-left:3px solid #cbd5e1;padding:8px 0 8px 10px;display:grid;gap:8px}
+    .cog-attempt-title span{color:#64748b;font-size:.8rem}
+    @media(max-width:760px){
+      .cog-result-head,.cog-result-game-row,.cog-attempt-title{align-items:flex-start;flex-direction:column}
+      .cog-result-chip{text-align:left;width:100%}
+    }
+</style>
   <script>
     if (new URLSearchParams(window.location.search).get("module") === "1") {
       document.documentElement.classList.add("assignment-module-mode");
@@ -1763,9 +1787,9 @@
                   </div>
 
                   <div class="status-strip">
-                    <div class="status-box"><span>Students</span><strong id="eligibleCount">0</strong></div>
-                    <div class="status-box"><span>Submitted</span><strong id="submittedCount">0</strong></div>
-                    <div class="status-box"><span>Missing</span><strong id="missingCount">0</strong></div>
+                    <div class="status-box"><span id="eligibleCountLabel">Students</span><strong id="eligibleCount">0</strong></div>
+                    <div class="status-box"><span id="submittedCountLabel">Submitted</span><strong id="submittedCount">0</strong></div>
+                    <div class="status-box"><span id="missingCountLabel">Missing</span><strong id="missingCount">0</strong></div>
                   </div>
 
                   <div class="overview-actions-stack">
@@ -1845,6 +1869,16 @@
                   </div>
                 </div>
                 <div id="projectProgressTimeline" class="project-progress-timeline"></div>
+              </section>
+
+              <section id="cogResultsPanel" class="panel-card cog-results-panel" hidden>
+                <div class="cog-results-head">
+                  <div>
+                    <h4>Classroom Game Results</h4>
+                    <p>Verified game receipts are shown here as results and attempt history. They are not converted into assignment grades automatically.</p>
+                  </div>
+                </div>
+                <div id="cogResultsList" class="cog-results-list"></div>
               </section>
 
               <div id="submissionList"></div>
@@ -1935,7 +1969,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-  <script type="module" src="teacher-assignments.js?v=assignments-repair-20260920"></script>
+  <script type="module" src="teacher-assignments.js?v=cog-results-firebase-20260921"></script>
   <script defer src="shared-ui-fixes.js?v=titlebar-hamburger-20260916"></script>
 </body>
 </html>
