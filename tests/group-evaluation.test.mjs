@@ -95,7 +95,6 @@ test('group creation UI uses a dynamic criterion editor and reusable templates',
     'evaluationTemplateDialog',
     'evaluationTemplateList',
     'useSelectedEvaluationTemplateBtn',
-    'saveEvaluationTemplateBtn',
     'addEvaluationCriterionBtn',
     'evaluationCriteriaRows',
     'evaluationWeightTotal'
@@ -106,6 +105,7 @@ test('group creation UI uses a dynamic criterion editor and reusable templates',
   assert.match(enrollmentJs, /criteriaToFirebaseObject/);
   assert.match(enrollmentJs, /groupEvaluationTemplates/);
   assert.match(enrollmentJs, /ensureIndependentTemplate/);
+  assert.doesNotMatch(enrollmentHtml, /id="saveEvaluationTemplateBtn"/);
   assert.match(enrollmentJs, /harvestConfiguredGroupsToTemplates/);
   assert.match(enrollmentJs, /data-evaluation-criterion/);
   assert.doesNotMatch(enrollmentHtml, /id="evaluationTemplateSelect"/);
