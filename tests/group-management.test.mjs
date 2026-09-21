@@ -76,14 +76,15 @@ test('Use Template is a popup and there is no permanent template selector', () =
   assert.match(js, /renderEvaluationTemplateList/);
 });
 
-test('configured groups are harvested into independent reusable templates', () => {
+test('configured groups are harvested into independent rubric templates', () => {
   assert.match(js, /harvestConfiguredGroupsToTemplates/);
   assert.match(js, /ensureIndependentTemplate/);
   assert.match(js, /templateSignature/);
   assert.match(js, /automaticTemplateName/);
   assert.match(js, /groupEvaluationTemplates/);
   assert.doesNotMatch(js, /value="group:/);
-  assert.doesNotMatch(js, /sourceGroup/);
+  assert.doesNotMatch(js, /From group:/);
+  assert.match(js, /patch\.sourceGroup = null|patch\.sourceGroup/);
 });
 
 test('manual add and bulk import remain inside the Add Student popup', () => {
@@ -138,4 +139,15 @@ test('Select all is in the roster header directly over row checkboxes', () => {
   const selectAllIndex = html.indexOf('id="selectAllStudents"');
   const listIndex = html.indexOf('id="managedStudentsList"');
   assert.ok(headerIndex >= 0 && selectAllIndex > headerIndex && listIndex > selectAllIndex);
+});
+
+
+test('requested E6C Fall 2026 criteria reset is one-time and preserves the group', () => {
+  assert.match(js, /REQUESTED_CRITERIA_RESET_GROUP = "e6c fall 2026"/);
+  assert.match(js, /REQUESTED_CRITERIA_RESET_MARKER = "criteriaReset20260921"/);
+  assert.match(js, /clearRequestedGroupEvaluationOnce/);
+  assert.match(js, /evaluationCriteria: null/);
+  assert.match(js, /evaluationConfiguredAt: null/);
+  assert.match(js, /maintenance\/\$\{REQUESTED_CRITERIA_RESET_MARKER\}/);
+  assert.doesNotMatch(js, /groups\/\$\{groupName\}.*null/);
 });
