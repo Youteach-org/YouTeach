@@ -11,7 +11,7 @@ const js = readFileSync(join(root, 'teacher-enrollment.js'), 'utf8');
 const enrollHtml = readFileSync(join(root, 'student-enroll.html'), 'utf8');
 const enrollJs = readFileSync(join(root, 'student-enroll.js'), 'utf8');
 
-test('Groups page is now Group Management with full-width management sections', () => {
+test('Group Management keeps one full-width editor and no standalone delete/add cards', () => {
   assert.match(html, /<title>YouTeach - Group Management<\/title>/);
   assert.match(html, /<h2>Group Management<\/h2>/);
   assert.match(html, /id="groupEditorCard"/);
@@ -20,36 +20,68 @@ test('Groups page is now Group Management with full-width management sections', 
   assert.doesNotMatch(html, /<h3>Add Student<\/h3>/);
 });
 
-test('group rows select management from the group name and deletion lives in the Groups list', () => {
+test('group rows only select a group; Delete appears once in contextual group actions', () => {
   assert.match(js, /data-manage-group/);
-  assert.match(js, /data-delete-group/);
-  assert.match(js, /manageGroup\(/);
+  assert.match(html, /id="selectedGroupActions"/);
+  assert.match(html, /id="deleteSelectedGroupBtn"/);
+  assert.match(js, /selectManagedGroup\(/);
   assert.match(js, /deleteGroupWithBackup\(/);
+  assert.doesNotMatch(js, /data-delete-group/);
+  assert.doesNotMatch(html, /data-delete-group/);
   assert.doesNotMatch(html, /id="deleteGroupSelect"/);
   assert.doesNotMatch(js, /data-edit-group-evaluation/);
 });
 
-test('evaluation setup is a single editor and configured groups are usable as templates', () => {
-  assert.match(html, /id="toggleEvaluationBtn"/);
-  assert.match(js, /configuredGroupTemplateOptions/);
-  assert.match(js, /value="group:/);
-  assert.match(js, /selectedEvaluationTemplate/);
-  assert.match(js, /source\.evaluationCriteria/);
-  assert.match(js, /Edit Evaluation/);
-  assert.match(js, /Set Evaluation/);
+test('selecting the same group or the chevron collapses and expands its roster', () => {
+  assert.match(html, /id="toggleRosterBtn"/);
+  assert.match(html, /id="rosterBody"/);
+  assert.match(js, /selectedManagedGroup === groupName/);
+  assert.match(js, /rosterCollapsed = !rosterCollapsed/);
+  assert.match(js, /toggleRosterBtn\.setAttribute\("aria-expanded"/);
+  assert.match(js, /group-chevron/);
 });
 
-test('Enrolled Students uses selectable full-width cards and standard master checkbox', () => {
-  assert.match(html, /id="selectAllStudents"/);
+test('students and requests render as compact single-line grid rows', () => {
+  assert.match(html, /\.student-grid\{display:grid/);
   assert.match(html, /id="managedStudentsList"/);
-  assert.match(js, /student-card pending/);
-  assert.match(js, /student-card enrolled/);
-  assert.match(js, /selectedRosterItems/);
-  assert.match(js, /teacherViewStudentKey/);
-  assert.match(js, /inline-external-id/);
+  assert.match(js, /student-row pending student-grid/);
+  assert.match(js, /student-row enrolled student-grid/);
+  assert.doesNotMatch(js, /student-card-main/);
+  assert.doesNotMatch(js, /inline-external-id/);
 });
 
-test('manual add and bulk import are moved into the Add Student popup', () => {
+test('student actions stay hidden until a row is selected', () => {
+  assert.match(html, /id="selectedRosterActions"[^>]*hidden/);
+  assert.match(html, /id="openSelectedStudentBtn"[^>]*hidden/);
+  assert.match(html, /id="approveEnrollmentBtn"[^>]*hidden/);
+  assert.match(html, /id="denyEnrollmentBtn"[^>]*hidden/);
+  assert.match(html, /id="expelStudentBtn"[^>]*hidden/);
+  assert.match(js, /renderRosterContextActions/);
+  assert.match(js, /selectedRosterActions\.hidden = total === 0/);
+  assert.match(js, /teacherViewStudentKey/);
+});
+
+test('Use Template is a popup and there is no permanent template selector', () => {
+  assert.match(html, /id="useEvaluationTemplateBtn"/);
+  assert.match(html, /<dialog id="evaluationTemplateDialog">/);
+  assert.match(html, /id="evaluationTemplateList"/);
+  assert.match(html, /id="useSelectedEvaluationTemplateBtn"/);
+  assert.doesNotMatch(html, /id="evaluationTemplateSelect"/);
+  assert.match(js, /openEvaluationTemplateDialog/);
+  assert.match(js, /renderEvaluationTemplateList/);
+});
+
+test('configured groups are harvested into independent reusable templates', () => {
+  assert.match(js, /harvestConfiguredGroupsToTemplates/);
+  assert.match(js, /ensureIndependentTemplate/);
+  assert.match(js, /templateSignature/);
+  assert.match(js, /automaticTemplateName/);
+  assert.match(js, /groupEvaluationTemplates/);
+  assert.doesNotMatch(js, /value="group:/);
+  assert.doesNotMatch(js, /sourceGroup/);
+});
+
+test('manual add and bulk import remain inside the Add Student popup', () => {
   assert.match(html, /<dialog id="addStudentDialog">/);
   assert.match(html, /id="studentName"/);
   assert.match(html, /id="studentNickname"/);
