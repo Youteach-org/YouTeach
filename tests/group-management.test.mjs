@@ -230,3 +230,18 @@ test('block reduction refreshes live grade evidence before saving a lower count'
   assert.match(js, /await refreshGradeEvidenceCaches\(\)/);
   assert.match(js, /Could not verify existing grades\. Block count was not reduced\./);
 });
+
+
+test('Group Management remembers evaluation criteria expansion and uses one triangle label', () => {
+  assert.match(html, /id="toggleEvaluationBtn"[^>]*>▸ Evaluation criteria<\/button>/);
+  assert.match(js, /evaluationEditorOpen = restoredManagementState\.evaluationEditorOpen === true/);
+  assert.match(js, /evaluationEditorOpen,/);
+  assert.match(js, /▾ Evaluation criteria/);
+  assert.match(js, /▸ Evaluation criteria/);
+  assert.match(js, /setAttribute\("aria-expanded", String\(evaluationEditorOpen\)\)/);
+  const loadStart = js.indexOf('function loadGroupEditor');
+  const loadEnd = js.indexOf('async function refreshGradeEvidenceCaches', loadStart);
+  const loadBlock = js.slice(loadStart, loadEnd);
+  assert.doesNotMatch(loadBlock, /evaluationEditorOpen = false/);
+  assert.doesNotMatch(js, /Show Evaluation|Hide Evaluation|Set Evaluation/);
+});
