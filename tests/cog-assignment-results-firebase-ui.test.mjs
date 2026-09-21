@@ -57,6 +57,8 @@ test("Teacher Assignments reads COG result receipts directly from Firebase and n
   assert.match(js, /openDriveFolderBtn\.disabled\s*=\s*isCogAssignment/);
   assert.match(js, /submittedCountLabel.*Results/s);
   assert.match(js, /missingCountLabel.*No result/s);
+  assert.match(js, /evaluation\.complete\s*&&\s*!evaluation\.isCog/);
+  assert.match(js, /assignmentHasSubmissions\(selectedAssignmentId\)\s*\|\|\s*\(isCogAssignment\s*&&\s*cogResultKeys\.size\s*>\s*0\)/);
 
   assert.match(html, /id="eligibleCountLabel"/);
   assert.match(html, /id="submittedCountLabel"/);
