@@ -193,6 +193,51 @@ function renderBuzzer() {
   studentStatus.textContent = "Round is open. Your team can buzz.";
 }
 
+let liveExpiryCheckBusy = false;
+
+async function refreshLiveGameExpiry() {
+  const connectedGame = currentSession?.connectedGame || null;
+  if (
+    liveExpiryCheckBusy ||
+    !currentSession?.active ||
+    !connectedGame ||
+    connectedGame.status !== "active"
+  ) {
+    return;
+  }
+
+  const studentSessionToken = getStudentSessionToken();
+  if (!studentSessionToken) return;
+
+  liveExpiryCheckBusy = true;
+  try {
+    const response = await fetch("/api/cog-live-expire", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${studentSessionToken}`
+      }
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || payload?.ok !== true) return;
+
+    if (payload.expired === true && currentSession?.connectedGame) {
+      currentSession = {
+        ...currentSession,
+        connectedGame: {
+          ...currentSession.connectedGame,
+          status: "expired",
+          expiredAt: Number(payload.expiredAt || Date.now())
+        }
+      };
+      renderBuzzer();
+    }
+  } catch (error) {
+    console.warn("Could not refresh live activity expiry", error);
+  } finally {
+    liveExpiryCheckBusy = false;
+  }
+}
+
 if (joinLiveGameBtn) {
   joinLiveGameBtn.addEventListener("click", async () => {
     const connectedGame = activeLiveGameForStudent();
@@ -307,4 +352,7 @@ onValue(ref(db, "classroomGames/hundredStudentsSaid/current"), (snapshot) => {
 });
 
 
-setInterval(()=>renderBuzzer(),30000);
+setInterval(()=>{
+  renderBuzzer();
+  refreshLiveGameExpiry().catch(()=>{});
+},30000);
