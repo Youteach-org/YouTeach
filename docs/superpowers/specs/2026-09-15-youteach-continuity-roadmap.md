@@ -965,3 +965,11 @@ This supersedes earlier Teacher Students / Group Management navigation and layou
 - The Enrolled Students header keeps the enrollment-link textbox and **Copy link** / **Rotate link** controls immediately to the left of **Active enrollment link**.
 - **Active enrollment link** still creates the link if the selected group has none and toggles the inline link controls when a link exists.
 - The student identity display button shows only **Names**, **Last names**, or **Nicknames**. It never prefixes the choice with “Show:”.
+
+
+### Group Management preservation correction — 2026-09-21
+
+- Renaming Teacher Enrollment to the public route **/group-mangement** does not authorize removing or redesigning existing Group Management functionality.
+- The existing Groups card contents and behavior are preserved; the same card is merely presented inside a popup.
+- The existing `teacher-enrollment` implementation files remain available as the canonical implementation backing the renamed public route.
+- Only explicitly requested UI changes may differ: removal of the standalone Students page/menu entry, inline enrollment textbox with Copy/Rotate controls, Groups presented in a popup, and identity labels without the “Show:” prefix.

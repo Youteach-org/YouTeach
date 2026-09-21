@@ -35,16 +35,17 @@ test('group rows only select a group; Delete appears once in contextual group ac
   assert.doesNotMatch(js, /data-edit-group-evaluation/);
 });
 
-test('Groups is a popup and roster collapse stays on its own arrow', () => {
+test('Groups keeps the previous card behavior inside a popup', () => {
   assert.match(html, /<dialog id="groupsDialog">/);
-  assert.match(html, /id="openGroupsDialogBtn"/);
-  assert.match(html, /id="closeGroupsDialogBtn"/);
-  assert.match(html, /id="toggleRosterBtn"/);
-  assert.match(js, /selectedManagedGroup = groupName/);
-  assert.match(js, /if \(groupsDialog\.open\) groupsDialog\.close\(\)/);
-  assert.match(js, /toggleRosterBtn\.addEventListener\("click"/);
+  assert.match(html, /Select a group to manage it\. Select it again to collapse its student list\./);
+  assert.match(html, /id="openCreateGroupDialogBtn"/);
+  assert.match(html, /id="selectedGroupActions"/);
+  assert.match(html, /id="groupsTableBody"/);
+  assert.match(js, /selectedManagedGroup === groupName/);
   assert.match(js, /rosterCollapsed = !rosterCollapsed/);
-  assert.doesNotMatch(js, /group-chevron/);
+  assert.match(js, /group-chevron/);
+  assert.match(js, /aria-expanded/);
+  assert.match(js, /if \(groupsDialog\.open\) groupsDialog\.close\(\)/);
 });
 
 test('Group Management contains the canonical student progress matrix', () => {
