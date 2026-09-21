@@ -1,0 +1,38 @@
+name: Probe auth KV id configuration
+
+on:
+  push:
+    branches:
+      - feature/live-cog-session-current-20260920
+    paths:
+      - .github/workflows/auth-kv-id-probe.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    env:
+      S1: ${{ secrets.YOUTEACH_AUTH_KV_ID }}
+      S2: ${{ secrets.YOUTEACH_AUTH_NAMESPACE_ID }}
+      S3: ${{ secrets.CLOUDFLARE_KV_NAMESPACE_ID }}
+      S4: ${{ secrets.YOUTEACH_KV_NAMESPACE_ID }}
+      V1: ${{ vars.YOUTEACH_AUTH_KV_ID }}
+      V2: ${{ vars.YOUTEACH_AUTH_NAMESPACE_ID }}
+      V3: ${{ vars.CLOUDFLARE_KV_NAMESPACE_ID }}
+      V4: ${{ vars.YOUTEACH_KV_NAMESPACE_ID }}
+    steps:
+      - name: Report presence only
+        shell: bash
+        run: |
+          set -eu
+          for name in S1 S2 S3 S4 V1 V2 V3 V4; do
+            eval "value=\${$name:-}"
+            if [ -n "$value" ]; then
+              echo "$name=SET"
+            else
+              echo "$name=UNSET"
+            fi
+          done
