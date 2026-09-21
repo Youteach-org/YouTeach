@@ -184,6 +184,9 @@ let studentsCache = {};
 let groupsCache = {};
 let projectEvidenceCache = {};
 let cogResultsCache = {};
+let cogResultsLoadError = "";
+let cogResultsRefreshPromise = null;
+let cogResultsLastLoadedAt = 0;
 let loadedAssignmentTemplateId = "";
 const WORKING_GROUP_KEY = "youteachWorkingGroup";
 const ASSIGNMENTS_MODULE_MODE = new URLSearchParams(window.location.search).get("module") === "1";
@@ -1590,6 +1593,66 @@ function assignmentSubmissions(assignmentId) {
   return submissionsCache?.[assignmentId] || {};
 }
 
+async function refreshCogResults({ force = false } = {}) {
+  const now = Date.now();
+  if (!force && cogResultsLastLoadedAt && now - cogResultsLastLoadedAt < 5000) {
+    return cogResultsCache;
+  }
+  if (cogResultsRefreshPromise) return cogResultsRefreshPromise;
+
+  const teacherToken = getTeacherSessionToken();
+  if (!teacherToken) {
+    cogResultsLoadError = "Teacher authentication is required to load game results.";
+    return cogResultsCache;
+  }
+
+  cogResultsRefreshPromise = (async () => {
+    const response = await fetch("/api/cog-assignment-results", {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${teacherToken}`
+      },
+      cache: "no-store"
+    });
+
+    if (response.status === 401) {
+      logoutTeacher(false);
+      window.location.href = "teacher-login.html";
+      throw new Error("Teacher session expired.");
+    }
+
+    let payload = {};
+    try {
+      payload = await response.json();
+    } catch {}
+
+    if (!response.ok || !payload?.ok) {
+      throw new Error(payload?.error || "Could not load Classroom Online Games results.");
+    }
+
+    cogResultsCache = payload.results && typeof payload.results === "object"
+      ? payload.results
+      : {};
+    cogResultsLoadError = "";
+    cogResultsLastLoadedAt = Date.now();
+    renderAssignmentList();
+    return cogResultsCache;
+  })()
+    .catch((error) => {
+      cogResultsLoadError = error?.message || "Could not load Classroom Online Games results.";
+      console.error("COG results refresh failed:", error);
+      if (selectedAssignmentId && assignmentTypeCodeFor(assignmentsCache[selectedAssignmentId]) === "COG") {
+        renderDetail();
+      }
+      return cogResultsCache;
+    })
+    .finally(() => {
+      cogResultsRefreshPromise = null;
+    });
+
+  return cogResultsRefreshPromise;
+}
+
 function assignmentCogResults(assignmentId) {
   return cogResultsCache?.[assignmentId] || {};
 }
@@ -1683,7 +1746,7 @@ function renderCogResults(assignment, students) {
           </article>
         `;
       }).join("")
-    : '<div class="status-text">No verified Classroom Online Games results yet.</div>';
+    : `<div class="status-text">${escapeHtml(cogResultsLoadError || "No verified Classroom Online Games results yet.")}</div>`;
 }
 
 function assignmentHasSubmissions(assignmentId) {
@@ -3782,6 +3845,7 @@ onValue(ref(db, "assignments"), (snapshot) => {
   renderAssignmentList();
   refreshAutomaticTaskCode();
   requestInitialAiSync();
+  refreshCogResults();
 });
 
 onValue(ref(db, "assignmentTemplates"), (snapshot) => {
@@ -3797,12 +3861,13 @@ onValue(ref(db, "assignmentSubmissions"), (snapshot) => {
   requestInitialAiSync();
 });
 
-onValue(ref(db, "classroomGameResultsByAssignment"), (snapshot) => {
-  cogResultsCache = snapshot.val() || {};
-  renderAssignmentList();
-});
-
 onValue(ref(db, "assignmentProjectEvidence"), (snapshot) => {
   projectEvidenceCache = snapshot.val() || {};
   renderDetail();
 });
+
+setInterval(() => {
+  if (Object.values(assignmentsCache).some((assignment) => assignmentTypeCodeFor(assignment) === "COG")) {
+    refreshCogResults({ force: true });
+  }
+}, 10000);

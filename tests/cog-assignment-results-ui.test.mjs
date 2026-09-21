@@ -174,7 +174,7 @@ test("teacher Assignments has a dedicated COG results surface instead of treatin
     readFile(new URL("../teacher-assignments.html", import.meta.url), "utf8")
   ]);
 
-  assert.match(js, /classroomGameResultsByAssignment/);
+  assert.match(js, /\/api\/cog-assignment-results/);
   assert.match(js, /cogResultHistoryForStudent/);
   assert.match(html, /id="cogResultsPanel"/);
   assert.match(html, /id="cogResultsList"/);
