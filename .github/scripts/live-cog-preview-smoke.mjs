@@ -48,7 +48,7 @@ try {
     console.log("TEACHER_REDIRECT_DIAG CONSOLE_ERRORS=" + JSON.stringify(consoleErrors));
     const scriptSrc = await page.locator('script[type="module"]').first().getAttribute("src");
     console.log("TEACHER_REDIRECT_DIAG MODULE=" + scriptSrc);
-    assert(page.url().includes("teacher-login.html"), "Teacher Home did not redirect without a teacher session.");
+    assert(/\/teacher-login(?:\.html)?(?:[?#]|$)/.test(page.url()), "Teacher Home did not redirect without a teacher session.");
     console.log("PASS teacher auth redirect");
     await page.close();
   }
