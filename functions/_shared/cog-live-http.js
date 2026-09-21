@@ -13,6 +13,11 @@ export const LIVE_COG_GAMES = Object.freeze({
     name: "Support Meter",
     studentPath: "/Support-Meter/"
   }),
+  "talk-talk": Object.freeze({
+    id: "talk-talk",
+    name: "Talk Talk",
+    studentPath: "/Talk-Talk/"
+  }),
   "100-students-said": Object.freeze({
     id: "100-students-said",
     name: "100 Students Said",
