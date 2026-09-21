@@ -177,3 +177,21 @@ test('deleting criteria saves the group draft while preserving previously create
   assert.match(autosave, /ensureIndependentTemplate/);
   assert.doesNotMatch(autosave, /groupEvaluationTemplates\/.*null/);
 });
+
+
+test('Use Template refreshes missing templates from valid configured groups before opening', () => {
+  assert.match(js, /async function openEvaluationTemplateDialog/);
+  assert.match(js, /harvestConfiguredGroupsToTemplates\(\{ force: true \}\)/);
+  assert.match(js, /groupEvaluationConfig\(group\)/);
+  assert.match(js, /if \(!config\.configured\) continue/);
+  assert.match(js, /ensureIndependentTemplate/);
+  assert.match(js, /evaluationTemplateDialog\.showModal\(\)/);
+});
+
+test('template library uses the established writable settings branch with legacy migration fallback', () => {
+  assert.match(js, /TEMPLATE_LIBRARY_PATH = "settings\/groupEvaluationTemplates"/);
+  assert.match(js, /onValue\(ref\(db, TEMPLATE_LIBRARY_PATH\)/);
+  assert.match(js, /legacyEvaluationTemplatesCache/);
+  assert.match(js, /onValue\(ref\(db, "groupEvaluationTemplates"\)/);
+  assert.match(js, /mergedTemplateCache/);
+});
