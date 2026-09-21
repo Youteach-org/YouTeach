@@ -11,7 +11,6 @@ import { generateId } from "./app.js";
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
 import { migrateExistingStudentsForTeacher } from "./student-auth.js?v=group-evaluation-20260920";
 import {
-  EVALUATION_SOURCE_OPTIONS,
   criteriaToFirebaseObject,
   evaluationBlockNames,
   groupEvaluationConfig,
@@ -23,6 +22,7 @@ import {
 requireTeacherAuth();
 
 const WORKING_GROUP_KEY = "youteachWorkingGroup";
+const MANAGEMENT_STATE_KEY = "youteachGroupManagementState";
 
 const teacherIdentity = document.getElementById("teacherIdentity");
 const logoutBtn = document.getElementById("logoutBtn");
@@ -60,7 +60,6 @@ const enrollmentLinkInput = document.getElementById("enrollmentLinkInput");
 const enrollmentLinkStatus = document.getElementById("enrollmentLinkStatus");
 const openAddStudentModalBtn = document.getElementById("openAddStudentModalBtn");
 const selectAllStudents = document.getElementById("selectAllStudents");
-const selectedStudentCount = document.getElementById("selectedStudentCount");
 const selectedRosterActions = document.getElementById("selectedRosterActions");
 const selectedRosterLabel = document.getElementById("selectedRosterLabel");
 const openSelectedStudentBtn = document.getElementById("openSelectedStudentBtn");
@@ -99,20 +98,52 @@ const addStudentStatus = document.getElementById("addStudentStatus");
 teacherIdentity.textContent = getTeacherName();
 logoutBtn.addEventListener("click", logoutTeacher);
 
+function readManagementState() {
+  try {
+    const raw = sessionStorage.getItem(MANAGEMENT_STATE_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch (_) {
+    return {};
+  }
+}
+
+const restoredManagementState = readManagementState();
+
 let groupsCache = {};
 let studentsCache = {};
 let enrollmentRequestsCache = {};
 let evaluationTemplatesCache = {};
-let selectedManagedGroup = "";
+let selectedManagedGroup = String(
+  restoredManagementState.groupName || sessionStorage.getItem(WORKING_GROUP_KEY) || ""
+);
 let editingGroupName = "";
 let pendingReportSettings = null;
-let evaluationEditorOpen = true;
-let rosterCollapsed = true;
+let evaluationEditorOpen = restoredManagementState.evaluationEditorOpen === true;
+let rosterCollapsed = restoredManagementState.rosterCollapsed !== false;
 let selectedTemplateId = "";
 let groupsLoaded = false;
 let templatesLoaded = false;
 let harvestingTemplates = false;
-const selectedRosterItems = new Set();
+const selectedRosterItems = new Set(
+  Array.isArray(restoredManagementState.selectedRosterItems)
+    ? restoredManagementState.selectedRosterItems.map(String)
+    : []
+);
+
+function persistManagementState() {
+  if (!selectedManagedGroup) {
+    sessionStorage.removeItem(MANAGEMENT_STATE_KEY);
+    return;
+  }
+
+  sessionStorage.setItem(MANAGEMENT_STATE_KEY, JSON.stringify({
+    groupName: selectedManagedGroup,
+    rosterCollapsed,
+    evaluationEditorOpen,
+    selectedRosterItems: [...selectedRosterItems]
+  }));
+}
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -142,21 +173,15 @@ function makeEnrollmentToken() {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-function sourceOptionsHtml(selected = "manual") {
-  return EVALUATION_SOURCE_OPTIONS.map((option) =>
-    `<option value="${escapeHtml(option.key)}" ${option.key === selected ? "selected" : ""}>${escapeHtml(option.label)}</option>`
-  ).join("");
-}
-
 function criterionRowHtml(criterion = {}) {
   const id = String(criterion.id || makeCriterionId());
   return `
-    <div class="criterion-row" data-evaluation-criterion data-criterion-id="${escapeHtml(id)}">
+    <div class="criterion-row" data-evaluation-criterion data-criterion-id="${escapeHtml(id)}"
+      data-criterion-source="${escapeHtml(criterion.source || "manual")}">
       <input data-criterion-name value="${escapeHtml(criterion.name || "")}" placeholder="Criterion name">
       <input data-criterion-short-label value="${escapeHtml(criterion.shortLabel || "")}" placeholder="Abbr." aria-label="Abbreviation" title="Abbreviation used in reports">
       <input data-criterion-weight type="number" min="0" max="100" step="0.1"
         value="${Number(criterion.weight || 0) || ""}" placeholder="%">
-      <select data-criterion-source>${sourceOptionsHtml(criterion.source || "manual")}</select>
       <button class="criterion-remove" type="button" data-remove-evaluation-criterion title="Remove criterion">×</button>
     </div>
   `;
@@ -174,7 +199,7 @@ function criteriaFromForm() {
       name: String(row.querySelector("[data-criterion-name]")?.value || "").trim(),
       shortLabel: String(row.querySelector("[data-criterion-short-label]")?.value || "").trim(),
       weight: Number(row.querySelector("[data-criterion-weight]")?.value || 0),
-      source: String(row.querySelector("[data-criterion-source]")?.value || "manual"),
+      source: String(row.dataset.criterionSource || "manual"),
       order
     }))
   );
@@ -350,7 +375,9 @@ function renderEvaluationTemplateList() {
     return;
   }
 
-  if (!entries.some(([id]) => id === selectedTemplateId)) selectedTemplateId = "";
+  if (!entries.some(([id]) => id === selectedTemplateId)) {
+    selectedTemplateId = entries[0][0];
+  }
 
   evaluationTemplateList.innerHTML = entries.map(([id, template]) => {
     const config = groupEvaluationConfig(template);
@@ -375,7 +402,6 @@ function renderEvaluationTemplateList() {
 }
 
 function openEvaluationTemplateDialog() {
-  selectedTemplateId = "";
   renderEvaluationTemplateList();
   evaluationTemplateDialog.showModal();
 }
@@ -404,6 +430,7 @@ function resetGroupForm() {
   editingGroupName = "";
   selectedManagedGroup = "";
   sessionStorage.removeItem(WORKING_GROUP_KEY);
+  sessionStorage.removeItem(MANAGEMENT_STATE_KEY);
   selectedRosterItems.clear();
   rosterCollapsed = true;
 
@@ -426,7 +453,7 @@ function resetGroupForm() {
   renderSelectedGroupActions();
 }
 
-function loadGroupEditor(groupName) {
+function loadGroupEditor(groupName, { preserveView = false } = {}) {
   const group = groupsCache[groupName];
   if (!group) return;
 
@@ -443,7 +470,7 @@ function loadGroupEditor(groupName) {
   setCriteriaEditor(config.criteria);
   createGroupBtn.textContent = "Save Group Settings";
   cancelGroupEditBtn.hidden = false;
-  evaluationEditorOpen = false;
+  if (!preserveView) evaluationEditorOpen = false;
   groupEvaluationStatus.textContent = config.configured
     ? "Group selected. Open Edit Evaluation only when you need to change the criteria."
     : "This group needs evaluation settings. Use Set Evaluation.";
@@ -457,6 +484,7 @@ function selectManagedGroup(groupName) {
 
   if (selectedManagedGroup === groupName) {
     rosterCollapsed = !rosterCollapsed;
+    persistManagementState();
     renderManagedStudents();
     renderGroupsTable();
     return;
@@ -469,6 +497,7 @@ function selectManagedGroup(groupName) {
   rosterCollapsed = false;
 
   loadGroupEditor(groupName);
+  persistManagementState();
   renderManagedStudents();
   renderGroupsTable();
   renderSelectedGroupActions();
@@ -532,7 +561,11 @@ function renderRosterContextActions() {
   const total = requests.length + students.length;
 
   selectedRosterActions.hidden = total === 0;
-  selectedRosterLabel.textContent = total ? `${total} selected` : "";
+  selectedRosterLabel.textContent = requests.length && !students.length
+    ? `${requests.length} pending request${requests.length === 1 ? "" : "s"} selected`
+    : students.length && !requests.length
+      ? `${students.length} student${students.length === 1 ? "" : "s"} selected`
+      : total ? `${total} items selected` : "";
 
   approveEnrollmentBtn.hidden = requests.length === 0;
   denyEnrollmentBtn.hidden = requests.length === 0;
@@ -590,12 +623,13 @@ function renderManagedStudents() {
     const key = rosterSelectionKey("request", requestId);
     return `
       <div class="student-row pending student-grid ${selectedRosterItems.has(key) ? "selected" : ""}"
-        data-roster-kind="request" data-roster-id="${escapeHtml(requestId)}" data-selection-key="${escapeHtml(key)}">
+        data-roster-kind="request" data-roster-id="${escapeHtml(requestId)}" data-selection-key="${escapeHtml(key)}"
+        title="Pending enrollment request">
         <input class="roster-checkbox" type="checkbox" ${selectedRosterItems.has(key) ? "checked" : ""} aria-label="Select pending request">
-        <span class="student-status pending">PENDING</span>
         <span class="student-cell student-name">${escapeHtml(request.fullName || request.name || "Pending student")}</span>
         <span class="student-cell">${escapeHtml(request.nickname || "—")}</span>
         <span class="student-cell">${escapeHtml(request.externalId || request.studentNumber || "—")}</span>
+        <span class="student-cell">${escapeHtml(groupName)}</span>
       </div>
     `;
   }).join("");
@@ -606,10 +640,10 @@ function renderManagedStudents() {
       <div class="student-row enrolled student-grid ${selectedRosterItems.has(key) ? "selected" : ""}"
         data-roster-kind="student" data-roster-id="${escapeHtml(studentKey)}" data-selection-key="${escapeHtml(key)}">
         <input class="roster-checkbox" type="checkbox" ${selectedRosterItems.has(key) ? "checked" : ""} aria-label="Select enrolled student">
-        <span class="student-status enrolled">ENROLLED</span>
         <span class="student-cell student-name">${escapeHtml(student.fullName || student.name || student.nickname || "Student")}</span>
         <span class="student-cell">${escapeHtml(student.nickname || "—")}</span>
         <span class="student-cell">${escapeHtml(student.studentNumber || "—")}</span>
+        <span class="student-cell">${escapeHtml(groupName)}</span>
       </div>
     `;
   }).join("");
@@ -622,7 +656,7 @@ function renderManagedStudents() {
     visibleCheckboxes.length > 0 && visibleCheckboxes.every((checkbox) => checkbox.checked);
   selectAllStudents.indeterminate =
     visibleCheckboxes.some((checkbox) => checkbox.checked) && !selectAllStudents.checked;
-  selectedStudentCount.textContent = `${selectedRosterItems.size} selected`;
+  persistManagementState();
 
   renderRosterContextActions();
   renderEnrollmentLink();
@@ -866,6 +900,7 @@ async function approveSelectedRequests() {
   }
 
   selectedRosterItems.clear();
+  persistManagementState();
 }
 
 async function denySelectedRequests() {
@@ -887,6 +922,7 @@ async function denySelectedRequests() {
   });
   await update(ref(db), updates);
   selectedRosterItems.clear();
+  persistManagementState();
 }
 
 async function expelSelectedStudents() {
@@ -916,6 +952,7 @@ async function expelSelectedStudents() {
 
   await update(ref(db), updates);
   selectedRosterItems.clear();
+  persistManagementState();
 }
 
 function triggerJsonDownload(filename, value) {
@@ -1155,6 +1192,7 @@ createGroupBtn.addEventListener("click", async () => {
 
 toggleEvaluationBtn.addEventListener("click", () => {
   evaluationEditorOpen = !evaluationEditorOpen;
+  persistManagementState();
   renderEvaluationEditorVisibility();
 });
 
@@ -1203,6 +1241,7 @@ deleteSelectedGroupBtn.addEventListener("click", async () => {
 toggleRosterBtn.addEventListener("click", () => {
   if (!selectedManagedGroup) return;
   rosterCollapsed = !rosterCollapsed;
+  persistManagementState();
   renderManagedStudents();
   renderGroupsTable();
 });
@@ -1218,6 +1257,7 @@ managedStudentsList.addEventListener("click", (event) => {
   if (checkbox.checked) selectedRosterItems.add(key);
   else selectedRosterItems.delete(key);
 
+  persistManagementState();
   renderManagedStudents();
 });
 
@@ -1235,6 +1275,7 @@ selectAllStudents.addEventListener("change", () => {
     if (selectAllStudents.checked) selectedRosterItems.add(key);
     else selectedRosterItems.delete(key);
   });
+  persistManagementState();
   renderManagedStudents();
 });
 
@@ -1348,6 +1389,11 @@ onValue(ref(db, "groups"), (snapshot) => {
   if (selectedManagedGroup && !groupsCache[selectedManagedGroup]) {
     resetGroupForm();
   } else if (selectedManagedGroup) {
+    if (editingGroupName !== selectedManagedGroup) {
+      editingGroupName = selectedManagedGroup;
+      loadGroupEditor(selectedManagedGroup, { preserveView: true });
+    }
+    persistManagementState();
     renderManagedStudents();
     renderEnrollmentLink();
   }
