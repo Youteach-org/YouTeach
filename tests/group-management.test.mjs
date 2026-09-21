@@ -41,13 +41,18 @@ test('selecting the same group or the chevron collapses and expands its roster',
   assert.match(js, /group-chevron/);
 });
 
-test('students and requests render as compact single-line grid rows', () => {
+test('students and requests render as one compact row with the requested columns', () => {
   assert.match(html, /\.student-grid\{display:grid/);
   assert.match(html, /id="managedStudentsList"/);
+  assert.match(html, /id="selectAllStudents"/);
+  assert.match(html, /Full Name<\/span><span>Nickname<\/span><span>External ID<\/span><span>Group<\/span>/);
   assert.match(js, /student-row pending student-grid/);
   assert.match(js, /student-row enrolled student-grid/);
+  assert.match(js, /escapeHtml\(groupName\)/);
   assert.doesNotMatch(js, /student-card-main/);
   assert.doesNotMatch(js, /inline-external-id/);
+  assert.doesNotMatch(html, /<span>Status<\/span>/);
+  assert.doesNotMatch(html, /student-toolbar-right/);
 });
 
 test('student actions stay hidden until a row is selected', () => {
@@ -116,4 +121,21 @@ test('group deletion requires exact name and downloads reconstructable backup be
   const downloadIndex = js.indexOf('triggerJsonDownload(');
   const deleteUpdateIndex = js.indexOf('await update(ref(db), buildGroupDeletionUpdates');
   assert.ok(downloadIndex >= 0 && deleteUpdateIndex > downloadIndex);
+});
+
+
+test('Group Management selection state survives same-tab page navigation', () => {
+  assert.match(js, /MANAGEMENT_STATE_KEY/);
+  assert.match(js, /readManagementState/);
+  assert.match(js, /persistManagementState/);
+  assert.match(js, /sessionStorage\.setItem\(MANAGEMENT_STATE_KEY/);
+  assert.match(js, /selectedRosterItems: \[\.\.\.selectedRosterItems\]/);
+  assert.match(js, /loadGroupEditor\(selectedManagedGroup, \{ preserveView: true \}\)/);
+});
+
+test('Select all is in the roster header directly over row checkboxes', () => {
+  const headerIndex = html.indexOf('student-list-head student-grid');
+  const selectAllIndex = html.indexOf('id="selectAllStudents"');
+  const listIndex = html.indexOf('id="managedStudentsList"');
+  assert.ok(headerIndex >= 0 && selectAllIndex > headerIndex && listIndex > selectAllIndex);
 });
