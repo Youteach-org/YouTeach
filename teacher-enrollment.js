@@ -94,6 +94,7 @@ const expelStudentBtn = document.getElementById("expelStudentBtn");
 
 const groupsTableBody = document.getElementById("groupsTableBody");
 const selectedGroupActions = document.getElementById("selectedGroupActions");
+const selectPopupGroupBtn = document.getElementById("selectPopupGroupBtn");
 const selectedGroupActionLabel = document.getElementById("selectedGroupActionLabel");
 const deleteSelectedGroupBtn = document.getElementById("deleteSelectedGroupBtn");
 
@@ -142,6 +143,8 @@ let legacyEvaluationTemplatesCache = {};
 let selectedManagedGroup = String(
   restoredManagementState.groupName || sessionStorage.getItem(WORKING_GROUP_KEY) || ""
 );
+let popupSelectedGroup = "";
+let deletionTargetGroup = "";
 let editingGroupName = "";
 let pendingReportSettings = null;
 let creatingGroup = false;
@@ -461,15 +464,23 @@ function applyEvaluationTemplate(template) {
 }
 
 function renderSelectedGroupActions() {
-  const hasGroup = Boolean(selectedManagedGroup && groupsCache[selectedManagedGroup]);
+  const hasGroup = Boolean(popupSelectedGroup && groupsCache[popupSelectedGroup]);
   selectedGroupActions.hidden = !hasGroup;
-  selectedGroupActionLabel.textContent = hasGroup ? `Selected: ${selectedManagedGroup}` : "";
+  selectedGroupActionLabel.textContent = hasGroup ? `Marked: ${popupSelectedGroup}` : "";
+}
+
+function markPopupGroup(groupName) {
+  if (!groupName || !groupsCache[groupName]) return;
+  popupSelectedGroup = groupName;
+  renderGroupsTable();
 }
 
 function resetGroupForm() {
   creatingGroup = false;
   editingGroupName = "";
   selectedManagedGroup = "";
+  popupSelectedGroup = "";
+  deletionTargetGroup = "";
   sessionStorage.removeItem(WORKING_GROUP_KEY);
   sessionStorage.removeItem(MANAGEMENT_STATE_KEY);
   selectedRosterItems.clear();
@@ -521,8 +532,10 @@ function prepareCreateGroupDialog() {
 }
 
 function openSelectedGroupEvaluationDialog() {
-  if (!selectedManagedGroup || !groupsCache[selectedManagedGroup]) return;
-  loadGroupEditor(selectedManagedGroup);
+  const groupName = popupSelectedGroup;
+  if (!groupName || !groupsCache[groupName]) return;
+  editingGroupName = groupName;
+  loadGroupEditor(groupName);
   if (!groupEditorDialog.open) groupEditorDialog.showModal();
 }
 
@@ -797,21 +810,16 @@ function selectManagedGroup(groupName) {
   const group = groupsCache[groupName];
   if (!group) return;
 
-  if (selectedManagedGroup === groupName) {
-    rosterCollapsed = !rosterCollapsed;
-    persistManagementState();
-    renderManagedStudents();
-    renderGroupsTable();
-    if (groupsDialog.open) groupsDialog.close();
-    return;
-  }
-
+  const changedGroup = selectedManagedGroup !== groupName;
   selectedManagedGroup = groupName;
   editingGroupName = groupName;
   sessionStorage.setItem(WORKING_GROUP_KEY, groupName);
-  selectedRosterItems.clear();
-  rosterCollapsed = false;
-  enrollmentLinkExpanded = false;
+
+  if (changedGroup) {
+    selectedRosterItems.clear();
+    rosterCollapsed = false;
+    enrollmentLinkExpanded = false;
+  }
 
   loadGroupEditor(groupName);
   persistManagementState();
@@ -1204,8 +1212,7 @@ function renderGroupsTable() {
     const count = groupStudents(groupName).length;
     const pending = groupPendingRequests(groupName).length;
     const config = groupEvaluationConfig(group);
-    const selected = groupName === selectedManagedGroup;
-    const chevron = selected && !rosterCollapsed ? "▾" : "▸";
+    const selected = groupName === popupSelectedGroup;
     const evaluationSummary = config.configured
       ? config.criteria.map((criterion) =>
           `${escapeHtml(criterion.name)} ${criterion.weight}%`
@@ -1215,9 +1222,8 @@ function renderGroupsTable() {
     return `
       <tr class="${selected ? "selected-group-row" : ""}">
         <td>
-          <button class="group-select-button" type="button" data-manage-group="${escapeHtml(groupName)}"
-            aria-expanded="${selected ? String(!rosterCollapsed) : "false"}">
-            <span class="group-chevron">${chevron}</span>
+          <button class="group-select-button" type="button" data-popup-group="${escapeHtml(groupName)}"
+            aria-pressed="${String(selected)}">
             <span>${escapeHtml(groupName)}</span>
           </button>
         </td>
@@ -1649,8 +1655,9 @@ async function cleanupDeletedGroupPaths(paths) {
 }
 
 function openDeleteGroupDialog() {
-  const groupName = selectedManagedGroup;
+  const groupName = popupSelectedGroup;
   if (!groupName || !groupsCache[groupName]) return;
+  deletionTargetGroup = groupName;
 
   deleteGroupDialogSubtitle.textContent =
     `A backup will download before "${groupName}" is deleted.`;
@@ -1692,6 +1699,8 @@ async function deleteGroupWithBackup(groupName) {
     await set(ref(db, `groups/${groupName}`), null);
 
     if (groupsCache[groupName]) delete groupsCache[groupName];
+    if (popupSelectedGroup === groupName) popupSelectedGroup = "";
+    if (deletionTargetGroup === groupName) deletionTargetGroup = "";
 
     const cleanupFailures = await cleanupDeletedGroupPaths(groupCleanupPaths(root, backup));
 
@@ -1841,37 +1850,54 @@ useSelectedEvaluationTemplateBtn.addEventListener("click", () => {
 
 
 groupsTableBody.addEventListener("click", (event) => {
-  const manageButton = event.target.closest("[data-manage-group]");
-  if (!manageButton) return;
-  selectManagedGroup(String(manageButton.dataset.manageGroup || ""));
+  const groupButton = event.target.closest("[data-popup-group]");
+  if (!groupButton) return;
+  markPopupGroup(String(groupButton.dataset.popupGroup || ""));
 });
 
 openGroupsDialogBtn.addEventListener("click", () => {
+  popupSelectedGroup = "";
   renderGroupsTable();
   groupsDialog.showModal();
 });
-closeGroupsDialogBtn.addEventListener("click", () => groupsDialog.close());
+closeGroupsDialogBtn.addEventListener("click", () => {
+  popupSelectedGroup = "";
+  groupsDialog.close();
+});
+
+selectPopupGroupBtn.addEventListener("click", () => {
+  if (!popupSelectedGroup) return;
+  selectManagedGroup(popupSelectedGroup);
+});
 
 openCreateGroupDialogBtn.addEventListener("click", () => {
+  popupSelectedGroup = "";
   if (groupsDialog.open) groupsDialog.close();
   prepareCreateGroupDialog();
 });
 openGroupEvaluationDialogBtn.addEventListener("click", () => {
+  if (!popupSelectedGroup) return;
   if (groupsDialog.open) groupsDialog.close();
   openSelectedGroupEvaluationDialog();
 });
 
 deleteSelectedGroupBtn.addEventListener("click", openDeleteGroupDialog);
-closeDeleteGroupDialogBtn.addEventListener("click", () => deleteGroupDialog.close());
-cancelDeleteGroupBtn.addEventListener("click", () => deleteGroupDialog.close());
+closeDeleteGroupDialogBtn.addEventListener("click", () => {
+  deletionTargetGroup = "";
+  deleteGroupDialog.close();
+});
+cancelDeleteGroupBtn.addEventListener("click", () => {
+  deletionTargetGroup = "";
+  deleteGroupDialog.close();
+});
 confirmDeleteGroupBtn.addEventListener("click", async () => {
-  if (!selectedManagedGroup) return;
-  await deleteGroupWithBackup(selectedManagedGroup);
+  if (!deletionTargetGroup) return;
+  await deleteGroupWithBackup(deletionTargetGroup);
 });
 deleteGroupConfirmInput.addEventListener("keydown", async (event) => {
-  if (event.key !== "Enter" || !selectedManagedGroup) return;
+  if (event.key !== "Enter" || !deletionTargetGroup) return;
   event.preventDefault();
-  await deleteGroupWithBackup(selectedManagedGroup);
+  await deleteGroupWithBackup(deletionTargetGroup);
 });
 
 toggleRosterBtn.addEventListener("click", () => {

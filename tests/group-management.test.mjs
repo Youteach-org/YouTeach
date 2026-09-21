@@ -36,17 +36,16 @@ test('group rows only select a group; Delete appears once in contextual group ac
   assert.doesNotMatch(js, /data-edit-group-evaluation/);
 });
 
-test('Groups keeps the previous card behavior inside a popup', () => {
+test('Groups popup requires an explicit Select action before changing the active group', () => {
   assert.match(html, /<dialog id="groupsDialog">/);
-  assert.match(html, /Select a group to manage it\. Select it again to collapse its student list\./);
-  assert.match(html, /id="openCreateGroupDialogBtn"/);
-  assert.match(html, /id="selectedGroupActions"/);
-  assert.match(html, /id="groupsTableBody"/);
-  assert.match(js, /selectedManagedGroup === groupName/);
-  assert.match(js, /rosterCollapsed = !rosterCollapsed/);
-  assert.match(js, /group-chevron/);
-  assert.match(js, /aria-expanded/);
-  assert.match(js, /if \(groupsDialog\.open\) groupsDialog\.close\(\)/);
+  assert.match(html, /id="selectPopupGroupBtn"[^>]*>Select<\/button>/);
+  assert.match(html, /Click a group to mark it, then use Select to make it the active group\./);
+  assert.match(js, /let popupSelectedGroup = ""/);
+  assert.match(js, /function markPopupGroup\(groupName\)/);
+  assert.match(js, /data-popup-group/);
+  assert.match(js, /selectPopupGroupBtn\.addEventListener\("click"/);
+  assert.match(js, /selectManagedGroup\(popupSelectedGroup\)/);
+  assert.doesNotMatch(js, /selectedManagedGroup === groupName[\s\S]{0,180}rosterCollapsed = !rosterCollapsed/);
 });
 
 test('Group Management contains the canonical student progress matrix', () => {
@@ -122,6 +121,12 @@ test('enrollment links create pending requests and approval creates canonical st
   assert.match(enrollJs, /status: "pending"/);
   assert.match(enrollJs, /groups\/\$\{groupName\}/);
   assert.match(enrollJs, /groupEnrollmentRequests\/\$\{groupName\}/);
+});
+
+test('Delete Group targets the group marked in the popup without activating it', () => {
+  assert.match(js, /function openDeleteGroupDialog\(\)[\s\S]*const groupName = popupSelectedGroup/);
+  assert.match(js, /deletionTargetGroup = groupName/);
+  assert.match(js, /confirmDeleteGroupBtn\.addEventListener\("click"[\s\S]*deleteGroupWithBackup\(deletionTargetGroup\)/);
 });
 
 test('group deletion uses a visible confirmation dialog and primary delete is not blocked by cleanup', () => {

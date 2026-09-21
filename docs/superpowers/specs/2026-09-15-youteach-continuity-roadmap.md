@@ -989,3 +989,12 @@ This supersedes earlier Teacher Students / Group Management navigation and layou
 - A reconstruction backup is triggered before deletion.
 - The primary `groups/<group>` record is deleted first. Cleanup of students, requests, assignments, submissions, attendance, points, and history is best-effort afterward so a failure on one secondary branch cannot prevent the group itself from being deleted.
 - Deletion errors are shown visibly in the dialog instead of failing silently.
+
+
+### Groups popup explicit selection — 2026-09-21
+
+- Clicking a group row in the **Groups** popup only marks that row inside the popup; it does **not** immediately change the active Group Management group.
+- The popup action bar contains an explicit **Select** button. Only **Select** makes the marked group the active group and closes the popup.
+- The roster expand/collapse state remains controlled by the Enrolled Students arrow; selecting the already-active group does not toggle the roster.
+- **Delete Group** applies to the group currently marked in the popup, using a dedicated deletion target so deleting a group does not first make it the active group.
+- **Blocks & Criteria** also uses the marked popup group.
