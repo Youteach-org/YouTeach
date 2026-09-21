@@ -130,14 +130,6 @@ async function main() {
   await teacherPage.locator("#workingGroupStep").waitFor({ state: "visible", timeout: 15000 });
   await teacherPage.locator("#workingGroupSelect").selectOption({ label: GROUP });
   await teacherPage.locator("#continueWithGroupBtn").click();
-  await new Promise((resolve) => setTimeout(resolve, 2500));
-  console.log("E2E diagnostic after Continue with Group", JSON.stringify({
-    url: teacherPage.url(),
-    title: await teacherPage.title(),
-    workingGroupVisible: await teacherPage.locator("#workingGroupStep").isVisible().catch(() => false),
-    workingGroupMessage: await teacherPage.locator("#workingGroupMessage").textContent().catch(() => ""),
-    loginMessage: await teacherPage.locator("#loginMessage").textContent().catch(() => "")
-  }));
   await teacherPage.waitForURL((u) => u.origin === YT && (u.pathname === "/buzzer" || u.pathname.endsWith("/buzzer.html")), { timeout: 15000 });
 
   sessionBefore = await fb("session/current");
@@ -176,13 +168,6 @@ async function main() {
 
   console.log("E2E teacher: create COG assignment and consume teacher launch");
   await teacherPage.locator("#openAssignmentsModuleBtn").click();
-  await new Promise((resolve) => setTimeout(resolve, 1500));
-  console.log("E2E diagnostic Assignments module", JSON.stringify({
-    overlayExists: await teacherPage.locator("#assignmentsModuleOverlay").count(),
-    overlayVisible: await teacherPage.locator("#assignmentsModuleOverlay").isVisible().catch(() => false),
-    frameSrc: await teacherPage.locator("#assignmentsModuleFrame").getAttribute("src").catch(() => ""),
-    frameUrls: teacherPage.frames().map((f) => f.url())
-  }));
   const frame = await waitFor(
     () => teacherPage.frames().find((f) => {
       try {
