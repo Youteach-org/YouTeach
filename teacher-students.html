@@ -6,23 +6,28 @@
   <title>YouTeach - Students</title>
   <link rel="stylesheet" href="styles.css?v=titlebar-hamburger-20260916">
   <style>
-    .students-top-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
-    .students-actions{display:flex;justify-content:flex-end;margin:12px 0}
-    .editable-row{cursor:pointer}
-    .editable-row:hover{background:#f8fafc}
-    @media(max-width:1000px){.students-top-grid{grid-template-columns:1fr}}
-      .name-column-input {
-      min-width: 320px !important;
-      width: 100% !important;
-    }
-
-    .external-id-cell {
-      font-weight: 700;
-      white-space: nowrap;
-    }
-    .editable-row.active-student{background:#ecfdf5}
-    .editable-row.active-student:hover{background:#dcfce7}
-    .editable-row.active-student .table-input{background:#f0fdf4}
+    .students-summary-grid{display:grid;grid-template-columns:minmax(240px,.8fr) minmax(260px,1fr);gap:12px;margin-bottom:12px}
+    .students-actions{display:flex;justify-content:flex-end;margin:8px 0}
+    .student-row{cursor:pointer}
+    .student-row:hover{background:#f8fafc}
+    .group-select{width:100%;margin-top:6px}
+    .students-count-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+    .students-count-value{font-size:20px;font-weight:900;color:#0f172a}
+    .search-toggle-btn{min-width:34px;padding:5px 8px;font-size:16px;line-height:1}
+    .student-search-panel{margin-top:7px}
+    .student-search-panel input{width:100%}
+    .students-table-wrap{overflow-x:auto;position:relative}
+    .students-table{width:max-content;min-width:100%;border-collapse:separate;border-spacing:0}
+    .student-column-header,.student-identity-cell{position:sticky;left:0;min-width:270px;max-width:310px}
+    .student-column-header{z-index:5;background:#f8fafc}
+    .student-identity-cell{z-index:2;background:#fff}
+    .student-name{font-weight:900;font-size:12px;line-height:1.25;color:#0f172a}
+    .student-meta{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:3px;font-size:9px;color:#64748b}
+    .student-id-tag{display:inline-flex;padding:2px 5px;border-radius:999px;background:#f1f5f9;font-weight:800;color:#475569}
+    @media(max-width:760px){.students-summary-grid{grid-template-columns:1fr}.student-column-header,.student-identity-cell{min-width:220px;max-width:250px}}
+    .student-row.active-student{background:#ecfdf5}
+    .student-row.active-student:hover{background:#dcfce7}
+    .student-row.active-student .student-identity-cell{background:#ecfdf5}
     .block-grade-cell{min-width:260px;text-align:center}
     .block-grade-setup-required{font-size:10px;font-weight:900;color:#b45309}
     .block-grade-header{min-width:260px;text-align:center;vertical-align:top}
@@ -30,7 +35,9 @@
     .block-criteria-grid,.block-values-grid{display:grid;grid-template-columns:repeat(var(--criterion-columns),minmax(48px,1fr));gap:4px;align-items:center}
     .block-criteria-grid{margin-top:5px;font-size:9px;line-height:1.25;font-weight:800;color:#64748b}
     .block-values-grid{font-size:11px;font-weight:800;color:#334155}
-    .block-criterion-label,.block-criterion-value{padding:2px 3px;text-align:center;white-space:nowrap}
+    .block-criterion-label,.block-criterion-value{padding:2px 3px;text-align:center}
+    .block-criterion-label{white-space:normal;line-height:1.15}
+    .block-criterion-value{white-space:nowrap}
     .block-criterion-total{font-weight:900;color:#0f172a}
 
   </style>
@@ -67,56 +74,49 @@
       <header class="topbar">
         <div>
           <h2>Students</h2>
-          <p>Edit names, nicknames, and groups. Double click a row to open that student's summary.</p>
+          <p>View group progress. Double click a student row to open that student's profile.</p>
         </div>
         <div class="topbar-right">
           <span id="teacherIdentity" class="teacher-identity">Teacher</span>
         </div>
       </header>
 
-      <div class="students-top-grid">
-        <div class="panel-card">
-          <div class="panel-card-header"><h3>Working Group</h3></div>
-          <div class="stack-controls"><select id="groupFilter"></select></div>
-        </div>
-
-        <div class="panel-card">
-          <div class="panel-card-header"><h3>Search Students</h3></div>
-          <div class="stack-controls">
-            <input id="searchStudent" placeholder="Search by name, nickname, external ID, or internal ID">
-          </div>
-        </div>
-      </div>
-
       <div class="panel-card">
-        <div class="student-info-grid" style="margin-bottom:12px;">
+        <div class="students-summary-grid">
           <div class="summary-card mini">
             <span class="summary-label">Selected Group</span>
-            <strong id="selectedGroupCard">---</strong>
+            <select id="groupFilter" class="group-select" aria-label="Selected group"></select>
           </div>
+
           <div class="summary-card mini">
-            <span class="summary-label">Students in Group</span>
-            <strong id="studentsInGroupCard">0</strong>
+            <div class="students-count-head">
+              <div>
+                <span class="summary-label">Students in Group</span>
+                <div id="studentsInGroupCard" class="students-count-value">0</div>
+              </div>
+              <button id="toggleStudentSearchBtn" class="search-toggle-btn" type="button"
+                aria-label="Search students" aria-expanded="false" title="Search students">🔍</button>
+            </div>
+            <div id="studentSearchPanel" class="student-search-panel" hidden>
+              <input id="searchStudent" placeholder="Search name, nickname, or External ID" autocomplete="off">
+            </div>
           </div>
         </div>
 
         <div class="students-actions">
-          <button id="saveAllStudentsBtn">Save All Changes</button>
           <button id="openBlockReportBtn" type="button">Block Report</button>
         </div>
 
-        <div class="table-wrap">
-          <table class="data-table">
+        <div class="table-wrap students-table-wrap">
+          <table class="data-table students-table">
             <thead>
               <tr>
-                <th style="min-width:140px;">External ID</th>
-                <th style="min-width:320px;">Full Name</th>
-                <th style="min-width:180px;">Nickname</th>
+                <th class="student-column-header">Student</th>
                 <th id="blockColumnsPlaceholder">Block Grade</th>
               </tr>
             </thead>
             <tbody id="studentsTableBody">
-              <tr><td colspan="5">No students found.</td></tr>
+              <tr><td colspan="2">No students found.</td></tr>
             </tbody>
           </table>
         </div>
@@ -124,7 +124,7 @@
     </main>
   </div>
 
-  <script type="module" src="teacher-students.js?v=criterion-values-active-row-20260921"></script>
+  <script type="module" src="teacher-students.js?v=sticky-student-block-scroll-20260921"></script>
   <script defer src="shared-ui-fixes.js?v=titlebar-hamburger-20260916"></script>
 </body>
 </html>
