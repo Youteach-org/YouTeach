@@ -19,7 +19,8 @@ test('Group Management keeps its header and moves group editing into dialogs', (
   assert.match(html, /id="openGroupEvaluationDialogBtn"/);
   assert.match(html, /id="enrolledStudentsSection"/);
   assert.doesNotMatch(html, /id="groupEditorCard"/);
-  assert.doesNotMatch(html, /<h3>Delete Group<\/h3>/);
+  assert.match(html, /<dialog id="deleteGroupDialog">/);
+  assert.match(html, /<h3>Delete Group<\/h3>/);
   assert.doesNotMatch(html, /<h3>Add Student<\/h3>/);
 });
 
