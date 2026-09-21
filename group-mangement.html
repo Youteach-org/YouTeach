@@ -21,11 +21,12 @@
     .group-evaluation-summary{font-size:11px;color:#475569;line-height:1.35}
     .setup-required{font-weight:800;color:#b45309}
     .collapse-btn{min-width:38px;padding:6px 10px;font-size:17px;line-height:1}
-    .enrolled-students-head{flex-wrap:nowrap;overflow-x:auto}
-    .enrolled-students-head>h3{flex:0 0 auto;white-space:nowrap}
+    .enrolled-students-head{display:flex;align-items:center;gap:10px;flex-wrap:nowrap;overflow-x:auto}
+    .enrolled-students-left{display:flex;align-items:center;gap:8px;flex:0 0 auto;white-space:nowrap}
+    .enrolled-students-left h3{margin:0}
     .enrolled-head-actions{display:flex;align-items:center;gap:8px;margin-left:auto;flex-wrap:nowrap;min-width:max-content}
-    .enrolled-students-inline-tools{display:flex;align-items:center;gap:8px;flex-wrap:nowrap}
-    .enrolled-students-inline-count{display:flex;align-items:center;gap:4px;white-space:nowrap}
+    .managed-search-tools{display:flex;align-items:center;gap:8px;margin-left:auto;flex-wrap:nowrap}
+    .managed-search-panel{min-width:220px;max-width:360px}
     .active-enrollment-link-btn{background:#fff;color:#334155;border:1px solid #cbd5e1}
     .active-enrollment-link-btn.active{background:#dcfce7;color:#166534;border-color:#86efac;box-shadow:inset 0 0 0 1px #86efac}
     .enrollment-link-inline-controls{display:flex;align-items:center;gap:6px;min-width:0}
@@ -143,18 +144,13 @@
       <div class="management-stack">
         <section class="panel-card full-width-card" id="enrolledStudentsSection">
           <div class="management-head enrolled-students-head">
-            <h3>Enrolled Students</h3>
+            <div class="enrolled-students-left">
+              <h3>Enrolled Students</h3>
+              <span id="managedStudentsCount" class="managed-students-count">0</span>
+              <button id="managedStudentDisplayModeBtn" class="managed-display-mode-btn" type="button">Names</button>
+            </div>
             <div class="enrolled-head-actions">
-              <div class="enrolled-students-inline-tools">
-                <button id="managedStudentDisplayModeBtn" class="managed-display-mode-btn" type="button">Names</button>
-                <div class="enrolled-students-inline-count"><strong>Students</strong> <span id="managedStudentsCount" class="managed-students-count">0</span></div>
-                <button id="managedStudentSearchToggle" class="managed-search-toggle" type="button"
-                  aria-label="Search students" aria-expanded="false" title="Search students">🔍</button>
-                <div id="managedStudentSearchPanel" class="managed-search-panel" hidden>
-                  <input id="managedStudentSearch" placeholder="Search name, nickname, or External ID" autocomplete="off">
-                </div>
-                <button id="openManagedBlockReportBtn" type="button">Block Report</button>
-              </div>
+              <button id="openManagedBlockReportBtn" type="button">Block Report</button>
               <div id="enrollmentLinkInlineControls" class="enrollment-link-inline-controls" hidden>
                 <input id="enrollmentLinkInput" readonly aria-readonly="true" aria-label="Enrollment link">
                 <button id="copyEnrollmentLinkBtn" type="button">Copy link</button>
@@ -163,24 +159,24 @@
               <button id="createEnrollmentLinkBtn" class="active-enrollment-link-btn" type="button" hidden aria-expanded="false" aria-pressed="false">Active enrollment link</button>
               <button id="openAddStudentModalBtn" type="button" hidden>Add Student</button>
               <button id="toggleRosterBtn" class="collapse-btn" type="button" hidden aria-expanded="false" title="Expand or collapse students">▸</button>
+              <div class="managed-search-tools">
+                <div id="managedStudentSearchPanel" class="managed-search-panel" hidden>
+                  <input id="managedStudentSearch" placeholder="Search name, nickname, or External ID" autocomplete="off">
+                </div>
+                <button id="managedStudentSearchToggle" class="managed-search-toggle" type="button"
+                  aria-label="Search students" aria-expanded="false" title="Search students">🔍</button>
+              </div>
             </div>
           </div>
 
           <div id="enrollmentControls" hidden>
             <div id="rosterBody">
-              <div id="selectedRosterActions" class="roster-context-actions" hidden>
-                <span id="selectedRosterLabel" class="context-label"></span>
-                <button id="openSelectedStudentBtn" type="button" hidden>Open Record</button>
-                <div id="externalIdEditor" class="external-id-editor" hidden>
-                  <input id="selectedExternalIdInput" placeholder="External ID">
-                  <button id="saveExternalIdBtn" type="button">Save ID</button>
-                </div>
-                <button id="approveEnrollmentBtn" type="button" hidden>Approve</button>
-                <button id="denyEnrollmentBtn" type="button" hidden>Deny</button>
-                <button id="expelStudentBtn" type="button" hidden>Expel</button>
-              </div>
-
               <div id="pendingRequestsPanel" class="pending-requests" hidden>
+                <div id="pendingRequestActions" class="roster-context-actions" hidden>
+                  <span id="pendingRequestLabel" class="context-label"></span>
+                  <button id="approveEnrollmentBtn" type="button">Approve</button>
+                  <button id="denyEnrollmentBtn" type="button">Deny</button>
+                </div>
                 <div class="pending-request-row pending-request-head">
                   <label title="Select or deselect all pending requests"><input id="selectAllStudents" type="checkbox" aria-label="Select or deselect all pending requests"></label>
                   <span>Pending request</span><span>Nickname</span><span>External ID</span>

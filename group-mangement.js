@@ -82,15 +82,10 @@ const managedStudentSearch = document.getElementById("managedStudentSearch");
 const managedStudentsTableHeadRow = document.getElementById("managedStudentsTableHeadRow");
 const managedStudentsTableBody = document.getElementById("managedStudentsTableBody");
 const openManagedBlockReportBtn = document.getElementById("openManagedBlockReportBtn");
-const selectedRosterActions = document.getElementById("selectedRosterActions");
-const selectedRosterLabel = document.getElementById("selectedRosterLabel");
-const openSelectedStudentBtn = document.getElementById("openSelectedStudentBtn");
-const externalIdEditor = document.getElementById("externalIdEditor");
-const selectedExternalIdInput = document.getElementById("selectedExternalIdInput");
-const saveExternalIdBtn = document.getElementById("saveExternalIdBtn");
+const pendingRequestActions = document.getElementById("pendingRequestActions");
+const pendingRequestLabel = document.getElementById("pendingRequestLabel");
 const approveEnrollmentBtn = document.getElementById("approveEnrollmentBtn");
 const denyEnrollmentBtn = document.getElementById("denyEnrollmentBtn");
-const expelStudentBtn = document.getElementById("expelStudentBtn");
 
 const groupsTableBody = document.getElementById("groupsTableBody");
 const selectedGroupActions = document.getElementById("selectedGroupActions");
@@ -1079,31 +1074,12 @@ function selectedRosterIds(kind) {
     .map((key) => key.slice(prefix.length));
 }
 
-function renderRosterContextActions() {
+function renderPendingRequestActions() {
   const requests = selectedRosterIds("request");
-  const students = selectedRosterIds("student");
-  const total = requests.length + students.length;
-
-  selectedRosterActions.hidden = total === 0;
-  selectedRosterLabel.textContent = requests.length && !students.length
+  pendingRequestActions.hidden = requests.length === 0;
+  pendingRequestLabel.textContent = requests.length
     ? `${requests.length} pending request${requests.length === 1 ? "" : "s"} selected`
-    : students.length && !requests.length
-      ? `${students.length} student${students.length === 1 ? "" : "s"} selected`
-      : total ? `${total} items selected` : "";
-
-  approveEnrollmentBtn.hidden = requests.length === 0;
-  denyEnrollmentBtn.hidden = requests.length === 0;
-  expelStudentBtn.hidden = students.length === 0;
-
-  const singleStudent = total === 1 && students.length === 1 ? students[0] : "";
-  openSelectedStudentBtn.hidden = !singleStudent;
-  externalIdEditor.hidden = !singleStudent;
-
-  if (singleStudent) {
-    selectedExternalIdInput.value = String(studentsCache?.[singleStudent]?.studentNumber || "");
-  } else {
-    selectedExternalIdInput.value = "";
-  }
+    : "";
 }
 
 function renderManagedStudents() {
@@ -1120,7 +1096,7 @@ function renderManagedStudents() {
     managedStudentsTableHeadRow.innerHTML = '<th class="managed-student-column-header">Student</th>';
     managedStudentsTableBody.innerHTML = '<tr><td>No enrolled students yet.</td></tr>';
     managedStudentsCount.textContent = "0";
-    selectedRosterActions.hidden = true;
+    pendingRequestActions.hidden = true;
     return;
   }
 
@@ -1138,10 +1114,9 @@ function renderManagedStudents() {
   managedStudentDisplayModeBtn.textContent = managedDisplayModeLabel(displayMode);
   managedStudentDisplayModeBtn.title = "Names, Last names, or Nicknames";
 
-  const visibleKeys = new Set([
-    ...pending.map(([id]) => rosterSelectionKey("request", id)),
-    ...enrolled.map(([id]) => rosterSelectionKey("student", id))
-  ]);
+  const visibleKeys = new Set(
+    pending.map(([id]) => rosterSelectionKey("request", id))
+  );
   [...selectedRosterItems].forEach((key) => {
     if (!visibleKeys.has(key)) selectedRosterItems.delete(key);
   });
@@ -1168,12 +1143,11 @@ function renderManagedStudents() {
   const columnCount = 1 + blockNames.length;
   managedStudentsTableBody.innerHTML = filtered.length
     ? filtered.map(([studentKey, student]) => {
-        const selectionKey = rosterSelectionKey("student", studentKey);
         const displayName = managedPrimaryDisplay(student, displayMode);
         const secondary = managedSecondaryDisplay(student, displayMode);
         return `
-          <tr class="managed-student-row ${student.activeNow ? "active-student" : ""} ${selectedRosterItems.has(selectionKey) ? "selected" : ""}"
-            data-selection-key="${escapeHtml(selectionKey)}" data-roster-kind="student" data-roster-id="${escapeHtml(studentKey)}">
+          <tr class="managed-student-row ${student.activeNow ? "active-student" : ""}"
+            data-roster-kind="student" data-roster-id="${escapeHtml(studentKey)}">
             <td class="managed-student-identity-cell">
               <span class="managed-student-name" style="font-size:${managedStudentNameFontSize(displayName)}px" title="${escapeHtml(managedFullName(student))}">${escapeHtml(displayName)}</span>
               ${secondary ? `<span class="managed-student-meta">${escapeHtml(secondary)}</span>` : ""}
@@ -1193,7 +1167,7 @@ function renderManagedStudents() {
     pendingCheckboxes.some((checkbox) => checkbox.checked) && !selectAllStudents.checked;
 
   persistManagementState();
-  renderRosterContextActions();
+  renderPendingRequestActions();
   renderEnrollmentLink();
   renderSelectedGroupActions();
 }
@@ -1406,17 +1380,6 @@ function openStudentRecord(studentKey) {
   window.location.href = `student-summary.html?teacherViewStudentKey=${encodeURIComponent(studentKey)}`;
 }
 
-async function saveSelectedExternalId() {
-  const students = selectedRosterIds("student");
-  const requests = selectedRosterIds("request");
-  if (students.length !== 1 || requests.length) return;
-
-  const studentKey = students[0];
-  await update(ref(db, `students/${studentKey}`), {
-    studentNumber: String(selectedExternalIdInput.value || "").trim()
-  });
-}
-
 async function approveSelectedRequests() {
   if (!selectedManagedGroup) return;
   const selectedRequests = selectedRosterIds("request");
@@ -1467,36 +1430,6 @@ async function denySelectedRequests() {
     updates[`groupEnrollmentRequests/${selectedManagedGroup}/${requestId}/decidedAt`] = Date.now();
     updates[`groupEnrollmentRequests/${selectedManagedGroup}/${requestId}/decidedBy`] = getTeacherName();
   });
-  await update(ref(db), updates);
-  selectedRosterItems.clear();
-  persistManagementState();
-}
-
-async function expelSelectedStudents() {
-  if (!selectedManagedGroup) return;
-  const selectedStudents = selectedRosterIds("student");
-
-  if (!selectedStudents.length) {
-    alert("Select at least one enrolled student.");
-    return;
-  }
-
-  if (!confirm(`Expel ${selectedStudents.length} student(s) from ${selectedManagedGroup}? Their student record will be archived for recovery.`)) return;
-
-  const updates = {};
-  const now = Date.now();
-
-  selectedStudents.forEach((studentKey) => {
-    const student = studentsCache[studentKey];
-    if (!student) return;
-    updates[`groupFormerStudents/${selectedManagedGroup}/${studentKey}`] = {
-      ...student,
-      expelledAt: now,
-      expelledBy: getTeacherName()
-    };
-    updates[`students/${studentKey}`] = null;
-  });
-
   await update(ref(db), updates);
   selectedRosterItems.clear();
   persistManagementState();
@@ -1855,6 +1788,14 @@ groupsTableBody.addEventListener("click", (event) => {
   markPopupGroup(String(groupButton.dataset.popupGroup || ""));
 });
 
+groupsTableBody.addEventListener("dblclick", (event) => {
+  const groupButton = event.target.closest("[data-popup-group]");
+  if (!groupButton) return;
+  const groupName = String(groupButton.dataset.popupGroup || "");
+  markPopupGroup(groupName);
+  selectManagedGroup(groupName);
+});
+
 openGroupsDialogBtn.addEventListener("click", () => {
   popupSelectedGroup = "";
   renderGroupsTable();
@@ -1920,16 +1861,6 @@ pendingRequestsList.addEventListener("click", (event) => {
   renderManagedStudents();
 });
 
-managedStudentsTableBody.addEventListener("click", (event) => {
-  const row = event.target.closest('[data-roster-kind="student"]');
-  if (!row) return;
-  const key = String(row.dataset.selectionKey || "");
-  if (selectedRosterItems.has(key)) selectedRosterItems.delete(key);
-  else selectedRosterItems.add(key);
-  persistManagementState();
-  renderManagedStudents();
-});
-
 managedStudentsTableBody.addEventListener("dblclick", (event) => {
   const row = event.target.closest('[data-roster-kind="student"]');
   if (!row) return;
@@ -1962,13 +1893,6 @@ openManagedBlockReportBtn.addEventListener("click", () => {
   window.location.href = `teacher-block-report.html${query}`;
 });
 
-openSelectedStudentBtn.addEventListener("click", () => {
-  const students = selectedRosterIds("student");
-  const requests = selectedRosterIds("request");
-  if (students.length === 1 && !requests.length) openStudentRecord(students[0]);
-});
-
-saveExternalIdBtn.addEventListener("click", saveSelectedExternalId);
 copyEnrollmentLinkBtn.addEventListener("click", copyEnrollmentLink);
 
 createEnrollmentLinkBtn.addEventListener("click", async () => {
@@ -2016,7 +1940,6 @@ managedStudentDisplayModeBtn.addEventListener("click", async () => {
 
 approveEnrollmentBtn.addEventListener("click", approveSelectedRequests);
 denyEnrollmentBtn.addEventListener("click", denySelectedRequests);
-expelStudentBtn.addEventListener("click", expelSelectedStudents);
 
 openAddStudentModalBtn.addEventListener("click", openAddStudentDialog);
 closeAddStudentDialogBtn.addEventListener("click", () => addStudentDialog.close());

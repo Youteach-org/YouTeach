@@ -37,6 +37,12 @@ test('group rows only mark a popup choice; actions appear once for that marked g
   assert.doesNotMatch(js, /data-edit-group-evaluation/);
 });
 
+test('double click in Groups marks and selects the group immediately', () => {
+  assert.match(js, /groupsTableBody\.addEventListener\("dblclick"/);
+  assert.match(js, /markPopupGroup\(groupName\)/);
+  assert.match(js, /selectManagedGroup\(groupName\)/);
+});
+
 test('Groups popup requires an explicit Select action before changing the active group', () => {
   assert.match(html, /<dialog id="groupsDialog">/);
   assert.match(html, /id="selectPopupGroupBtn"[^>]*>Select<\/button>/);
@@ -345,3 +351,25 @@ test('Create Group is a popup with an explicit Cancel action and Add Student tab
   assert.match(js, /button\.setAttribute\("aria-selected", String\(isActive\)\)/);
 });
 
+
+
+test('Group Management enrolled student rows are double-click only and have no contextual student ribbon', () => {
+  assert.doesNotMatch(html, /id="openSelectedStudentBtn"|id="saveExternalIdBtn"|id="expelStudentBtn"|id="externalIdEditor"/);
+  assert.doesNotMatch(js, /managedStudentsTableBody\.addEventListener\("click"/);
+  assert.match(js, /managedStudentsTableBody\.addEventListener\("dblclick"/);
+  assert.match(js, /openStudentRecord\(String\(row\.dataset\.rosterId \|\| ""\)\)/);
+  assert.doesNotMatch(js, /expelSelectedStudents|saveSelectedExternalId/);
+  assert.match(html, /id="pendingRequestActions"/);
+  assert.match(html, /id="approveEnrollmentBtn"/);
+  assert.match(html, /id="denyEnrollmentBtn"/);
+});
+
+test('Enrolled Students header keeps count and identity toggle on the left and search input left of the right-aligned magnifier', () => {
+  const start = html.indexOf('<div class="management-head enrolled-students-head">');
+  const end = html.indexOf('</div>\n\n          <div id="enrollmentControls"', start);
+  const header = html.slice(start, end);
+  assert.match(header, /<h3>Enrolled Students<\/h3>[\s\S]*id="managedStudentsCount"[\s\S]*id="managedStudentDisplayModeBtn"/);
+  assert.doesNotMatch(header, /<strong>Students<\/strong>/);
+  assert.ok(header.indexOf('managedStudentSearchPanel') < header.indexOf('managedStudentSearchToggle'));
+  assert.match(html, /\.managed-search-tools\{display:flex;align-items:center;gap:8px;margin-left:auto/);
+});

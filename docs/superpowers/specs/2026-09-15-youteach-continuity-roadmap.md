@@ -998,3 +998,13 @@ This supersedes earlier Teacher Students / Group Management navigation and layou
 - The roster expand/collapse state remains controlled by the Enrolled Students arrow; selecting the already-active group does not toggle the roster.
 - **Delete Group** applies to the group currently marked in the popup, using a dedicated deletion target so deleting a group does not first make it the active group.
 - **Blocks & Criteria** also uses the marked popup group.
+
+
+### Group Management group double-click and student-row simplification — 2026-09-21
+
+- In the **Groups** popup, single click only marks a group; **double click marks and immediately selects** that group, equivalent to pressing **Select**.
+- Enrolled student rows in Group Management are no longer selectable. A single click does nothing and never opens an action ribbon.
+- **Open Record**, **Save ID**, and **Expel** contextual controls for enrolled students are removed from this matrix. **Double click** on an enrolled student is the only row action and opens that student's record.
+- Pending enrollment requests keep their own separate Approve/Deny selection actions.
+- The **Students** text label is removed. The enrolled-student count appears immediately beside **Enrolled Students**, followed immediately by the **Names / Last names / Nicknames** toggle on the left.
+- Search is aligned to the right of the header. When expanded, its textbox appears immediately to the **left** of the magnifying-glass button.
