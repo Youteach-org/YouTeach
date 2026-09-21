@@ -116,6 +116,7 @@ let groupsCache = {};
 let studentsCache = {};
 let enrollmentRequestsCache = {};
 let evaluationTemplatesCache = {};
+let legacyEvaluationTemplatesCache = {};
 let selectedManagedGroup = String(
   restoredManagementState.groupName || sessionStorage.getItem(WORKING_GROUP_KEY) || ""
 );
@@ -269,6 +270,8 @@ function equivalentTemplateId(setup) {
   )?.[0] || "";
 }
 
+const TEMPLATE_LIBRARY_PATH = "settings/groupEvaluationTemplates";
+
 async function ensureIndependentTemplate({
   evaluationCriteria,
   refreshDefaults = false
@@ -296,7 +299,7 @@ async function ensureIndependentTemplate({
 
     if (Object.keys(patch).length) {
       patch.updatedAt = now;
-      await update(ref(db, `groupEvaluationTemplates/${existingId}`), patch);
+      await update(ref(db, `${TEMPLATE_LIBRARY_PATH}/${existingId}`), patch);
       evaluationTemplatesCache[existingId] = {
         ...existing,
         ...(patch.name ? { name: patch.name } : {}),
@@ -312,7 +315,7 @@ async function ensureIndependentTemplate({
     return existingId;
   }
 
-  const target = push(ref(db, "groupEvaluationTemplates"));
+  const target = push(ref(db, TEMPLATE_LIBRARY_PATH));
   const record = {
     name: canonicalName,
     evaluationCriteria: criteriaToFirebaseObject(criteria),
@@ -327,28 +330,44 @@ async function ensureIndependentTemplate({
   return target.key;
 }
 
-async function harvestConfiguredGroupsToTemplates() {
-  if (!groupsLoaded || !templatesLoaded || harvestingTemplates || !requestedCriteriaResetChecked || requestedCriteriaResetInProgress) return;
+function mergedTemplateCache() {
+  return {
+    ...(legacyEvaluationTemplatesCache || {}),
+    ...(evaluationTemplatesCache || {})
+  };
+}
+
+async function harvestConfiguredGroupsToTemplates({ force = false } = {}) {
+  if (!groupsLoaded || harvestingTemplates || requestedCriteriaResetInProgress) return 0;
+  if (!force && (!templatesLoaded || !requestedCriteriaResetChecked)) return 0;
+
   harvestingTemplates = true;
+  let harvested = 0;
 
   try {
     for (const group of Object.values(groupsCache || {})) {
       const config = groupEvaluationConfig(group);
       if (!config.configured) continue;
 
-      await ensureIndependentTemplate({
+      const before = Object.keys(evaluationTemplatesCache || {}).length;
+      const id = await ensureIndependentTemplate({
         evaluationCriteria: config.criteria,
         refreshDefaults: false
       });
+      if (id) {
+        const after = Object.keys(evaluationTemplatesCache || {}).length;
+        if (after > before) harvested += 1;
+      }
     }
     renderEvaluationTemplateList();
+    return harvested;
   } finally {
     harvestingTemplates = false;
   }
 }
 
 function renderEvaluationTemplateList() {
-  const entries = Object.entries(evaluationTemplatesCache || {})
+  const entries = Object.entries(mergedTemplateCache())
     .map(([id, template]) => [id, template, normalizeEvaluationCriteria(template?.evaluationCriteria || [])])
     .filter(([, , criteria]) => criteria.length > 0 && Math.abs(evaluationWeightTotal(criteria) - 100) < 0.01)
     .sort((a, b) =>
@@ -389,9 +408,34 @@ function renderEvaluationTemplateList() {
   useSelectedEvaluationTemplateBtn.disabled = !selectedTemplateId;
 }
 
-function openEvaluationTemplateDialog() {
-  renderEvaluationTemplateList();
-  evaluationTemplateDialog.showModal();
+async function openEvaluationTemplateDialog() {
+  useEvaluationTemplateBtn.disabled = true;
+  groupEvaluationStatus.textContent = "Loading reusable templates…";
+  groupEvaluationStatus.className = "status-text";
+
+  try {
+    await harvestConfiguredGroupsToTemplates({ force: true });
+    renderEvaluationTemplateList();
+    evaluationTemplateDialog.showModal();
+
+    const count = Object.entries(mergedTemplateCache())
+      .map(([, template]) => normalizeEvaluationCriteria(template?.evaluationCriteria || []))
+      .filter((criteria) => criteria.length > 0 && Math.abs(evaluationWeightTotal(criteria) - 100) < 0.01)
+      .length;
+
+    groupEvaluationStatus.textContent = count
+      ? `${count} reusable template${count === 1 ? "" : "s"} available.`
+      : "No reusable templates yet. Complete a group's criteria to 100% and they will appear here.";
+    groupEvaluationStatus.className = "status-text";
+  } catch (error) {
+    console.error("Template library refresh failed:", error);
+    renderEvaluationTemplateList();
+    evaluationTemplateDialog.showModal();
+    groupEvaluationStatus.textContent = "Could not refresh the template library.";
+    groupEvaluationStatus.className = "status-text bad";
+  } finally {
+    useEvaluationTemplateBtn.disabled = false;
+  }
 }
 
 function applyEvaluationTemplate(template) {
@@ -1285,7 +1329,7 @@ evaluationTemplateList.addEventListener("click", (event) => {
 });
 
 useSelectedEvaluationTemplateBtn.addEventListener("click", () => {
-  const template = evaluationTemplatesCache?.[selectedTemplateId];
+  const template = mergedTemplateCache()?.[selectedTemplateId];
   if (!template) return;
   applyEvaluationTemplate(template);
   evaluationTemplateDialog.close();
@@ -1537,11 +1581,26 @@ onValue(ref(db, "groups"), async (snapshot) => {
   harvestConfiguredGroupsToTemplates().catch(console.error);
 });
 
-onValue(ref(db, "groupEvaluationTemplates"), (snapshot) => {
+onValue(ref(db, TEMPLATE_LIBRARY_PATH), (snapshot) => {
   evaluationTemplatesCache = snapshot.val() || {};
   templatesLoaded = true;
   renderEvaluationTemplateList();
   harvestConfiguredGroupsToTemplates().catch(console.error);
+});
+
+onValue(ref(db, "groupEvaluationTemplates"), (snapshot) => {
+  legacyEvaluationTemplatesCache = snapshot.val() || {};
+  renderEvaluationTemplateList();
+
+  // Migrate any readable legacy templates into the canonical library.
+  Object.values(legacyEvaluationTemplatesCache).forEach((template) => {
+    const criteria = normalizeEvaluationCriteria(template?.evaluationCriteria || []);
+    if (!criteria.length || Math.abs(evaluationWeightTotal(criteria) - 100) >= 0.01) return;
+    ensureIndependentTemplate({
+      evaluationCriteria: criteria,
+      refreshDefaults: false
+    }).catch(console.error);
+  });
 });
 
 onValue(ref(db, "students"), (snapshot) => {
