@@ -129,6 +129,8 @@ let templatesLoaded = false;
 let harvestingTemplates = false;
 let requestedCriteriaResetChecked = false;
 let requestedCriteriaResetInProgress = false;
+let evaluationAutosaveTimer = null;
+let evaluationAutosaveVersion = 0;
 const selectedRosterItems = new Set(
   Array.isArray(restoredManagementState.selectedRosterItems)
     ? restoredManagementState.selectedRosterItems.map(String)
@@ -235,10 +237,9 @@ function renderEvaluationEditorVisibility() {
     return;
   }
 
-  const config = groupEvaluationConfig(groupsCache?.[editingGroupName] || {});
   toggleEvaluationBtn.textContent = evaluationEditorOpen
     ? "Hide Evaluation"
-    : (config.configured ? "Edit Evaluation" : "Set Evaluation");
+    : "Show Evaluation";
 }
 
 function templateComparable({ evaluationCriteria } = {}) {
@@ -426,6 +427,7 @@ function resetGroupForm() {
   pendingReportSettings = null;
   setCriteriaEditor([]);
   createGroupBtn.textContent = "Create Group";
+  createGroupBtn.hidden = false;
   cancelGroupEditBtn.hidden = true;
   evaluationEditorOpen = true;
   groupEvaluationStatus.textContent = "";
@@ -452,14 +454,88 @@ function loadGroupEditor(groupName, { preserveView = false } = {}) {
     ? { ...group.reportSettings }
     : null;
   setCriteriaEditor(config.criteria);
-  createGroupBtn.textContent = "Save Group Settings";
+  createGroupBtn.hidden = true;
   cancelGroupEditBtn.hidden = false;
   if (!preserveView) evaluationEditorOpen = false;
   groupEvaluationStatus.textContent = config.configured
-    ? "Group selected. Open Edit Evaluation only when you need to change the criteria."
-    : "This group needs evaluation settings. Use Set Evaluation.";
-  groupEvaluationStatus.className = config.configured ? "status-text" : "status-text bad";
+    ? "Evaluation settings are saved automatically."
+    : "Evaluation settings are saved automatically as you edit. Complete 100% to enable grading and update the reusable template.";
+  groupEvaluationStatus.className = "status-text";
   renderEvaluationEditorVisibility();
+}
+
+
+async function saveExistingGroupEvaluation() {
+  const groupName = editingGroupName;
+  if (!groupName || !groupsCache[groupName]) return;
+
+  const version = ++evaluationAutosaveVersion;
+  const evaluationUnitCount = normalizeEvaluationUnitCount(evaluationUnitCountInput.value, 3);
+  const evaluationCriteria = criteriaFromForm();
+  const total = evaluationWeightTotal(evaluationCriteria);
+  const allNamed = evaluationCriteria.every((criterion) => Boolean(String(criterion.name || "").trim()));
+  const valid = evaluationCriteria.length > 0 && allNamed && Math.abs(total - 100) < 0.01;
+  const now = Date.now();
+
+  groupEvaluationStatus.textContent = "Saving…";
+  groupEvaluationStatus.className = "status-text";
+
+  const patch = {
+    evaluationUnitCount,
+    evaluationCriteria: evaluationCriteria.length ? criteriaToFirebaseObject(evaluationCriteria) : null,
+    evaluationWeights: null,
+    evaluationConfiguredAt: valid ? now : null,
+    evaluationConfiguredBy: valid ? getTeacherName() : null,
+    evaluationUpdatedAt: now,
+    evaluationUpdatedBy: getTeacherName()
+  };
+
+  try {
+    await update(ref(db, `groups/${groupName}`), patch);
+    if (version !== evaluationAutosaveVersion) return;
+
+    groupsCache[groupName] = {
+      ...groupsCache[groupName],
+      ...patch
+    };
+
+    if (valid) {
+      await ensureIndependentTemplate({
+        evaluationCriteria,
+        refreshDefaults: true
+      });
+      if (version !== evaluationAutosaveVersion) return;
+      groupEvaluationStatus.textContent = "Saved automatically. Reusable template updated.";
+      groupEvaluationStatus.className = "status-text ok";
+    } else if (!evaluationCriteria.length) {
+      groupEvaluationStatus.textContent = "Saved automatically. Add evaluation criteria when ready.";
+      groupEvaluationStatus.className = "status-text";
+    } else {
+      const nameNote = allNamed ? "" : " Add a name for every criterion.";
+      groupEvaluationStatus.textContent = `Saved automatically. Current total: ${total}%. Complete 100% to enable grading and update the template.${nameNote}`;
+      groupEvaluationStatus.className = "status-text";
+    }
+
+    renderGroupsTable();
+  } catch (error) {
+    if (version !== evaluationAutosaveVersion) return;
+    console.error("Evaluation autosave failed:", error);
+    groupEvaluationStatus.textContent = "Could not save automatically. Try editing the field again.";
+    groupEvaluationStatus.className = "status-text bad";
+  }
+}
+
+function scheduleExistingGroupEvaluationSave({ immediate = false } = {}) {
+  if (!editingGroupName || !groupsCache[editingGroupName]) return;
+  clearTimeout(evaluationAutosaveTimer);
+  if (immediate) {
+    saveExistingGroupEvaluation();
+    return;
+  }
+  evaluationAutosaveTimer = setTimeout(() => {
+    evaluationAutosaveTimer = null;
+    saveExistingGroupEvaluation();
+  }, 450);
 }
 
 function selectManagedGroup(groupName) {
@@ -1109,44 +1185,29 @@ createGroupBtn.addEventListener("click", async () => {
     return;
   }
 
-  const evaluationUnitCount = normalizeEvaluationUnitCount(evaluationUnitCountInput.value, 3);
-  const evaluationCriteria = criteriaFromForm();
-  const total = evaluationWeightTotal(evaluationCriteria);
-
-  if (!evaluationCriteria.length || evaluationCriteria.some((criterion) => !criterion.name)) {
-    groupEvaluationStatus.textContent = "Add at least one named evaluation criterion.";
-    groupEvaluationStatus.className = "status-text bad";
-    evaluationEditorOpen = true;
-    renderEvaluationEditorVisibility();
-    return;
-  }
-
-  if (Math.abs(total - 100) >= 0.01) {
-    groupEvaluationStatus.textContent = "Evaluation criteria must total exactly 100%.";
-    groupEvaluationStatus.className = "status-text bad";
-    evaluationEditorOpen = true;
-    renderEvaluationEditorVisibility();
-    refreshEvaluationWeightTotal();
-    return;
-  }
-
-  if (!editingGroupName && groupsCache[groupName]) {
+  if (groupsCache[groupName]) {
     groupEvaluationStatus.textContent = "That group already exists. Select it from the Groups list.";
     groupEvaluationStatus.className = "status-text bad";
     return;
   }
 
+  const evaluationUnitCount = normalizeEvaluationUnitCount(evaluationUnitCountInput.value, 3);
+  const evaluationCriteria = criteriaFromForm();
+  const total = evaluationWeightTotal(evaluationCriteria);
+  const allNamed = evaluationCriteria.every((criterion) => Boolean(String(criterion.name || "").trim()));
+  const valid = evaluationCriteria.length > 0 && allNamed && Math.abs(total - 100) < 0.01;
   const now = Date.now();
-  const existing = groupsCache[groupName] || {};
+
   const savedGroupRecord = {
-    ...existing,
     name: groupName,
-    createdAt: Number(existing.createdAt || now),
+    createdAt: now,
     evaluationUnitCount,
-    evaluationCriteria: criteriaToFirebaseObject(evaluationCriteria),
+    evaluationCriteria: evaluationCriteria.length ? criteriaToFirebaseObject(evaluationCriteria) : null,
     ...(pendingReportSettings ? { reportSettings: pendingReportSettings } : {}),
-    evaluationConfiguredAt: now,
-    evaluationConfiguredBy: getTeacherName()
+    evaluationConfiguredAt: valid ? now : null,
+    evaluationConfiguredBy: valid ? getTeacherName() : null,
+    evaluationUpdatedAt: now,
+    evaluationUpdatedBy: getTeacherName()
   };
 
   await update(ref(db, `groups/${groupName}`), {
@@ -1156,20 +1217,28 @@ createGroupBtn.addEventListener("click", async () => {
 
   groupsCache[groupName] = savedGroupRecord;
 
-  await ensureIndependentTemplate({
-    evaluationCriteria,
-    refreshDefaults: true
-  });
+  if (valid) {
+    await ensureIndependentTemplate({
+      evaluationCriteria,
+      refreshDefaults: true
+    });
+  }
 
   selectedManagedGroup = groupName;
+  editingGroupName = groupName;
   rosterCollapsed = false;
-  loadGroupEditor(groupName);
   sessionStorage.setItem(WORKING_GROUP_KEY, groupName);
+  loadGroupEditor(groupName);
+  evaluationEditorOpen = true;
+  renderEvaluationEditorVisibility();
+  persistManagementState();
   renderManagedStudents();
   renderGroupsTable();
   renderSelectedGroupActions();
 
-  groupEvaluationStatus.textContent = existing.createdAt ? "Group settings saved." : "Group created.";
+  groupEvaluationStatus.textContent = valid
+    ? "Group created. Evaluation settings are saved automatically."
+    : "Group created. Evaluation settings will save automatically as you edit.";
   groupEvaluationStatus.className = "status-text ok";
 });
 
@@ -1180,16 +1249,29 @@ toggleEvaluationBtn.addEventListener("click", () => {
 });
 
 cancelGroupEditBtn.addEventListener("click", resetGroupForm);
-addEvaluationCriterionBtn.addEventListener("click", () => addEvaluationCriterionRow());
+addEvaluationCriterionBtn.addEventListener("click", () => {
+  addEvaluationCriterionRow();
+  scheduleExistingGroupEvaluationSave({ immediate: true });
+});
 
-evaluationCriteriaRows.addEventListener("input", refreshEvaluationWeightTotal);
-evaluationCriteriaRows.addEventListener("change", refreshEvaluationWeightTotal);
+evaluationUnitCountInput.addEventListener("input", () => scheduleExistingGroupEvaluationSave());
+evaluationUnitCountInput.addEventListener("change", () => scheduleExistingGroupEvaluationSave({ immediate: true }));
+
+evaluationCriteriaRows.addEventListener("input", () => {
+  refreshEvaluationWeightTotal();
+  scheduleExistingGroupEvaluationSave();
+});
+evaluationCriteriaRows.addEventListener("change", () => {
+  refreshEvaluationWeightTotal();
+  scheduleExistingGroupEvaluationSave({ immediate: true });
+});
 evaluationCriteriaRows.addEventListener("click", (event) => {
   const button = event.target.closest("[data-remove-evaluation-criterion]");
   if (!button) return;
   button.closest("[data-evaluation-criterion]")?.remove();
   if (!evaluationCriteriaRows.querySelector("[data-evaluation-criterion]")) addEvaluationCriterionRow();
   refreshEvaluationWeightTotal();
+  scheduleExistingGroupEvaluationSave({ immediate: true });
 });
 
 useEvaluationTemplateBtn.addEventListener("click", openEvaluationTemplateDialog);
@@ -1207,6 +1289,7 @@ useSelectedEvaluationTemplateBtn.addEventListener("click", () => {
   if (!template) return;
   applyEvaluationTemplate(template);
   evaluationTemplateDialog.close();
+  scheduleExistingGroupEvaluationSave({ immediate: true });
 });
 
 
