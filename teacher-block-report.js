@@ -10,7 +10,6 @@ requireTeacherAuth();
 
 const teacherIdentity = document.getElementById("teacherIdentity");
 const logoutBtn = document.getElementById("logoutBtn");
-const reportGroupSelect = document.getElementById("reportGroupSelect");
 const reportBlockSelect = document.getElementById("reportBlockSelect");
 const reportTitleInput = document.getElementById("reportTitleInput");
 const reportOrganizationInput = document.getElementById("reportOrganizationInput");
@@ -31,7 +30,6 @@ let groupsCache = {};
 let studentsCache = {};
 let assignmentsCache = {};
 let submissionsCache = {};
-let initialGroupApplied = false;
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -48,7 +46,7 @@ function formatNumber(value) {
 }
 
 function currentGroupName() {
-  return String(reportGroupSelect.value || "");
+  return String(sessionStorage.getItem("youteachWorkingGroup") || "");
 }
 
 function currentGroup() {
@@ -79,23 +77,10 @@ function applyReportSettings(group) {
 }
 
 function renderGroupOptions() {
-  const previous = currentGroupName();
-  const names = Object.keys(groupsCache || {}).sort((a, b) => a.localeCompare(b));
-  reportGroupSelect.innerHTML =
-    '<option value="">Select group</option>' +
-    names.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("");
-
-  const requested = new URLSearchParams(window.location.search).get("group") || "";
-  const preferred = !initialGroupApplied && names.includes(requested)
-    ? requested
-    : (names.includes(previous) ? previous : "");
-
-  reportGroupSelect.value = preferred;
-  initialGroupApplied = true;
-  if (preferred) {
-    applyReportSettings(groupsCache[preferred]);
-    renderBlockOptions();
-  }
+  const groupName = currentGroupName();
+  const group = groupsCache?.[groupName] || null;
+  if (group) applyReportSettings(group);
+  renderBlockOptions();
 }
 
 function renderBlockOptions() {
@@ -215,7 +200,7 @@ function renderReport() {
 async function saveReportSettings() {
   const groupName = currentGroupName();
   if (!groupName) {
-    reportStatus.textContent = "Select a group first.";
+    reportStatus.textContent = "Select an active working group first.";
     return;
   }
 
@@ -223,10 +208,6 @@ async function saveReportSettings() {
   reportStatus.textContent = "Report setup saved for this group.";
 }
 
-reportGroupSelect.addEventListener("change", () => {
-  applyReportSettings(currentGroup());
-  renderBlockOptions();
-});
 
 reportBlockSelect.addEventListener("change", renderReport);
 [
@@ -244,6 +225,11 @@ reportBlockSelect.addEventListener("change", renderReport);
 
 saveReportSettingsBtn.addEventListener("click", saveReportSettings);
 printReportBtn.addEventListener("click", () => window.print());
+
+window.addEventListener("youteach:working-group-changed", () => {
+  renderGroupOptions();
+  renderReport();
+});
 
 onValue(ref(db, "groups"), (snapshot) => {
   groupsCache = visibleGroups(snapshot.val() || {});
