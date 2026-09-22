@@ -1039,3 +1039,14 @@ This supersedes earlier Teacher Students / Group Management navigation and layou
 - Take Attendance applies only to students in the currently selected group whose row is green (`activeNow === true`), regardless of any search filter.
 - Confirmed attendance writes `present: true`, `attendanceValidated: true`, confirmation timestamp, teacher name, group, identity, and detected timestamp under `attendance/<date>/<studentKey>`.
 - A student who logs out before attendance is confirmed does not get a new attendance row merely from logging out.
+
+### Add Students existing accounts and compact enrollment controls — 2026-09-21
+
+- After **Copy link** succeeds, the enrollment-link textbox/control strip collapses automatically. The active enrollment link remains active and can be shown again from **Active enrollment link**.
+- All buttons in the **Enrolled Students** header row, including identity display mode and attendance, use compact sizing so the row can remain on one line whenever viewport width permits.
+- **Add Students** now includes an **Existing** tab.
+- Existing-student search matches group, full name/name, nickname, External ID/student number, internal ID, and student key. A group filter is also available.
+- Every existing-student row has a checkbox. The header checkbox selects or deselects all currently visible search/filter results using conventional master-checkbox behavior.
+- **Enroll Selected** reassigns the existing student records to the active group; it does not create duplicate student accounts. Identity, password, history, scores, and other existing account data are preserved.
+- Reassignment records the previous group plus enrollment source/time/teacher metadata.
+- **Ghost Test Lab** has an **Add Students** button with the same Manual / CSV / Paste List / Existing popup workflow. Its fixed destination group is **FANTASMA**.

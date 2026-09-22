@@ -404,3 +404,35 @@ test('Group Management confirms attendance only for green students in the select
   assert.match(js, /confirmedBy/);
   assert.match(js, /takeAttendanceBtn\.addEventListener\("click", takeAttendanceForGreenStudents\)/);
 });
+
+test('copying the enrollment link collapses the visible link field', () => {
+  const start = js.indexOf('async function copyEnrollmentLink()');
+  const end = js.indexOf('function openStudentRecord', start);
+  const block = js.slice(start, end);
+  assert.match(block, /navigator\.clipboard\.writeText\(link\)/);
+  assert.match(block, /enrollmentLinkExpanded = false/);
+  assert.match(block, /persistManagementState\(\)/);
+  assert.match(block, /renderEnrollmentLink\(\)/);
+});
+
+test('Add Students can enroll existing accounts without creating duplicates', () => {
+  assert.match(html, /id="existingStudentTabBtn"[^>]*>Existing<\/button>/);
+  assert.match(html, /id="existingStudentSearch"/);
+  assert.match(html, /id="existingStudentGroupFilter"/);
+  assert.match(html, /id="existingStudentsMasterCheckbox"/);
+  assert.match(html, /id="enrollExistingStudentsBtn"[^>]*>Enroll Selected<\/button>/);
+  assert.match(js, /function existingStudentCandidates\(\)/);
+  assert.match(js, /student\?\.groupName/);
+  assert.match(js, /student\?\.studentNumber/);
+  assert.match(js, /student\?\.externalId/);
+  assert.match(js, /student\?\.nickname/);
+  assert.ok(js.includes('updates[`students/${studentKey}/groupName`] = targetGroup'));
+  assert.ok(js.includes('updates[`students/${studentKey}/enrollmentSource`] = "teacher-existing"'));
+  assert.match(js, /existingStudentsMasterCheckbox\.addEventListener\("change"/);
+});
+
+test('Enrolled Students header uses compact controls across the complete row', () => {
+  assert.match(html, /\.enrolled-students-head button\{min-height:30px;padding:5px 8px;font-size:11px/);
+  assert.match(html, /\.enrollment-link-inline-controls input\{width:min\(260px,25vw\)/);
+  assert.match(html, /\.managed-search-toggle\{min-width:32px!important;min-height:30px!important/);
+});
