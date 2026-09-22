@@ -373,6 +373,32 @@ async function main() {
   assert.equal(live.liveContext.cogSessionId, cogSessionId);
   assert.equal(live.liveContext.assignmentId, assignmentId);
 
+  async function probeFirebaseResultPath(path) {
+    const probeUrl = urlFor(path);
+    const getResponse = await fetch(probeUrl, {
+      headers: { "X-Firebase-ETag": "true" }
+    });
+    const putResponse = await fetch(probeUrl, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ e2eProbe: true, marker })
+    });
+    const deleteResponse = await fetch(probeUrl, { method: "DELETE" });
+    return {
+      path,
+      get: getResponse.status,
+      put: putResponse.status,
+      delete: deleteResponse.status
+    };
+  }
+
+  const permissionProbeId = `__e2e_permission_${marker}`;
+  const permissionProbes = [
+    await probeFirebaseResultPath(`classroomGameResults/${permissionProbeId}`),
+    await probeFirebaseResultPath(`classroomGameResultsByAssignment/${permissionProbeId}`)
+  ];
+  console.log("E2E diagnostic Firebase result permissions", JSON.stringify(permissionProbes));
+
   console.log("E2E bridge: heartbeat + idempotent receipt");
   const heartbeat = await studentPage.evaluate(async () => {
     const c = JSON.parse(sessionStorage.getItem("cogYouTeachLiveStudentContext"));
