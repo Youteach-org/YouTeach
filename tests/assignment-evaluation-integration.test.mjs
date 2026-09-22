@@ -9,6 +9,7 @@ const root = join(here, '..');
 const createHtml = readFileSync(join(root, 'assignment-create-module.html'), 'utf8');
 const createJs = readFileSync(join(root, 'assignment-create-module.js'), 'utf8');
 const teacherJs = readFileSync(join(root, 'teacher-assignments.js'), 'utf8');
+const teacherHtml = readFileSync(join(root, 'teacher-assignments.html'), 'utf8');
 const runtimeJs = readFileSync(join(root, 'group-grade-runtime.js'), 'utf8');
 const targetJs = readFileSync(join(root, 'assignment-evaluation-target.js'), 'utf8');
 
@@ -44,4 +45,21 @@ test('AI graded legacy assignments are backfilled into explicit evaluation targe
 test('grade runtime reads the canonical evaluation target model', () => {
   assert.match(runtimeJs, /evaluationTargetForAssignment/);
   assert.match(runtimeJs, /assignmentTarget\(assignment\)\.criterionId/);
+});
+
+
+test('Assignment Browser shows block and criterion on every assignment card', () => {
+  assert.match(teacherHtml, /id="assignmentFilterBlock"/);
+  assert.match(teacherHtml, /id="assignmentFilterCriterion"/);
+  assert.match(teacherJs, /evaluationTargetForAssignment/);
+  assert.match(teacherJs, /assignment-target-block/);
+  assert.match(teacherJs, /assignment-target-criterion/);
+});
+
+test('Assignment Browser filters by canonical block and criterion targets', () => {
+  assert.match(teacherJs, /assignmentFilterBlock/);
+  assert.match(teacherJs, /assignmentFilterCriterion/);
+  assert.match(teacherJs, /blockQuery !== "ALL"/);
+  assert.match(teacherJs, /criterionQuery !== "ALL"/);
+  assert.match(teacherJs, /renderAssignmentEvaluationFilterOptions/);
 });
