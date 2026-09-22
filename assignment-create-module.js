@@ -1,4 +1,5 @@
 import { db } from "./firebase.js";
+import { visibleGroups } from "./group-state.js";
 import { ref, onValue, push, set, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireTeacherAuth, getTeacherName } from "./teacher-auth.js";
 import { readAssignmentsModuleContext } from "./assignment-module-launcher.js?v=popup-library-20260920";
@@ -1182,7 +1183,7 @@ refreshProjectCheckpointBuilder();
 setCreationMode("scratch");
 
 onValue(ref(db, "groups"), (snapshot) => {
-  groupsCache = snapshot.val() || {};
+  groupsCache = visibleGroups(snapshot.val() || {});
   renderGroupOptions();
 });
 

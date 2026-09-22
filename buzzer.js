@@ -1,4 +1,5 @@
 import { db } from "./firebase.js";
+import { visibleGroups } from "./group-state.js";
 import {
   ref,
   push,
@@ -1091,7 +1092,7 @@ onValue(ref(db, "students"), (snapshot) => {
 });
 
 onValue(ref(db, "groups"), (snapshot) => {
-  groupsCache = snapshot.val() || {};
+  groupsCache = visibleGroups(snapshot.val() || {});
   renderGroupOptions();
   renderHeader();
 });

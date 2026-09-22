@@ -1,4 +1,5 @@
 import { db } from "./firebase.js";
+import { visibleGroups } from "./group-state.js";
 import { ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
 import { evaluationBlockNames, groupEvaluationConfig } from "./group-evaluation-model.js";
@@ -244,7 +245,7 @@ saveReportSettingsBtn.addEventListener("click", saveReportSettings);
 printReportBtn.addEventListener("click", () => window.print());
 
 onValue(ref(db, "groups"), (snapshot) => {
-  groupsCache = snapshot.val() || {};
+  groupsCache = visibleGroups(snapshot.val() || {});
   renderGroupOptions();
   renderReport();
 });

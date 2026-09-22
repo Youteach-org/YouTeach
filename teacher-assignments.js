@@ -1,4 +1,5 @@
 import { db } from "./firebase.js";
+import { visibleGroups } from "./group-state.js";
 import { ref, onValue, push, set, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
 import { openAssignmentsModule, readAssignmentsModuleContext } from "./assignment-module-launcher.js?v=popup-library-20260920";
@@ -3558,7 +3559,7 @@ if (saveSelectedTemplateBtn) saveSelectedTemplateBtn.disabled = true;
 logoutBtn.addEventListener("click", logoutTeacher);
 
 onValue(ref(db, "groups"), (snapshot) => {
-  groupsCache = snapshot.val() || {};
+  groupsCache = visibleGroups(snapshot.val() || {});
   renderGroupOptions();
   renderAssignmentFilterOptions();
   renderAssignmentList();
