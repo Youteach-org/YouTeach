@@ -198,9 +198,21 @@ async function main() {
 
   await teacherPage.locator("#teamSourceSelect").selectOption("all");
   await teacherPage.locator("#numTeams").fill("2");
+  const previousSessionCreatedAt = Number(sessionBefore?.createdAt || 0);
   teacherPage.once("dialog", (d) => d.accept());
   sessionMutated = true;
   await teacherPage.locator("#createTeams").click();
+  const generatedSession = await waitFor(async () => {
+    const current = await fb("session/current");
+    return current?.active === true &&
+      String(current?.groupName || "") === GROUP &&
+      Number(current?.createdAt || 0) !== previousSessionCreatedAt &&
+      String(current?.teamSourceMode || "") === "all" &&
+      Boolean(current?.assignments && Object.hasOwn(current.assignments, ghostKey))
+      ? current
+      : null;
+  }, "new Smart Teams session with GHOST20", 30000);
+  assert.equal(Object.keys(generatedSession?.teams || {}).length, 2);
   await waitFor(() => teacherPage.locator("#openAssignmentsModuleBtn").isEnabled(), "Assignments enable");
 
   console.log("E2E teacher: create COG assignment and consume teacher launch");
