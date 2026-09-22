@@ -231,6 +231,30 @@ async function main() {
   assert.ok(cogSessionId);
 
   console.log("E2E student: JOIN GAME → signed canonical Ghost context");
+  await new Promise((resolve) => setTimeout(resolve, 1500));
+  const studentAccessDiagnostic = await studentPage.evaluate(async ({ connectedGame, ghostKey, group }) => {
+    const policy = await import("/cog-live-session-policy.mjs");
+    return {
+      url: location.href,
+      localStudentKey: localStorage.getItem("youteachStudentKey") || "",
+      localExternalId: localStorage.getItem("youteachStudentExternalId") || "",
+      cardHidden: document.querySelector("#liveGameCard")?.hidden,
+      cardDisplay: getComputedStyle(document.querySelector("#liveGameCard")).display,
+      studentName: document.querySelector("#studentName")?.textContent || "",
+      studentTeam: document.querySelector("#studentTeam")?.textContent || "",
+      studentStatus: document.querySelector("#studentStatus")?.textContent || "",
+      policyAllowsExpectedIdentity: policy.canStudentAccessLiveGame({
+        connectedGame,
+        studentGroup: group,
+        studentKey: ghostKey,
+        now: Date.now()
+      }),
+      connectedGameGroup: connectedGame?.groupName || "",
+      connectedGameStatus: connectedGame?.status || "",
+      connectedGameRecipients: connectedGame?.recipientStudentKeys || []
+    };
+  }, { connectedGame: game, ghostKey, group: GROUP });
+  console.log("E2E diagnostic Student Buzzer access", JSON.stringify(studentAccessDiagnostic));
   await studentPage.locator("#liveGameCard").waitFor({ state: "visible", timeout: 30000 });
   assert.equal((await studentPage.locator("#liveGameName").textContent())?.trim(), "Verb Runner");
   await studentPage.locator("#joinLiveGameBtn").click();
