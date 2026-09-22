@@ -42,7 +42,12 @@ jobs:
                 deleted: group?.deleted === true,
                 deletedAt: group?.deletedAt ?? null,
                 hasEvaluation: Boolean(group?.evaluationCriteria),
-                unitCount: group?.evaluationUnitCount ?? null
+                unitCount: group?.evaluationUnitCount ?? null,
+                createdAt: group?.createdAt ?? null,
+                updatedAt: group?.updatedAt ?? null,
+                evaluationUpdatedAt: group?.evaluationUpdatedAt ?? null,
+                studentListDisplayUpdatedAt: group?.studentListDisplayUpdatedAt ?? null,
+                keys: Object.keys(group || {}).sort()
               }));
             }
           }
