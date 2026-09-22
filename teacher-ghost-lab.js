@@ -11,7 +11,7 @@ import {
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
 import { generateId } from "./app.js";
 import { evaluationBlockNames } from "./group-evaluation-model.js";
-import { studentInGroup } from "./student-groups.js";
+import { studentGroupNames, studentInGroup } from "./student-groups.js";
 
 if (!requireTeacherAuth()) {
   throw new Error("Teacher session required.");
@@ -281,7 +281,7 @@ function existingStudentCandidates() {
   const groupFilter = String(existingStudentGroupFilter?.value || "");
   return Object.entries(studentsCache || {})
     .filter(([, student]) => !studentInGroup(student, GHOST_GROUP))
-    .filter(([, student]) => !groupFilter || String(student?.groupName || "") === groupFilter)
+    .filter(([, student]) => !groupFilter || studentInGroup(student, groupFilter))
     .filter(([studentKey, student]) => {
       if (!query) return true;
       return [
@@ -292,7 +292,7 @@ function existingStudentCandidates() {
         student?.studentNumber,
         student?.externalId,
         student?.id,
-        student?.groupName
+        ...studentGroupNames(student)
       ].map(normalizeExistingSearch).join(" ").includes(query);
     })
     .sort((a, b) =>
@@ -305,7 +305,8 @@ function renderExistingGroupFilter() {
   const previous = existingStudentGroupFilter.value;
   const groups = [...new Set(
     Object.values(studentsCache || {})
-      .map((student) => String(student?.groupName || "").trim())
+      .flatMap((student) => studentGroupNames(student))
+      .map((groupName) => String(groupName || "").trim())
       .filter(Boolean)
       .filter((groupName) => groupName !== GHOST_GROUP)
   )].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
@@ -336,7 +337,7 @@ function renderExistingStudents() {
         const checked = selectedExistingStudentKeys.has(studentKey) ? "checked" : "";
         const fullName = String(student?.fullName || student?.name || student?.nickname || studentKey).trim();
         const nickname = String(student?.nickname || "").trim();
-        const groupName = String(student?.groupName || "").trim();
+        const groupName = studentGroupNames(student).join(" · ");
         const external = String(student?.studentNumber || student?.externalId || "").trim();
         return `
           <tr>
