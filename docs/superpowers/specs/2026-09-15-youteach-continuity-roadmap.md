@@ -1065,3 +1065,13 @@ This supersedes earlier Teacher Students / Group Management navigation and layou
 - Teacher pages display the current active group immediately beside the teacher name. Group changes dispatch a same-page working-group event so the label updates immediately.
 - In the Groups popup, double-clicking anywhere on a group row activates that group, persists it as the working group, and closes the popup.
 - In the Create Assignment popup, Assignment Library cards are directly selectable. The old **Use as base** button is removed; a non-button **Use** label remains, and clicking/keyboard-activating the card loads that assignment as the template for the new assignment.
+
+
+### Assignment evaluation targets — 2026-09-22
+
+- Every newly created assignment must be linked to one specific group and one explicit **Block / Unit**.
+- Every non-exam assignment must also be linked to one configured group evaluation criterion. Exams are linked to the block/unit only and keep their separate exam-grading path.
+- Canonical assignment grading destination is stored in `evaluationTarget` and `evaluationTargets/<group>`, while `evaluationBlock`, `groupEvaluationCriterionId`, and `groupEvaluationCriterionName` remain during backward compatibility.
+- Group-level `assignmentCriterionDefaults/<assignmentTypeCode>` remembers the most recently confirmed criterion for that assignment type. This is a default only; teachers can override it per assignment.
+- Legacy AI-graded assignments without a complete destination are migrated on the Assignments page. They default to **Block 1** when no valid block exists. Criterion assignment is automatic only when unambiguous; ambiguous cases are marked `evaluationTargetNeedsReview: true` instead of guessing.
+- Grade calculation reads the canonical evaluation target first, with legacy fields as fallback.
