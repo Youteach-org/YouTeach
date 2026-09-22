@@ -20,7 +20,6 @@ const WORKING_GROUP_KEY = "youteachWorkingGroup";
 const teacherIdentity = document.getElementById("teacherIdentity");
 const logoutBtn = document.getElementById("logoutBtn");
 
-const groupSelect = document.getElementById("groupSelect");
 const numTeamsInput = document.getElementById("numTeams");
 const teamSourceSelect = document.getElementById("teamSourceSelect");
 const teamSourceStudentCount = document.getElementById("teamSourceStudentCount");
@@ -314,7 +313,7 @@ function buildAssignmentsModuleContext() {
 
   return {
     source: "team-creator",
-    groupName: sessionCache.groupName || groupSelect.value || "",
+    groupName: sessionCache.groupName || getStoredWorkingGroup() || "",
     sessionCreatedAt: Number(sessionCache.createdAt || 0),
     teamSourceMode: sessionCache.teamSourceMode || "present",
     teams
@@ -444,17 +443,13 @@ function getOrderedTeamLabels() {
 function renderGroupOptions() {
   const groups = Object.keys(groupsCache || {}).sort();
   const preferredGroup = getPreferredGroup(groups);
-
-  groupSelect.innerHTML = '<option value="">Select group</option>' + groups.map((group) => `<option value="${group}">${group}</option>`).join("");
-
-  if (preferredGroup) {
-    groupSelect.value = preferredGroup;
+  if (preferredGroup && preferredGroup !== getStoredWorkingGroup()) {
     setStoredWorkingGroup(preferredGroup);
   }
 }
 
 function renderHeader() {
-  const selectedGroup = groupSelect.value;
+  const selectedGroup = getStoredWorkingGroup();
   activeBlockLabel.textContent = activeBlockCache;
   blockStatusLabel.textContent = isBlockClosed(activeBlockCache) ? "CLOSED" : "OPEN";
   sessionStatusLabel.textContent = sessionCache?.active ? "Active session" : "No active session";
@@ -468,7 +463,7 @@ function renderHeader() {
 }
 
 function renderResult() {
-  const groupText = sessionCache?.groupName || groupSelect.value || "---";
+  const groupText = sessionCache?.groupName || getStoredWorkingGroup() || "---";
   const buzzer = getBuzzerState();
   const currentBuzz = buzzer.currentBuzz || null;
   const lockedCount = Object.keys(getLockedOutTeams()).length;
@@ -650,7 +645,7 @@ function printTeamsPdf() {
     return;
   }
 
-  const groupName = sessionCache.groupName || groupSelect.value || "";
+  const groupName = sessionCache.groupName || getStoredWorkingGroup() || "";
   const sourceMode = sessionCache.teamSourceMode === "all" ? "All students" : "Present students";
   const teams = sessionCache.teams || {};
   const assignments = sessionCache.assignments || {};
@@ -789,14 +784,15 @@ function printTeamsPdf() {
   printWindow.document.close();
 }
 
-groupSelect.addEventListener("change", () => {
-  setStoredWorkingGroup(groupSelect.value || "");
-  renderHeader();
-  renderResult();
-});
 
 teamSourceSelect.addEventListener("change", () => {
   renderHeader();
+});
+
+window.addEventListener("youteach:working-group-changed", () => {
+  renderHeader();
+  renderResult();
+  renderAssignmentsModuleButton();
 });
 
 openAssignmentsModuleBtn?.addEventListener("click", () => {
@@ -810,7 +806,7 @@ openAssignmentsModuleBtn?.addEventListener("click", () => {
 
 createTeamsBtn.addEventListener("click", async () => {
   const numTeams = parseInt(numTeamsInput.value, 10);
-  const groupName = groupSelect.value;
+  const groupName = getStoredWorkingGroup();
 
   if (!groupName) {
     alert("Select a group first.");
