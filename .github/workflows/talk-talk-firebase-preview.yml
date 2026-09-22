@@ -1,0 +1,57 @@
+name: Talk Talk Firebase Preview
+
+on:
+  push:
+    branches:
+      - feature/talk-talk-v1-firebase-20260922
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check YouTeach function syntax
+        run: find functions -name '*.js' -print0 | xargs -0 -n1 node --check
+      - name: Run Live COG and Talk Talk tests
+        run: node --test tests/cog-live-*.test.mjs tests/talk-talk-*.test.mjs
+      - name: Build Pages bundle
+        run: sh build-pages.sh
+
+  deploy-preview:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build YouTeach preview site
+        run: sh build-pages.sh
+      - name: Deploy Firebase-based Talk Talk preview
+        run: npx wrangler@4 pages deploy dist --project-name=youteach --branch=talk-talk-v1-20260921 --commit-hash=${{ github.sha }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+  verify-preview:
+    needs: deploy-preview
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify preview serves the Firebase login flow
+        run: |
+          set -eu
+          BASE="https://talk-talk-v1-20260921.youteach.pages.dev"
+          curl -fsS --retry 8 --retry-delay 3 "$BASE/teacher-login.js" -o /tmp/teacher-login.js
+          curl -fsS --retry 8 --retry-delay 3 "$BASE/teacher-auth.js" -o /tmp/teacher-auth.js
+          grep -Fq 'const USERS =' /tmp/teacher-login.js
+          grep -Fq 'youteachTeacherAuth' /tmp/teacher-login.js
+          ! grep -Fq '/api/teacher-session' /tmp/teacher-login.js
+          grep -Fq 'youteachTeacherAuth' /tmp/teacher-auth.js
+      - name: Browser-load teacher login shell
+        run: |
+          set -eu
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
+          test -n "$CHROME"
+          "$CHROME" --headless --no-sandbox --disable-gpu --virtual-time-budget=2500 --dump-dom             https://talk-talk-v1-20260921.youteach.pages.dev/teacher-login.html > /tmp/login-dom.html
+          grep -Fq 'Teacher Login' /tmp/login-dom.html
