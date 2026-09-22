@@ -10,6 +10,7 @@ const createHtml = readFileSync(join(root, 'assignment-create-module.html'), 'ut
 const createJs = readFileSync(join(root, 'assignment-create-module.js'), 'utf8');
 const teacherJs = readFileSync(join(root, 'teacher-assignments.js'), 'utf8');
 const runtimeJs = readFileSync(join(root, 'group-grade-runtime.js'), 'utf8');
+const targetJs = readFileSync(join(root, 'assignment-evaluation-target.js'), 'utf8');
 
 test('Create Assignment requires an explicit block or unit', () => {
   assert.match(createHtml, /id="assignmentEvaluationBlock"/);
@@ -22,7 +23,7 @@ test('Create Assignment requires a criterion for non-exams and exempts exams', (
   assert.match(createHtml, /Required for every assignment except exams/);
   assert.match(createJs, /if \(typeCode !== "EX" && !groupCriterion\)/);
   assert.match(createJs, /groupEvaluationCriterionId: groupCriterion\?\.id \|\| ""/);
-  assert.match(createJs, /mode: exam \? "exam" : "assignment"/);
+  assert.match(targetJs, /mode: exam \? "exam" : "assignment"/);
 });
 
 test('Create Assignment persists the canonical target plus legacy compatibility fields', () => {
