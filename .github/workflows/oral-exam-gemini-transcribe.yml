@@ -13,6 +13,10 @@ on:
         type: string
   issues:
     types: [opened]
+  push:
+    branches: [main]
+    paths:
+      - docs/oral-exam-run-request.json
 
 permissions:
   contents: write
@@ -20,7 +24,7 @@ permissions:
 
 jobs:
   transcribe:
-    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.issue.title, '[oral-transcribe]')
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push' || startsWith(github.event.issue.title, '[oral-transcribe]')
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -48,6 +52,10 @@ jobs:
           if os.environ['GITHUB_EVENT_NAME'] == 'workflow_dispatch':
               source_url = event['inputs']['audio_url']
               pair_slug = event['inputs']['pair_slug']
+          elif os.environ['GITHUB_EVENT_NAME'] == 'push':
+              payload = json.load(open('docs/oral-exam-run-request.json', encoding='utf-8'))
+              source_url = payload['source_url']
+              pair_slug = payload['pair_slug']
           else:
               payload = json.loads(event['issue']['body'] or '{}')
               source_url = payload['source_url']
