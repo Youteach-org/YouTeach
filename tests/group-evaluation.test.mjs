@@ -147,8 +147,9 @@ test('criterion short labels persist for configurable report columns', () => {
 });
 
 test('manual custom criteria have a universal score-entry path', () => {
-  assert.match(pointsHtml, /id="manualCriterionGroupSelect"/);
+  assert.doesNotMatch(pointsHtml, /id="manualCriterionGroupSelect"/);
   assert.match(pointsHtml, /id="manualCriterionSelect"/);
+  assert.match(pointsJs, /activePointsGroupName\(\)/);
   assert.match(pointsHtml, /id="manualCriterionScoreInput"/);
   assert.match(pointsJs, /evaluationCriterionScores/);
   assert.match(pointsJs, /criterion\.source === "manual"/);
