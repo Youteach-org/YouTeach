@@ -126,6 +126,7 @@ export function shouldExpireConnectedGame({ connectedGame, now = Date.now() } = 
 export function canStudentAccessLiveGame({
   connectedGame,
   studentGroup,
+  studentGroups = [],
   studentKey = "",
   now = Date.now()
 } = {}) {
@@ -136,9 +137,13 @@ export function canStudentAccessLiveGame({
   } catch {
     return false;
   }
-  const group = String(studentGroup || "").trim();
+  const groups = new Set(
+    [studentGroup, ...(Array.isArray(studentGroups) ? studentGroups : [])]
+      .map((value) => String(value || "").trim())
+      .filter(Boolean)
+  );
   const key = String(studentKey || "").trim();
-  if (!group || game.groupName !== group || game.status !== "active") return false;
+  if (!groups.size || !groups.has(game.groupName) || game.status !== "active") return false;
   if (game.recipientStudentKeys.length && !game.recipientStudentKeys.includes(key)) return false;
   return !shouldExpireConnectedGame({ connectedGame: game, now });
 }
