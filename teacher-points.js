@@ -20,7 +20,6 @@ const clearGradesBtn = document.getElementById("clearGradesBtn");
 
 const gradesSummaryBox = document.getElementById("gradesSummaryBox");
 const gradesPreviewBody = document.getElementById("gradesPreviewBody");
-const manualCriterionGroupSelect = document.getElementById("manualCriterionGroupSelect");
 const manualCriterionBlockSelect = document.getElementById("manualCriterionBlockSelect");
 const manualCriterionSelect = document.getElementById("manualCriterionSelect");
 const manualCriterionStudentSelect = document.getElementById("manualCriterionStudentSelect");
@@ -28,10 +27,8 @@ const manualCriterionScoreInput = document.getElementById("manualCriterionScoreI
 const manualCriterionHelp = document.getElementById("manualCriterionHelp");
 const saveManualCriterionScoreBtn = document.getElementById("saveManualCriterionScoreBtn");
 const exportBlockSelect = document.getElementById("exportBlockSelect");
-const exportGroupSelect = document.getElementById("exportGroupSelect");
 const exportGradesBtn = document.getElementById("exportGradesBtn");
 const deleteBlockSelect = document.getElementById("deleteBlockSelect");
-const deleteGroupSelect = document.getElementById("deleteGroupSelect");
 const deleteGradesBtn = document.getElementById("deleteGradesBtn");
 const deleteGradesResultBox = document.getElementById("deleteGradesResultBox");
 const activePointsGroup = document.getElementById("activePointsGroup");
@@ -153,27 +150,14 @@ function replaceBlockOptions(select, blockNames, fallback = "Block 1") {
 
 function renderBlockSelectors() {
   const activeBlock = settingsCache.activeBlock || "Block 1";
-  replaceBlockOptions(gradeBlockSelect, blockNamesForGroup(), activeBlock);
-  replaceBlockOptions(exportBlockSelect, blockNamesForGroup(exportGroupSelect.value || ""), activeBlock);
-  replaceBlockOptions(deleteBlockSelect, blockNamesForGroup(deleteGroupSelect?.value || ""), activeBlock);
+  const groupName = activePointsGroupName();
+  const blocks = blockNamesForGroup(groupName);
+  replaceBlockOptions(gradeBlockSelect, blocks, activeBlock);
+  replaceBlockOptions(exportBlockSelect, blocks, activeBlock);
+  replaceBlockOptions(deleteBlockSelect, blocks, activeBlock);
 }
 
 function renderExportGroups() {
-  const groups = getAllGroupNames();
-  const previousExportGroup = exportGroupSelect.value;
-  const previousDeleteGroup = deleteGroupSelect?.value || "";
-  const options =
-    '<option value="">All groups</option>' +
-    groups.map((groupName) => `<option value="${escapeHtml(groupName)}">${escapeHtml(groupName)}</option>`).join("");
-
-  exportGroupSelect.innerHTML = options;
-  if (groups.includes(previousExportGroup)) exportGroupSelect.value = previousExportGroup;
-
-  if (deleteGroupSelect) {
-    deleteGroupSelect.innerHTML = options;
-    if (groups.includes(previousDeleteGroup)) deleteGroupSelect.value = previousDeleteGroup;
-  }
-
   renderBlockSelectors();
 }
 
@@ -368,17 +352,11 @@ async function adjustStudentPoints(operation) {
 }
 
 function renderManualCriterionGroups() {
-  const previous = manualCriterionGroupSelect.value;
-  const groups = getAllGroupNames();
-  manualCriterionGroupSelect.innerHTML =
-    '<option value="">Select group</option>' +
-    groups.map((groupName) => `<option value="${escapeHtml(groupName)}">${escapeHtml(groupName)}</option>`).join("");
-  if (groups.includes(previous)) manualCriterionGroupSelect.value = previous;
   renderManualCriterionContext();
 }
 
 function renderManualCriterionContext() {
-  const groupName = manualCriterionGroupSelect.value || "";
+  const groupName = activePointsGroupName();
   const group = groupsCache?.[groupName] || null;
   const config = groupEvaluationConfig(group || {});
 
@@ -391,7 +369,7 @@ function renderManualCriterionContext() {
 
   const previousCriterion = manualCriterionSelect.value;
   manualCriterionSelect.innerHTML =
-    '<option value="">Select manual criterion</option>' +
+    '<option value="">Select manual category</option>' +
     manualCriteria.map((criterion) =>
       `<option value="${escapeHtml(criterion.id)}">${escapeHtml(criterion.name)} · ${criterion.weight}%</option>`
     ).join("");
@@ -414,27 +392,26 @@ function renderManualCriterionContext() {
   }
 
   if (!groupName) {
-    manualCriterionHelp.textContent = "Select a group first.";
+    manualCriterionHelp.textContent = "Select the working group from the group button beside the teacher name.";
   } else if (!config.configured) {
     manualCriterionHelp.textContent = "This group needs a valid evaluation setup.";
   } else if (!manualCriteria.length) {
-    manualCriterionHelp.textContent =
-      "This group has no criteria using Manual / imported criterion score.";
+    manualCriterionHelp.textContent = "This group has no manual categories.";
   } else {
     manualCriterionHelp.textContent =
-      "Enter the student's raw score from 0 to 100. YouTeach applies the criterion percentage automatically.";
+      "Enter the student's raw score from 0 to 100. YouTeach applies the category percentage automatically.";
   }
 }
 
 async function saveManualCriterionScore() {
-  const groupName = manualCriterionGroupSelect.value || "";
+  const groupName = activePointsGroupName();
   const blockName = manualCriterionBlockSelect.value || "";
   const criterionId = manualCriterionSelect.value || "";
   const studentKey = manualCriterionStudentSelect.value || "";
   const score = Number(manualCriterionScoreInput.value);
 
   if (!groupName || !blockName || !criterionId || !studentKey) {
-    alert("Select group, block, criterion, and student.");
+    alert("Select block, category, and student.");
     return;
   }
   if (!Number.isFinite(score) || score < 0 || score > 100) {
@@ -446,7 +423,7 @@ async function saveManualCriterionScore() {
     [`students/${studentKey}/evaluationCriterionScores/${blockName}/${criterionId}`]: Number(score.toFixed(2))
   });
   manualCriterionScoreInput.value = "";
-  alert("Criterion score saved.");
+  alert("Category score saved.");
 }
 
 function findStudent(id, fullName) {
@@ -657,30 +634,30 @@ function clearGrades() {
 
 async function deleteGradesByBlock() {
   const blockName = deleteBlockSelect?.value || "Block 1";
-  const selectedGroup = deleteGroupSelect?.value || "";
+  const selectedGroup = activePointsGroupName();
 
-  const targetStudents = Object.entries(studentsCache || {})
-    .filter(([, student]) => !selectedGroup || studentInGroup(student, selectedGroup));
-
-  if (!targetStudents.length) {
-    alert("No students found for that selection.");
+  if (!selectedGroup) {
+    alert("Select an active working group first.");
     return;
   }
 
-  const confirmMessage = selectedGroup
-    ? `Delete grades for ${blockName} in group ${selectedGroup}? This removes E, E.O, E.V, P, A, and T.`
-    : `Delete grades for ${blockName} in ALL groups? This removes E, E.O, E.V, P, A, and T.`;
+  const targetStudents = Object.entries(studentsCache || {})
+    .filter(([, student]) => studentInGroup(student, selectedGroup));
 
-  if (!confirm(confirmMessage)) return;
+  if (!targetStudents.length) {
+    alert("No students found in the active group.");
+    return;
+  }
 
-  const secondConfirm = prompt('Type DELETE to confirm:');
+  if (!confirm(`Delete grades for ${blockName} in group ${selectedGroup}? This removes E, E.O, E.V, P, A, and T.`)) return;
+
+  const secondConfirm = prompt("Type DELETE to confirm:");
   if (secondConfirm !== "DELETE") {
     alert("Deletion cancelled.");
     return;
   }
 
   const updates = {};
-
   targetStudents.forEach(([studentKey]) => {
     updates[`students/${studentKey}/examPoints/${blockName}`] = null;
     updates[`students/${studentKey}/blockPoints/${blockName}`] = null;
@@ -694,7 +671,7 @@ async function deleteGradesByBlock() {
     deleteGradesResultBox.innerHTML = `
       <strong>Deleted grades.</strong><br>
       Block: ${blockName}<br>
-      Group: ${selectedGroup || "All groups"}<br>
+      Group: ${selectedGroup}<br>
       Students affected: ${targetStudents.length}
     `;
   }
@@ -704,10 +681,15 @@ async function deleteGradesByBlock() {
 
 function exportGrades() {
   const blockName = exportBlockSelect.value || settingsCache.activeBlock || "Block 1";
-  const selectedGroup = exportGroupSelect.value || "";
+  const selectedGroup = activePointsGroupName();
+
+  if (!selectedGroup) {
+    alert("Select an active working group first.");
+    return;
+  }
 
   const students = Object.entries(studentsCache || {})
-    .filter(([, student]) => !selectedGroup || studentInGroup(student, selectedGroup))
+    .filter(([, student]) => studentInGroup(student, selectedGroup))
     .sort((a, b) => getDisplayName(a[1]).localeCompare(getDisplayName(b[1])));
 
   if (!students.length) {
@@ -740,7 +722,7 @@ function exportGrades() {
     ].join(","));
   });
 
-  const groupSuffix = selectedGroup ? selectedGroup.replace(/\s+/g, "_") : "all_groups";
+  const groupSuffix = selectedGroup.replace(/\s+/g, "_");
   downloadTextFile(`${blockName.replace(/\s+/g, "_").toLowerCase()}_${groupSuffix}_grades.csv`, lines.join("\n"));
 }
 
@@ -750,17 +732,18 @@ pointBlockSelect?.addEventListener("change", renderPointAdjustment);
 addPointsBtn?.addEventListener("click", () => adjustStudentPoints("add"));
 subtractPointsBtn?.addEventListener("click", () => adjustStudentPoints("subtract"));
 setPointsBtn?.addEventListener("click", () => adjustStudentPoints("set"));
-window.addEventListener("youteach:working-group-changed", renderPointAdjustment);
+window.addEventListener("youteach:working-group-changed", () => {
+  renderBlockSelectors();
+  renderManualCriterionContext();
+  renderPointAdjustment();
+});
 window.addEventListener("storage", (event) => {
   if (event.key === WORKING_GROUP_KEY) renderPointAdjustment();
 });
 
-manualCriterionGroupSelect.addEventListener("change", renderManualCriterionContext);
 manualCriterionBlockSelect.addEventListener("change", renderManualCriterionContext);
 saveManualCriterionScoreBtn.addEventListener("click", saveManualCriterionScore);
 
-exportGroupSelect.addEventListener("change", renderBlockSelectors);
-if (deleteGroupSelect) deleteGroupSelect.addEventListener("change", renderBlockSelectors);
 
 previewGradesBtn.addEventListener("click", previewPastedGrades);
 saveGradesBtn.addEventListener("click", saveGrades);
