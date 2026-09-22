@@ -12,6 +12,8 @@ const teacherJs = readFileSync(join(root, 'teacher-assignments.js'), 'utf8');
 const teacherHtml = readFileSync(join(root, 'teacher-assignments.html'), 'utf8');
 const runtimeJs = readFileSync(join(root, 'group-grade-runtime.js'), 'utf8');
 const targetJs = readFileSync(join(root, 'assignment-evaluation-target.js'), 'utf8');
+const createModuleJs = readFileSync(join(root, 'assignment-create-module.js'), 'utf8');
+const createModuleHtml = readFileSync(join(root, 'assignment-create-module.html'), 'utf8');
 
 test('Create Assignment requires an explicit block or unit', () => {
   assert.match(createHtml, /id="assignmentEvaluationBlock"/);
@@ -62,4 +64,36 @@ test('Assignment Browser filters by canonical block and criterion targets', () =
   assert.match(teacherJs, /blockQuery !== "ALL"/);
   assert.match(teacherJs, /criterionQuery !== "ALL"/);
   assert.match(teacherJs, /renderAssignmentEvaluationFilterOptions/);
+});
+
+
+test('assignment cards edit on double click and do not carry grading action buttons', () => {
+  assert.match(teacherJs, /teacherAssignmentList\.addEventListener\("dblclick"/);
+  assert.match(teacherJs, /openAssignmentsModule\(\{[\s\S]*mode:\s*"edit"[\s\S]*assignmentId/);
+  assert.doesNotMatch(teacherJs, /data-grade-assignment=/);
+  assert.doesNotMatch(teacherJs, /data-manual-grade-assignment=/);
+  assert.match(teacherHtml, /id="detailAiGradingBtn"/);
+  assert.match(teacherHtml, /id="detailManualGradingBtn"/);
+});
+
+test('assignment edit mode reuses Create Assignment and updates the existing record', () => {
+  assert.match(createModuleJs, /context\.mode === "edit"/);
+  assert.match(createModuleJs, /editingAssignmentId/);
+  assert.match(createModuleJs, /update\(ref\(db, `assignments\/\$\{editingAssignmentId\}`/);
+  assert.match(createModuleJs, /youteach:assignment-updated/);
+  assert.match(createModuleJs, /assignmentCode\.readOnly = true/);
+});
+
+test('assignment evaluation destination is labeled Category, not Criterion', () => {
+  assert.match(createModuleHtml, />Category<\/label>/);
+  assert.doesNotMatch(createModuleHtml, />Evaluation criterion<\/label>/);
+  assert.match(teacherHtml, /class="assignment-filter-field category"/);
+  assert.match(teacherJs, /"Unassigned category"/);
+  assert.doesNotMatch(teacherJs, /"Needs criterion"/);
+});
+
+test('manual Check AI Results is removed and retry is only exposed for sync problems', () => {
+  assert.doesNotMatch(teacherHtml, />Check AI Results<\/button>/);
+  assert.match(teacherHtml, /id="retryAiSyncBtn"[^>]*hidden/);
+  assert.match(teacherJs, /retryAiSyncBtn\.hidden = false/);
 });
