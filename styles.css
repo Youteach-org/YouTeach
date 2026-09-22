@@ -992,3 +992,27 @@ body.sidebar-lock {
   }
 }
 /* ===== TITLE-BAR-ONLY HAMBURGER SAFE ZONE END ===== */
+
+
+/* Teacher identity is a label, not a button/chip. */
+#teacherIdentity {
+  display: inline !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  color: inherit !important;
+  font-weight: 700;
+}
+body:has(#teacherIdentity) #sidebarIdentity {
+  display: block;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  color: #e2e8f0 !important;
+}

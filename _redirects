@@ -2,3 +2,6 @@
 /teacher-enrollment.html /group-mangement 301
 /group-management /group-mangement 301
 /group-management.html /group-mangement 301
+/points /points.html 200
+/teacher-points /points 301
+/teacher-points.html /points 301

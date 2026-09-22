@@ -195,7 +195,7 @@
       } else if (brandLabel.includes("teacher")) {
         link.href = "teacher-assignments.html";
         link.textContent = "Assignments";
-        const before = links.querySelector('a[href="teacher-points.html"]');
+        const before = links.querySelector('a[href="/points"], a[href="teacher-points.html"]');
         links.insertBefore(link, before || links.querySelector("button"));
       }
     }
@@ -218,7 +218,7 @@
         link.className = "sidebar-link";
         link.href = "exam-bank.html";
         link.textContent = "Exam Bank";
-        const before = links.querySelector('a[href="teacher-points.html"]');
+        const before = links.querySelector('a[href="/points"], a[href="teacher-points.html"]');
         links.insertBefore(link, before || links.querySelector("button"));
       }
 
@@ -237,7 +237,7 @@
           card.className = "landing-link-card";
           card.href = "exam-bank.html";
           card.innerHTML = "<h2>Exam Bank</h2><p>Upload, classify, search and retrieve original exam files.</p>";
-          const before = homeTools.querySelector('a[href="teacher-points.html"]');
+          const before = homeTools.querySelector('a[href="/points"], a[href="teacher-points.html"]');
           homeTools.insertBefore(card, before || null);
         }
       }

@@ -4,15 +4,20 @@ import { requireStudentSession, clearStudentSession, saveLeaveLog } from "./stud
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
 
 const params = new URLSearchParams(window.location.search);
-const teacherViewStudentKey = params.get("teacherViewStudentKey") || sessionStorage.getItem("teacherViewStudentKey") || "";
-const isTeacherView = Boolean(teacherViewStudentKey);
+const openedFromTeacherMenu = params.get("teacherMenu") === "1";
+if (openedFromTeacherMenu) sessionStorage.removeItem("teacherViewStudentKey");
+const teacherViewStudentKey = openedFromTeacherMenu
+  ? ""
+  : (params.get("teacherViewStudentKey") || sessionStorage.getItem("teacherViewStudentKey") || "");
+const teacherSessionActive = sessionStorage.getItem("youteachTeacherAuth") === "true";
+const isTeacherView = Boolean(teacherViewStudentKey) || teacherSessionActive;
 
 let studentKey = "";
 
 if (isTeacherView) {
   requireTeacherAuth();
   studentKey = teacherViewStudentKey;
-  sessionStorage.setItem("teacherViewStudentKey", studentKey);
+  if (studentKey) sessionStorage.setItem("teacherViewStudentKey", studentKey);
 } else {
   const session = requireStudentSession();
   if (!session) throw new Error("Student session required.");
@@ -68,9 +73,10 @@ function setupTeacherViewShell() {
     sidebarLinks.innerHTML = `
       <a class="sidebar-link" href="buzzer.html">Buzzer</a>
       <a class="sidebar-link" href="teacher.html">Teacher Home</a>
-      <a class="sidebar-link active-link" href="/group-mangement">Group Management</a>
+      <a class="sidebar-link" href="/group-mangement">Group Management</a>
+      <a class="sidebar-link active-link" href="student-summary.html?teacherMenu=1">Students Summary</a>
       <a class="sidebar-link" href="teacher-active.html">Active Today</a>
-      <a class="sidebar-link" href="teacher-points.html">Points / Export</a>
+      <a class="sidebar-link" href="/points">Points</a>
       <a class="sidebar-link" href="teacher-history.html">History</a>
       <button id="logoutBtn" class="logout-btn">Logout</button>
     `;
@@ -283,22 +289,41 @@ if (!isTeacherView) {
   }
 }
 
-onValue(ref(db, `students/${studentKey}`), (snapshot) => {
-  currentStudent = snapshot.val();
 
-  if (!currentStudent) {
-    if (isTeacherView) {
-      alert("Student not found.");
-      window.location.href = "/group-mangement";
-    } else {
-      clearStudentSession();
-      window.location.href = "index.html";
+function renderTeacherSummaryLanding() {
+  if (!isTeacherView || studentKey) return;
+  if (summaryPageTitle) summaryPageTitle.textContent = "Students Summary";
+  if (summaryPageSubtitle) summaryPageSubtitle.textContent = "Select a student from Group Management to open an individual summary.";
+  if (displayNameCard) displayNameCard.textContent = "No student selected";
+  if (groupCard) groupCard.textContent = "—";
+  if (classActiveBlockHero) classActiveBlockHero.textContent = "—";
+  if (classActiveBlockStatus) classActiveBlockStatus.textContent = "Teacher view";
+  if (totalBlockPointsCard) totalBlockPointsCard.textContent = "—";
+  if (attendanceStatusText) attendanceStatusText.textContent = "No student selected";
+  if (blockScoreTableBody) blockScoreTableBody.innerHTML = '<tr><td colspan="8">Open a student from Group Management to view the summary.</td></tr>';
+  if (studentHistoryTableBody) studentHistoryTableBody.innerHTML = '<tr><td colspan="7">No student selected.</td></tr>';
+}
+
+if (studentKey) {
+  onValue(ref(db, `students/${studentKey}`), (snapshot) => {
+    currentStudent = snapshot.val();
+  
+    if (!currentStudent) {
+      if (isTeacherView) {
+        alert("Student not found.");
+        window.location.href = "/group-mangement";
+      } else {
+        clearStudentSession();
+        window.location.href = "index.html";
+      }
+      return;
     }
-    return;
-  }
-
-  renderAll();
-});
+  
+    renderAll();
+  });
+} else if (isTeacherView) {
+  renderTeacherSummaryLanding();
+}
 
 onValue(ref(db, "session/current"), (snapshot) => {
   currentSession = snapshot.val() || null;
@@ -315,6 +340,8 @@ onValue(ref(db, "pointsLog"), (snapshot) => {
   renderAll();
 });
 
-onValue(ref(db, `attendance/${todayKey()}/${studentKey}`), (snapshot) => {
-  renderAttendanceStatus(snapshot.val() || null);
-});
+if (studentKey) {
+  onValue(ref(db, `attendance/${todayKey()}/${studentKey}`), (snapshot) => {
+    renderAttendanceStatus(snapshot.val() || null);
+  });
+}
