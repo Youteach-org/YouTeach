@@ -220,6 +220,10 @@ async function main() {
   await frame.locator("#assignmentTitle").fill(title);
   await frame.locator("#assignmentDueAt").fill(tomorrowLocal());
   await frame.locator("#assignmentInstructions").fill("Automated preview smoke test.");
+  await frame.waitForFunction(
+    (group) => document.querySelector("#assignmentGroup")?.value === group,
+    GROUP
+  );
   assert.equal(await frame.locator("#assignmentGroup").inputValue(), GROUP);
   await frame.waitForFunction(() => Boolean(document.querySelector("#assignmentCode")?.value?.trim()));
 
