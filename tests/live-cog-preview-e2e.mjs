@@ -239,6 +239,36 @@ async function main() {
 
   const assignment = await waitFor(findAssignment, "COG assignment in Firebase");
   assignmentId = assignment.id;
+  const sessionAfterTeams = await fb("session/current");
+  const moduleContext = await teacherPage.evaluate(() => {
+    try {
+      return JSON.parse(sessionStorage.getItem("youteachAssignmentsModuleContext") || "null");
+    } catch {
+      return null;
+    }
+  });
+  console.log("E2E diagnostic assignment recipients", JSON.stringify({
+    ghostKey,
+    sessionGroup: sessionAfterTeams?.groupName || "",
+    sessionHasGhost: Boolean(sessionAfterTeams?.assignments && Object.hasOwn(sessionAfterTeams.assignments, ghostKey)),
+    sessionGhostTeam: sessionAfterTeams?.assignments?.[ghostKey] || "",
+    contextGroup: moduleContext?.groupName || "",
+    contextTeams: Array.isArray(moduleContext?.teams)
+      ? moduleContext.teams.map((team) => ({
+          label: team?.label || "",
+          count: Array.isArray(team?.memberKeys) ? team.memberKeys.length : 0,
+          hasGhost: Array.isArray(team?.memberKeys) && team.memberKeys.includes(ghostKey)
+        }))
+      : [],
+    assignmentGroup: assignment.value?.groupName || "",
+    recipientMode: assignment.value?.recipientMode || "",
+    recipientTeamTarget: assignment.value?.recipientTeamTarget || "",
+    recipientCount: Array.isArray(assignment.value?.recipientStudentKeys)
+      ? assignment.value.recipientStudentKeys.length
+      : 0,
+    assignmentHasGhost: Array.isArray(assignment.value?.recipientStudentKeys) &&
+      assignment.value.recipientStudentKeys.includes(ghostKey)
+  }));
   assert.equal(assignment.value.assignmentTypeCode, "COG");
   assert.ok(assignment.value.recipientStudentKeys?.includes(ghostKey));
 
