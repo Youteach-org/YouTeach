@@ -83,6 +83,7 @@ const managedStudentSearch = document.getElementById("managedStudentSearch");
 const managedStudentsTableHeadRow = document.getElementById("managedStudentsTableHeadRow");
 const managedStudentsTableBody = document.getElementById("managedStudentsTableBody");
 const openManagedBlockReportBtn = document.getElementById("openManagedBlockReportBtn");
+const takeAttendanceBtn = document.getElementById("takeAttendanceBtn");
 const pendingRequestActions = document.getElementById("pendingRequestActions");
 const pendingRequestLabel = document.getElementById("pendingRequestLabel");
 const approveEnrollmentBtn = document.getElementById("approveEnrollmentBtn");
@@ -115,6 +116,58 @@ const addStudentStatus = document.getElementById("addStudentStatus");
 
 teacherIdentity.textContent = getTeacherName();
 logoutBtn.addEventListener("click", logoutTeacher);
+
+function todayKey() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+}
+
+async function takeAttendanceForGreenStudents() {
+  const groupName = selectedManagedGroup;
+  if (!groupName || !groupsCache[groupName]) return;
+
+  const presentStudents = groupStudents(groupName)
+    .filter(([, student]) => student?.activeNow === true);
+
+  if (!presentStudents.length) {
+    alert("No green students to confirm for attendance.");
+    return;
+  }
+
+  const now = Date.now();
+  const dateKey = todayKey();
+  const updates = {};
+
+  presentStudents.forEach(([studentKey, student]) => {
+    const name = student.fullName || student.name || student.nickname || "";
+    const studentNumber = student.studentNumber || student.externalId || "";
+    const base = `attendance/${dateKey}/${studentKey}`;
+
+    updates[`${base}/studentKey`] = studentKey;
+    updates[`${base}/studentName`] = name;
+    updates[`${base}/externalId`] = studentNumber;
+    updates[`${base}/studentNumber`] = studentNumber;
+    updates[`${base}/groupName`] = groupName;
+    updates[`${base}/present`] = true;
+    updates[`${base}/attendanceValidated`] = true;
+    updates[`${base}/attendanceValidatedAt`] = now;
+    updates[`${base}/confirmedAt`] = now;
+    updates[`${base}/confirmedBy`] = getTeacherName();
+    updates[`${base}/activeNow`] = true;
+    updates[`${base}/detectedAt`] = Number(student.lastSeenAt || now);
+  });
+
+  try {
+    takeAttendanceBtn.disabled = true;
+    await update(ref(db), updates);
+    alert(`Attendance confirmed for ${presentStudents.length} green student(s) in ${groupName}.`);
+  } catch (error) {
+    console.error("Take attendance failed:", error);
+    alert(`Could not confirm attendance: ${error?.message || "unknown Firebase error"}`);
+  } finally {
+    takeAttendanceBtn.disabled = false;
+  }
+}
 
 function readManagementState() {
   try {
@@ -1092,6 +1145,7 @@ function renderManagedStudents() {
     createEnrollmentLinkBtn.hidden = true;
     enrollmentLinkInlineControls.hidden = true;
     openAddStudentModalBtn.hidden = true;
+    takeAttendanceBtn.hidden = true;
     pendingRequestsPanel.hidden = true;
     pendingRequestsList.innerHTML = "";
     managedStudentsTableHeadRow.innerHTML = '<th class="managed-student-column-header">Student</th>';
@@ -1104,6 +1158,7 @@ function renderManagedStudents() {
   enrollmentControls.hidden = false;
   toggleRosterBtn.hidden = false;
   openAddStudentModalBtn.hidden = false;
+  takeAttendanceBtn.hidden = false;
   toggleRosterBtn.textContent = rosterCollapsed ? "▸" : "▾";
   toggleRosterBtn.setAttribute("aria-expanded", String(!rosterCollapsed));
   rosterBody.hidden = rosterCollapsed;
@@ -1965,6 +2020,8 @@ managedStudentSearchToggle.addEventListener("click", () => {
 });
 
 managedStudentSearch.addEventListener("input", renderManagedStudents);
+
+takeAttendanceBtn.addEventListener("click", takeAttendanceForGreenStudents);
 
 openManagedBlockReportBtn.addEventListener("click", () => {
   const group = selectedManagedGroup || "";
