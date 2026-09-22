@@ -149,6 +149,20 @@
           min-width:0 !important;
           max-width:100% !important;
         }
+
+        .active-group-identity {
+          display:inline !important;
+          padding:0 !important;
+          margin-left:8px !important;
+          background:transparent !important;
+          border:0 !important;
+          border-radius:0 !important;
+          box-shadow:none !important;
+          color:#475569 !important;
+          font-size:12px !important;
+          font-weight:800 !important;
+          white-space:nowrap !important;
+        }
       }
     `;
     document.head.appendChild(style);
@@ -337,7 +351,30 @@
       wrapper.appendChild(btn);
     });
 
+    function syncActiveGroupIdentity() {
+      const teacherIdentity = document.getElementById("teacherIdentity");
+      if (!teacherIdentity) return;
+
+      let groupIdentity = document.getElementById("activeGroupIdentity");
+      if (!groupIdentity) {
+        groupIdentity = document.createElement("span");
+        groupIdentity.id = "activeGroupIdentity";
+        groupIdentity.className = "active-group-identity";
+        teacherIdentity.insertAdjacentElement("afterend", groupIdentity);
+      }
+
+      const groupName = String(sessionStorage.getItem("youteachWorkingGroup") || "").trim();
+      groupIdentity.textContent = groupName;
+      groupIdentity.hidden = !groupName;
+    }
+
     syncIdentity();
+    syncActiveGroupIdentity();
+
+    window.addEventListener("youteach:working-group-changed", syncActiveGroupIdentity);
+    window.addEventListener("storage", (event) => {
+      if (event.key === "youteachWorkingGroup") syncActiveGroupIdentity();
+    });
 
     const identitySources = [
       document.getElementById("studentIdentity"),
@@ -350,8 +387,8 @@
       observer.observe(source, { childList: true, subtree: true, characterData: true });
     });
 
-    setTimeout(syncIdentity, 300);
-    setTimeout(syncIdentity, 1000);
-    setTimeout(syncIdentity, 2000);
+    setTimeout(() => { syncIdentity(); syncActiveGroupIdentity(); }, 300);
+    setTimeout(() => { syncIdentity(); syncActiveGroupIdentity(); }, 1000);
+    setTimeout(() => { syncIdentity(); syncActiveGroupIdentity(); }, 2000);
   });
 })();

@@ -346,6 +346,7 @@ function setStoredWorkingGroup(groupName) {
   } else {
     sessionStorage.removeItem(WORKING_GROUP_KEY);
   }
+  window.dispatchEvent(new CustomEvent("youteach:working-group-changed", { detail: { groupName: groupName || "" } }));
 }
 
 function getPreferredGroup(groups) {

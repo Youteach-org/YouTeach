@@ -430,7 +430,10 @@ function applyAssignmentGroupContext() {
 function applyAssignmentModuleContext() {
   if (hasGeneratedTeamContext()) {
     const groupName = String(assignmentsModuleContext?.groupName || "").trim();
-    if (groupName) sessionStorage.setItem(WORKING_GROUP_KEY, groupName);
+    if (groupName) {
+      sessionStorage.setItem(WORKING_GROUP_KEY, groupName);
+      window.dispatchEvent(new CustomEvent("youteach:working-group-changed", { detail: { groupName } }));
+    }
   }
 
   applyAssignmentGroupContext();

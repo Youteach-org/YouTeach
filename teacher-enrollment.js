@@ -874,6 +874,7 @@ function selectManagedGroup(groupName) {
   selectedManagedGroup = groupName;
   editingGroupName = groupName;
   sessionStorage.setItem(WORKING_GROUP_KEY, groupName);
+  window.dispatchEvent(new CustomEvent("youteach:working-group-changed", { detail: { groupName } }));
 
   if (changedGroup) {
     selectedRosterItems.clear();
