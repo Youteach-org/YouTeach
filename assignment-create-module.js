@@ -3,7 +3,12 @@ import { visibleGroups } from "./group-state.js";
 import { ref, onValue, push, set, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireTeacherAuth, getTeacherName } from "./teacher-auth.js";
 import { readAssignmentsModuleContext } from "./assignment-module-launcher.js?v=popup-library-20260920";
-import { groupEvaluationConfig } from "./group-evaluation-model.js";
+import { evaluationBlockNames, groupEvaluationConfig } from "./group-evaluation-model.js";
+import {
+  buildAssignmentEvaluationTarget,
+  isExamAssignment,
+  resolveAssignmentCriterion
+} from "./assignment-evaluation-target.js";
 
 if (!requireTeacherAuth()) throw new Error("Teacher authentication required.");
 
@@ -60,9 +65,13 @@ const assignmentGroupHelp = document.getElementById("assignmentGroupHelp");
 const assignmentTargetField = document.getElementById("assignmentTargetField");
 const assignmentTargetSelect = document.getElementById("assignmentTargetSelect");
 const assignmentTargetHelp = document.getElementById("assignmentTargetHelp");
+const assignmentEvaluationBlockField = document.getElementById("assignmentEvaluationBlockField");
+const assignmentEvaluationBlock = document.getElementById("assignmentEvaluationBlock");
+const assignmentEvaluationBlockHelp = document.getElementById("assignmentEvaluationBlockHelp");
 const assignmentGroupCriterionField = document.getElementById("assignmentGroupCriterionField");
 const assignmentGroupCriterion = document.getElementById("assignmentGroupCriterion");
 const assignmentGroupCriterionHelp = document.getElementById("assignmentGroupCriterionHelp");
+const assignmentEvaluationTargetSummary = document.getElementById("assignmentEvaluationTargetSummary");
 const assignmentDueAt = document.getElementById("assignmentDueAt");
 const assignmentCode = document.getElementById("assignmentCode");
 const taskCodeStatus = document.getElementById("taskCodeStatus");
@@ -289,37 +298,80 @@ function availableGroups() {
   return [...names].sort((a, b) => a.localeCompare(b));
 }
 
-function renderGroupCriterionOptions() {
+function renderEvaluationTargetOptions() {
   const groupName = String(assignmentGroup.value || "");
   const group = groupsCache?.[groupName] || null;
   const config = groupEvaluationConfig(group || {});
-  const previous = String(assignmentGroupCriterion.value || "");
+  const typeCode = selectedTypeCode();
+  const exam = typeCode === "EX";
+  const previousBlock = String(assignmentEvaluationBlock.value || "");
+  const previousCriterion = String(assignmentGroupCriterion.value || "");
 
   if (!groupName || groupName === "ALL" || !group || !config.configured) {
-    assignmentGroupCriterion.innerHTML =
-      '<option value="">Not linked to a group grade criterion</option>';
+    assignmentEvaluationBlock.innerHTML = '<option value="">Select block / unit</option>';
+    assignmentEvaluationBlock.value = "";
+    assignmentEvaluationBlock.disabled = true;
+    assignmentGroupCriterion.innerHTML = exam
+      ? '<option value="">Exam grading is handled separately</option>'
+      : '<option value="">Select criterion</option>';
     assignmentGroupCriterion.value = "";
     assignmentGroupCriterion.disabled = true;
-    assignmentGroupCriterionHelp.textContent =
+    assignmentEvaluationBlockHelp.textContent =
       groupName === "ALL"
-        ? "Choose one group to link this assignment to that group's grading criteria."
-        : "This group does not have a valid evaluation setup yet.";
+        ? "Choose one specific group so the assignment can be linked to a block / unit."
+        : "This group needs a valid evaluation setup before assignments can be graded.";
+    assignmentGroupCriterionHelp.textContent = exam
+      ? "Exams belong to a block / unit but do not use an assignment criterion."
+      : "Choose a configured group to select its evaluation criterion.";
+    assignmentEvaluationTargetSummary.textContent =
+      "Choose a specific group with a valid evaluation setup.";
     return;
   }
 
-  assignmentGroupCriterion.disabled = false;
-  assignmentGroupCriterion.innerHTML =
-    '<option value="">Not linked to a group grade criterion</option>' +
-    config.criteria.map((criterion) =>
-      `<option value="${escapeHtml(criterion.id)}">${escapeHtml(criterion.name)} · ${criterion.weight}%</option>`
-    ).join("");
+  const blocks = evaluationBlockNames(group);
+  assignmentEvaluationBlock.disabled = false;
+  assignmentEvaluationBlock.innerHTML = blocks
+    .map((block) => `<option value="${escapeHtml(block)}">${escapeHtml(block)}</option>`)
+    .join("");
+  const preferredBlock = blocks.includes(previousBlock)
+    ? previousBlock
+    : (blocks.includes(settingsCache.activeBlock) ? settingsCache.activeBlock : blocks[0]);
+  assignmentEvaluationBlock.value = preferredBlock || "";
+  assignmentEvaluationBlockHelp.textContent =
+    "Required. This determines which block or unit receives the assignment grade.";
 
-  if (config.criteria.some((criterion) => criterion.id === previous)) {
-    assignmentGroupCriterion.value = previous;
+  if (exam) {
+    assignmentGroupCriterion.innerHTML =
+      '<option value="">Exam grading is handled separately</option>';
+    assignmentGroupCriterion.value = "";
+    assignmentGroupCriterion.disabled = true;
+    assignmentGroupCriterionHelp.textContent =
+      "Exams are linked only to the selected block / unit.";
+  } else {
+    assignmentGroupCriterion.disabled = false;
+    assignmentGroupCriterion.innerHTML =
+      '<option value="">Select criterion</option>' +
+      config.criteria.map((criterion) =>
+        `<option value="${escapeHtml(criterion.id)}">${escapeHtml(criterion.name)} · ${criterion.weight}%</option>`
+      ).join("");
+
+    if (config.criteria.some((criterion) => criterion.id === previousCriterion)) {
+      assignmentGroupCriterion.value = previousCriterion;
+    } else {
+      const automatic = resolveAssignmentCriterion(group, typeCode);
+      assignmentGroupCriterion.value = automatic?.id || "";
+    }
+
+    assignmentGroupCriterionHelp.textContent =
+      "Required. YouTeach remembers the selected criterion as the default for this assignment type in this group.";
   }
 
-  assignmentGroupCriterionHelp.textContent =
-    "Optional. This determines which group criterion receives the assignment grade.";
+  const criterion = config.criteria.find((item) => item.id === assignmentGroupCriterion.value) || null;
+  assignmentEvaluationTargetSummary.textContent = exam
+    ? `This exam will contribute to: ${preferredBlock || "No block selected"}.`
+    : criterion
+      ? `This assignment will contribute to: ${preferredBlock || "No block selected"} → ${criterion.name} (${criterion.weight}%).`
+      : `Select the evaluation criterion for ${preferredBlock || "this block / unit"}.`;
 }
 
 function renderGroupOptions() {
@@ -346,7 +398,7 @@ function renderGroupOptions() {
   }
 
   renderTargetOptions();
-  renderGroupCriterionOptions();
+  renderEvaluationTargetOptions();
   refreshAutomaticTaskCode();
 }
 
@@ -989,6 +1041,7 @@ async function createAssignment() {
   const typeCode = selectedTypeCode();
   const typeLabel = selectedTypeLabel();
   const groupName = assignmentGroup.value || "ALL";
+  const evaluationBlock = String(assignmentEvaluationBlock.value || "");
   const groupCriterionId = String(assignmentGroupCriterion.value || "");
   const groupConfig = groupEvaluationConfig(groupsCache?.[groupName] || {});
   const groupCriterion = groupConfig.criteria.find((criterion) => criterion.id === groupCriterionId) || null;
@@ -1000,6 +1053,16 @@ async function createAssignment() {
   const evaluationNotes = assignmentEvaluationNotes.value.trim();
 
   if (!title) return setStatus("Enter an assignment name.", "bad");
+  if (!groupName || groupName === "ALL") {
+    return setStatus("Choose one specific group so this assignment can be linked to a block / unit.", "bad");
+  }
+  if (!groupConfig.configured) {
+    return setStatus("This group needs a valid evaluation setup before creating graded assignments.", "bad");
+  }
+  if (!evaluationBlock) return setStatus("Select the block / unit for this assignment.", "bad");
+  if (typeCode !== "EX" && !groupCriterion) {
+    return setStatus("Select the evaluation criterion for this assignment.", "bad");
+  }
   if (assignmentType.value === "OTHER" && !assignmentOtherType.value.trim()) {
     return setStatus("Specify the assignment type.", "bad");
   }
@@ -1061,9 +1124,23 @@ async function createAssignment() {
           }
         : {}),
       groupName,
-      evaluationBlock: String(settingsCache.activeBlock || "Block 1"),
+      evaluationBlock,
       groupEvaluationCriterionId: groupCriterion?.id || "",
       groupEvaluationCriterionName: groupCriterion?.name || "",
+      evaluationTarget: buildAssignmentEvaluationTarget({
+        groupName,
+        block: evaluationBlock,
+        criterion: groupCriterion,
+        assignment: { assignmentTypeCode: typeCode, code }
+      }),
+      evaluationTargets: {
+        [groupName]: buildAssignmentEvaluationTarget({
+          groupName,
+          block: evaluationBlock,
+          criterion: groupCriterion,
+          assignment: { assignmentTypeCode: typeCode, code }
+        })
+      },
       ...targetMetadata,
       dueAt,
       active: true,
@@ -1073,6 +1150,12 @@ async function createAssignment() {
     };
 
     await set(target, payload);
+
+    if (typeCode !== "EX" && groupCriterion?.id) {
+      await update(ref(db, `groups/${groupName}/assignmentCriterionDefaults`), {
+        [typeCode]: groupCriterion.id
+      });
+    }
 
     if (loadedLibrarySource?.kind === "template" && assignmentTemplatesCache[loadedLibrarySource.id]) {
       const sourceTemplate = assignmentTemplatesCache[loadedLibrarySource.id];
@@ -1138,15 +1221,20 @@ assignmentLibraryList.addEventListener("keydown", (event) => {
 assignmentType.addEventListener("change", () => {
   renderOtherTypeField();
   refreshProjectCheckpointBuilder();
+  renderEvaluationTargetOptions();
   refreshAutomaticTaskCode();
 });
 assignmentOtherType.addEventListener("input", refreshAutomaticTaskCode);
 assignmentTitle.addEventListener("input", refreshAutomaticTaskCode);
 assignmentGroup.addEventListener("change", () => {
-  renderGroupCriterionOptions();
+  renderEvaluationTargetOptions();
   refreshAutomaticTaskCode();
 });
-assignmentGroupCriterion.addEventListener("change", refreshAutomaticTaskCode);
+assignmentEvaluationBlock.addEventListener("change", renderEvaluationTargetOptions);
+assignmentGroupCriterion.addEventListener("change", () => {
+  renderEvaluationTargetOptions();
+  refreshAutomaticTaskCode();
+});
 assignmentTargetSelect.addEventListener("change", () => {
   renderTargetOptions();
   refreshAutomaticTaskCode();
@@ -1210,4 +1298,5 @@ onValue(ref(db, "assignmentTemplates"), (snapshot) => {
 
 onValue(ref(db, "settings"), (snapshot) => {
   settingsCache = snapshot.val() || {};
+  renderEvaluationTargetOptions();
 });
