@@ -99,7 +99,9 @@ test('Buzzer layout prioritizes control, team grid, and Team Source context', ()
   assert.ok(buzzerHtml.indexOf('<h3>Buzzer Control<\/h3>') < buzzerHtml.indexOf('Teams and Members'));
   assert.match(buzzerHtml, /repeat\(auto-fit, minmax\(270px, 1fr\)\)/);
   assert.match(buzzerHtml, /#resetSession\s*\{/);
-  assert.ok(buzzerHtml.indexOf('<h4>Team Source<\/h4>') < buzzerHtml.indexOf('<h4>Working Group<\/h4>'));
+  assert.match(buzzerHtml, /<h4>Team Source<\/h4>/);
+  assert.doesNotMatch(buzzerHtml, /id="groupSelect"/);
+  assert.match(buzzerJs, /getStoredWorkingGroup\(\)/);
 });
 
 
