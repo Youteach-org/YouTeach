@@ -52,6 +52,12 @@ jobs:
           test "$STUDENT_STATUS" = "401"
           grep -Fq 'Sign in again' /tmp/teacher-api.json
           grep -Fq 'Sign in again' /tmp/student-api.json
+
+          LOGIN_STATUS="$(curl -sS -o /tmp/teacher-login-api.json -w '%{http_code}' -X POST "$BASE/api/teacher-session" -H 'Content-Type: application/json' --data '{"username":"__preview_probe__","password":"__invalid__"}')"
+          echo "teacher-session preview status=$LOGIN_STATUS"
+          cat /tmp/teacher-login-api.json
+          test "$LOGIN_STATUS" = "403"
+          grep -Fq 'Invalid username or password.' /tmp/teacher-login-api.json
       - name: Browser-load YouTeach landing shell
         run: |
           set -eu
