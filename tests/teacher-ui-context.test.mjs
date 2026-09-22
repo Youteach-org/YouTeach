@@ -25,3 +25,26 @@ test('Create Assignment selects a template by clicking the card and shows only a
   assert.match(moduleJs, /loadLibraryEntry\(String\(card\.dataset\.libraryKey/);
   assert.match(moduleHtml, /\.library-use-label/);
 });
+
+
+test('active group identity opens a popup selector instead of an inline group list', () => {
+  assert.match(shared, /workingGroupDialog/);
+  assert.match(shared, /working-group-popup\.js/);
+  assert.match(shared, /activeGroupIdentity/);
+  assert.match(shared, /type = "button"/);
+  assert.doesNotMatch(shared, /activeGroupIdentity[\s\S]{0,600}createElement\("select"\)/);
+});
+
+test('teacher work pages use the global working group instead of page-specific group selectors', () => {
+  const assignmentsHtml = readFileSync(join(root, 'teacher-assignments.html'), 'utf8');
+  const createHtml = readFileSync(join(root, 'assignment-create-module.html'), 'utf8');
+  const buzzerHtml = readFileSync(join(root, 'buzzer.html'), 'utf8');
+  const pointsHtml = readFileSync(join(root, 'points.html'), 'utf8');
+  const blockReportHtml = readFileSync(join(root, 'teacher-block-report.html'), 'utf8');
+
+  assert.doesNotMatch(assignmentsHtml, /id="assignmentFilterGroup"/);
+  assert.doesNotMatch(createHtml, /<select id="assignmentGroup"/);
+  assert.doesNotMatch(buzzerHtml, /id="groupSelect"/);
+  assert.doesNotMatch(pointsHtml, /id="manualCriterionGroupSelect"|id="exportGroupSelect"|id="deleteGroupSelect"/);
+  assert.doesNotMatch(blockReportHtml, /id="reportGroupSelect"/);
+});
