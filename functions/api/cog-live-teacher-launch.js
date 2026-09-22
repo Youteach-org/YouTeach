@@ -1,8 +1,8 @@
 import { verifyTeacherSession } from "../_shared/teacher-session.js";
+import { resolveCogLiveOrigin } from "../_shared/cog-live-origin.js";
 import { signCogLiveToken } from "../_shared/cog-live-token.js";
 
 const DATABASE_URL = "https://youteach-d9a79-default-rtdb.firebaseio.com";
-const DEFAULT_COG_ORIGIN = "https://classroom-online-games.pages.dev";
 const LAUNCH_TTL_MS = 5 * 60 * 1000;
 
 function json(status, payload) {
@@ -30,22 +30,6 @@ async function firebaseGet(path) {
 function nonce() {
   const bytes = crypto.getRandomValues(new Uint8Array(16));
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
-}
-
-function cogOrigin(env) {
-  const raw = String(env?.COG_LIVE_ORIGIN || DEFAULT_COG_ORIGIN).trim();
-  const url = new URL(raw);
-  const host = url.hostname.toLowerCase();
-  if (
-    url.protocol !== "https:" ||
-    !(
-      host === "classroom-online-games.pages.dev" ||
-      host.endsWith(".classroom-online-games.pages.dev")
-    )
-  ) {
-    throw new Error("Invalid Classroom Online Games live origin.");
-  }
-  return url.origin;
 }
 
 function normalizeStringArray(raw) {
@@ -145,7 +129,7 @@ export async function onRequestPost({ request, env }) {
     );
 
     const issuer = new URL(request.url).origin;
-    const launchUrl = new URL(`${cogOrigin(env)}/teacher/`);
+    const launchUrl = new URL(`${resolveCogLiveOrigin(env, request.url)}/teacher/`);
     launchUrl.searchParams.set("ytLiveTeacher", token);
     launchUrl.searchParams.set("issuer", issuer);
 

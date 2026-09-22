@@ -1,4 +1,5 @@
 import { verifyStudentSession } from "../_shared/student-session.js";
+import { resolveCogLiveOrigin } from "../_shared/cog-live-origin.js";
 import { signCogLiveToken } from "../_shared/cog-live-token.js";
 import {
   firebaseGet,
@@ -7,7 +8,6 @@ import {
 } from "../_shared/cog-live-http.js";
 import { canStudentAccessLiveGame } from "../../cog-live-session-policy.mjs";
 
-const DEFAULT_COG_ORIGIN = "https://utichgion.org";
 const LAUNCH_TTL_MS = 5 * 60 * 1000;
 
 function json(status, payload) {
@@ -29,23 +29,6 @@ function bearer(request) {
 function nonce() {
   const bytes = crypto.getRandomValues(new Uint8Array(16));
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
-}
-
-function cogOrigin(env) {
-  const raw = String(env?.COG_LIVE_ORIGIN || DEFAULT_COG_ORIGIN).trim();
-  const url = new URL(raw);
-  const host = url.hostname.toLowerCase();
-  if (
-    url.protocol !== "https:" ||
-    !(
-      host === "utichgion.org" ||
-      host === "classroom-online-games.pages.dev" ||
-      host.endsWith(".classroom-online-games.pages.dev")
-    )
-  ) {
-    throw new Error("Invalid Classroom Online Games live origin.");
-  }
-  return url.origin;
 }
 
 function externalIdFor(student) {
@@ -146,7 +129,7 @@ export async function onRequestPost({ request, env }) {
     }, env.YOUTEACH_SESSION_SECRET);
 
     const issuer = new URL(request.url).origin;
-    const launchUrl = new URL(`${cogOrigin(env)}${game.studentPath}`);
+    const launchUrl = new URL(`${resolveCogLiveOrigin(env, request.url)}${game.studentPath}`);
     launchUrl.searchParams.set("ytLiveStudent", token);
     launchUrl.searchParams.set("issuer", issuer);
 
