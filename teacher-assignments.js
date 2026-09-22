@@ -1,7 +1,7 @@
 import { db } from "./firebase.js";
 import { visibleGroups } from "./group-state.js";
 import { studentGroupNames, studentInGroup } from "./student-groups.js";
-import { ref, onValue, push, set, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { ref, get, onValue, push, set, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
 import { openAssignmentsModule, readAssignmentsModuleContext } from "./assignment-module-launcher.js?v=popup-library-20260920";
 import {
@@ -15,6 +15,11 @@ import {
   evaluationTargetForAssignment,
   legacyAssignmentMigrationTarget
 } from "./assignment-evaluation-target.js";
+import {
+  assignmentMatchesGroupEvidence,
+  buildRecoveredAssignmentFromSubmissions,
+  submissionGroupNames
+} from "./assignment-recovery.js";
 
 if (!requireTeacherAuth()) throw new Error("Teacher authentication required.");
 
@@ -205,6 +210,8 @@ let lastPassiveAiSyncAt = 0;
 let initialAiSyncRequested = false;
 let assignmentEvaluationMigrationBusy = false;
 let assignmentEvaluationMigrationQueued = false;
+let assignmentRecoveryBusy = false;
+let assignmentRecoveryQueued = false;
 
 teacherIdentity.textContent = getTeacherName();
 
@@ -1215,7 +1222,7 @@ function renderProjectProgress(assignment) {
     return;
   }
 
-  const students = assignmentStudents(assignment);
+  const students = assignmentStudents(assignment, selectedAssignmentId);
   projectProgressTimeline.innerHTML = checkpoints.map((checkpoint) => {
     const typeText = checkpoint.requiredEvidenceTypes.map(evidenceTypeLabel).join(", ");
     return `
@@ -1624,10 +1631,10 @@ function renderEvaluationCriteria(assignment) {
   `;
 }
 
-function assignmentStudents(assignment) {
+function assignmentStudents(assignment, assignmentId = "") {
   const recipientKeys = normalizeRecipientKeys(assignment?.recipientStudentKeys);
   const recipientSet = new Set(recipientKeys);
-  const target = String(assignment?.groupName || "ALL");
+  const target = assignmentEffectiveGroup(assignmentId, assignment);
 
   return Object.entries(studentsCache || {})
     .filter(([studentKey, student]) => {
@@ -1653,7 +1660,7 @@ function assignmentEvaluationState(assignmentId, assignment) {
   const submitted = submissions.length;
   const graded = submissions.filter((submission) => submissionIsGraded(submission)).length;
 
-  const totalStudents = assignmentStudents(assignment).length;
+  const totalStudents = assignmentStudents(assignment, assignmentId).length;
   const missing = Math.max(0, totalStudents - submitted);
 
   const complete =
@@ -2440,14 +2447,76 @@ function workingGroupAliases() {
   );
 }
 
-function assignmentMatchesWorkingGroup(assignment) {
+function assignmentMatchesWorkingGroup(assignment, assignmentId = "") {
+  return assignmentMatchesGroupEvidence({
+    assignment,
+    submissions: submissionsCache?.[assignmentId] || {},
+    workingGroup: getWorkingGroup(),
+    groups: groupsCache
+  });
+}
+
+function assignmentHistoricalGroupLabel(assignmentId, assignment) {
   const workingGroup = getWorkingGroup();
-  if (!workingGroup) return true;
+  if (!workingGroup) return "";
 
-  const assignmentGroup = String(assignment?.groupName || "ALL").trim();
-  if (!assignmentGroup || assignmentGroup === "ALL") return true;
+  const storedGroup = String(assignment?.groupName || "ALL").trim();
+  if (!storedGroup || storedGroup.toUpperCase() === "ALL") return "";
 
-  return workingGroupAliases().has(normalizeGroupName(assignmentGroup));
+  const active = normalizeGroupName(workingGroup);
+  if (normalizeGroupName(storedGroup) === active) return "";
+
+  const historical = submissionGroupNames(submissionsCache?.[assignmentId] || {})
+    .find((groupName) => normalizeGroupName(groupName) === active);
+
+  return historical ? `Submission history: ${historical}` : "";
+}
+
+function assignmentEffectiveGroup(assignmentId, assignment) {
+  const historicalLabel = assignmentHistoricalGroupLabel(assignmentId, assignment);
+  if (historicalLabel) return getWorkingGroup();
+  return String(assignment?.groupName || "ALL").trim() || "ALL";
+}
+
+function scheduleAssignmentRecovery() {
+  if (assignmentRecoveryQueued) return;
+  assignmentRecoveryQueued = true;
+  queueMicrotask(async () => {
+    assignmentRecoveryQueued = false;
+    await recoverOrphanAssignmentsFromSubmissions();
+  });
+}
+
+async function recoverOrphanAssignmentsFromSubmissions() {
+  if (assignmentRecoveryBusy) return;
+  if (!Object.keys(submissionsCache || {}).length) return;
+  if (!Object.keys(groupsCache || {}).length) return;
+
+  assignmentRecoveryBusy = true;
+  try {
+    for (const [assignmentId, submissions] of Object.entries(submissionsCache || {})) {
+      if (assignmentsCache?.[assignmentId]) continue;
+
+      const recovered = buildRecoveredAssignmentFromSubmissions({
+        assignmentId,
+        submissions,
+        groups: groupsCache,
+        recoveredAt: Date.now(),
+        recoveredBy: getTeacherName()
+      });
+      if (!recovered) continue;
+
+      const current = await get(ref(db, `assignments/${assignmentId}`));
+      if (current.exists()) continue;
+
+      await set(ref(db, `assignments/${assignmentId}`), recovered);
+      console.warn(`Recovered missing assignment ${assignmentId} from preserved submission metadata.`);
+    }
+  } catch (error) {
+    console.error("Could not recover assignments from submission history", error);
+  } finally {
+    assignmentRecoveryBusy = false;
+  }
 }
 
 function availableAssignmentGroups() {
@@ -2506,9 +2575,9 @@ function renderAssignmentEvaluationFilterOptions() {
   const blocks = new Set();
   const criteria = new Map();
 
-  Object.values(assignmentsCache || {}).forEach((assignment) => {
+  Object.entries(assignmentsCache || {}).forEach(([assignmentId, assignment]) => {
     const groupName = String(assignment?.groupName || "ALL").trim();
-    if (!assignmentMatchesWorkingGroup(assignment)) return;
+    if (!assignmentMatchesWorkingGroup(assignment, assignmentId)) return;
 
     const target = assignmentEvaluationTarget(assignment);
     if (target.block) blocks.add(target.block);
@@ -2542,7 +2611,7 @@ function renderAssignmentEvaluationFilterOptions() {
       : "ALL";
 }
 
-function assignmentMatchesFilters(assignment) {
+function assignmentMatchesFilters(assignment, assignmentId = "") {
   const codeQuery = String(assignmentFilterCode.value || "").trim().toUpperCase();
   const dateQuery = String(assignmentFilterDate.value || "").trim();
   const blockQuery = String(assignmentFilterBlock?.value || "ALL").trim();
@@ -2554,7 +2623,7 @@ function assignmentMatchesFilters(assignment) {
 
   if (codeQuery && !code.includes(codeQuery)) return false;
   if (dateQuery && dateFilterKey(assignment?.dueAt) !== dateQuery) return false;
-  if (!assignmentMatchesWorkingGroup(assignment)) return false;
+  if (!assignmentMatchesWorkingGroup(assignment, assignmentId)) return false;
   if (blockQuery !== "ALL" && target.block !== blockQuery) return false;
   if (criterionQuery !== "ALL" && criterionKey !== criterionQuery) return false;
 
@@ -2575,9 +2644,13 @@ function renderAssignmentList() {
       return Number(b.assignment?.createdAt || 0) - Number(a.assignment?.createdAt || 0);
     });
 
-  const entries = allEntries.filter(({ assignment }) => assignmentMatchesFilters(assignment));
+  const entries = allEntries.filter(({ id, assignment }) => assignmentMatchesFilters(assignment, id));
 
-  assignmentBrowserCount.textContent = `${entries.length} shown · ${allEntries.length} existing`;
+  const recoveredCount = allEntries.filter(({ assignment }) =>
+    assignment?.recoveredFromSubmissionHistory
+  ).length;
+  assignmentBrowserCount.textContent =
+    `${entries.length} shown · ${allEntries.length} existing${recoveredCount ? ` · ${recoveredCount} recovered` : ""}`;
 
   if (!entries.length) {
     const workingGroup = getWorkingGroup();
@@ -2600,6 +2673,7 @@ function renderAssignmentList() {
     const evaluatedClass = evaluation.complete ? "evaluated" : "";
     const target = assignmentEvaluationTarget(assignment);
     const criterionLabel = assignmentCriterionLabel(assignment, target);
+    const historicalGroupLabel = assignmentHistoricalGroupLabel(id, assignment);
 
     return `
       <article
@@ -2616,6 +2690,9 @@ function renderAssignmentList() {
 
         <span class="assignment-item-meta">
           <span class="assignment-mini-chip">${escapeHtml(assignment.groupName || "ALL")}</span>
+          ${historicalGroupLabel
+            ? `<span class="assignment-mini-chip assignment-history-group">${escapeHtml(historicalGroupLabel)}</span>`
+            : ""}
           <span class="assignment-mini-chip assignment-target-block">${escapeHtml(target.block || "No block")}</span>
           <span class="assignment-mini-chip assignment-target-criterion">${escapeHtml(criterionLabel)}</span>
           ${assignment.recipientTeamTarget
@@ -2683,7 +2760,12 @@ function renderDetail() {
     : "";
   const detailTarget = assignmentEvaluationTarget(assignment);
   const detailCriterion = assignmentCriterionLabel(assignment, detailTarget);
-  detailMeta.textContent = `${assignment.groupName || "ALL"}${recipientScopeText} · ${detailTarget.block || "No block"} → ${detailCriterion} · Due: ${formatDate(assignment.dueAt)} · ${assignment.active ? "Open" : "Closed"}${codeLockText}`;
+  const historicalGroupLabel = assignmentHistoricalGroupLabel(selectedAssignmentId, assignment);
+  const recoveryText = assignment.recoveredFromSubmissionHistory
+    ? " · Recovered from preserved submissions"
+    : "";
+  const historyText = historicalGroupLabel ? ` · ${historicalGroupLabel}` : "";
+  detailMeta.textContent = `${assignment.groupName || "ALL"}${historyText}${recipientScopeText} · ${detailTarget.block || "No block"} → ${detailCriterion} · Due: ${formatDate(assignment.dueAt)} · ${assignment.active ? "Open" : "Closed"}${recoveryText}${codeLockText}`;
   eligibleCount.textContent = students.length;
   submittedCount.textContent = validSubmissionEntries.length;
   missingCount.textContent = missing.length;
@@ -3762,6 +3844,7 @@ onValue(ref(db, "groups"), (snapshot) => {
   renderAssignmentEvaluationFilterOptions();
   renderAssignmentList();
   scheduleAssignmentEvaluationMigration();
+  scheduleAssignmentRecovery();
 });
 
 onValue(ref(db, "students"), (snapshot) => {
@@ -3777,6 +3860,7 @@ onValue(ref(db, "assignments"), (snapshot) => {
   refreshAutomaticTaskCode();
   requestInitialAiSync();
   scheduleAssignmentEvaluationMigration();
+  scheduleAssignmentRecovery();
 });
 
 onValue(ref(db, "assignmentTemplates"), (snapshot) => {
@@ -3788,9 +3872,11 @@ onValue(ref(db, "assignmentTemplates"), (snapshot) => {
 
 onValue(ref(db, "assignmentSubmissions"), (snapshot) => {
   submissionsCache = snapshot.val() || {};
+  renderAssignmentEvaluationFilterOptions();
   renderAssignmentList();
   requestInitialAiSync();
   scheduleAssignmentEvaluationMigration();
+  scheduleAssignmentRecovery();
 });
 
 onValue(ref(db, "assignmentProjectEvidence"), (snapshot) => {
