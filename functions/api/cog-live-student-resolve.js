@@ -65,7 +65,7 @@ export async function onRequestPost({ request, env }) {
       purpose: "cog-live-student-session",
       studentKey,
       externalId: String(student.studentNumber || student.id || launch.externalId || "").trim(),
-      groupName: String(student.groupName || "").trim(),
+      groupName: String(connectedGame.groupName || session.groupName || "").trim(),
       youTeachSessionId: youTeachSessionId(session),
       assignmentId: String(connectedGame.assignmentId || "").trim(),
       gameId: String(connectedGame.gameId || "").trim(),
