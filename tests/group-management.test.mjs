@@ -451,7 +451,7 @@ test('Existing enrollment preserves the primary group and supports multiple memb
 });
 
 test('double clicking any group row activates that group and updates working-group context', () => {
-  assert.match(js, /data-popup-group-row=/);
+  assert.match(groupsDialogJs, /data-popup-group-row=/);
   assert.match(js, /groupRow\?\.dataset\.popupGroupRow/);
   assert.match(js, /selectManagedGroup\(groupName\)/);
   const start = js.indexOf('function selectManagedGroup(groupName)');
