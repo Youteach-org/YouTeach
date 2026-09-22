@@ -35,3 +35,20 @@ test("Student Summary T reads assignment grading while P and A keep their existi
   assert.match(summaryJs, /student\?\.blockPoints\?\.\[blockName\]/);
   assert.match(summaryJs, /student\?\.attendancePoints\?\.\[blockName\]/);
 });
+
+
+test("assignment student card defers single-click grading so double-click can win", () => {
+  const clickStart = assignmentsJs.indexOf('submissionList.addEventListener("click"');
+  const doubleStart = assignmentsJs.indexOf('submissionList.addEventListener("dblclick"');
+  assert.ok(clickStart >= 0);
+  assert.ok(doubleStart > clickStart);
+
+  const clickBlock = assignmentsJs.slice(clickStart, doubleStart);
+  const doubleBlock = assignmentsJs.slice(doubleStart, doubleStart + 700);
+
+  assert.match(clickBlock, /setTimeout\(/);
+  assert.match(clickBlock, /event\.detail\s*>\s*1/);
+  assert.match(clickBlock, /clearTimeout\(/);
+  assert.match(doubleBlock, /clearTimeout\(/);
+  assert.match(doubleBlock, /openStudentRecord\(/);
+});
