@@ -1016,3 +1016,13 @@ This supersedes earlier Teacher Students / Group Management navigation and layou
 - The search textbox remains immediately to the **left** of the magnifying-glass button.
 - The report button occupies the former search position at the right side of the header and is labeled simply **Reports**.
 - Its underlying action remains the existing block-report navigation.
+
+
+### Group deletion, teacher identity, and teacher navigation — 2026-09-21
+
+- Group deletion must never depend on a Realtime Database root read. Backups are assembled from the required readable branches individually.
+- If Firebase permits physical deletion, the group is removed with `groups/<group> = null`. If Firebase denies that null write but permits ordinary updates, the group is marked `deleted: true` and is excluded from teacher group selectors.
+- The legacy migration must not recreate the `GENERAL` group after the teacher deletes it.
+- Teacher identity text is a plain label wherever the teacher shell is shown: no chip/button background, border, radius, or shadow.
+- The canonical Points page is **/points** and its teacher navigation label is **Points**. Legacy `teacher-points` URLs redirect to `/points`.
+- **Students Summary** is a teacher-menu destination. Opening it from the menu enters teacher mode without requiring a student session; an individual student summary is still opened by double-clicking a student in Group Management.

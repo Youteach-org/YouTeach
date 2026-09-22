@@ -383,3 +383,13 @@ test('search and Reports swap positions in the Enrolled Students header', () => 
   assert.match(header, /id="openManagedBlockReportBtn"[^>]*>Reports<\/button>/);
   assert.doesNotMatch(header, />Block Report<\/button>/);
 });
+
+
+test('group deletion does not require a Firebase root read and supports permission-safe deletion fallback', () => {
+  assert.match(js, /function loadGroupDeletionRoot\(groupName\)/);
+  assert.doesNotMatch(js, /get\(ref\(db\)\)/);
+  assert.match(js, /readDeletionBranch\("students", \{\}\)/);
+  assert.match(js, /isPermissionDeniedError/);
+  assert.match(js, /markGroupDeleted\(groupName\)/);
+  assert.match(js, /deleted: true/);
+});
