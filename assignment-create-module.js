@@ -871,7 +871,7 @@ function renderAssignmentLibrary() {
 
     const selected = loadedLibrarySource?.key === entry.key;
     return `
-      <article class="library-card${selected ? " selected" : ""}" data-library-key="${escapeHtml(entry.key)}">
+      <article class="library-card${selected ? " selected" : ""}" data-library-key="${escapeHtml(entry.key)}" role="button" tabindex="0" aria-pressed="${String(selected)}">
         <div class="library-card-head">
           <h3>${escapeHtml(entry.title)}</h3>
           <span class="library-kind">${entry.kind === "assignment" ? "Previous assignment" : "Saved library item"}</span>
@@ -879,7 +879,7 @@ function renderAssignmentLibrary() {
         <div class="library-meta">
           ${escapeHtml(entry.type || "Assignment")}${meta.length ? " · " + meta.map(escapeHtml).join(" · ") : ""}
         </div>
-        <button class="library-use" type="button" data-use-library-item="${escapeHtml(entry.key)}">Use as base</button>
+        <span class="library-use-label">Use</span>
       </article>
     `;
   }).join("");
@@ -1122,9 +1122,17 @@ clearAssignmentLibraryFiltersBtn.addEventListener("click", () => {
 });
 
 assignmentLibraryList.addEventListener("click", (event) => {
-  const button = event.target.closest("[data-use-library-item]");
-  if (!button) return;
-  loadLibraryEntry(String(button.dataset.useLibraryItem || ""));
+  const card = event.target.closest("[data-library-key]");
+  if (!card) return;
+  loadLibraryEntry(String(card.dataset.libraryKey || ""));
+});
+
+assignmentLibraryList.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" && event.key !== " ") return;
+  const card = event.target.closest("[data-library-key]");
+  if (!card) return;
+  event.preventDefault();
+  loadLibraryEntry(String(card.dataset.libraryKey || ""));
 });
 
 assignmentType.addEventListener("change", () => {
