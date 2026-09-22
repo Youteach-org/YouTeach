@@ -2409,6 +2409,47 @@ function getWorkingGroup() {
   ).trim();
 }
 
+function normalizeGroupName(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function workingGroupAliases() {
+  const workingGroup = getWorkingGroup();
+  if (!workingGroup) return new Set();
+
+  const normalizedWorkingGroup = normalizeGroupName(workingGroup);
+  const group =
+    groupsCache?.[workingGroup] ||
+    Object.values(groupsCache || {}).find((candidate) => {
+      const names = [candidate?.name, candidate?.groupName]
+        .map(normalizeGroupName)
+        .filter(Boolean);
+      return names.includes(normalizedWorkingGroup);
+    }) ||
+    null;
+
+  return new Set(
+    [workingGroup, group?.name, group?.groupName]
+      .map(normalizeGroupName)
+      .filter(Boolean)
+  );
+}
+
+function assignmentMatchesWorkingGroup(assignment) {
+  const workingGroup = getWorkingGroup();
+  if (!workingGroup) return true;
+
+  const assignmentGroup = String(assignment?.groupName || "ALL").trim();
+  if (!assignmentGroup || assignmentGroup === "ALL") return true;
+
+  return workingGroupAliases().has(normalizeGroupName(assignmentGroup));
+}
+
 function availableAssignmentGroups() {
   const names = new Set();
 
@@ -2460,7 +2501,6 @@ function assignmentCriterionLabel(assignment, target = assignmentEvaluationTarge
 function renderAssignmentEvaluationFilterOptions() {
   if (!assignmentFilterBlock || !assignmentFilterCriterion) return;
 
-  const groupQuery = String(getWorkingGroup() || "ALL").trim();
   const previousBlock = String(assignmentFilterBlock.value || "ALL");
   const previousCriterion = String(assignmentFilterCriterion.value || "ALL");
   const blocks = new Set();
@@ -2468,16 +2508,14 @@ function renderAssignmentEvaluationFilterOptions() {
 
   Object.values(assignmentsCache || {}).forEach((assignment) => {
     const groupName = String(assignment?.groupName || "ALL").trim();
-    if (groupQuery !== "ALL" && groupName !== groupQuery) return;
+    if (!assignmentMatchesWorkingGroup(assignment)) return;
 
     const target = assignmentEvaluationTarget(assignment);
     if (target.block) blocks.add(target.block);
 
     const key = assignmentCriterionFilterKey(assignment, target);
     const baseLabel = assignmentCriterionLabel(assignment, target);
-    const label = groupQuery === "ALL" && groupName && groupName !== "ALL"
-      ? `${baseLabel} · ${groupName}`
-      : baseLabel;
+    const label = baseLabel;
     criteria.set(key, label);
   });
 
@@ -2507,18 +2545,16 @@ function renderAssignmentEvaluationFilterOptions() {
 function assignmentMatchesFilters(assignment) {
   const codeQuery = String(assignmentFilterCode.value || "").trim().toUpperCase();
   const dateQuery = String(assignmentFilterDate.value || "").trim();
-  const groupQuery = String(getWorkingGroup() || "ALL").trim();
   const blockQuery = String(assignmentFilterBlock?.value || "ALL").trim();
   const criterionQuery = String(assignmentFilterCriterion?.value || "ALL").trim();
 
   const code = String(assignment?.code || "").toUpperCase();
-  const group = String(assignment?.groupName || "ALL").trim();
   const target = assignmentEvaluationTarget(assignment);
   const criterionKey = assignmentCriterionFilterKey(assignment, target);
 
   if (codeQuery && !code.includes(codeQuery)) return false;
   if (dateQuery && dateFilterKey(assignment?.dueAt) !== dateQuery) return false;
-  if (groupQuery !== "ALL" && group !== groupQuery) return false;
+  if (!assignmentMatchesWorkingGroup(assignment)) return false;
   if (blockQuery !== "ALL" && target.block !== blockQuery) return false;
   if (criterionQuery !== "ALL" && criterionKey !== criterionQuery) return false;
 
@@ -2541,10 +2577,13 @@ function renderAssignmentList() {
 
   const entries = allEntries.filter(({ assignment }) => assignmentMatchesFilters(assignment));
 
-  assignmentBrowserCount.textContent = `${entries.length} shown`;
+  assignmentBrowserCount.textContent = `${entries.length} shown · ${allEntries.length} existing`;
 
   if (!entries.length) {
-    teacherAssignmentList.innerHTML = '<div class="status-text">No assignments match these filters.</div>';
+    const workingGroup = getWorkingGroup();
+    teacherAssignmentList.innerHTML = allEntries.length
+      ? `<div class="status-text">No assignments are linked to ${escapeHtml(workingGroup || "the active group")} with the current filters. ${allEntries.length} existing assignment${allEntries.length === 1 ? "" : "s"} remain stored in YouTeach. Use the group button beside the teacher name to switch groups.</div>`
+      : '<div class="status-text">No assignments exist yet.</div>';
     selectedAssignmentId = "";
     renderDetail();
     return;
