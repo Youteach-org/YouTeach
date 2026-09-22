@@ -199,7 +199,6 @@ let submissionsCache = {};
 let studentsCache = {};
 let groupsCache = {};
 let projectEvidenceCache = {};
-let cogResultsCache = {};
 let loadedAssignmentTemplateId = "";
 const WORKING_GROUP_KEY = "youteachWorkingGroup";
 const ASSIGNMENTS_MODULE_MODE = new URLSearchParams(window.location.search).get("module") === "1";
@@ -1663,7 +1662,12 @@ function assignmentSubmissions(assignmentId) {
 }
 
 function assignmentCogResults(assignmentId) {
-  return cogResultsCache?.[assignmentId] || {};
+  const submissions = assignmentSubmissions(assignmentId);
+  return Object.fromEntries(
+    Object.entries(submissions)
+      .map(([studentKey, submission]) => [studentKey, submission?.cogResults || {}])
+      .filter(([, cogResults]) => cogResults && typeof cogResults === "object" && Object.keys(cogResults).length)
+  );
 }
 
 function cogResultKeysForStudents(resultsByStudent, students) {
@@ -4024,8 +4028,3 @@ onValue(ref(db, "assignmentProjectEvidence"), (snapshot) => {
   renderDetail();
 });
 
-onValue(ref(db, "classroomGameResultsByAssignment"), (snapshot) => {
-  cogResultsCache = snapshot.val() || {};
-  renderAssignmentList();
-  renderDetail();
-});
