@@ -47,7 +47,7 @@ test("Teacher Assignments reads COG result receipts directly from Firebase and n
   ]);
 
   assert.match(js, /from "\.\/cog-assignment-results\.mjs"/);
-  assert.match(js, /onValue\(ref\(db, "classroomGameResultsByAssignment"\)/);
+  assert.match(js, /submission\?\.cogResults/);
   assert.doesNotMatch(js, /classroomGameResultsByAssignment/);
   assert.doesNotMatch(js, /\/api\/cog-assignment-results/);
   assert.doesNotMatch(js, /getTeacherSessionToken/);
