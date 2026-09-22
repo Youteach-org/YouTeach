@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -27,12 +27,13 @@ test('Create Assignment selects a template by clicking the card and shows only a
 });
 
 
-test('active group identity opens a popup selector instead of an inline group list', () => {
-  assert.match(shared, /workingGroupDialog/);
-  assert.match(shared, /working-group-popup\.js/);
+test('active group identity reuses the existing Groups popup and removes the replacement popup', () => {
   assert.match(shared, /activeGroupIdentity/);
   assert.match(shared, /type = "button"/);
-  assert.doesNotMatch(shared, /activeGroupIdentity[\s\S]{0,600}createElement\("select"\)/);
+  assert.match(shared, /groupsDialog/);
+  assert.match(shared, /Click a group to mark it, then use Select to make it the active group\./);
+  assert.doesNotMatch(shared, /workingGroupDialog|working-group-popup\.js/);
+  assert.equal(existsSync(join(root, 'working-group-popup.js')), false);
 });
 
 test('teacher work pages use the global working group instead of page-specific group selectors', () => {
