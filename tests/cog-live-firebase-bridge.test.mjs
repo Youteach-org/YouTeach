@@ -456,3 +456,137 @@ test("student resolve revalidates Firebase identity and returns the COG student 
     restore();
   }
 });
+
+
+test("student launch accepts secondary group membership and grants the active Buzzer group", async () => {
+  const endpointPath = "functions/api/cog-live-student-launch.js";
+  const tokenPath = "functions/_shared/cog-live-token.js";
+  const { onRequestPost } = await importFromRoot(endpointPath);
+  const { verifyCogLiveToken } = await importFromRoot(tokenPath);
+  const now = Date.now();
+
+  const restore = installFirebaseMock([
+    ["/students/ghost-key-20.json", { body: {
+      fullName: "Ghost Student 20",
+      nickname: "FAKE-20",
+      studentNumber: "GHOST20",
+      groupName: "303-2 epidemiologia",
+      groupMemberships: { "303-2 epidemiologia": true, FANTASMA: true }
+    }}],
+    ["/session/current.json", { body: {
+      active: true,
+      sessionId: "yt-session-multi",
+      createdAt: 654321,
+      groupName: "FANTASMA",
+      connectedGame: {
+        gameId: "verb-runner",
+        gameName: "Verb Runner",
+        cogSessionId: "VR-MULTI",
+        assignmentId: "cog-assignment-multi",
+        groupName: "FANTASMA",
+        status: "active",
+        launchMode: "live-buzzer",
+        recipientStudentKeys: ["ghost-key-20"],
+        startedAt: now - 1000,
+        updatedAt: now - 1000,
+        teacherPresenceAt: now - 1000,
+        noPresenceSince: null
+      }
+    }}]
+  ]);
+
+  try {
+    const response = await onRequestPost({
+      request: new Request("https://preview.youteach.pages.dev/api/cog-live-student-launch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentKey: "ghost-key-20", externalId: "GHOST20" })
+      }),
+      env: { YOUTEACH_SESSION_SECRET: SECRET }
+    });
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    const launchUrl = new URL(payload.launchUrl);
+    const grant = await verifyCogLiveToken(
+      launchUrl.searchParams.get("ytLiveStudent"),
+      SECRET,
+      now + 1000,
+      "cog-live-student"
+    );
+    assert.equal(grant?.groupName, "FANTASMA");
+  } finally {
+    restore();
+  }
+});
+
+test("student resolve keeps the active Buzzer group for a multi-group student", async () => {
+  const endpointPath = "functions/api/cog-live-student-resolve.js";
+  const { onRequestPost } = await importFromRoot(endpointPath);
+  const { signCogLiveToken } = await importFromRoot("functions/_shared/cog-live-token.js");
+  const now = Date.now();
+  const launchToken = await signCogLiveToken({
+    purpose: "cog-live-student",
+    studentKey: "ghost-key-20",
+    externalId: "GHOST20",
+    fullName: "Ghost Student 20",
+    nickname: "FAKE-20",
+    groupName: "FANTASMA",
+    youTeachSessionId: "yt-session-multi",
+    assignmentId: "cog-assignment-multi",
+    gameId: "verb-runner",
+    gameName: "Verb Runner",
+    cogSessionId: "VR-MULTI",
+    iat: now,
+    exp: now + 60_000,
+    nonce: "multi-student-launch"
+  }, SECRET);
+
+  const restore = installFirebaseMock([
+    ["/students/ghost-key-20.json", { body: {
+      fullName: "Ghost Student 20",
+      nickname: "FAKE-20",
+      studentNumber: "GHOST20",
+      groupName: "303-2 epidemiologia",
+      groupMemberships: { "303-2 epidemiologia": true, FANTASMA: true }
+    }}],
+    ["/session/current.json", { body: {
+      active: true,
+      sessionId: "yt-session-multi",
+      groupName: "FANTASMA",
+      connectedGame: {
+        gameId: "verb-runner",
+        gameName: "Verb Runner",
+        cogSessionId: "VR-MULTI",
+        assignmentId: "cog-assignment-multi",
+        groupName: "FANTASMA",
+        status: "active",
+        launchMode: "live-buzzer",
+        recipientStudentKeys: ["ghost-key-20"],
+        startedAt: now - 1000,
+        updatedAt: now - 1000,
+        teacherPresenceAt: now - 1000,
+        noPresenceSince: null
+      }
+    }}]
+  ]);
+
+  try {
+    const response = await onRequestPost({
+      request: new Request("https://preview.youteach.pages.dev/api/cog-live-student-resolve", {
+        method: "POST",
+        headers: {
+          Origin: "https://preview.classroom-online-games.pages.dev",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ token: launchToken })
+      }),
+      env: { YOUTEACH_SESSION_SECRET: SECRET }
+    });
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.identity?.groupName, "FANTASMA");
+    assert.equal(payload.liveContext?.groupName, "FANTASMA");
+  } finally {
+    restore();
+  }
+});
