@@ -99,13 +99,12 @@ test('manual Check AI Results is removed and retry is only exposed for sync prob
 });
 
 
-test('Assignment Browser keeps legacy and alias-linked assignments visible in the active group', () => {
-  assert.match(teacherJs, /function assignmentMatchesWorkingGroup\(assignment/);
-  assert.match(teacherJs, /assignmentGroup === "ALL"/);
-  assert.match(teacherJs, /group\?\.name/);
-  assert.match(teacherJs, /group\?\.groupName/);
+test('Assignment Browser keeps legacy, ALL, alias-linked, and submission-linked assignments visible in the active group', () => {
+  assert.match(teacherJs, /function assignmentMatchesWorkingGroup\(assignment, assignmentId/);
+  assert.match(teacherJs, /assignmentMatchesGroupEvidence/);
+  assert.match(teacherJs, /groups: groupsCache/);
+  assert.match(teacherJs, /submissions: submissionsCache\?\.\[assignmentId\]/);
   assert.match(teacherJs, /normalizeGroupName/);
-  assert.match(teacherJs, /assignmentMatchesWorkingGroup\(assignment/);
 });
 
 test('Assignment Browser empty state distinguishes no group assignments from deleted data', () => {
