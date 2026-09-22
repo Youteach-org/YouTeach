@@ -465,3 +465,9 @@ test('group deletion removes only the target membership when students belong to 
   assert.match(js, /deletedStudentKeys\.has\(studentKey\)/);
   assert.doesNotMatch(js, /updates\[\`students\/\$\{studentKey\}\`\] = null/);
 });
+
+
+test('Group Management roster is expanded by default unless the teacher explicitly collapsed it', () => {
+  assert.match(js, /let rosterCollapsed = restoredManagementState\.rosterCollapsed === true/);
+  assert.match(js, /rosterBody\.hidden = rosterCollapsed/);
+});
