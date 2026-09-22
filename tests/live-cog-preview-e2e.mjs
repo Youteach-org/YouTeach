@@ -84,11 +84,8 @@ async function findAssignment() {
 
 async function cleanup() {
   if (!assignmentId) assignmentId = (await findAssignment().catch(() => null))?.id || "";
-  if (cogSessionId && ghostKey) {
-    await fb(`classroomGameResults/${cogSessionId}/${ghostKey}/${resultId}`, "DELETE").catch(() => {});
-  }
   if (assignmentId && ghostKey) {
-    await fb(`classroomGameResultsByAssignment/${assignmentId}/${ghostKey}/${resultId}`, "DELETE").catch(() => {});
+    await fb(`assignmentSubmissions/${assignmentId}/${ghostKey}/cogResults/${resultId}`, "DELETE").catch(() => {});
   }
   if (cogSessionId) await fb(`classroomGames/verbRunnerV2/sessions/${cogSessionId}`, "DELETE").catch(() => {});
   if (assignmentId) await fb(`assignments/${assignmentId}`, "DELETE").catch(() => {});
@@ -373,32 +370,6 @@ async function main() {
   assert.equal(live.liveContext.cogSessionId, cogSessionId);
   assert.equal(live.liveContext.assignmentId, assignmentId);
 
-  async function probeFirebaseResultPath(path) {
-    const probeUrl = urlFor(path);
-    const getResponse = await fetch(probeUrl, {
-      headers: { "X-Firebase-ETag": "true" }
-    });
-    const putResponse = await fetch(probeUrl, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ e2eProbe: true, marker })
-    });
-    const deleteResponse = await fetch(probeUrl, { method: "DELETE" });
-    return {
-      path,
-      get: getResponse.status,
-      put: putResponse.status,
-      delete: deleteResponse.status
-    };
-  }
-
-  const permissionProbeId = `__e2e_permission_${marker}`;
-  const permissionProbes = [
-    await probeFirebaseResultPath(`classroomGameResults/${permissionProbeId}`),
-    await probeFirebaseResultPath(`classroomGameResultsByAssignment/${permissionProbeId}`)
-  ];
-  console.log("E2E diagnostic Firebase result permissions", JSON.stringify(permissionProbes));
-
   console.log("E2E bridge: heartbeat + idempotent receipt");
   const heartbeat = await studentPage.evaluate(async () => {
     const c = JSON.parse(sessionStorage.getItem("cogYouTeachLiveStudentContext"));
@@ -433,23 +404,17 @@ async function main() {
   }, result);
 
   const first = await submit();
-  console.log("E2E result submit response", first.status, first.body?.error || first.body?.ok || "");
   assert.equal(first.status, 200);
   assert.equal(first.body.duplicate, false);
   const retry = await submit();
   assert.equal(retry.status, 200);
   assert.equal(retry.body.duplicate, true);
 
-  const canonical = await waitFor(
-    () => fb(`classroomGameResults/${cogSessionId}/${ghostKey}/${resultId}`),
-    "canonical receipt"
+  const storedReceipt = await waitFor(
+    () => fb(`assignmentSubmissions/${assignmentId}/${ghostKey}/cogResults/${resultId}`),
+    "assignment COG receipt"
   );
-  const mirror = await waitFor(
-    () => fb(`classroomGameResultsByAssignment/${assignmentId}/${ghostKey}/${resultId}`),
-    "assignment receipt mirror"
-  );
-  assert.equal(canonical.percentage, 88);
-  assert.equal(mirror.percentage, 88);
+  assert.equal(storedReceipt.percentage, 88);
 
   console.log("E2E teacher: Results UI shows receipt, not grade/PDF");
   await teacherPage.goto(`${YT}/teacher-assignments.html`, { waitUntil: "domcontentloaded" });
