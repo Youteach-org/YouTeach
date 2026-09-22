@@ -347,3 +347,21 @@ test("result receipt is canonical, mirrored by assignment, and retry-idempotent"
     globalThis.fetch = originalFetch;
   }
 });
+
+
+test("student access policy accepts an active secondary group membership", async () => {
+  const policy = await importRequired("cog-live-session-policy.mjs");
+  const now = Date.now();
+  const allowed = policy.canStudentAccessLiveGame({
+    connectedGame: connectedGame({
+      startedAt: now - 1000,
+      updatedAt: now - 1000,
+      teacherPresenceAt: now - 1000
+    }),
+    studentGroup: "303-2 epidemiologia",
+    studentGroups: ["303-2 epidemiologia", "FANTASMA"],
+    studentKey: "ghost-key-1",
+    now
+  });
+  assert.equal(allowed, true);
+});
