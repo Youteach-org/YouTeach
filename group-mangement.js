@@ -14,7 +14,7 @@ import { calculateStudentBlockGrade } from "./group-grade-runtime.js";
 import { visibleGroups } from "./group-state.js";
 import { studentGroupNames, studentInGroup } from "./student-groups.js";
 import { planStudentRemovalFromGroup } from "./group-membership-deletion.js";
-import { ensureGroupsDialog } from "./groups-dialog.js";
+import { ensureGroupsDialog, renderGroupsDialog } from "./groups-dialog.js";
 
 import {
   criteriaToFirebaseObject,
@@ -1232,43 +1232,12 @@ function renderManagedStudents() {
   renderSelectedGroupActions();
 }
 function renderGroupsTable() {
-  const groups = Object.keys(groupsCache || {})
-    .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
-
-  if (!groups.length) {
-    groupsTableBody.innerHTML = '<tr><td colspan="5">No groups yet.</td></tr>';
-    renderSelectedGroupActions();
-    return;
-  }
-
-  groupsTableBody.innerHTML = groups.map((groupName) => {
-    const group = groupsCache[groupName] || {};
-    const count = groupStudents(groupName).length;
-    const pending = groupPendingRequests(groupName).length;
-    const config = groupEvaluationConfig(group);
-    const selected = groupName === popupSelectedGroup;
-    const evaluationSummary = config.configured
-      ? config.criteria.map((criterion) =>
-          `${escapeHtml(criterion.name)} ${criterion.weight}%`
-        ).join(" · ")
-      : '<span class="setup-required">Evaluation setup required</span>';
-
-    return `
-      <tr class="${selected ? "selected-group-row" : ""}" data-popup-group-row="${escapeHtml(groupName)}">
-        <td>
-          <button class="group-select-button" type="button" data-popup-group="${escapeHtml(groupName)}"
-            aria-pressed="${String(selected)}">
-            <span>${escapeHtml(groupName)}</span>
-          </button>
-        </td>
-        <td>${count}</td>
-        <td>${pending}</td>
-        <td>${config.configured ? config.unitCount : "—"}</td>
-        <td class="group-evaluation-summary">${evaluationSummary}</td>
-      </tr>
-    `;
-  }).join("");
-
+  renderGroupsDialog({
+    groups: groupsCache,
+    students: studentsCache,
+    pendingRequests: enrollmentRequestsCache,
+    markedGroup: popupSelectedGroup
+  });
   renderSelectedGroupActions();
 }
 
