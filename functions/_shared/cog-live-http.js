@@ -1,3 +1,5 @@
+import { studentInGroup } from "../../student-groups.js";
+
 export const DATABASE_URL = "https://youteach-d9a79-default-rtdb.firebaseio.com";
 
 export const LIVE_COG_GAMES = Object.freeze({
@@ -103,9 +105,8 @@ export function canStudentAccessConnectedGame({ studentKey, student, session } =
   if (String(game.status || "") !== "active") return false;
   if (String(game.launchMode || "") !== "live-buzzer") return false;
 
-  const studentGroup = String(student?.groupName || "").trim();
   const gameGroup = String(game.groupName || "").trim();
-  if (!studentGroup || studentGroup !== gameGroup) return false;
+  if (!gameGroup || !studentInGroup(student, gameGroup)) return false;
 
   const recipients = normalizeRecipientKeys(game.recipientStudentKeys);
   if (recipients.length && !recipients.includes(String(studentKey || "").trim())) return false;
