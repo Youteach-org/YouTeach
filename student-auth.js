@@ -40,7 +40,16 @@ export async function migrateExistingStudentsForTeacher() {
   for (const [key, student] of Object.entries(students)) {
     const fullName = student.fullName || student.name || "";
     const nickname = student.nickname || (fullName ? fullName.split(" ")[0] : "Student");
-    const groupName = student.groupName || (hasGeneralGroup ? "GENERAL" : "");
+    const currentGroupName = student.groupName || (hasGeneralGroup ? "GENERAL" : "");
+    const shouldRepairExistingMove =
+      !student.multiGroupExistingRepairAt &&
+      ["teacher-existing", "ghost-lab-existing"].includes(String(student.enrollmentSource || "")) &&
+      String(student.previousGroupName || "").trim() &&
+      String(student.previousGroupName || "").trim() !== String(currentGroupName || "").trim();
+    const groupName = shouldRepairExistingMove
+      ? String(student.previousGroupName || "").trim()
+      : currentGroupName;
+    const repairedAddedGroup = shouldRepairExistingMove ? String(currentGroupName || "").trim() : "";
     const existingBlockPoints =
       student?.blockPoints && typeof student.blockPoints === "object"
         ? student.blockPoints
@@ -59,6 +68,11 @@ export async function migrateExistingStudentsForTeacher() {
     updates[`students/${key}/name`] = fullName;
     updates[`students/${key}/nickname`] = nickname;
     updates[`students/${key}/groupName`] = groupName;
+    if (groupName) updates[`students/${key}/groupMemberships/${groupName}`] = true;
+    if (repairedAddedGroup) {
+      updates[`students/${key}/groupMemberships/${repairedAddedGroup}`] = true;
+      updates[`students/${key}/multiGroupExistingRepairAt`] = Date.now();
+    }
     updates[`students/${key}/password`] = student.password || "1234";
     updates[`students/${key}/blockPoints`] = blockPoints;
   }

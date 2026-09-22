@@ -12,6 +12,7 @@ import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-aut
 import { migrateExistingStudentsForTeacher } from "./student-auth.js?v=group-evaluation-20260920";
 import { calculateStudentBlockGrade } from "./group-grade-runtime.js";
 import { visibleGroups } from "./group-state.js";
+import { studentInGroup } from "./student-groups.js";
 
 import {
   criteriaToFirebaseObject,
@@ -890,7 +891,7 @@ function selectManagedGroup(groupName) {
 }
 function groupStudents(groupName) {
   return Object.entries(studentsCache || {})
-    .filter(([, student]) => String(student?.groupName || "") === groupName)
+    .filter(([, student]) => studentInGroup(student, groupName))
     .sort((a, b) =>
       String(a[1]?.fullName || a[1]?.name || "").localeCompare(
         String(b[1]?.fullName || b[1]?.name || ""),
@@ -1358,6 +1359,7 @@ async function saveStudent(fullName, nickname = "", studentNumber = "", groupNam
     nickname: cleanNickname,
     studentNumber: cleanNumber,
     groupName,
+    groupMemberships: groupName ? { [groupName]: true } : {},
     id: internalId,
     password: "1234",
     activeNow: false,
@@ -1381,7 +1383,7 @@ function existingStudentCandidates() {
   const groupFilter = String(existingStudentGroupFilter?.value || "");
 
   return Object.entries(studentsCache || {})
-    .filter(([, student]) => String(student?.groupName || "") !== targetGroup)
+    .filter(([, student]) => !studentInGroup(student, targetGroup))
     .filter(([, student]) => !groupFilter || String(student?.groupName || "") === groupFilter)
     .filter(([studentKey, student]) => {
       if (!query) return true;
@@ -1469,7 +1471,7 @@ async function enrollSelectedExistingStudents() {
   const targetGroup = String(selectedManagedGroup || "");
   const selectedKeys = [...selectedExistingStudentKeys]
     .filter((studentKey) => studentsCache?.[studentKey])
-    .filter((studentKey) => String(studentsCache[studentKey]?.groupName || "") !== targetGroup);
+    .filter((studentKey) => !studentInGroup(studentsCache[studentKey], targetGroup));
 
   if (!targetGroup || !selectedKeys.length) {
     addStudentStatus.textContent = "Select at least one existing student.";
@@ -1479,10 +1481,7 @@ async function enrollSelectedExistingStudents() {
   const now = Date.now();
   const updates = {};
   selectedKeys.forEach((studentKey) => {
-    const student = studentsCache[studentKey] || {};
-    const previousGroupName = String(student?.groupName || "");
-    updates[`students/${studentKey}/groupName`] = targetGroup;
-    updates[`students/${studentKey}/previousGroupName`] = previousGroupName;
+    updates[`students/${studentKey}/groupMemberships/${targetGroup}`] = true;
     updates[`students/${studentKey}/enrollmentStatus`] = "approved";
     updates[`students/${studentKey}/enrollmentSource`] = "teacher-existing";
     updates[`students/${studentKey}/enrolledAt`] = now;

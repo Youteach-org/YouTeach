@@ -11,6 +11,7 @@ import {
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
 import { generateId } from "./app.js";
 import { evaluationBlockNames } from "./group-evaluation-model.js";
+import { studentInGroup } from "./student-groups.js";
 
 if (!requireTeacherAuth()) {
   throw new Error("Teacher session required.");
@@ -242,6 +243,7 @@ async function saveStudent(fullName, nickname = "", studentNumber = "", extras =
     nickname: cleanNickname,
     studentNumber: cleanNumber,
     groupName: GHOST_GROUP,
+    groupMemberships: { [GHOST_GROUP]: true },
     id: internalId,
     password: "1234",
     activeNow: false,
@@ -278,7 +280,7 @@ function existingStudentCandidates() {
   const query = normalizeExistingSearch(existingStudentSearch?.value || "");
   const groupFilter = String(existingStudentGroupFilter?.value || "");
   return Object.entries(studentsCache || {})
-    .filter(([, student]) => String(student?.groupName || "") !== GHOST_GROUP)
+    .filter(([, student]) => !studentInGroup(student, GHOST_GROUP))
     .filter(([, student]) => !groupFilter || String(student?.groupName || "") === groupFilter)
     .filter(([studentKey, student]) => {
       if (!query) return true;
@@ -365,7 +367,7 @@ function openAddStudentsDialog() {
 async function enrollExistingStudents() {
   const selectedKeys = [...selectedExistingStudentKeys]
     .filter((studentKey) => studentsCache?.[studentKey])
-    .filter((studentKey) => String(studentsCache[studentKey]?.groupName || "") !== GHOST_GROUP);
+    .filter((studentKey) => !studentInGroup(studentsCache[studentKey], GHOST_GROUP));
 
   if (!selectedKeys.length) {
     addStudentStatus.textContent = "Select at least one existing student.";
@@ -375,9 +377,7 @@ async function enrollExistingStudents() {
   const now = Date.now();
   const updates = {};
   selectedKeys.forEach((studentKey) => {
-    const previousGroupName = String(studentsCache[studentKey]?.groupName || "");
-    updates[`students/${studentKey}/groupName`] = GHOST_GROUP;
-    updates[`students/${studentKey}/previousGroupName`] = previousGroupName;
+    updates[`students/${studentKey}/groupMemberships/${GHOST_GROUP}`] = true;
     updates[`students/${studentKey}/enrollmentStatus`] = "approved";
     updates[`students/${studentKey}/enrollmentSource`] = "ghost-lab-existing";
     updates[`students/${studentKey}/enrolledAt`] = now;
@@ -407,8 +407,7 @@ function ghostNumber(student) {
 }
 
 function isGhostStudent(student) {
-  const groupName = String(student?.groupName || "").trim().toUpperCase();
-  return groupName === "FANTASMA";
+  return studentInGroup(student, GHOST_GROUP);
 }
 
 function ghostEntries() {
@@ -449,8 +448,7 @@ function assignmentAppliesToStudent(assignment, studentKey, student) {
   if (recipientKeys.length) return recipientKeys.includes(String(studentKey));
 
   const target = String(assignment?.groupName || "ALL");
-  const group = String(student?.groupName || "GENERAL");
-  return target === "ALL" || target === group;
+  return target === "ALL" || studentInGroup(student, target);
 }
 
 function assignmentIsOpen(assignment) {
