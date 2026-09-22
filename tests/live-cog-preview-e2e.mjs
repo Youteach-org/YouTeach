@@ -418,6 +418,18 @@ async function main() {
 
   console.log("E2E teacher: Results UI shows receipt, not grade/PDF");
   await teacherPage.goto(`${YT}/teacher-assignments.html`, { waitUntil: "domcontentloaded" });
+  await new Promise((resolve) => setTimeout(resolve, 2500));
+  const assignmentsDiagnostic = await teacherPage.evaluate(() => ({
+    url: location.href,
+    sessionWorkingGroup: sessionStorage.getItem("youteachWorkingGroup") || "",
+    localWorkingGroup: localStorage.getItem("youteachWorkingGroup") || "",
+    listCount: document.querySelectorAll("[data-assignment-select]").length,
+    listText: (document.querySelector("#teacherAssignmentList")?.textContent || "").trim().slice(0, 800),
+    browserCount: (document.querySelector("#assignmentBrowserCount")?.textContent || "").trim(),
+    codeFilter: document.querySelector("#assignmentFilterCode")?.value || "",
+    dateFilter: document.querySelector("#assignmentFilterDate")?.value || ""
+  }));
+  console.log("E2E diagnostic Teacher Assignments list", JSON.stringify(assignmentsDiagnostic));
   const assignmentCard = teacherPage.locator(`[data-assignment-select="${assignmentId}"]`);
   await assignmentCard.waitFor({ state: "visible", timeout: 30000 });
   await assignmentCard.click();
