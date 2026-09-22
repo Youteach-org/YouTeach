@@ -9,6 +9,8 @@ const root = join(here, '..');
 const shared = readFileSync(join(root, 'shared-ui-fixes.js'), 'utf8');
 const moduleHtml = readFileSync(join(root, 'assignment-create-module.html'), 'utf8');
 const moduleJs = readFileSync(join(root, 'assignment-create-module.js'), 'utf8');
+const groupsDialogPath = join(root, 'groups-dialog.js');
+const groupsDialogJs = existsSync(groupsDialogPath) ? readFileSync(groupsDialogPath, 'utf8') : '';
 
 test('teacher pages show the active working group beside the teacher identity', () => {
   assert.match(shared, /activeGroupIdentity/);
@@ -27,12 +29,24 @@ test('Create Assignment selects a template by clicking the card and shows only a
 });
 
 
-test('active group identity reuses the existing Groups popup and removes the replacement popup', () => {
-  assert.match(shared, /activeGroupIdentity/);
-  assert.match(shared, /type = "button"/);
-  assert.match(shared, /groupsDialog/);
-  assert.match(shared, /Click a group to mark it, then use Select to make it the active group\./);
-  assert.doesNotMatch(shared, /workingGroupDialog|working-group-popup\.js/);
+test('active group identity opens the one canonical reusable Groups dialog', () => {
+  const groupManagementHtml = readFileSync(join(root, 'group-mangement.html'), 'utf8');
+  const groupManagementJs = readFileSync(join(root, 'teacher-enrollment.js'), 'utf8');
+
+  assert.equal(existsSync(groupsDialogPath), true);
+  assert.match(shared, /import\("\.\/groups-dialog\.js/);
+  assert.doesNotMatch(shared, /dialog\.innerHTML|sharedGroupsState|sharedGroupsDialogStyles/);
+  assert.doesNotMatch(groupManagementHtml, /<dialog id="groupsDialog">/);
+  assert.match(groupManagementJs, /import \{ ensureGroupsDialog \} from "\.\/groups-dialog\.js"/);
+  assert.match(groupManagementJs, /ensureGroupsDialog\(\);/);
+
+  assert.match(groupsDialogJs, /id="groupsDialog"/);
+  assert.match(groupsDialogJs, /id="openCreateGroupDialogBtn"/);
+  assert.match(groupsDialogJs, /id="selectPopupGroupBtn"/);
+  assert.match(groupsDialogJs, /id="openGroupEvaluationDialogBtn"/);
+  assert.match(groupsDialogJs, /id="deleteSelectedGroupBtn"/);
+  assert.match(groupsDialogJs, /class="group-select-button"/);
+  assert.match(groupsDialogJs, /color:\s*#1d4ed8/);
   assert.equal(existsSync(join(root, 'working-group-popup.js')), false);
 });
 
