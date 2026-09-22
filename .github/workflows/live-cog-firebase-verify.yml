@@ -3,7 +3,7 @@ name: Verify Firebase live COG branch
 on:
   push:
     branches:
-      - feature/live-cog-firebase-current-20260922
+      - live-cog-20260922
   workflow_dispatch:
 
 permissions:
