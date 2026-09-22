@@ -1050,3 +1050,18 @@ This supersedes earlier Teacher Students / Group Management navigation and layou
 - **Enroll Selected** reassigns the existing student records to the active group; it does not create duplicate student accounts. Identity, password, history, scores, and other existing account data are preserved.
 - Reassignment records the previous group plus enrollment source/time/teacher metadata.
 - **Ghost Test Lab** has an **Add Students** button with the same Manual / CSV / Paste List / Existing popup workflow. Its fixed destination group is **FANTASMA**.
+
+
+### Multi-group membership, Student Summary navigation, active-group identity, and assignment-card templates — 2026-09-21
+
+- A student account may belong to multiple groups.
+- `students/<student>/groupName` remains the **primary group** for backward compatibility.
+- Additional/explicit memberships are stored under `students/<student>/groupMemberships/<group> = true`.
+- **Existing** in Add Students never changes the primary group and never duplicates the account; it only adds the destination group membership.
+- The previous temporary behavior that moved Existing students is superseded. The migration repairs affected records when `previousGroupName` identifies the original group, restoring it as primary while preserving both memberships.
+- Group membership checks across Group Management, Buzzer, Assignments, grading runtime, Reports, Points, Ghost Lab, student assignment visibility, and upload validation accept any active membership.
+- Existing-student search/filter/group display uses all memberships, not just the primary group.
+- In teacher **Student Summary**, opening without an explicit student automatically selects the first student alphabetically from the active working group. Previous/Next buttons navigate only within that active group.
+- Teacher pages display the current active group immediately beside the teacher name. Group changes dispatch a same-page working-group event so the label updates immediately.
+- In the Groups popup, double-clicking anywhere on a group row activates that group, persists it as the working group, and closes the popup.
+- In the Create Assignment popup, Assignment Library cards are directly selectable. The old **Use as base** button is removed; a non-button **Use** label remains, and clicking/keyboard-activating the card loads that assignment as the template for the new assignment.

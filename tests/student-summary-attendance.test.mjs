@@ -37,3 +37,15 @@ test('Active Today and legacy attendance validation pages are removed', () => {
   assert.equal(existsSync(join(root, 'teacher-active.js')), false);
   assert.equal(existsSync(join(root, 'attendance-validation.js')), false);
 });
+
+
+test('Teacher Student Summary defaults to the first student in the active group and navigates within that group', () => {
+  assert.match(html, /id="previousStudentBtn"/);
+  assert.match(html, /id="nextStudentBtn"/);
+  assert.match(js, /function teacherGroupEntries\(\)/);
+  assert.match(js, /studentInGroup\(student, groupName\)/);
+  assert.match(js, /selectTeacherStudent\(entries\[0\]\[0\]\)/);
+  assert.match(js, /previousStudentBtn\.addEventListener\("click"/);
+  assert.match(js, /nextStudentBtn\.addEventListener\("click"/);
+  assert.match(js, /sessionStorage\.getItem\(WORKING_GROUP_KEY\)/);
+});

@@ -20,15 +20,15 @@ test('Ghost Lab exposes Add Students with the same four enrollment modes', () =>
   assert.match(html, /id="enrollExistingStudentsBtn"[^>]*>Enroll Selected<\/button>/);
 });
 
-test('Ghost Lab Add Students always targets FANTASMA and can reassign existing accounts', () => {
+test('Ghost Lab Add Students always targets FANTASMA without removing existing memberships', () => {
   assert.match(js, /const GHOST_GROUP = "FANTASMA"/);
   assert.ok(js.includes('groupName: GHOST_GROUP'));
-  assert.ok(js.includes('updates[`students/${studentKey}/groupName`] = GHOST_GROUP'));
-  assert.ok(js.includes('updates[`students/${studentKey}/previousGroupName`] = previousGroupName'));
+  assert.ok(js.includes('groupMemberships: { [GHOST_GROUP]: true }'));
+  assert.ok(js.includes('updates[`students/${studentKey}/groupMemberships/${GHOST_GROUP}`] = true'));
+  assert.doesNotMatch(js, /updates\[`students\/\$\{studentKey\}\/groupName`\] = GHOST_GROUP/);
   assert.match(js, /existingStudentsMasterCheckbox\.addEventListener\("change"/);
-  assert.match(js, /student\?\.studentNumber/);
-  assert.match(js, /student\?\.groupName/);
-  assert.match(js, /student\?\.nickname/);
+  assert.match(js, /studentGroupNames, studentInGroup/);
+  assert.match(js, /studentGroupNames\(student\)\.join\(" · "\)/);
 });
 
 test('Ghost Lab can still manually create and import students from the shared popup', () => {

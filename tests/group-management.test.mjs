@@ -426,7 +426,8 @@ test('Add Students can enroll existing accounts without creating duplicates', ()
   assert.match(js, /student\?\.studentNumber/);
   assert.match(js, /student\?\.externalId/);
   assert.match(js, /student\?\.nickname/);
-  assert.ok(js.includes('updates[`students/${studentKey}/groupName`] = targetGroup'));
+  assert.ok(js.includes('updates[`students/${studentKey}/groupMemberships/${targetGroup}`] = true'));
+  assert.doesNotMatch(js, /updates\[`students\/\$\{studentKey\}\/groupName`\] = targetGroup/);
   assert.ok(js.includes('updates[`students/${studentKey}/enrollmentSource`] = "teacher-existing"'));
   assert.match(js, /existingStudentsMasterCheckbox\.addEventListener\("change"/);
 });
@@ -435,4 +436,24 @@ test('Enrolled Students header uses compact controls across the complete row', (
   assert.match(html, /\.enrolled-students-head button\{min-height:30px;padding:5px 8px;font-size:11px/);
   assert.match(html, /\.enrollment-link-inline-controls input\{width:min\(260px,25vw\)/);
   assert.match(html, /\.managed-search-toggle\{min-width:32px!important;min-height:30px!important/);
+});
+
+
+test('Existing enrollment preserves the primary group and supports multiple memberships', () => {
+  assert.match(js, /studentGroupNames, studentInGroup/);
+  assert.match(js, /studentInGroup\(student, targetGroup\)/);
+  assert.match(js, /groupMemberships\/\$\{targetGroup\}/);
+  assert.doesNotMatch(js, /previousGroupName\`\] = previousGroupName/);
+  assert.match(js, /studentGroupNames\(student\)\.join\(" · "\)/);
+});
+
+test('double clicking any group row activates that group and updates working-group context', () => {
+  assert.match(js, /data-popup-group-row=/);
+  assert.match(js, /groupRow\?\.dataset\.popupGroupRow/);
+  assert.match(js, /selectManagedGroup\(groupName\)/);
+  const start = js.indexOf('function selectManagedGroup(groupName)');
+  const end = js.indexOf('function groupStudents', start);
+  const block = js.slice(start, end);
+  assert.match(block, /sessionStorage\.setItem\(WORKING_GROUP_KEY, groupName\)/);
+  assert.match(block, /youteach:working-group-changed/);
 });
