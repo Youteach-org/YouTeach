@@ -68,51 +68,14 @@ export async function migrateExistingStudentsForTeacher() {
   }
 }
 
-export async function markAttendanceOnLogin(studentKey, student) {
-  const dateKey = todayKey();
-  const attendancePath = `attendance/${dateKey}/${studentKey}`;
-  const attendanceSnap = await get(ref(db, attendancePath));
+export async function markAttendanceOnLogin(studentKey) {
   const nowTs = Date.now();
-
-  if (!attendanceSnap.exists()) {
-    await set(ref(db, attendancePath), {
-      studentKey,
-      studentName: student.nickname || student.fullName || student.name || "",
-      externalId: student.studentNumber || "",
-      studentNumber: student.studentNumber || "",
-      groupName: student.groupName || "GENERAL",
-      loginAt: nowTs,
-      detectedAt: nowTs,
-      leaveAt: null,
-      leaveReason: "",
-      activeNow: true,
-      leftEarly: false
-    });
-  } else {
-    const current = attendanceSnap.val() || {};
-    await update(ref(db, attendancePath), {
-      studentName: student.nickname || student.fullName || student.name || current.studentName || "",
-      externalId: student.studentNumber || current.externalId || "",
-      studentNumber: student.studentNumber || current.studentNumber || "",
-      groupName: student.groupName || current.groupName || "GENERAL",
-      activeNow: true,
-      leftEarly: false,
-      leaveAt: null,
-      leaveReason: "",
-      detectedAt: nowTs,
-      loginAt: current.loginAt || nowTs
-    });
-  }
-
   await update(ref(db, `students/${studentKey}`), {
     activeNow: true,
-    lastAttendanceDate: dateKey,
     lastSeenAt: nowTs
   });
-
-  return dateKey;
+  return true;
 }
-
 export async function setStudentLeave(studentKey, reason = "") {
   const dateKey = todayKey();
   const attendancePath = `attendance/${dateKey}/${studentKey}`;
@@ -126,21 +89,13 @@ export async function setStudentLeave(studentKey, reason = "") {
       leaveReason: reason,
       leftEarly: true
     });
-  } else {
-    await set(ref(db, attendancePath), {
-      studentKey,
-      activeNow: false,
-      leaveAt: leaveTs,
-      leaveReason: reason,
-      leftEarly: true
-    });
   }
 
   await update(ref(db, `students/${studentKey}`), {
-    activeNow: false
+    activeNow: false,
+    lastSeenAt: leaveTs
   });
 }
-
 export async function loginStudentByExternalIdAndPassword(externalId, password) {
   const snapshot = await get(ref(db, "students"));
   const students = snapshot.val() || {};
