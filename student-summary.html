@@ -13,6 +13,17 @@
       margin-bottom:10px;
     }
 
+    .summary-display-mode-toggle {
+      min-height:34px;
+      padding:6px 10px;
+      border-radius:9px;
+      font-size:12px;
+      font-weight:800;
+      white-space:nowrap;
+    }
+
+    .summary-display-mode-toggle[hidden] { display:none!important; }
+
     .summary-student-nav {
       display:inline-flex;
       align-items:center;
@@ -119,6 +130,7 @@
       </header>
 
       <div class="summary-name-card">
+        <button id="studentDisplayModeBtn" class="summary-display-mode-toggle" type="button" hidden>Names</button>
         <button id="previousStudentBtn" class="summary-student-nav" type="button" aria-label="Previous student" title="Previous student" hidden>‹</button>
         <strong id="displayNameCard" class="student-name-badge">---</strong>
         <button id="nextStudentBtn" class="summary-student-nav" type="button" aria-label="Next student" title="Next student" hidden>›</button>
@@ -183,7 +195,7 @@
     </main>
   </div>
 
-  <script type="module" src="student-summary.js?v=group-navigation-20260921"></script>
+  <script type="module" src="student-summary.js?v=display-toggle-20260922"></script>
   <script defer src="shared-ui-fixes.js?v=titlebar-hamburger-20260916"></script>
 </body>
 </html>

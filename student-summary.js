@@ -1,8 +1,14 @@
 import { db } from "./firebase.js";
-import { ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireStudentSession, clearStudentSession, saveLeaveLog } from "./student-auth.js";
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
 import { studentGroupNames, studentInGroup } from "./student-groups.js";
+import {
+  nextStudentDisplayMode,
+  normalizeStudentDisplayMode,
+  studentDisplayModeLabel,
+  studentPrimaryDisplay
+} from "./student-display-mode.js";
 
 const WORKING_GROUP_KEY = "youteachWorkingGroup";
 const params = new URLSearchParams(window.location.search);
@@ -37,12 +43,14 @@ const summaryPageSubtitle = document.getElementById("summaryPageSubtitle");
 const blockScoreTableBody = document.getElementById("blockScoreTableBody");
 const previousStudentBtn = document.getElementById("previousStudentBtn");
 const nextStudentBtn = document.getElementById("nextStudentBtn");
+const studentDisplayModeBtn = document.getElementById("studentDisplayModeBtn");
 
 let currentStudent = null;
 let currentSession = null;
 let settingsCache = {};
 let pointsLogCache = {};
 let studentsCache = {};
+let groupsCache = {};
 
 function cleanText(value) {
   return String(value || "")
@@ -72,6 +80,7 @@ function setupTeacherViewShell() {
     studentIdentity.id = "teacherIdentity";
   }
 
+  if (studentDisplayModeBtn) studentDisplayModeBtn.hidden = false;
   if (summaryPageTitle) summaryPageTitle.textContent = "Student Summary";
   if (summaryPageSubtitle) summaryPageSubtitle.textContent = "Teacher view with teacher permissions.";
 
@@ -236,17 +245,29 @@ function renderHistory() {
   studentHistoryTableBody.innerHTML = rows.join("");
 }
 
+function activeStudentDisplayMode() {
+  const groupName = activeTeacherGroup();
+  return normalizeStudentDisplayMode(groupsCache?.[groupName]?.studentListDisplayMode);
+}
+
+function renderStudentDisplayModeButton() {
+  if (!studentDisplayModeBtn || !isTeacherView) return;
+  studentDisplayModeBtn.textContent = studentDisplayModeLabel(activeStudentDisplayMode());
+  studentDisplayModeBtn.hidden = false;
+}
+
 function renderAll() {
   if (!currentStudent) return;
 
   const topIdentity = formatTopIdentity(currentStudent);
   const nickname = getNickname(currentStudent);
+  const primaryIdentity = studentPrimaryDisplay(currentStudent, activeStudentDisplayMode());
   const activeBlock = settingsCache.activeBlock || "Block 1";
   const activeBlockData = getBlockGradeData(activeBlock);
 
   if (studentIdentity) studentIdentity.textContent = isTeacherView ? getTeacherName() : topIdentity;
   if (displayNameCard) {
-    displayNameCard.textContent = isTeacherView ? topIdentity : nickname;
+    displayNameCard.textContent = isTeacherView ? primaryIdentity : nickname;
     displayNameCard.classList.toggle("present-now", currentStudent.activeNow === true);
   }
   if (groupCard) {
@@ -260,6 +281,7 @@ function renderAll() {
     totalBlockPointsCard.textContent = blockHasGrades(activeBlock) ? formatGradeNumber(activeBlockData.total) : "NY";
   }
 
+  renderStudentDisplayModeButton();
   renderBlockScoreTable();
   renderHistory();
 }
@@ -274,7 +296,11 @@ function teacherGroupEntries() {
   return Object.entries(studentsCache || {})
     .filter(([, student]) => studentInGroup(student, groupName))
     .sort((a, b) =>
-      getFullName(a[1]).localeCompare(getFullName(b[1]), undefined, { sensitivity: "base" })
+      studentPrimaryDisplay(a[1], activeStudentDisplayMode()).localeCompare(
+        studentPrimaryDisplay(b[1], activeStudentDisplayMode()),
+        undefined,
+        { sensitivity: "base" }
+      )
     );
 }
 
@@ -377,6 +403,16 @@ function syncTeacherStudentSelection() {
 setupTeacherViewShell();
 
 if (isTeacherView) {
+  studentDisplayModeBtn.addEventListener("click", async () => {
+    const groupName = activeTeacherGroup();
+    if (!groupName || !groupsCache[groupName]) return;
+    const next = nextStudentDisplayMode(activeStudentDisplayMode());
+    await update(ref(db, `groups/${groupName}`), {
+      studentListDisplayMode: next,
+      studentListDisplayUpdatedAt: Date.now()
+    });
+  });
+
   previousStudentBtn.addEventListener("click", () => {
     const entries = teacherGroupEntries();
     const index = entries.findIndex(([key]) => key === studentKey);
@@ -387,6 +423,11 @@ if (isTeacherView) {
     const entries = teacherGroupEntries();
     const index = entries.findIndex(([key]) => key === studentKey);
     if (index >= 0 && index < entries.length - 1) selectTeacherStudent(entries[index + 1][0]);
+  });
+
+  onValue(ref(db, "groups"), (snapshot) => {
+    groupsCache = snapshot.val() || {};
+    syncTeacherStudentSelection();
   });
 
   onValue(ref(db, "students"), (snapshot) => {

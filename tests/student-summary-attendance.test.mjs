@@ -49,3 +49,13 @@ test('Teacher Student Summary defaults to the first student in the active group 
   assert.match(js, /nextStudentBtn\.addEventListener\("click"/);
   assert.match(js, /sessionStorage\.getItem\(WORKING_GROUP_KEY\)/);
 });
+
+
+test('Teacher Student Summary uses the Group Management identity toggle and preference', () => {
+  assert.match(html, /id="studentDisplayModeBtn"[^>]*>Names<\/button>/);
+  assert.match(js, /nextStudentDisplayMode\(activeStudentDisplayMode\(\)\)/);
+  assert.match(js, /studentListDisplayMode: next/);
+  assert.match(js, /studentPrimaryDisplay\(currentStudent, activeStudentDisplayMode\(\)\)/);
+  assert.match(js, /studentPrimaryDisplay\(a\[1\], activeStudentDisplayMode\(\)\)\.localeCompare/);
+  assert.doesNotMatch(js, /displayNameCard\.textContent = isTeacherView \? topIdentity/);
+});
