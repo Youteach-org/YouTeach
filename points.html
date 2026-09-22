@@ -58,7 +58,52 @@
       color: #991b1b;
     }
 
+    .points-adjustment-grid {
+      display: grid;
+      grid-template-columns: minmax(180px, 1fr) minmax(220px, 1.4fr) minmax(140px, .7fr) minmax(120px, .6fr);
+      gap: 10px;
+      align-items: end;
+    }
+
+    .points-adjustment-grid label {
+      display: grid;
+      gap: 5px;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .points-adjustment-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .points-adjustment-actions button {
+      min-width: 120px;
+    }
+
+    .points-history-list {
+      display: grid;
+      gap: 8px;
+      max-height: 320px;
+      overflow: auto;
+      margin-top: 10px;
+    }
+
+    .points-history-entry {
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: #fff;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
     @media (max-width: 1000px) {
+      .points-adjustment-grid {
+        grid-template-columns: 1fr 1fr;
+      }
       .grades-grid {
         grid-template-columns: 1fr;
       }
@@ -104,6 +149,53 @@
       </header>
 
       <div class="grades-layout">
+        <div class="panel-card">
+          <div class="panel-card-header">
+            <div>
+              <h3>Point Adjustment</h3>
+              <p style="margin:4px 0 0;">Add, subtract, or set points for students in the active group.</p>
+            </div>
+          </div>
+
+          <div class="hint-box">Active group: <strong id="activePointsGroup">No active group</strong></div>
+
+          <div class="points-adjustment-grid" style="margin-top:12px;">
+            <label>
+              Find student
+              <input id="pointStudentSearch" type="search" placeholder="Name, last name, nickname or ID">
+            </label>
+            <label>
+              Student
+              <select id="pointStudentSelect">
+                <option value="">Select student</option>
+              </select>
+            </label>
+            <label>
+              Block
+              <select id="pointBlockSelect">
+                <option value="Block 1">Block 1</option>
+              </select>
+            </label>
+            <label>
+              Points
+              <input id="pointAmountInput" type="number" step="0.1" placeholder="0">
+            </label>
+          </div>
+
+          <div id="pointStudentPreview" class="preview-box" style="margin-top:12px;">Select a student.</div>
+
+          <div class="points-adjustment-actions">
+            <button id="addPointsBtn" type="button">Add Points</button>
+            <button id="subtractPointsBtn" type="button">Subtract Points</button>
+            <button id="setPointsBtn" type="button">Set Points</button>
+          </div>
+
+          <div style="margin-top:16px;">
+            <strong>Recent point history</strong>
+            <div id="pointHistoryList" class="points-history-list">No point history yet.</div>
+          </div>
+        </div>
+
         <div class="grades-grid">
           <div class="panel-card">
             <div class="panel-card-header">
@@ -239,7 +331,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script type="module" src="teacher-points.js?v=dynamic-evaluation-20260920"></script>
+  <script type="module" src="teacher-points.js?v=point-adjustment-20260922"></script>
   <script defer src="shared-ui-fixes.js?v=titlebar-hamburger-20260916"></script>
 </body>
 </html>
