@@ -3,6 +3,8 @@ import { ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.2
 import { requireStudentSession, clearStudentSession, saveLeaveLog } from "./student-auth.js";
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
 import { studentGroupNames, studentInGroup } from "./student-groups.js";
+import { groupEvaluationConfig } from "./group-evaluation-model.js";
+import { taskCriterionContribution } from "./group-grade-runtime.js";
 import {
   nextStudentDisplayMode,
   normalizeStudentDisplayMode,
@@ -44,6 +46,11 @@ const blockScoreTableBody = document.getElementById("blockScoreTableBody");
 const previousStudentBtn = document.getElementById("previousStudentBtn");
 const nextStudentBtn = document.getElementById("nextStudentBtn");
 const studentDisplayModeBtn = document.getElementById("studentDisplayModeBtn");
+const studentPickerDialog = document.getElementById("studentPickerDialog");
+const studentPickerSearch = document.getElementById("studentPickerSearch");
+const studentPickerList = document.getElementById("studentPickerList");
+const studentPickerCloseBtn = document.getElementById("studentPickerCloseBtn");
+const studentPickerGroupLabel = document.getElementById("studentPickerGroupLabel");
 
 let currentStudent = null;
 let currentSession = null;
@@ -51,12 +58,25 @@ let settingsCache = {};
 let pointsLogCache = {};
 let studentsCache = {};
 let groupsCache = {};
+let assignmentsCache = {};
+let assignmentSubmissionsCache = {};
+const ownSubmissionUnsubscribers = new Map();
 
 function cleanText(value) {
   return String(value || "")
     .replace(/Ã|Â|·/g, "-")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (char) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[char]));
 }
 
 function formatGradeNumber(value) {
@@ -130,7 +150,10 @@ function getExamPoints(student, blockName) {
   return {
     written: Number(examBlock.written || 0),
     oral: Number(examBlock.oral || 0),
-    verbs: Number(examBlock.verbs || 0)
+    verbs: Number(examBlock.verbs || 0),
+    hasWritten: examBlock.written !== undefined,
+    hasOral: examBlock.oral !== undefined,
+    hasVerbs: examBlock.verbs !== undefined
   };
 }
 
@@ -142,19 +165,61 @@ function getA(student, blockName) {
   return Number(student?.attendancePoints?.[blockName] || 0);
 }
 
+function summaryGroupName(student) {
+  if (isTeacherView) return activeTeacherGroup() || studentGroupNames(student)[0] || "";
+  return String(student?.groupName || studentGroupNames(student)[0] || "").trim();
+}
+
+function taskGradeState(student, blockName) {
+  const groupName = summaryGroupName(student);
+  const config = groupEvaluationConfig(groupsCache?.[groupName] || {});
+  const criterion = config.criteria.find((item) => item.source === "tasks");
+
+  if (criterion) {
+    const assignmentResult = taskCriterionContribution({
+      studentKey,
+      student,
+      blockName,
+      criterion,
+      config,
+      assignments: assignmentsCache,
+      submissions: assignmentSubmissionsCache,
+      requirePublished: !isTeacherView
+    });
+
+    if (assignmentResult) {
+      return {
+        value: assignmentResult.contribution,
+        hasGrade: assignmentResult.gradedCount > 0,
+        assignmentCount: assignmentResult.assignmentCount,
+        gradedCount: assignmentResult.gradedCount
+      };
+    }
+  }
+
+  const legacyDefined = student?.taskPoints?.[blockName] !== undefined;
+  return {
+    value: Number(student?.taskPoints?.[blockName] || 0),
+    hasGrade: legacyDefined,
+    assignmentCount: 0,
+    gradedCount: legacyDefined ? 1 : 0
+  };
+}
+
 function getT(student, blockName) {
-  return Number(student?.taskPoints?.[blockName] || 0);
+  return taskGradeState(student, blockName).value;
 }
 
 function blockHasGrades(blockName) {
   const exam = currentStudent?.examPoints?.[blockName] || {};
+  const taskState = taskGradeState(currentStudent, blockName);
   return Boolean(
     exam.written !== undefined ||
     exam.oral !== undefined ||
     exam.verbs !== undefined ||
     currentStudent?.blockPoints?.[blockName] !== undefined ||
     currentStudent?.attendancePoints?.[blockName] !== undefined ||
-    currentStudent?.taskPoints?.[blockName] !== undefined
+    taskState.hasGrade
   );
 }
 
@@ -162,10 +227,11 @@ function getBlockGradeData(blockName) {
   const exam = getExamPoints(currentStudent, blockName);
   const p = getP(currentStudent, blockName);
   const a = getA(currentStudent, blockName);
-  const t = getT(currentStudent, blockName);
+  const taskState = taskGradeState(currentStudent, blockName);
+  const t = taskState.value;
   const total = exam.written + exam.oral + exam.verbs + p + a + t;
 
-  return { exam, p, a, t, total };
+  return { exam, p, a, t, taskState, total };
 }
 
 function renderBlockScoreTable() {
@@ -194,9 +260,9 @@ function renderBlockScoreTable() {
     return `
       <tr>
         <td>${blockName}</td>
-        <td>${formatGradeNumber(data.exam.written)}</td>
-        <td>${formatGradeNumber(data.exam.oral)}</td>
-        <td>${formatGradeNumber(data.exam.verbs)}</td>
+        <td>${data.exam.hasWritten ? formatGradeNumber(data.exam.written) : "NY"}</td>
+        <td>${data.exam.hasOral ? formatGradeNumber(data.exam.oral) : "NY"}</td>
+        <td>${data.exam.hasVerbs ? formatGradeNumber(data.exam.verbs) : "NY"}</td>
         <td>${formatGradeNumber(data.p)}</td>
         <td>${formatGradeNumber(data.a)}</td>
         <td>${formatGradeNumber(data.t)}</td>
@@ -304,6 +370,65 @@ function teacherGroupEntries() {
     );
 }
 
+function studentPickerSearchText(student) {
+  return [
+    getFullName(student),
+    getNickname(student),
+    getExternalId(student),
+    student?.lastName,
+    student?.lastNames,
+    student?.firstName
+  ]
+    .map((value) => cleanText(value).toLowerCase())
+    .filter(Boolean)
+    .join(" ");
+}
+
+function renderStudentPicker() {
+  if (!isTeacherView || !studentPickerList) return;
+
+  const query = cleanText(studentPickerSearch?.value || "").toLowerCase();
+  const entries = teacherGroupEntries().filter(([, student]) =>
+    !query || studentPickerSearchText(student).includes(query)
+  );
+
+  studentPickerList.innerHTML = entries.length
+    ? entries.map(([key, student]) => {
+        const primary = studentPrimaryDisplay(student, activeStudentDisplayMode());
+        const fullName = getFullName(student);
+        const nickname = getNickname(student);
+        const externalId = getExternalId(student);
+        const details = [...new Set([fullName, nickname, externalId].filter((value) => value && value !== primary))];
+
+        return `
+          <button
+            type="button"
+            class="student-picker-row ${key === studentKey ? "current" : ""}"
+            data-student-picker-key="${escapeHtml(key)}"
+          >
+            <span>
+              <strong>${escapeHtml(primary)}</strong>
+              <small>${escapeHtml(details.join(" · ") || "Student")}</small>
+            </span>
+            <span>›</span>
+          </button>
+        `;
+      }).join("")
+    : '<div class="student-picker-empty">No students match this search.</div>';
+
+  if (studentPickerGroupLabel) {
+    studentPickerGroupLabel.textContent = activeTeacherGroup() || "No active group";
+  }
+}
+
+function openStudentPicker() {
+  if (!isTeacherView || !studentPickerDialog) return;
+  if (studentPickerSearch) studentPickerSearch.value = "";
+  renderStudentPicker();
+  if (!studentPickerDialog.open) studentPickerDialog.showModal();
+  setTimeout(() => studentPickerSearch?.focus(), 0);
+}
+
 function updateTeacherStudentUrl() {
   if (!isTeacherView || !studentKey) return;
   const url = new URL(window.location.href);
@@ -400,9 +525,57 @@ function syncTeacherStudentSelection() {
   renderTeacherStudentNavigation();
 }
 
+function wireOwnSummarySubmissionListeners() {
+  if (isTeacherView || !studentKey) return;
+
+  const assignmentIds = new Set(Object.keys(assignmentsCache || {}));
+
+  for (const [assignmentId, unsubscribe] of ownSubmissionUnsubscribers.entries()) {
+    if (assignmentIds.has(assignmentId)) continue;
+    unsubscribe();
+    ownSubmissionUnsubscribers.delete(assignmentId);
+    delete assignmentSubmissionsCache[assignmentId];
+  }
+
+  for (const assignmentId of assignmentIds) {
+    if (ownSubmissionUnsubscribers.has(assignmentId)) continue;
+
+    const unsubscribe = onValue(
+      ref(db, `assignmentSubmissions/${assignmentId}/${studentKey}`),
+      (snapshot) => {
+        const submission = snapshot.val();
+        if (submission) {
+          assignmentSubmissionsCache[assignmentId] = { [studentKey]: submission };
+        } else {
+          delete assignmentSubmissionsCache[assignmentId];
+        }
+        renderAll();
+      }
+    );
+
+    ownSubmissionUnsubscribers.set(assignmentId, unsubscribe);
+  }
+}
+
 setupTeacherViewShell();
 
 if (isTeacherView) {
+  if (displayNameCard) {
+    displayNameCard.classList.add("teacher-selectable");
+    displayNameCard.title = "Double-click to select another student";
+    displayNameCard.addEventListener("dblclick", openStudentPicker);
+  }
+
+  studentPickerSearch?.addEventListener("input", renderStudentPicker);
+  studentPickerCloseBtn?.addEventListener("click", () => studentPickerDialog?.close());
+  studentPickerList?.addEventListener("click", (event) => {
+    const row = event.target.closest("[data-student-picker-key]");
+    if (!row) return;
+    if (selectTeacherStudent(row.dataset.studentPickerKey)) {
+      studentPickerDialog?.close();
+    }
+  });
+
   studentDisplayModeBtn.addEventListener("click", async () => {
     const groupName = activeTeacherGroup();
     if (!groupName || !groupsCache[groupName]) return;
@@ -428,18 +601,31 @@ if (isTeacherView) {
   onValue(ref(db, "groups"), (snapshot) => {
     groupsCache = snapshot.val() || {};
     syncTeacherStudentSelection();
+    if (studentPickerDialog?.open) renderStudentPicker();
   });
 
   onValue(ref(db, "students"), (snapshot) => {
     studentsCache = snapshot.val() || {};
     syncTeacherStudentSelection();
+    if (studentPickerDialog?.open) renderStudentPicker();
   });
 
   window.addEventListener("youteach:working-group-changed", () => {
     studentKey = "";
     syncTeacherStudentSelection();
+    if (studentPickerDialog?.open) renderStudentPicker();
+  });
+
+  onValue(ref(db, "assignmentSubmissions"), (snapshot) => {
+    assignmentSubmissionsCache = snapshot.val() || {};
+    renderAll();
   });
 } else {
+  onValue(ref(db, "groups"), (snapshot) => {
+    groupsCache = snapshot.val() || {};
+    renderAll();
+  });
+
   const studentLogoutBtn = document.getElementById("logoutBtn");
   if (studentLogoutBtn) {
     studentLogoutBtn.addEventListener("click", async () => {
@@ -459,9 +645,16 @@ if (isTeacherView) {
       return;
     }
 
+    wireOwnSummarySubmissionListeners();
     renderAll();
   });
 }
+
+onValue(ref(db, "assignments"), (snapshot) => {
+  assignmentsCache = snapshot.val() || {};
+  wireOwnSummarySubmissionListeners();
+  renderAll();
+});
 
 onValue(ref(db, "session/current"), (snapshot) => {
   currentSession = snapshot.val() || null;
