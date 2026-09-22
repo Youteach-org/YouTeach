@@ -118,7 +118,9 @@ test('new assignments can be linked to a group evaluation criterion', () => {
   assert.match(createAssignmentJs, /groupEvaluationCriterionId/);
   assert.match(createAssignmentJs, /groupEvaluationCriterionName/);
   assert.match(createAssignmentJs, /groupEvaluationConfig/);
-  assert.match(createAssignmentJs, /evaluationBlock:/);
+  assert.match(createAssignmentJs, /const evaluationBlock =/);
+  assert.match(createAssignmentJs, /evaluationBlock,/);
+  assert.match(createAssignmentHtml, /id="assignmentEvaluationBlock"/);
 });
 
 test('normalization keeps teacher-defined criterion names and sources', () => {
