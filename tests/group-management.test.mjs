@@ -457,3 +457,11 @@ test('double clicking any group row activates that group and updates working-gro
   assert.match(block, /sessionStorage\.setItem\(WORKING_GROUP_KEY, groupName\)/);
   assert.match(block, /youteach:working-group-changed/);
 });
+
+
+test('group deletion removes only the target membership when students belong to other groups', () => {
+  assert.match(js, /planStudentRemovalFromGroup/);
+  assert.match(js, /studentInGroup\(student, groupName\)/);
+  assert.match(js, /deletedStudentKeys\.has\(studentKey\)/);
+  assert.doesNotMatch(js, /updates\[\`students\/\$\{studentKey\}\`\] = null/);
+});

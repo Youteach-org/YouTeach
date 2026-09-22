@@ -13,6 +13,7 @@ import { migrateExistingStudentsForTeacher } from "./student-auth.js?v=group-eva
 import { calculateStudentBlockGrade } from "./group-grade-runtime.js";
 import { visibleGroups } from "./group-state.js";
 import { studentGroupNames, studentInGroup } from "./student-groups.js";
+import { planStudentRemovalFromGroup } from "./group-membership-deletion.js";
 
 import {
   criteriaToFirebaseObject,
@@ -1666,7 +1667,7 @@ function objectFilter(source, predicate) {
 function buildGroupBackup(root, groupName) {
   const group = root?.groups?.[groupName] || {};
   const students = objectFilter(root?.students, ([, student]) =>
-    String(student?.groupName || "") === groupName
+    studentInGroup(student, groupName)
   );
   const formerStudents = root?.groupFormerStudents?.[groupName] || {};
   const studentKeys = new Set([...Object.keys(students), ...Object.keys(formerStudents)]);
@@ -1677,7 +1678,7 @@ function buildGroupBackup(root, groupName) {
 
   const assignmentSubmissions = {};
   Object.entries(root?.assignmentSubmissions || {}).forEach(([assignmentId, byStudent]) => {
-    const relevant = objectFilter(byStudent, ([studentKey]) => studentKeys.has(studentKey));
+    const relevant = objectFilter(byStudent, ([studentKey]) => deletedStudentKeys.has(studentKey));
     if (assignmentIds.has(assignmentId)) {
       assignmentSubmissions[assignmentId] = byStudent || {};
     } else if (Object.keys(relevant).length) {
@@ -1688,14 +1689,13 @@ function buildGroupBackup(root, groupName) {
   const attendance = {};
   Object.entries(root?.attendance || {}).forEach(([dateKey, byStudent]) => {
     const relevant = objectFilter(byStudent, ([studentKey, row]) =>
-      studentKeys.has(studentKey) || String(row?.groupName || "") === groupName
+      deletedStudentKeys.has(studentKey) || String(row?.groupName || "") === groupName
     );
     if (Object.keys(relevant).length) attendance[dateKey] = relevant;
   });
 
   const pointsLog = objectFilter(root?.pointsLog, ([, entry]) =>
-    String(entry?.groupName || "") === groupName ||
-    studentKeys.has(String(entry?.studentKey || ""))
+    String(entry?.groupName || "") === groupName
   );
 
   const sessionHistory = objectFilter(root?.sessionHistory, ([, session]) =>
@@ -1738,14 +1738,9 @@ function buildGroupDeletionUpdates(root, backup) {
     [`groupFormerStudents/${groupName}`]: null
   };
 
-  const studentKeys = new Set([
-    ...Object.keys(backup.students || {}),
-    ...Object.keys(backup.formerStudents || {})
-  ]);
-
-  studentKeys.forEach((studentKey) => {
-    updates[`students/${studentKey}`] = null;
-  });
+  const membershipPlan = planStudentRemovalFromGroup(root?.students || {}, groupName);
+  Object.assign(updates, membershipPlan.updates);
+  const deletedStudentKeys = new Set(membershipPlan.deletedStudentKeys);
 
   Object.keys(backup.assignments || {}).forEach((assignmentId) => {
     updates[`assignments/${assignmentId}`] = null;
@@ -1755,7 +1750,7 @@ function buildGroupDeletionUpdates(root, backup) {
   Object.entries(root?.assignmentSubmissions || {}).forEach(([assignmentId, byStudent]) => {
     if (backup.assignments?.[assignmentId]) return;
     Object.keys(byStudent || {}).forEach((studentKey) => {
-      if (studentKeys.has(studentKey)) {
+      if (deletedStudentKeys.has(studentKey)) {
         updates[`assignmentSubmissions/${assignmentId}/${studentKey}`] = null;
       }
     });
@@ -1763,7 +1758,7 @@ function buildGroupDeletionUpdates(root, backup) {
 
   Object.entries(root?.attendance || {}).forEach(([dateKey, byStudent]) => {
     Object.entries(byStudent || {}).forEach(([studentKey, row]) => {
-      if (studentKeys.has(studentKey) || String(row?.groupName || "") === groupName) {
+      if (deletedStudentKeys.has(studentKey) || String(row?.groupName || "") === groupName) {
         updates[`attendance/${dateKey}/${studentKey}`] = null;
       }
     });
