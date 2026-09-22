@@ -15,7 +15,7 @@ const CONTRACT = Object.freeze({
   launchMode: "live-buzzer",
   idleTtlMs: 60 * 60 * 1000,
   youTeachOrigin: "https://youteach.pages.dev",
-  cogOrigin: "https://classroom-online-games.pages.dev",
+  cogOrigin: "https://utichgion.org",
   descriptorFields: [
     "gameId",
     "gameName",
