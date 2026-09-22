@@ -67,7 +67,7 @@ test('Exact team recipients are enforced client-side and server-side', () => {
 test('Assignments popup loads only the dedicated Create Assignment module', () => {
   assert.match(moduleLauncherJs, /assignment-create-module\.html/);
   assert.doesNotMatch(moduleLauncherJs, /teacher-assignments\.html\?module=1/);
-  assert.match(createModuleHtml, /<h1>Create Assignment<\/h1>/);
+  assert.match(createModuleHtml, /<h1 id="assignmentModuleTitle">Create Assignment<\/h1>/);
   assert.match(createModuleHtml, /id="assignmentType"/);
   assert.match(createModuleHtml, /id="createPresetCriteria"/);
   assert.match(createModuleHtml, /Instructions for ChatGPT when reviewing/);
