@@ -8,6 +8,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
 const html = readFileSync(join(root, 'group-mangement.html'), 'utf8');
 const js = readFileSync(join(root, 'group-mangement.js'), 'utf8');
+const liveJs = readFileSync(join(root, 'teacher-enrollment.js'), 'utf8');
 const enrollHtml = readFileSync(join(root, 'student-enroll.html'), 'utf8');
 const enrollJs = readFileSync(join(root, 'student-enroll.js'), 'utf8');
 
@@ -467,7 +468,14 @@ test('group deletion removes only the target membership when students belong to 
 });
 
 
-test('Group Management roster is expanded by default unless the teacher explicitly collapsed it', () => {
-  assert.match(js, /let rosterCollapsed = restoredManagementState\.rosterCollapsed === true/);
-  assert.match(js, /rosterBody\.hidden = rosterCollapsed/);
+test('Group Management roster is always visible and has no collapse control', () => {
+  assert.doesNotMatch(html, /id="toggleRosterBtn"|class="collapse-btn"/);
+  assert.doesNotMatch(liveJs, /rosterCollapsed|toggleRosterBtn|rosterBody\.hidden\s*=/);
+  assert.doesNotMatch(js, /rosterCollapsed|toggleRosterBtn|rosterBody\.hidden\s*=/);
+  assert.match(html, /<div id="rosterBody">/);
+});
+
+test('Group Management regression tests cover the script actually loaded by the route', () => {
+  assert.match(html, /src="teacher-enrollment\.js/);
+  assert.match(liveJs, /function renderManagedStudents/);
 });
