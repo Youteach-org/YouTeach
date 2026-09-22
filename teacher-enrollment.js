@@ -14,6 +14,7 @@ import { calculateStudentBlockGrade } from "./group-grade-runtime.js";
 import { visibleGroups } from "./group-state.js";
 import { studentGroupNames, studentInGroup } from "./student-groups.js";
 import { planStudentRemovalFromGroup } from "./group-membership-deletion.js";
+import { ensureGroupsDialog } from "./groups-dialog.js";
 
 import {
   criteriaToFirebaseObject,
@@ -25,6 +26,7 @@ import {
 } from "./group-evaluation-model.js";
 
 requireTeacherAuth();
+ensureGroupsDialog();
 
 const WORKING_GROUP_KEY = "youteachWorkingGroup";
 const MANAGEMENT_STATE_KEY = "youteachGroupManagementState";
