@@ -194,6 +194,8 @@ const assignmentsModuleContext = ASSIGNMENTS_MODULE_MODE ? readAssignmentsModule
 let selectedAssignmentId = "";
 let selectedDriveFolderUrl = "";
 let selectedManualStudentKey = "";
+let submissionCardClickTimer = null;
+const SUBMISSION_CARD_CLICK_DELAY_MS = 240;
 let examAnnotationState = {
   assignmentId: "",
   studentKey: "",
@@ -3537,13 +3539,29 @@ submissionList.addEventListener("click", (event) => {
   if (event.target.closest("a,button")) return;
   const card = event.target.closest("[data-submission-student-key]");
   if (!card) return;
-  openManualGrading(selectedAssignmentId, card.dataset.submissionStudentKey);
+
+  if (event.detail > 1) {
+    clearTimeout(submissionCardClickTimer);
+    submissionCardClickTimer = null;
+    return;
+  }
+
+  clearTimeout(submissionCardClickTimer);
+  const assignmentId = selectedAssignmentId;
+  const studentKey = card.dataset.submissionStudentKey;
+  submissionCardClickTimer = setTimeout(() => {
+    submissionCardClickTimer = null;
+    openManualGrading(assignmentId, studentKey);
+  }, SUBMISSION_CARD_CLICK_DELAY_MS);
 });
 
 submissionList.addEventListener("dblclick", (event) => {
   if (event.target.closest("a,button")) return;
   const card = event.target.closest("[data-student-record-key]");
   if (!card) return;
+
+  clearTimeout(submissionCardClickTimer);
+  submissionCardClickTimer = null;
   openStudentRecord(card.dataset.studentRecordKey);
 });
 
