@@ -407,6 +407,7 @@ async function main() {
   }, result);
 
   const first = await submit();
+  console.log("E2E result submit response", first.status, first.body?.error || first.body?.ok || "");
   assert.equal(first.status, 200);
   assert.equal(first.body.duplicate, false);
   const retry = await submit();
