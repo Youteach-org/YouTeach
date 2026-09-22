@@ -89,9 +89,23 @@ jobs:
               env=configs.get(env_name) or {}
               kv=env.get('kv_namespaces') or {}
               env_vars=env.get('env_vars') or {}
-              print(env_name, 'kv_bindings=', sorted(kv.keys()))
-              print(env_name, 'env_var_names=', sorted(env_vars.keys()))
-              for name, item in sorted(env_vars.items()):
-                  kind=(item or {}).get('type')
-                  print(env_name, 'env_var', name, 'type=', kind)
+              print(env_name, 'kv_bindings=', sorted(kv.keys()) if isinstance(kv,dict) else kv)
+              print(env_name, 'env_var_names=', sorted(env_vars.keys()) if isinstance(env_vars,dict) else env_vars)
+              if isinstance(env_vars,dict):
+                  for name, item in sorted(env_vars.items()):
+                      kind=(item or {}).get('type')
+                      print(env_name, 'env_var', name, 'type=', kind)
           PY
+
+          echo "KV namespaces in account:"
+          curl -fsS             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/storage/kv/namespaces?per_page=100"             -o /tmp/kv.json
+          python - <<'PY'
+          import json
+          data=json.load(open('/tmp/kv.json'))
+          for item in data.get('result') or []:
+              print('kv_namespace', item.get('title'), item.get('id'))
+          PY
+
+          PROD_STATUS="$(curl -sS -o /tmp/prod-login.json -w '%{http_code}' -X POST             "https://youteach.pages.dev/api/teacher-session"             -H 'Content-Type: application/json'             --data '{"username":"__preview_probe__","password":"__invalid__"}')"
+          echo "production teacher-session status=$PROD_STATUS"
+          cat /tmp/prod-login.json
