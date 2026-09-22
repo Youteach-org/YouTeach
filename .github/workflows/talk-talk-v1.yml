@@ -65,3 +65,33 @@ jobs:
           test -n "$CHROME" || (echo "::error::No Chrome browser on runner" && exit 1)
           "$CHROME" --headless --no-sandbox --disable-gpu --virtual-time-budget=2500 --dump-dom             https://talk-talk-v1-20260921.youteach.pages.dev/ > /tmp/youteach-dom.html
           grep -Fq 'Choose your access point' /tmp/youteach-dom.html
+
+  diagnose-preview-bindings:
+    needs: deploy-preview
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect Cloudflare Pages binding names
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID_RAW: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -eu
+          ACCOUNT_ID="$(printf '%s' "$CLOUDFLARE_ACCOUNT_ID_RAW" | tr -d '[:space:]')"
+          test -n "$ACCOUNT_ID"
+          curl -fsS             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/pages/projects/youteach"             -o /tmp/project.json
+          python - <<'PY'
+          import json
+          data=json.load(open('/tmp/project.json'))
+          result=data.get('result') or {}
+          configs=result.get('deployment_configs') or {}
+          for env_name in ('production','preview'):
+              env=configs.get(env_name) or {}
+              kv=env.get('kv_namespaces') or {}
+              env_vars=env.get('env_vars') or {}
+              print(env_name, 'kv_bindings=', sorted(kv.keys()))
+              print(env_name, 'env_var_names=', sorted(env_vars.keys()))
+              for name, item in sorted(env_vars.items()):
+                  kind=(item or {}).get('type')
+                  print(env_name, 'env_var', name, 'type=', kind)
+          PY
