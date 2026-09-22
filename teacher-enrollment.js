@@ -1262,7 +1262,7 @@ function renderGroupsTable() {
       : '<span class="setup-required">Evaluation setup required</span>';
 
     return `
-      <tr class="${selected ? "selected-group-row" : ""}">
+      <tr class="${selected ? "selected-group-row" : ""}" data-popup-group-row="${escapeHtml(groupName)}">
         <td>
           <button class="group-select-button" type="button" data-popup-group="${escapeHtml(groupName)}"
             aria-pressed="${String(selected)}">
@@ -2079,8 +2079,13 @@ groupsTableBody.addEventListener("click", (event) => {
 
 groupsTableBody.addEventListener("dblclick", (event) => {
   const groupButton = event.target.closest("[data-popup-group]");
-  if (!groupButton) return;
-  const groupName = String(groupButton.dataset.popupGroup || "");
+  const groupRow = event.target.closest("[data-popup-group-row]");
+  const groupName = String(
+    groupButton?.dataset.popupGroup ||
+    groupRow?.dataset.popupGroupRow ||
+    ""
+  );
+  if (!groupName) return;
   markPopupGroup(groupName);
   selectManagedGroup(groupName);
 });
