@@ -485,8 +485,9 @@ test('Group Management regression tests cover the script actually loaded by the 
 
 test('Group Management uses the canonical shared Groups dialog module', () => {
   assert.equal(existsSync(groupsDialogPath), true);
-  assert.match(js, /import \{ ensureGroupsDialog \} from "\.\/groups-dialog\.js"/);
+  assert.match(js, /import \{ ensureGroupsDialog, renderGroupsDialog \} from "\.\/groups-dialog\.js"/);
   assert.match(js, /ensureGroupsDialog\(\);/);
+  assert.match(js, /renderGroupsDialog\(\{/);
   assert.doesNotMatch(html, /<dialog id="groupsDialog">/);
   assert.match(groupsDialogJs, /class="group-select-button"/);
   assert.match(groupsDialogJs, /id="openCreateGroupDialogBtn"/);
