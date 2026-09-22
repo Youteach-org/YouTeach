@@ -1,5 +1,6 @@
 import { calculateBlockGrade } from "./group-evaluation-model.js";
 import { studentInGroup } from "./student-groups.js";
+import { evaluationTargetForAssignment } from "./assignment-evaluation-target.js";
 
 function normalizedRecipientKeys(raw) {
   if (Array.isArray(raw)) return raw.map(String);
@@ -20,8 +21,13 @@ function assignmentAppliesToStudent(assignment, studentKey, student) {
   return true;
 }
 
+function assignmentTarget(assignment) {
+  const groupName = String(assignment?.groupName || "").trim();
+  return evaluationTargetForAssignment(assignment, groupName);
+}
+
 function assignmentBlock(assignment) {
-  return String(assignment?.evaluationBlock || assignment?.block || "").trim();
+  return String(assignmentTarget(assignment).block || "").trim();
 }
 
 function assignmentScoresForCriterion({
@@ -46,7 +52,9 @@ function assignmentScoresForCriterion({
     if (!Number.isFinite(score)) return;
 
     const normalizedScore = Math.min(100, Math.max(0, score));
-    const criterionId = String(assignment.groupEvaluationCriterionId || "");
+    const criterionId = String(
+      assignmentTarget(assignment).criterionId || assignment.groupEvaluationCriterionId || ""
+    );
 
     if (criterionId === criterion.id) {
       tagged.push(normalizedScore);
