@@ -25,7 +25,7 @@ function inferredPreviewOrigin(requestUrl) {
 
   if (!host.endsWith(suffix) || host === "youteach.pages.dev") return "";
   const branch = host.slice(0, -suffix.length).trim();
-  if (!branch) return "";
+  if (!branch || !branch.startsWith("talk-talk-")) return "";
 
   return `https://${branch}.classroom-online-games.pages.dev`;
 }
