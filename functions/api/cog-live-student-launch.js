@@ -61,7 +61,7 @@ export async function onRequestPost({ request, env }) {
       externalId,
       fullName: String(studentRecord.fullName || studentRecord.name || "").trim(),
       nickname: String(studentRecord.nickname || "").trim(),
-      groupName: String(studentRecord.groupName || "").trim(),
+      groupName: String(connectedGame.groupName || session.groupName || "").trim(),
       youTeachSessionId: youTeachSessionId(session),
       assignmentId: String(connectedGame.assignmentId || "").trim(),
       gameId: game.id,
