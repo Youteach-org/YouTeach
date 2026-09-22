@@ -211,49 +211,6 @@
   </div>
 
 
-  <dialog id="groupsDialog">
-    <div class="modal-card">
-      <div class="modal-head">
-        <h3>Groups</h3>
-        <button id="closeGroupsDialogBtn" class="modal-close" type="button">Close</button>
-      </div>
-
-      <div class="management-head">
-        <div>
-          <h3>Groups</h3>
-          <div class="status-text">Click a group to mark it, then use Select to make it the active group.</div>
-        </div>
-        <div class="management-head-actions">
-          <button id="openCreateGroupDialogBtn" type="button">+ Create Group</button>
-        </div>
-      </div>
-
-      <div id="selectedGroupActions" class="group-context-actions" hidden>
-        <strong id="selectedGroupActionLabel"></strong>
-        <button id="selectPopupGroupBtn" type="button">Select</button>
-        <button id="openGroupEvaluationDialogBtn" type="button">Blocks &amp; Criteria</button>
-        <button id="deleteSelectedGroupBtn" class="delete-group-btn" type="button">Delete Group</button>
-      </div>
-
-      <div class="table-wrap" style="margin-top:8px;">
-        <table class="data-table groups-table">
-          <thead>
-            <tr>
-              <th>Group</th>
-              <th>Students</th>
-              <th>Pending</th>
-              <th>Blocks</th>
-              <th>Evaluation</th>
-            </tr>
-          </thead>
-          <tbody id="groupsTableBody">
-            <tr><td colspan="5">No groups yet.</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </dialog>
-
   <dialog id="deleteGroupDialog">
     <div class="modal-card">
       <div class="modal-head">
