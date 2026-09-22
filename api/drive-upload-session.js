@@ -16,6 +16,23 @@ function safeSegment(value, fallback = "item") {
   return clean || fallback;
 }
 
+
+function studentBelongsToGroup(student, groupName) {
+  const target = String(groupName || "").trim();
+  if (!target || target === "ALL") return true;
+  if (String(student?.groupName || "").trim() === target) return true;
+
+  const memberships = student?.groupMemberships;
+  if (Array.isArray(memberships)) {
+    return memberships.some((value) => String(value || "").trim() === target);
+  }
+  if (memberships && typeof memberships === "object") {
+    const value = memberships[target];
+    return value === true || (value && typeof value === "object" && value.active !== false);
+  }
+  return false;
+}
+
 function escapeDriveQuery(value) {
   return String(value || "").replace(/\\/g, "\\\\").replace(/'/g, "\\'");
 }
@@ -237,9 +254,8 @@ module.exports = async function handler(req, res) {
       return send(res, 403, { ok: false, error: "The due date for this assignment has passed." });
     }
 
-    const studentGroup = String(student.groupName || "GENERAL");
     const assignmentGroup = String(assignment.groupName || "ALL");
-    if (assignmentGroup !== "ALL" && assignmentGroup !== studentGroup) {
+    if (!studentBelongsToGroup(student, assignmentGroup)) {
       return send(res, 403, { ok: false, error: "This assignment is not assigned to your group." });
     }
 
