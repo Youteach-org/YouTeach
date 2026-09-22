@@ -55,7 +55,14 @@ GitHub is the source of truth. Chat memory is secondary.
    - verified identity handoff and automatic result return;
    - explicit end plus 60-minute zero-presence expiry.
 
-7. Relevant implementation files and recent commits on `main`.
+7. `docs/superpowers/specs/2026-09-22-oral-exam-gemini-transcription-pronunciation.md`
+   - restart oral-exam transcription from the original audio;
+   - Gemini literal-heard transcription with no correction or normalization;
+   - separate intended-word/pronunciation analysis;
+   - one evaluation PDF per pair after transcript validation;
+   - previous local-PC transcription experiments are non-canonical.
+
+8. Relevant implementation files and recent commits on `main`.
    - UI micro-decisions that are already implemented are authoritative in code/commit history even when not repeated word-for-word in a spec.
 
 ## Global UI rules
