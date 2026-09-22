@@ -97,6 +97,7 @@ Do not replace this standard pattern with separate `Select all` / `Deselect all`
 11. External AI exam creation/rearrangement is outside the Exam Bank and must be designed separately.
 12. Admin is a separate role-aware section from Teacher.
 13. Current project terminology should stay consistent with the specs.
+14. **Creative Claw is not an approved tool for this project or its oral-exam workflow. Do not invoke it for media import, transcription, generation, or processing unless the user explicitly reauthorizes Creative Claw in a later message.**
 
 ## Current high-level sequence
 
