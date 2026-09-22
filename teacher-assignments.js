@@ -1641,6 +1641,13 @@ function assignmentSubmissions(assignmentId) {
   return submissionsCache?.[assignmentId] || {};
 }
 
+function openStudentRecord(studentKey) {
+  const key = String(studentKey || "").trim();
+  if (!key) return;
+  sessionStorage.setItem("teacherViewStudentKey", key);
+  window.location.href = `student-summary.html?teacherViewStudentKey=${encodeURIComponent(key)}`;
+}
+
 function assignmentHasSubmissions(assignmentId) {
   return Object.values(assignmentSubmissions(assignmentId))
     .some((submission) => Boolean(submission?.driveFileId));
@@ -2790,7 +2797,7 @@ function renderDetail() {
             ? "Published"
             : (gradingMode === "ai" ? "AI graded · teacher review pending" : "Manual grade · unpublished"));
         return `
-          <article class="submission-card ${graded ? "graded" : "pending-grade"} ${!manualGradingPanel.hidden && selectedManualStudentKey === studentKey ? "selected-for-grading" : ""}" data-submission-student-key="${escapeHtml(studentKey)}">
+          <article class="submission-card ${graded ? "graded" : "pending-grade"} ${!manualGradingPanel.hidden && selectedManualStudentKey === studentKey ? "selected-for-grading" : ""}" data-submission-student-key="${escapeHtml(studentKey)}" data-student-record-key="${escapeHtml(studentKey)}">
             <h4>${escapeHtml(submission.studentName || "Student")}</h4>
             <div class="submission-meta">
               ${escapeHtml(submission.studentNumber || "No ID")} ·
@@ -2861,7 +2868,7 @@ function renderDetail() {
         const group = student.groupName || assignment.groupName || "GENERAL";
 
         return `
-          <article class="missing-student-card">
+          <article class="missing-student-card" data-student-record-key="${escapeHtml(studentKey)}">
             <div class="missing-student-main">
               <strong>${escapeHtml(name)}</strong>
               <span>${escapeHtml(id)} · ${escapeHtml(group)}</span>
@@ -3531,6 +3538,19 @@ submissionList.addEventListener("click", (event) => {
   const card = event.target.closest("[data-submission-student-key]");
   if (!card) return;
   openManualGrading(selectedAssignmentId, card.dataset.submissionStudentKey);
+});
+
+submissionList.addEventListener("dblclick", (event) => {
+  if (event.target.closest("a,button")) return;
+  const card = event.target.closest("[data-student-record-key]");
+  if (!card) return;
+  openStudentRecord(card.dataset.studentRecordKey);
+});
+
+missingList.addEventListener("dblclick", (event) => {
+  const card = event.target.closest("[data-student-record-key]");
+  if (!card) return;
+  openStudentRecord(card.dataset.studentRecordKey);
 });
 
 examToolButtons.forEach((button) => {
