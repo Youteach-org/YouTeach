@@ -151,8 +151,12 @@ async function main() {
   assert.ok(ghost, "Existing Ghost lab student GHOST20 with FANTASMA membership is required; this test will not create students.");
   [ghostKey, ghostBefore] = ghost;
   const ghostGroups = studentGroupNames(ghostBefore);
+  const groupMemberCount = Object.values(students || {})
+    .filter((student) => studentGroupNames(student).includes(GROUP))
+    .length;
   assert.equal(String(ghostBefore.nickname || ""), "FAKE-20");
   assert.ok(ghostGroups.includes(GROUP), "GHOST20 must remain enrolled in FANTASMA without changing its primary group.");
+  assert.ok(groupMemberCount >= 20, "FANTASMA must include the existing Ghost lab members.");
   attendanceBefore = await fb(`attendance/${today()}/${ghostKey}`);
 
   browser = await chromium.launch({ headless: true });
@@ -197,6 +201,17 @@ async function main() {
   }
 
   await teacherPage.locator("#teamSourceSelect").selectOption("all");
+  await teacherPage.waitForFunction(
+    (expected) => Number(document.querySelector("#teamSourceStudentCount")?.textContent || 0) === expected,
+    groupMemberCount
+  );
+  const teamSourceDiagnostic = await teacherPage.evaluate(() => ({
+    mode: document.querySelector("#teamSourceSelect")?.value || "",
+    sourceCount: Number(document.querySelector("#teamSourceStudentCount")?.textContent || 0),
+    presentCount: Number(document.querySelector("#presentTodayLabel")?.textContent || 0),
+    workingGroup: sessionStorage.getItem("youteachWorkingGroup") || ""
+  }));
+  console.log("E2E diagnostic team source", JSON.stringify(teamSourceDiagnostic));
   await teacherPage.locator("#numTeams").fill("2");
   const previousSessionCreatedAt = Number(sessionBefore?.createdAt || 0);
   teacherPage.once("dialog", (d) => d.accept());
