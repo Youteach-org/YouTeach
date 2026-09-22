@@ -12,6 +12,7 @@ import {
 } from "./assignment-library-model.js";
 import {
   assignmentTypeCode as evaluationAssignmentTypeCode,
+  evaluationTargetForAssignment,
   legacyAssignmentMigrationTarget
 } from "./assignment-evaluation-target.js";
 
@@ -111,6 +112,8 @@ const assignmentBrowserCount = document.getElementById("assignmentBrowserCount")
 const assignmentFilterCode = document.getElementById("assignmentFilterCode");
 const assignmentFilterDate = document.getElementById("assignmentFilterDate");
 const assignmentFilterGroup = document.getElementById("assignmentFilterGroup");
+const assignmentFilterBlock = document.getElementById("assignmentFilterBlock");
+const assignmentFilterCriterion = document.getElementById("assignmentFilterCriterion");
 const clearAssignmentFiltersBtn = document.getElementById("clearAssignmentFiltersBtn");
 const assignmentScrollLeftBtn = document.getElementById("assignmentScrollLeftBtn");
 const assignmentScrollRightBtn = document.getElementById("assignmentScrollRightBtn");
@@ -2460,17 +2463,93 @@ function renderAssignmentFilterOptions() {
   }
 }
 
+function assignmentEvaluationTarget(assignment) {
+  return evaluationTargetForAssignment(
+    assignment,
+    String(assignment?.groupName || "").trim()
+  );
+}
+
+function assignmentCriterionFilterKey(assignment, target = assignmentEvaluationTarget(assignment)) {
+  if (isExamAssignment(assignment)) return "__EXAM__";
+  if (!target.criterionId) return "__UNASSIGNED__";
+  return `${String(assignment?.groupName || "")}::${target.criterionId}`;
+}
+
+function assignmentCriterionLabel(assignment, target = assignmentEvaluationTarget(assignment)) {
+  if (isExamAssignment(assignment)) return "Exam";
+  return String(
+    target.criterionNameSnapshot ||
+    assignment?.groupEvaluationCriterionName ||
+    target.criterionId ||
+    "Needs criterion"
+  ).trim();
+}
+
+function renderAssignmentEvaluationFilterOptions() {
+  if (!assignmentFilterBlock || !assignmentFilterCriterion) return;
+
+  const groupQuery = String(assignmentFilterGroup?.value || "ALL").trim();
+  const previousBlock = String(assignmentFilterBlock.value || "ALL");
+  const previousCriterion = String(assignmentFilterCriterion.value || "ALL");
+  const blocks = new Set();
+  const criteria = new Map();
+
+  Object.values(assignmentsCache || {}).forEach((assignment) => {
+    const groupName = String(assignment?.groupName || "ALL").trim();
+    if (groupQuery !== "ALL" && groupName !== groupQuery) return;
+
+    const target = assignmentEvaluationTarget(assignment);
+    if (target.block) blocks.add(target.block);
+
+    const key = assignmentCriterionFilterKey(assignment, target);
+    const baseLabel = assignmentCriterionLabel(assignment, target);
+    const label = groupQuery === "ALL" && groupName && groupName !== "ALL"
+      ? `${baseLabel} · ${groupName}`
+      : baseLabel;
+    criteria.set(key, label);
+  });
+
+  assignmentFilterBlock.innerHTML =
+    '<option value="ALL">All blocks</option>' +
+    [...blocks].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+      .map((block) => `<option value="${escapeHtml(block)}">${escapeHtml(block)}</option>`)
+      .join("");
+
+  assignmentFilterCriterion.innerHTML =
+    '<option value="ALL">All criteria</option>' +
+    [...criteria.entries()]
+      .sort((a, b) => a[1].localeCompare(b[1], undefined, { sensitivity: "base" }))
+      .map(([key, label]) => `<option value="${escapeHtml(key)}">${escapeHtml(label)}</option>`)
+      .join("");
+
+  assignmentFilterBlock.value =
+    [...assignmentFilterBlock.options].some((option) => option.value === previousBlock)
+      ? previousBlock
+      : "ALL";
+  assignmentFilterCriterion.value =
+    [...assignmentFilterCriterion.options].some((option) => option.value === previousCriterion)
+      ? previousCriterion
+      : "ALL";
+}
+
 function assignmentMatchesFilters(assignment) {
   const codeQuery = String(assignmentFilterCode.value || "").trim().toUpperCase();
   const dateQuery = String(assignmentFilterDate.value || "").trim();
   const groupQuery = String(assignmentFilterGroup.value || "ALL").trim();
+  const blockQuery = String(assignmentFilterBlock?.value || "ALL").trim();
+  const criterionQuery = String(assignmentFilterCriterion?.value || "ALL").trim();
 
   const code = String(assignment?.code || "").toUpperCase();
   const group = String(assignment?.groupName || "ALL").trim();
+  const target = assignmentEvaluationTarget(assignment);
+  const criterionKey = assignmentCriterionFilterKey(assignment, target);
 
   if (codeQuery && !code.includes(codeQuery)) return false;
   if (dateQuery && dateFilterKey(assignment?.dueAt) !== dateQuery) return false;
   if (groupQuery !== "ALL" && group !== groupQuery) return false;
+  if (blockQuery !== "ALL" && target.block !== blockQuery) return false;
+  if (criterionQuery !== "ALL" && criterionKey !== criterionQuery) return false;
 
   return true;
 }
@@ -2509,6 +2588,8 @@ function renderAssignmentList() {
     const total = evaluation.totalStudents;
     const missing = evaluation.missing;
     const evaluatedClass = evaluation.complete ? "evaluated" : "";
+    const target = assignmentEvaluationTarget(assignment);
+    const criterionLabel = assignmentCriterionLabel(assignment, target);
 
     return `
       <article
@@ -2541,6 +2622,8 @@ function renderAssignmentList() {
 
         <span class="assignment-item-meta">
           <span class="assignment-mini-chip">${escapeHtml(assignment.groupName || "ALL")}</span>
+          <span class="assignment-mini-chip assignment-target-block">${escapeHtml(target.block || "No block")}</span>
+          <span class="assignment-mini-chip assignment-target-criterion">${escapeHtml(criterionLabel)}</span>
           ${assignment.recipientTeamTarget
             ? `<span class="assignment-mini-chip">${escapeHtml(assignment.recipientTeamTarget)}</span>`
             : ""}
@@ -2604,7 +2687,9 @@ function renderDetail() {
   const recipientScopeText = assignment.recipientTeamTarget
     ? ` · ${assignment.recipientTeamTarget}`
     : "";
-  detailMeta.textContent = `${assignment.groupName || "ALL"}${recipientScopeText} · Due: ${formatDate(assignment.dueAt)} · ${assignment.active ? "Open" : "Closed"}${codeLockText}`;
+  const detailTarget = assignmentEvaluationTarget(assignment);
+  const detailCriterion = assignmentCriterionLabel(assignment, detailTarget);
+  detailMeta.textContent = `${assignment.groupName || "ALL"}${recipientScopeText} · ${detailTarget.block || "No block"} → ${detailCriterion} · Due: ${formatDate(assignment.dueAt)} · ${assignment.active ? "Open" : "Closed"}${codeLockText}`;
   eligibleCount.textContent = students.length;
   submittedCount.textContent = validSubmissionEntries.length;
   missingCount.textContent = missing.length;
@@ -3539,14 +3624,20 @@ assignmentFilterCode.addEventListener("input", renderAssignmentList);
 assignmentFilterDate.addEventListener("change", renderAssignmentList);
 assignmentFilterGroup.addEventListener("change", () => {
   assignmentFilterGroupTouched = true;
+  renderAssignmentEvaluationFilterOptions();
   renderAssignmentList();
 });
+assignmentFilterBlock?.addEventListener("change", renderAssignmentList);
+assignmentFilterCriterion?.addEventListener("change", renderAssignmentList);
 
 clearAssignmentFiltersBtn.addEventListener("click", () => {
   assignmentFilterCode.value = "";
   assignmentFilterDate.value = "";
   assignmentFilterGroupTouched = true;
   assignmentFilterGroup.value = "ALL";
+  renderAssignmentEvaluationFilterOptions();
+  assignmentFilterBlock.value = "ALL";
+  assignmentFilterCriterion.value = "ALL";
   renderAssignmentList();
 });
 
@@ -3665,6 +3756,7 @@ onValue(ref(db, "groups"), (snapshot) => {
   groupsCache = visibleGroups(snapshot.val() || {});
   renderGroupOptions();
   renderAssignmentFilterOptions();
+  renderAssignmentEvaluationFilterOptions();
   renderAssignmentList();
   scheduleAssignmentEvaluationMigration();
 });
@@ -3677,6 +3769,7 @@ onValue(ref(db, "students"), (snapshot) => {
 onValue(ref(db, "assignments"), (snapshot) => {
   assignmentsCache = snapshot.val() || {};
   renderAssignmentFilterOptions();
+  renderAssignmentEvaluationFilterOptions();
   renderAssignmentList();
   refreshAutomaticTaskCode();
   requestInitialAiSync();
