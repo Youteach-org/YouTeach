@@ -86,7 +86,7 @@ test("teacher launch requires a canonical COG assignment for the active Buzzer g
     assert.equal(response.status, 200);
     const payload = await response.json();
     const url = new URL(payload.launchUrl);
-    assert.equal(url.origin, "https://classroom-online-games.pages.dev");
+    assert.equal(url.origin, "https://utichgion.org");
     assert.equal(url.pathname, "/teacher/");
     const launch = await verifyCogLiveToken(url.searchParams.get("ytLiveTeacher"), SECRET, now + 1000);
     assert.equal(launch?.purpose, "cog-live-teacher");
@@ -145,5 +145,60 @@ test("teacher launch rejects non-COG or wrong-group assignments", async () => {
     assert.equal(response.status, 409);
   } finally {
     globalThis.fetch = originalFetch;
+  }
+});
+
+
+test("teacher launch on Talk Talk preview targets matching COG preview", async () => {
+  const now = Date.now();
+  const teacherSession = await signTeacherSession({
+    username: "teacher",
+    role: "teacher",
+    displayName: "Teacher",
+    credentialRevision: 1,
+    iat: now,
+    exp: now + 60 * 60 * 1000
+  }, SECRET);
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    const value = String(url);
+    if (value.endsWith("/session/current.json")) {
+      return new Response(JSON.stringify({
+        active:true, sessionId:"yt-preview", groupName:"533-2"
+      }), {status:200});
+    }
+    if (value.endsWith("/assignments/assignment-preview.json")) {
+      return new Response(JSON.stringify({
+        active:true,
+        assignmentTypeCode:"COG",
+        title:"Talk Talk",
+        groupName:"533-2",
+        recipientStudentKeys:["student-1"]
+      }), {status:200});
+    }
+    throw new Error("Unexpected fetch: " + value);
+  };
+
+  try {
+    const response = await createTeacherLaunch({
+      request:new Request("https://talk-talk-v1-20260921.youteach.pages.dev/api/cog-live-teacher-launch", {
+        method:"POST",
+        headers:{
+          Authorization:"Bearer "+teacherSession,
+          "Content-Type":"application/json"
+        },
+        body:JSON.stringify({assignmentId:"assignment-preview"})
+      }),
+      env:{YOUTEACH_SESSION_SECRET:SECRET}
+    });
+    assert.equal(response.status,200);
+    const payload=await response.json();
+    assert.equal(
+      new URL(payload.launchUrl).origin,
+      "https://talk-talk-v1-20260921.classroom-online-games.pages.dev"
+    );
+  } finally {
+    globalThis.fetch=originalFetch;
   }
 });
