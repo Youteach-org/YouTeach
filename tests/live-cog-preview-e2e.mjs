@@ -196,7 +196,6 @@ async function main() {
     console.log("E2E: preserving idle FANTASMA session and restoring it after the smoke.");
   }
 
-  await teacherPage.locator("#groupSelect").selectOption({ label: GROUP });
   await teacherPage.locator("#teamSourceSelect").selectOption("all");
   await teacherPage.locator("#numTeams").fill("2");
   teacherPage.once("dialog", (d) => d.accept());
