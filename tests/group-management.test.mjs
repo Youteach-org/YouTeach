@@ -393,3 +393,14 @@ test('group deletion does not require a Firebase root read and supports permissi
   assert.match(js, /markGroupDeleted\(groupName\)/);
   assert.match(js, /deleted: true/);
 });
+
+
+test('Group Management confirms attendance only for green students in the selected group', () => {
+  assert.match(html, /id="takeAttendanceBtn"[^>]*>Take Attendance<\/button>/);
+  assert.match(js, /function takeAttendanceForGreenStudents\(\)/);
+  assert.match(js, /groupStudents\(groupName\)[\s\S]*filter\(\(\[, student\]\) => student\?\.activeNow === true\)/);
+  assert.match(js, /attendanceValidated/);
+  assert.match(js, /present/);
+  assert.match(js, /confirmedBy/);
+  assert.match(js, /takeAttendanceBtn\.addEventListener\("click", takeAttendanceForGreenStudents\)/);
+});

@@ -1026,3 +1026,16 @@ This supersedes earlier Teacher Students / Group Management navigation and layou
 - Teacher identity text is a plain label wherever the teacher shell is shown: no chip/button background, border, radius, or shadow.
 - The canonical Points page is **/points** and its teacher navigation label is **Points**. Legacy `teacher-points` URLs redirect to `/points`.
 - **Students Summary** is a teacher-menu destination. Opening it from the menu enters teacher mode without requiring a student session; an individual student summary is still opened by double-clicking a student in Group Management.
+
+
+### Student Summary compact status and Group Management attendance — 2026-09-21
+
+- **Student Summary** no longer shows a textual Active/Inactive or attendance-status strip.
+- Student presence is communicated only by the student-name badge: it turns green while `student.activeNow === true`.
+- The student name remains the prominent summary element. Group, current block, and current-block total are compact single-line cards without redundant visible labels.
+- **Active Today** is removed completely from the teacher UI and repository page flow; its HTML, JS, debug artifact, menu links, Teacher Home card, and legacy attendance-validation panel are removed.
+- Student login updates only live presence (`activeNow` and `lastSeenAt`). It does not create an official attendance row.
+- Official attendance is confirmed from **Group Management** with **Take Attendance**.
+- Take Attendance applies only to students in the currently selected group whose row is green (`activeNow === true`), regardless of any search filter.
+- Confirmed attendance writes `present: true`, `attendanceValidated: true`, confirmation timestamp, teacher name, group, identity, and detected timestamp under `attendance/<date>/<studentKey>`.
+- A student who logs out before attendance is confirmed does not get a new attendance row merely from logging out.
