@@ -211,13 +211,29 @@
         <div id="assignmentTargetHelp" class="field-help"></div>
       </div>
 
+      <div class="field" id="assignmentEvaluationBlockField">
+        <label for="assignmentEvaluationBlock">Block / Unit</label>
+        <select id="assignmentEvaluationBlock">
+          <option value="">Select block / unit</option>
+        </select>
+        <div id="assignmentEvaluationBlockHelp" class="field-help">
+          Required. This determines which block or unit receives the grade.
+        </div>
+      </div>
+
       <div class="field" id="assignmentGroupCriterionField">
-        <label for="assignmentGroupCriterion">Counts toward group criterion</label>
+        <label for="assignmentGroupCriterion">Evaluation criterion</label>
         <select id="assignmentGroupCriterion">
-          <option value="">Not linked to a group grade criterion</option>
+          <option value="">Select criterion</option>
         </select>
         <div id="assignmentGroupCriterionHelp" class="field-help">
-          Optional. Link this assignment to one of the selected group's evaluation criteria.
+          Required for every assignment except exams.
+        </div>
+      </div>
+
+      <div class="field full">
+        <div id="assignmentEvaluationTargetSummary" class="field-help">
+          Choose a group, block / unit, and evaluation criterion.
         </div>
       </div>
 
@@ -293,6 +309,6 @@
     </div>
   </main>
 
-  <script type="module" src="assignment-create-module.js?v=dynamic-evaluation-20260920-2"></script>
+  <script type="module" src="assignment-create-module.js?v=assignment-targets-20260922"></script>
 </body>
 </html>
