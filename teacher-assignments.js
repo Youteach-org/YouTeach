@@ -13,6 +13,7 @@ import {
 import {
   assignmentTypeCode as evaluationAssignmentTypeCode,
   evaluationTargetForAssignment,
+  isExamAssignment,
   legacyAssignmentMigrationTarget
 } from "./assignment-evaluation-target.js";
 import {
