@@ -109,6 +109,21 @@ async function main() {
   sessionBefore = await fb("session/current");
 
   const students = await fb("students");
+  const ghostCandidates = Object.entries(students || {})
+    .filter(([, s]) =>
+      String(s?.groupName || "") === GROUP ||
+      /^GHOST/i.test(String(s?.studentNumber || s?.id || "")) ||
+      /^FAKE-/i.test(String(s?.nickname || ""))
+    )
+    .map(([key, s]) => ({
+      key,
+      externalId: String(s?.studentNumber || s?.id || ""),
+      nickname: String(s?.nickname || ""),
+      groupName: String(s?.groupName || "")
+    }))
+    .slice(0, 30);
+  console.log("E2E diagnostic Ghost candidates", JSON.stringify(ghostCandidates));
+
   const ghost = Object.entries(students || {}).find(([, s]) =>
     String(s?.studentNumber || s?.id || "") === GHOST_ID && String(s?.groupName || "") === GROUP
   );
