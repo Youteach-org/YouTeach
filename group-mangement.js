@@ -101,9 +101,17 @@ const closeAddStudentDialogBtn = document.getElementById("closeAddStudentDialogB
 const manualStudentTabBtn = document.getElementById("manualStudentTabBtn");
 const csvStudentTabBtn = document.getElementById("csvStudentTabBtn");
 const pasteStudentTabBtn = document.getElementById("pasteStudentTabBtn");
+const existingStudentTabBtn = document.getElementById("existingStudentTabBtn");
 const manualStudentPane = document.getElementById("manualStudentPane");
 const csvStudentPane = document.getElementById("csvStudentPane");
 const pasteStudentPane = document.getElementById("pasteStudentPane");
+const existingStudentPane = document.getElementById("existingStudentPane");
+const existingStudentSearch = document.getElementById("existingStudentSearch");
+const existingStudentGroupFilter = document.getElementById("existingStudentGroupFilter");
+const existingStudentsMasterCheckbox = document.getElementById("existingStudentsMasterCheckbox");
+const existingStudentsList = document.getElementById("existingStudentsList");
+const existingStudentSelectionCount = document.getElementById("existingStudentSelectionCount");
+const enrollExistingStudentsBtn = document.getElementById("enrollExistingStudentsBtn");
 const studentNameInput = document.getElementById("studentName");
 const studentNicknameInput = document.getElementById("studentNickname");
 const studentNumberManualInput = document.getElementById("studentNumberManual");
@@ -207,6 +215,8 @@ let requestedCriteriaResetChecked = false;
 let requestedCriteriaResetInProgress = false;
 let evaluationAutosaveTimer = null;
 let evaluationAutosaveVersion = 0;
+const selectedExistingStudentKeys = new Set();
+
 const selectedRosterItems = new Set(
   Array.isArray(restoredManagementState.selectedRosterItems)
     ? restoredManagementState.selectedRosterItems.map(String)
@@ -1360,11 +1370,147 @@ async function saveStudent(fullName, nickname = "", studentNumber = "", groupNam
   return newRef.key;
 }
 
+
+function normalizeStudentSearch(value) {
+  return String(value || "").toLocaleLowerCase().trim();
+}
+
+function existingStudentCandidates() {
+  const targetGroup = String(selectedManagedGroup || "");
+  const query = normalizeStudentSearch(existingStudentSearch?.value || "");
+  const groupFilter = String(existingStudentGroupFilter?.value || "");
+
+  return Object.entries(studentsCache || {})
+    .filter(([, student]) => String(student?.groupName || "") !== targetGroup)
+    .filter(([, student]) => !groupFilter || String(student?.groupName || "") === groupFilter)
+    .filter(([studentKey, student]) => {
+      if (!query) return true;
+      const haystack = [
+        studentKey,
+        student?.fullName,
+        student?.name,
+        student?.nickname,
+        student?.studentNumber,
+        student?.externalId,
+        student?.id,
+        student?.groupName
+      ].map(normalizeStudentSearch).join(" ");
+      return haystack.includes(query);
+    })
+    .sort((a, b) =>
+      managedFullName(a[1]).localeCompare(managedFullName(b[1]), undefined, { sensitivity: "base" })
+    );
+}
+
+function renderExistingStudentGroupFilter() {
+  if (!existingStudentGroupFilter) return;
+  const previous = existingStudentGroupFilter.value;
+  const groups = [...new Set(
+    Object.values(studentsCache || {})
+      .map((student) => String(student?.groupName || "").trim())
+      .filter(Boolean)
+      .filter((groupName) => groupName !== selectedManagedGroup)
+  )].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+
+  existingStudentGroupFilter.innerHTML =
+    '<option value="">All groups</option>' +
+    groups.map((groupName) => `<option value="${escapeHtml(groupName)}">${escapeHtml(groupName)}</option>`).join("");
+
+  if (groups.includes(previous)) existingStudentGroupFilter.value = previous;
+}
+
+function syncExistingStudentsMasterCheckbox(entries = existingStudentCandidates()) {
+  const visibleKeys = entries.map(([studentKey]) => studentKey);
+  const selectedVisible = visibleKeys.filter((studentKey) => selectedExistingStudentKeys.has(studentKey));
+  existingStudentsMasterCheckbox.disabled = visibleKeys.length === 0;
+  existingStudentsMasterCheckbox.checked =
+    visibleKeys.length > 0 && selectedVisible.length === visibleKeys.length;
+  existingStudentsMasterCheckbox.indeterminate =
+    selectedVisible.length > 0 && selectedVisible.length < visibleKeys.length;
+  existingStudentSelectionCount.textContent =
+    `${selectedExistingStudentKeys.size} selected`;
+  enrollExistingStudentsBtn.disabled = selectedExistingStudentKeys.size === 0;
+}
+
+function renderExistingStudents() {
+  if (!existingStudentsList) return;
+  renderExistingStudentGroupFilter();
+  const entries = existingStudentCandidates();
+
+  if (!entries.length) {
+    existingStudentsList.innerHTML = '<tr><td colspan="5">No existing students match this search.</td></tr>';
+    syncExistingStudentsMasterCheckbox(entries);
+    return;
+  }
+
+  existingStudentsList.innerHTML = entries.map(([studentKey, student]) => {
+    const checked = selectedExistingStudentKeys.has(studentKey) ? "checked" : "";
+    const fullName = managedFullName(student) || studentKey;
+    const nickname = String(student?.nickname || "").trim();
+    const groupName = String(student?.groupName || "").trim();
+    const externalId = String(student?.studentNumber || student?.externalId || "").trim();
+    return `
+      <tr>
+        <td><input class="existing-student-checkbox" type="checkbox"
+          data-existing-student-key="${escapeHtml(studentKey)}" ${checked}
+          aria-label="Select ${escapeHtml(fullName)}"></td>
+        <td><span class="existing-student-name">${escapeHtml(fullName)}</span></td>
+        <td>${escapeHtml(nickname || "—")}</td>
+        <td>${escapeHtml(groupName || "—")}</td>
+        <td>${escapeHtml(externalId || "—")}</td>
+      </tr>
+    `;
+  }).join("");
+
+  syncExistingStudentsMasterCheckbox(entries);
+}
+
+async function enrollSelectedExistingStudents() {
+  const targetGroup = String(selectedManagedGroup || "");
+  const selectedKeys = [...selectedExistingStudentKeys]
+    .filter((studentKey) => studentsCache?.[studentKey])
+    .filter((studentKey) => String(studentsCache[studentKey]?.groupName || "") !== targetGroup);
+
+  if (!targetGroup || !selectedKeys.length) {
+    addStudentStatus.textContent = "Select at least one existing student.";
+    return;
+  }
+
+  const now = Date.now();
+  const updates = {};
+  selectedKeys.forEach((studentKey) => {
+    const student = studentsCache[studentKey] || {};
+    const previousGroupName = String(student?.groupName || "");
+    updates[`students/${studentKey}/groupName`] = targetGroup;
+    updates[`students/${studentKey}/previousGroupName`] = previousGroupName;
+    updates[`students/${studentKey}/enrollmentStatus`] = "approved";
+    updates[`students/${studentKey}/enrollmentSource`] = "teacher-existing";
+    updates[`students/${studentKey}/enrolledAt`] = now;
+    updates[`students/${studentKey}/enrolledBy`] = getTeacherName();
+  });
+
+  enrollExistingStudentsBtn.disabled = true;
+  try {
+    await update(ref(db), updates);
+    selectedExistingStudentKeys.clear();
+    addStudentStatus.textContent =
+      `${selectedKeys.length} existing student(s) enrolled in ${targetGroup}.`;
+    renderExistingStudents();
+  } catch (error) {
+    console.error("Enroll existing students failed:", error);
+    addStudentStatus.textContent =
+      `Could not enroll selected students: ${error?.message || "unknown Firebase error"}`;
+  } finally {
+    enrollExistingStudentsBtn.disabled = selectedExistingStudentKeys.size === 0;
+  }
+}
+
 function setModalPane(active) {
   const panes = {
     manual: [manualStudentTabBtn, manualStudentPane],
     csv: [csvStudentTabBtn, csvStudentPane],
-    paste: [pasteStudentTabBtn, pasteStudentPane]
+    paste: [pasteStudentTabBtn, pasteStudentPane],
+    existing: [existingStudentTabBtn, existingStudentPane]
   };
 
   Object.entries(panes).forEach(([key, [button, pane]]) => {
@@ -1373,12 +1519,17 @@ function setModalPane(active) {
     button.setAttribute("aria-selected", String(isActive));
     pane.hidden = !isActive;
   });
+
+  if (active === "existing") renderExistingStudents();
 }
 
 function openAddStudentDialog() {
   if (!selectedManagedGroup) return;
   addStudentGroupLabel.textContent = `Group: ${selectedManagedGroup}`;
   addStudentStatus.textContent = "";
+  selectedExistingStudentKeys.clear();
+  existingStudentSearch.value = "";
+  existingStudentGroupFilter.value = "";
   setModalPane("manual");
   addStudentDialog.showModal();
 }
@@ -1423,6 +1574,10 @@ async function copyEnrollmentLink() {
     document.execCommand("copy");
     enrollmentLinkInput.setSelectionRange(0, 0);
   }
+  enrollmentLinkExpanded = false;
+  persistManagementState();
+  renderEnrollmentLink();
+
   const previous = copyEnrollmentLinkBtn.textContent;
   copyEnrollmentLinkBtn.textContent = "Copied";
   setTimeout(() => {
@@ -2082,6 +2237,27 @@ closeAddStudentDialogBtn.addEventListener("click", () => addStudentDialog.close(
 manualStudentTabBtn.addEventListener("click", () => setModalPane("manual"));
 csvStudentTabBtn.addEventListener("click", () => setModalPane("csv"));
 pasteStudentTabBtn.addEventListener("click", () => setModalPane("paste"));
+existingStudentTabBtn.addEventListener("click", () => setModalPane("existing"));
+existingStudentSearch.addEventListener("input", renderExistingStudents);
+existingStudentGroupFilter.addEventListener("change", renderExistingStudents);
+existingStudentsList.addEventListener("change", (event) => {
+  const checkbox = event.target.closest(".existing-student-checkbox");
+  if (!checkbox) return;
+  const studentKey = String(checkbox.dataset.existingStudentKey || "");
+  if (!studentKey) return;
+  if (checkbox.checked) selectedExistingStudentKeys.add(studentKey);
+  else selectedExistingStudentKeys.delete(studentKey);
+  syncExistingStudentsMasterCheckbox();
+});
+existingStudentsMasterCheckbox.addEventListener("change", () => {
+  const entries = existingStudentCandidates();
+  entries.forEach(([studentKey]) => {
+    if (existingStudentsMasterCheckbox.checked) selectedExistingStudentKeys.add(studentKey);
+    else selectedExistingStudentKeys.delete(studentKey);
+  });
+  renderExistingStudents();
+});
+enrollExistingStudentsBtn.addEventListener("click", enrollSelectedExistingStudents);
 
 createStudentBtn.addEventListener("click", async () => {
   const fullName = studentNameInput.value.trim();
@@ -2282,6 +2458,7 @@ onValue(ref(db, "students"), (snapshot) => {
   if (editingGroupName) applyEvaluationUnitFloor(editingGroupName);
   renderGroupsTable();
   renderManagedStudents();
+  if (existingStudentPane && !existingStudentPane.hidden) renderExistingStudents();
 });
 
 onValue(ref(db, "assignments"), (snapshot) => {

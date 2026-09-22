@@ -20,17 +20,18 @@
     .evaluation-total.ok{color:#166534}.evaluation-total.bad{color:#b91c1c}
     .group-evaluation-summary{font-size:11px;color:#475569;line-height:1.35}
     .setup-required{font-weight:800;color:#b45309}
-    .collapse-btn{min-width:38px;padding:6px 10px;font-size:17px;line-height:1}
+    .collapse-btn{min-width:30px!important;padding:4px 7px!important;font-size:15px!important;line-height:1}
     .enrolled-students-head{display:flex;align-items:center;gap:10px;flex-wrap:nowrap;overflow-x:auto}
     .enrolled-students-left{display:flex;align-items:center;gap:8px;flex:0 0 auto;white-space:nowrap}
     .enrolled-students-left h3{margin:0}
-    .enrolled-head-actions{display:flex;align-items:center;gap:8px;margin-left:auto;flex-wrap:nowrap;min-width:max-content}
+    .enrolled-head-actions{display:flex;align-items:center;gap:5px;margin-left:auto;flex-wrap:nowrap;min-width:max-content}
+    .enrolled-head-actions button{min-height:30px;padding:5px 8px;font-size:11px;line-height:1.1;white-space:nowrap}
     .managed-search-tools{display:flex;align-items:center;gap:8px;flex-wrap:nowrap}
     .managed-search-panel{min-width:220px;max-width:360px}
     .active-enrollment-link-btn{background:#fff;color:#334155;border:1px solid #cbd5e1}
     .active-enrollment-link-btn.active{background:#dcfce7;color:#166534;border-color:#86efac;box-shadow:inset 0 0 0 1px #86efac}
-    .enrollment-link-inline-controls{display:flex;align-items:center;gap:6px;min-width:0}
-    .enrollment-link-inline-controls input{width:min(420px,42vw);min-width:180px}
+    .enrollment-link-inline-controls{display:flex;align-items:center;gap:4px;min-width:0}
+    .enrollment-link-inline-controls input{width:min(260px,25vw);min-width:150px;height:30px;padding:4px 7px;font-size:10px}
     .enrollment-link-inline-controls button{white-space:nowrap}
     .student-toolbar{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;margin-top:9px}
     .student-toolbar-left{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
@@ -49,7 +50,7 @@
     .managed-display-mode-btn{white-space:nowrap}
     .managed-students-count{font-size:18px;font-weight:900;color:#0f172a}
     .managed-search-tools{display:flex;align-items:center;gap:8px;min-width:0}
-    .managed-search-toggle{min-width:42px;min-height:38px;padding:5px 9px;font-size:24px;line-height:1}
+    .managed-search-toggle{min-width:32px!important;min-height:30px!important;padding:3px 6px!important;font-size:18px!important;line-height:1}
     .managed-search-panel{min-width:220px;max-width:360px}
     .managed-search-panel input{width:100%;margin:0}
     .managed-students-table-wrap{overflow-x:auto;position:relative;margin-top:8px}
@@ -99,6 +100,16 @@
     .template-row:hover{background:#f8fafc}
     .template-row.selected{background:#eff6ff;box-shadow:inset 3px 0 #2563eb}
     .template-summary{font-weight:800;font-size:12px;white-space:nowrap}
+    .existing-students-tools{display:grid;grid-template-columns:minmax(180px,1fr) minmax(150px,.45fr);gap:8px}
+    .existing-students-table-wrap{max-height:360px;overflow:auto;border:1px solid #dbe3ee;border-radius:9px}
+    .existing-students-table{width:100%;border-collapse:collapse;min-width:620px}
+    .existing-students-table th,.existing-students-table td{padding:7px 8px;border-bottom:1px solid #e2e8f0;text-align:left;font-size:11px}
+    .existing-students-table th{position:sticky;top:0;background:#f8fafc;z-index:1}
+    .existing-students-table tr:last-child td{border-bottom:0}
+    .existing-student-name{font-weight:800;color:#0f172a}
+    .existing-student-actions{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+    .existing-student-count{font-size:11px;font-weight:800;color:#475569}
+
     @media(max-width:850px){
       .criterion-row{grid-template-columns:1fr}
       .enrollment-link-inline-controls{width:100%}
@@ -334,6 +345,7 @@
         <button id="manualStudentTabBtn" type="button" class="modal-tab active" aria-selected="true">Manual</button>
         <button id="csvStudentTabBtn" type="button" class="modal-tab" aria-selected="false">CSV</button>
         <button id="pasteStudentTabBtn" type="button" class="modal-tab" aria-selected="false">Paste List</button>
+        <button id="existingStudentTabBtn" type="button" class="modal-tab" aria-selected="false">Existing</button>
       </div>
 
       <div id="manualStudentPane" class="modal-pane">
@@ -351,6 +363,36 @@
       <div id="pasteStudentPane" class="modal-pane" hidden>
         <textarea id="bulkText" rows="12" placeholder="25NC07776    ABURTO GONZALEZ KARLA PAULINA"></textarea>
         <button id="importText" type="button">Import Pasted List</button>
+      </div>
+
+
+      <div id="existingStudentPane" class="modal-pane" hidden>
+        <div class="existing-students-tools">
+          <input id="existingStudentSearch" placeholder="Search group, name, nickname, or External ID" autocomplete="off">
+          <select id="existingStudentGroupFilter">
+            <option value="">All groups</option>
+          </select>
+        </div>
+        <div class="existing-students-table-wrap">
+          <table class="existing-students-table">
+            <thead>
+              <tr>
+                <th><input id="existingStudentsMasterCheckbox" type="checkbox" aria-label="Select or deselect all visible existing students" title="Select or deselect all visible"></th>
+                <th>Name</th>
+                <th>Nickname</th>
+                <th>Group</th>
+                <th>External ID</th>
+              </tr>
+            </thead>
+            <tbody id="existingStudentsList">
+              <tr><td colspan="5">No existing students available.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="existing-student-actions">
+          <span id="existingStudentSelectionCount" class="existing-student-count">0 selected</span>
+          <button id="enrollExistingStudentsBtn" type="button">Enroll Selected</button>
+        </div>
       </div>
 
       <div id="addStudentStatus" class="status-text"></div>
