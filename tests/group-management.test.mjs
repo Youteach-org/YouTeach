@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -11,13 +11,15 @@ const js = readFileSync(join(root, 'group-mangement.js'), 'utf8');
 const liveJs = readFileSync(join(root, 'teacher-enrollment.js'), 'utf8');
 const enrollHtml = readFileSync(join(root, 'student-enroll.html'), 'utf8');
 const enrollJs = readFileSync(join(root, 'student-enroll.js'), 'utf8');
+const groupsDialogPath = join(root, 'groups-dialog.js');
+const groupsDialogJs = existsSync(groupsDialogPath) ? readFileSync(groupsDialogPath, 'utf8') : '';
 
 test('Group Management keeps its header and moves group editing into dialogs', () => {
   assert.match(html, /<title>YouTeach - Group Management<\/title>/);
   assert.match(html, /<h2>Group Management<\/h2>/);
   assert.match(html, /<dialog id="groupEditorDialog">/);
-  assert.match(html, /id="openCreateGroupDialogBtn"/);
-  assert.match(html, /id="openGroupEvaluationDialogBtn"/);
+  assert.match(groupsDialogJs, /id="openCreateGroupDialogBtn"/);
+  assert.match(groupsDialogJs, /id="openGroupEvaluationDialogBtn"/);
   assert.match(html, /id="enrolledStudentsSection"/);
   assert.doesNotMatch(html, /id="groupEditorCard"/);
   assert.match(html, /<dialog id="deleteGroupDialog">/);
@@ -27,9 +29,9 @@ test('Group Management keeps its header and moves group editing into dialogs', (
 
 test('group rows only mark a popup choice; actions appear once for that marked group', () => {
   assert.match(js, /data-popup-group/);
-  assert.match(html, /id="selectedGroupActions"/);
-  assert.match(html, /id="selectPopupGroupBtn"/);
-  assert.match(html, /id="deleteSelectedGroupBtn"/);
+  assert.match(groupsDialogJs, /id="selectedGroupActions"/);
+  assert.match(groupsDialogJs, /id="selectPopupGroupBtn"/);
+  assert.match(groupsDialogJs, /id="deleteSelectedGroupBtn"/);
   assert.match(js, /markPopupGroup\(/);
   assert.match(js, /selectManagedGroup\(popupSelectedGroup\)/);
   assert.match(js, /deleteGroupWithBackup\(deletionTargetGroup\)/);
@@ -45,9 +47,9 @@ test('double click in Groups marks and selects the group immediately', () => {
 });
 
 test('Groups popup requires an explicit Select action before changing the active group', () => {
-  assert.match(html, /<dialog id="groupsDialog">/);
-  assert.match(html, /id="selectPopupGroupBtn"[^>]*>Select<\/button>/);
-  assert.match(html, /Click a group to mark it, then use Select to make it the active group\./);
+  assert.match(groupsDialogJs, /<dialog id="groupsDialog">/);
+  assert.match(groupsDialogJs, /id="selectPopupGroupBtn"[^>]*>Select<\/button>/);
+  assert.match(groupsDialogJs, /Click a group to mark it, then use Select to make it the active group\./);
   assert.match(js, /let popupSelectedGroup = ""/);
   assert.match(js, /function markPopupGroup\(groupName\)/);
   assert.match(js, /data-popup-group/);
@@ -266,7 +268,7 @@ test('block reduction refreshes live grade evidence before saving a lower count'
 
 test('Blocks and criteria open in the group editor popup instead of an inline expandable section', () => {
   assert.match(html, /<dialog id="groupEditorDialog">/);
-  assert.match(html, /id="openGroupEvaluationDialogBtn"[^>]*>Blocks &amp; Criteria<\/button>/);
+  assert.match(groupsDialogJs, /id="openGroupEvaluationDialogBtn"[^>]*>Blocks &amp; Criteria<\/button>/);
   assert.match(js, /function openSelectedGroupEvaluationDialog/);
   assert.match(js, /groupEditorDialog\.showModal\(\)/);
   assert.match(js, /groupEditorTitle\.textContent = `Blocks & Criteria:/);
@@ -339,7 +341,7 @@ test('managed student secondary metadata is one line under the primary identity'
 });
 
 test('Create Group is a popup with an explicit Cancel action and Add Student tabs expose selection state', () => {
-  assert.match(html, /id="openCreateGroupDialogBtn"[^>]*>\+ Create Group<\/button>/);
+  assert.match(groupsDialogJs, /id="openCreateGroupDialogBtn"[^>]*>\+ Create Group<\/button>/);
   assert.match(html, /<dialog id="groupEditorDialog">/);
   assert.match(html, /id="cancelGroupEditBtn"[^>]*>Cancel<\/button>/);
   assert.match(js, /function prepareCreateGroupDialog/);
@@ -478,4 +480,16 @@ test('Group Management roster is always visible and has no collapse control', ()
 test('Group Management regression tests cover the script actually loaded by the route', () => {
   assert.match(html, /src="teacher-enrollment\.js/);
   assert.match(liveJs, /function renderManagedStudents/);
+});
+
+
+test('Group Management uses the canonical shared Groups dialog module', () => {
+  assert.equal(existsSync(groupsDialogPath), true);
+  assert.match(js, /import \{ ensureGroupsDialog \} from "\.\/groups-dialog\.js"/);
+  assert.match(js, /ensureGroupsDialog\(\);/);
+  assert.doesNotMatch(html, /<dialog id="groupsDialog">/);
+  assert.match(groupsDialogJs, /class="group-select-button"/);
+  assert.match(groupsDialogJs, /id="openCreateGroupDialogBtn"/);
+  assert.match(groupsDialogJs, /id="openGroupEvaluationDialogBtn"/);
+  assert.match(groupsDialogJs, /id="deleteSelectedGroupBtn"/);
 });
