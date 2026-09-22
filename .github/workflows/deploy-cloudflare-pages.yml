@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - feature/live-cog-firebase-current-20260922
+      - live-cog-20260922
   workflow_dispatch:
 
 permissions:
