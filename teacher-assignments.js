@@ -10,6 +10,10 @@ import {
   filterAssignmentTemplates,
   buildAssignmentTemplateArchivePatch
 } from "./assignment-library-model.js";
+import {
+  assignmentTypeCode as evaluationAssignmentTypeCode,
+  legacyAssignmentMigrationTarget
+} from "./assignment-evaluation-target.js";
 
 if (!requireTeacherAuth()) throw new Error("Teacher authentication required.");
 
@@ -196,6 +200,8 @@ const aiAutoSyncTimers = new Map();
 const AI_PENDING_RUN_KEY = "youteachAiGradingPendingRunV1";
 let lastPassiveAiSyncAt = 0;
 let initialAiSyncRequested = false;
+let assignmentEvaluationMigrationBusy = false;
+let assignmentEvaluationMigrationQueued = false;
 
 teacherIdentity.textContent = getTeacherName();
 
@@ -573,6 +579,99 @@ function assignmentTypeCodeFor(assignment) {
 
 function isProjectAssignment(assignment) {
   return assignmentTypeCodeFor(assignment) === "PJ";
+}
+
+function scheduleAssignmentEvaluationMigration() {
+  if (assignmentEvaluationMigrationQueued) return;
+  assignmentEvaluationMigrationQueued = true;
+  queueMicrotask(async () => {
+    assignmentEvaluationMigrationQueued = false;
+    await migrateAiGradedAssignmentEvaluationTargets();
+  });
+}
+
+async function migrateAiGradedAssignmentEvaluationTargets() {
+  if (assignmentEvaluationMigrationBusy) return;
+  assignmentEvaluationMigrationBusy = true;
+
+  try {
+    const updates = {};
+    const now = Date.now();
+
+    Object.entries(assignmentsCache || {}).forEach(([assignmentId, assignment]) => {
+      const groupName = String(assignment?.groupName || "").trim();
+      if (!groupName || groupName === "ALL") return;
+
+      const group = groupsCache?.[groupName];
+      if (!group) return;
+
+      const target = legacyAssignmentMigrationTarget({
+        assignment,
+        group,
+        groupName,
+        submissions: submissionsCache?.[assignmentId] || {}
+      });
+      if (!target) return;
+
+      const existingPerGroup = assignment?.evaluationTargets?.[groupName] || null;
+      const existingTarget = assignment?.evaluationTarget || null;
+      const existingBlock = String(assignment?.evaluationBlock || assignment?.block || "").trim();
+      const existingCriterionId = String(assignment?.groupEvaluationCriterionId || "").trim();
+      const targetAlreadyStored =
+        existingPerGroup &&
+        String(existingPerGroup.block || "") === target.block &&
+        String(existingPerGroup.criterionId || "") === target.criterionId &&
+        existingTarget &&
+        String(existingTarget.block || "") === target.block &&
+        String(existingTarget.criterionId || "") === target.criterionId;
+
+      const needsLegacyBackfill =
+        existingBlock !== target.block ||
+        (!isExamAssignment(assignment) && existingCriterionId !== target.criterionId);
+
+      const needsReviewFlag = Boolean(target.needsReview);
+      const flagAlreadyCorrect = Boolean(assignment?.evaluationTargetNeedsReview) === needsReviewFlag;
+
+      if (targetAlreadyStored && !needsLegacyBackfill && flagAlreadyCorrect) return;
+
+      const base = `assignments/${assignmentId}`;
+      updates[`${base}/evaluationBlock`] = target.block;
+      updates[`${base}/evaluationTarget`] = {
+        groupName: target.groupName,
+        block: target.block,
+        criterionId: target.criterionId,
+        criterionNameSnapshot: target.criterionNameSnapshot,
+        mode: target.mode
+      };
+      updates[`${base}/evaluationTargets/${groupName}`] = {
+        groupName: target.groupName,
+        block: target.block,
+        criterionId: target.criterionId,
+        criterionNameSnapshot: target.criterionNameSnapshot,
+        mode: target.mode
+      };
+      updates[`${base}/evaluationTargetNeedsReview`] = needsReviewFlag || null;
+      updates[`${base}/evaluationTargetMigratedAt`] = now;
+
+      if (!isExamAssignment(assignment) && target.criterionId) {
+        updates[`${base}/groupEvaluationCriterionId`] = target.criterionId;
+        updates[`${base}/groupEvaluationCriterionName`] = target.criterionNameSnapshot;
+        const typeCode = evaluationAssignmentTypeCode(assignment);
+        if (typeCode && !group?.assignmentCriterionDefaults?.[typeCode]) {
+          updates[`groups/${groupName}/assignmentCriterionDefaults/${typeCode}`] = target.criterionId;
+        }
+      }
+    });
+
+    if (Object.keys(updates).length) {
+      await update(ref(db), updates);
+      console.info("Migrated AI-graded assignments to explicit evaluation targets.");
+    }
+  } catch (error) {
+    console.error("Could not migrate assignment evaluation targets", error);
+  } finally {
+    assignmentEvaluationMigrationBusy = false;
+  }
 }
 
 function isExamAssignment(assignment) {
@@ -3567,6 +3666,7 @@ onValue(ref(db, "groups"), (snapshot) => {
   renderGroupOptions();
   renderAssignmentFilterOptions();
   renderAssignmentList();
+  scheduleAssignmentEvaluationMigration();
 });
 
 onValue(ref(db, "students"), (snapshot) => {
@@ -3580,6 +3680,7 @@ onValue(ref(db, "assignments"), (snapshot) => {
   renderAssignmentList();
   refreshAutomaticTaskCode();
   requestInitialAiSync();
+  scheduleAssignmentEvaluationMigration();
 });
 
 onValue(ref(db, "assignmentTemplates"), (snapshot) => {
@@ -3593,6 +3694,7 @@ onValue(ref(db, "assignmentSubmissions"), (snapshot) => {
   submissionsCache = snapshot.val() || {};
   renderAssignmentList();
   requestInitialAiSync();
+  scheduleAssignmentEvaluationMigration();
 });
 
 onValue(ref(db, "assignmentProjectEvidence"), (snapshot) => {
