@@ -32,6 +32,10 @@ const WORKING_GROUP_KEY = "youteachWorkingGroup";
 const MANAGEMENT_STATE_KEY = "youteachGroupManagementState";
 const REQUESTED_CRITERIA_RESET_GROUP = "e6c fall 2026";
 const REQUESTED_CRITERIA_RESET_MARKER = "criteriaReset20260921";
+const groupActionParams = new URLSearchParams(window.location.search);
+const REQUESTED_GROUP_ACTION = String(groupActionParams.get("action") || "").trim();
+const REQUESTED_GROUP_NAME = String(groupActionParams.get("group") || "").trim();
+let requestedGroupActionHandled = false;
 
 const teacherIdentity = document.getElementById("teacherIdentity");
 const logoutBtn = document.getElementById("logoutBtn");
@@ -595,6 +599,54 @@ function openSelectedGroupEvaluationDialog() {
   editingGroupName = groupName;
   loadGroupEditor(groupName);
   if (!groupEditorDialog.open) groupEditorDialog.showModal();
+}
+
+function clearRequestedGroupActionQuery() {
+  const url = new URL(window.location.href);
+  url.searchParams.delete("action");
+  url.searchParams.delete("group");
+  window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
+function maybeHandleRequestedGroupAction() {
+  if (requestedGroupActionHandled || !REQUESTED_GROUP_ACTION) return false;
+
+  if (REQUESTED_GROUP_ACTION === "create") {
+    requestedGroupActionHandled = true;
+    if (groupsDialog.open) groupsDialog.close();
+    prepareCreateGroupDialog();
+    clearRequestedGroupActionQuery();
+    return true;
+  }
+
+  if (!REQUESTED_GROUP_NAME || !groupsCache[REQUESTED_GROUP_NAME]) {
+    requestedGroupActionHandled = true;
+    clearRequestedGroupActionQuery();
+    return false;
+  }
+
+  popupSelectedGroup = REQUESTED_GROUP_NAME;
+  renderGroupsTable();
+
+  if (REQUESTED_GROUP_ACTION === "evaluation") {
+    requestedGroupActionHandled = true;
+    if (groupsDialog.open) groupsDialog.close();
+    openSelectedGroupEvaluationDialog();
+    clearRequestedGroupActionQuery();
+    return true;
+  }
+
+  if (REQUESTED_GROUP_ACTION === "delete") {
+    requestedGroupActionHandled = true;
+    if (groupsDialog.open) groupsDialog.close();
+    openDeleteGroupDialog();
+    clearRequestedGroupActionQuery();
+    return true;
+  }
+
+  requestedGroupActionHandled = true;
+  clearRequestedGroupActionQuery();
+  return false;
 }
 
 function blockNumberFromName(value) {
@@ -2380,6 +2432,8 @@ onValue(ref(db, "groups"), async (snapshot) => {
     renderManagedStudents();
     renderEnrollmentLink();
   }
+
+  maybeHandleRequestedGroupAction();
 
   harvestConfiguredGroupsToTemplates().catch(console.error);
 });
