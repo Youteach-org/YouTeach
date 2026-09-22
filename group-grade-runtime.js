@@ -1,4 +1,5 @@
 import { calculateBlockGrade } from "./group-evaluation-model.js";
+import { studentInGroup } from "./student-groups.js";
 
 function normalizedRecipientKeys(raw) {
   if (Array.isArray(raw)) return raw.map(String);
@@ -10,7 +11,7 @@ function assignmentAppliesToStudent(assignment, studentKey, student) {
   if (!assignment || !student) return false;
 
   const assignmentGroup = String(assignment.groupName || "");
-  if (assignmentGroup && assignmentGroup !== "ALL" && assignmentGroup !== String(student.groupName || "")) {
+  if (assignmentGroup && assignmentGroup !== "ALL" && !studentInGroup(student, assignmentGroup)) {
     return false;
   }
 

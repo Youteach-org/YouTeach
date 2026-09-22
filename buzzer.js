@@ -1,5 +1,6 @@
 import { db } from "./firebase.js";
 import { visibleGroups } from "./group-state.js";
+import { studentGroupNames, studentInGroup } from "./student-groups.js";
 import {
   ref,
   push,
@@ -264,7 +265,7 @@ function activePresentStudentsForGroup(groupName) {
   return Object.entries(studentsCache || {})
     .filter(([, student]) => {
       const activeNow = student?.activeNow === true;
-      const groupOk = !groupName || (student?.groupName || "") === groupName;
+      const groupOk = !groupName || studentInGroup(student, groupName);
       return activeNow && groupOk;
     });
 }
@@ -272,7 +273,7 @@ function activePresentStudentsForGroup(groupName) {
 function allStudentsForGroup(groupName) {
   return Object.entries(studentsCache || {})
     .filter(([, student]) => {
-      const groupOk = !groupName || (student?.groupName || "") === groupName;
+      const groupOk = !groupName || studentInGroup(student, groupName);
       return groupOk;
     });
 }

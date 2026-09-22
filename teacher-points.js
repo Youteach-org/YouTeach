@@ -1,5 +1,6 @@
 import { db } from "./firebase.js";
 import { visibleGroups } from "./group-state.js";
+import { studentGroupNames, studentInGroup } from "./student-groups.js";
 import { ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
 import { evaluationBlockNames, groupEvaluationConfig } from "./group-evaluation-model.js";
@@ -103,7 +104,7 @@ function getAllGroupNames() {
   });
 
   Object.values(studentsCache || {}).forEach((student) => {
-    if (student?.groupName) names.add(student.groupName);
+    studentGroupNames(student).forEach((groupName) => names.add(groupName));
   });
 
   return Array.from(names).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
@@ -196,7 +197,7 @@ function renderManualCriterionContext() {
 
   const previousStudent = manualCriterionStudentSelect.value;
   const students = Object.entries(studentsCache || {})
-    .filter(([, student]) => String(student?.groupName || "") === groupName)
+    .filter(([, student]) => studentInGroup(student, groupName))
     .sort((a, b) => getDisplayName(a[1]).localeCompare(getDisplayName(b[1]), undefined, { sensitivity: "base" }));
 
   manualCriterionStudentSelect.innerHTML =
@@ -455,7 +456,7 @@ async function deleteGradesByBlock() {
   const selectedGroup = deleteGroupSelect?.value || "";
 
   const targetStudents = Object.entries(studentsCache || {})
-    .filter(([, student]) => !selectedGroup || (student.groupName || "") === selectedGroup);
+    .filter(([, student]) => !selectedGroup || studentInGroup(student, selectedGroup));
 
   if (!targetStudents.length) {
     alert("No students found for that selection.");
@@ -502,7 +503,7 @@ function exportGrades() {
   const selectedGroup = exportGroupSelect.value || "";
 
   const students = Object.entries(studentsCache || {})
-    .filter(([, student]) => !selectedGroup || (student.groupName || "") === selectedGroup)
+    .filter(([, student]) => !selectedGroup || studentInGroup(student, selectedGroup))
     .sort((a, b) => getDisplayName(a[1]).localeCompare(getDisplayName(b[1])));
 
   if (!students.length) {

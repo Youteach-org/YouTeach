@@ -1,5 +1,6 @@
 import { db } from "./firebase.js";
 import { visibleGroups } from "./group-state.js";
+import { studentGroupNames, studentInGroup } from "./student-groups.js";
 import { ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
 import { evaluationBlockNames, groupEvaluationConfig } from "./group-evaluation-model.js";
@@ -113,7 +114,7 @@ function renderBlockOptions() {
 
 function groupStudents(groupName) {
   return Object.entries(studentsCache || {})
-    .filter(([, student]) => String(student?.groupName || "") === groupName)
+    .filter(([, student]) => studentInGroup(student, groupName))
     .sort((a, b) => String(a[1]?.fullName || a[1]?.name || "").localeCompare(
       String(b[1]?.fullName || b[1]?.name || ""),
       undefined,

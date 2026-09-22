@@ -1,4 +1,5 @@
 import { db } from "./firebase.js";
+import { studentGroupNames, studentInGroup } from "./student-groups.js";
 import { ref, get, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireStudentSession, clearStudentSession, saveLeaveLog } from "./student-auth.js";
 import {
@@ -315,8 +316,7 @@ function assignmentApplies(assignment) {
   }
 
   const target = String(assignment.groupName || "ALL");
-  const group = String(currentStudent.groupName || "GENERAL");
-  return target === "ALL" || target === group;
+  return target === "ALL" || studentInGroup(currentStudent, target);
 }
 
 function isClosed(assignment) {
