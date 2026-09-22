@@ -97,3 +97,19 @@ test('manual Check AI Results is removed and retry is only exposed for sync prob
   assert.match(teacherHtml, /id="retryAiSyncBtn"[^>]*hidden/);
   assert.match(teacherJs, /retryAiSyncBtn\.hidden = false/);
 });
+
+
+test('Assignment Browser keeps legacy and alias-linked assignments visible in the active group', () => {
+  assert.match(teacherJs, /function assignmentMatchesWorkingGroup\(assignment/);
+  assert.match(teacherJs, /assignmentGroup === "ALL"/);
+  assert.match(teacherJs, /group\?\.name/);
+  assert.match(teacherJs, /group\?\.groupName/);
+  assert.match(teacherJs, /normalizeGroupName/);
+  assert.match(teacherJs, /assignmentMatchesWorkingGroup\(assignment/);
+});
+
+test('Assignment Browser empty state distinguishes no group assignments from deleted data', () => {
+  assert.match(teacherJs, /assignmentsCache/);
+  assert.match(teacherJs, /assignmentBrowserCount/);
+  assert.match(teacherJs, /existing assignment/);
+});
