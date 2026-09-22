@@ -2,7 +2,9 @@ import { db } from "./firebase.js";
 import { ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireStudentSession, clearStudentSession, saveLeaveLog } from "./student-auth.js";
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
+import { studentGroupNames, studentInGroup } from "./student-groups.js";
 
+const WORKING_GROUP_KEY = "youteachWorkingGroup";
 const params = new URLSearchParams(window.location.search);
 const openedFromTeacherMenu = params.get("teacherMenu") === "1";
 if (openedFromTeacherMenu) sessionStorage.removeItem("teacherViewStudentKey");
@@ -33,11 +35,14 @@ const studentHistoryTableBody = document.getElementById("studentHistoryTableBody
 const summaryPageTitle = document.getElementById("summaryPageTitle");
 const summaryPageSubtitle = document.getElementById("summaryPageSubtitle");
 const blockScoreTableBody = document.getElementById("blockScoreTableBody");
+const previousStudentBtn = document.getElementById("previousStudentBtn");
+const nextStudentBtn = document.getElementById("nextStudentBtn");
 
 let currentStudent = null;
 let currentSession = null;
 let settingsCache = {};
 let pointsLogCache = {};
+let studentsCache = {};
 
 function cleanText(value) {
   return String(value || "")
@@ -62,7 +67,10 @@ function setupTeacherViewShell() {
   if (brandTitle) brandTitle.textContent = "YouTeach";
   if (brandSubtitle) brandSubtitle.textContent = "Teacher Menu";
   if (sidebarIdentity) sidebarIdentity.textContent = getTeacherName();
-  if (studentIdentity) studentIdentity.textContent = getTeacherName();
+  if (studentIdentity) {
+    studentIdentity.textContent = getTeacherName();
+    studentIdentity.id = "teacherIdentity";
+  }
 
   if (summaryPageTitle) summaryPageTitle.textContent = "Student Summary";
   if (summaryPageSubtitle) summaryPageSubtitle.textContent = "Teacher view with teacher permissions.";
@@ -241,7 +249,11 @@ function renderAll() {
     displayNameCard.textContent = isTeacherView ? topIdentity : nickname;
     displayNameCard.classList.toggle("present-now", currentStudent.activeNow === true);
   }
-  if (groupCard) groupCard.textContent = currentStudent.groupName || "";
+  if (groupCard) {
+    groupCard.textContent = isTeacherView
+      ? (sessionStorage.getItem(WORKING_GROUP_KEY) || currentStudent.groupName || "")
+      : (currentStudent.groupName || "");
+  }
   if (classActiveBlockHero) classActiveBlockHero.textContent = activeBlock;
 
   if (totalBlockPointsCard) {
@@ -252,9 +264,141 @@ function renderAll() {
   renderHistory();
 }
 
+function activeTeacherGroup() {
+  return String(sessionStorage.getItem(WORKING_GROUP_KEY) || "").trim();
+}
+
+function teacherGroupEntries() {
+  const groupName = activeTeacherGroup();
+  if (!groupName) return [];
+  return Object.entries(studentsCache || {})
+    .filter(([, student]) => studentInGroup(student, groupName))
+    .sort((a, b) =>
+      getFullName(a[1]).localeCompare(getFullName(b[1]), undefined, { sensitivity: "base" })
+    );
+}
+
+function updateTeacherStudentUrl() {
+  if (!isTeacherView || !studentKey) return;
+  const url = new URL(window.location.href);
+  url.searchParams.delete("teacherMenu");
+  url.searchParams.set("teacherViewStudentKey", studentKey);
+  history.replaceState(null, "", url);
+}
+
+function renderTeacherStudentNavigation() {
+  if (!isTeacherView) {
+    previousStudentBtn.hidden = true;
+    nextStudentBtn.hidden = true;
+    return;
+  }
+
+  const entries = teacherGroupEntries();
+  const index = entries.findIndex(([key]) => key === studentKey);
+  const hasSelection = index >= 0;
+
+  previousStudentBtn.hidden = !hasSelection || entries.length <= 1;
+  nextStudentBtn.hidden = !hasSelection || entries.length <= 1;
+  previousStudentBtn.disabled = !hasSelection || index <= 0;
+  nextStudentBtn.disabled = !hasSelection || index >= entries.length - 1;
+}
+
+function selectTeacherStudent(nextStudentKey, { updateUrl = true } = {}) {
+  const nextStudent = studentsCache?.[nextStudentKey] || null;
+  if (!nextStudent) return false;
+
+  studentKey = nextStudentKey;
+  currentStudent = nextStudent;
+  sessionStorage.setItem("teacherViewStudentKey", studentKey);
+  if (updateUrl) updateTeacherStudentUrl();
+  renderAll();
+  renderTeacherStudentNavigation();
+  return true;
+}
+
+function renderTeacherSummaryLanding(message = "No students found in the active group.") {
+  if (!isTeacherView) return;
+  currentStudent = null;
+  studentKey = "";
+  sessionStorage.removeItem("teacherViewStudentKey");
+  if (summaryPageTitle) summaryPageTitle.textContent = "Students Summary";
+  if (summaryPageSubtitle) summaryPageSubtitle.textContent = message;
+  if (displayNameCard) {
+    displayNameCard.textContent = "No student selected";
+    displayNameCard.classList.remove("present-now");
+  }
+  if (groupCard) groupCard.textContent = activeTeacherGroup() || "—";
+  if (classActiveBlockHero) classActiveBlockHero.textContent = "—";
+  if (totalBlockPointsCard) totalBlockPointsCard.textContent = "—";
+  if (blockScoreTableBody) blockScoreTableBody.innerHTML = '<tr><td colspan="8">No student available for this group.</td></tr>';
+  if (studentHistoryTableBody) studentHistoryTableBody.innerHTML = '<tr><td colspan="7">No student available.</td></tr>';
+  renderTeacherStudentNavigation();
+}
+
+function syncTeacherStudentSelection() {
+  if (!isTeacherView) return;
+
+  let groupName = activeTeacherGroup();
+  if (!groupName && studentKey && studentsCache?.[studentKey]) {
+    groupName = studentGroupNames(studentsCache[studentKey])[0] || "";
+    if (groupName) {
+      sessionStorage.setItem(WORKING_GROUP_KEY, groupName);
+      window.dispatchEvent(new CustomEvent("youteach:working-group-changed", { detail: { groupName } }));
+    }
+  }
+
+  if (!groupName) {
+    renderTeacherSummaryLanding("Select an active group first.");
+    return;
+  }
+
+  const entries = teacherGroupEntries();
+  if (!entries.length) {
+    renderTeacherSummaryLanding(`No students enrolled in ${groupName}.`);
+    return;
+  }
+
+  const currentStillBelongs = Boolean(
+    studentKey &&
+    studentsCache?.[studentKey] &&
+    studentInGroup(studentsCache[studentKey], groupName)
+  );
+
+  if (!currentStillBelongs) {
+    selectTeacherStudent(entries[0][0]);
+    return;
+  }
+
+  currentStudent = studentsCache[studentKey];
+  renderAll();
+  renderTeacherStudentNavigation();
+}
+
 setupTeacherViewShell();
 
-if (!isTeacherView) {
+if (isTeacherView) {
+  previousStudentBtn.addEventListener("click", () => {
+    const entries = teacherGroupEntries();
+    const index = entries.findIndex(([key]) => key === studentKey);
+    if (index > 0) selectTeacherStudent(entries[index - 1][0]);
+  });
+
+  nextStudentBtn.addEventListener("click", () => {
+    const entries = teacherGroupEntries();
+    const index = entries.findIndex(([key]) => key === studentKey);
+    if (index >= 0 && index < entries.length - 1) selectTeacherStudent(entries[index + 1][0]);
+  });
+
+  onValue(ref(db, "students"), (snapshot) => {
+    studentsCache = snapshot.val() || {};
+    syncTeacherStudentSelection();
+  });
+
+  window.addEventListener("youteach:working-group-changed", () => {
+    studentKey = "";
+    syncTeacherStudentSelection();
+  });
+} else {
   const studentLogoutBtn = document.getElementById("logoutBtn");
   if (studentLogoutBtn) {
     studentLogoutBtn.addEventListener("click", async () => {
@@ -264,40 +408,18 @@ if (!isTeacherView) {
       window.location.href = "index.html";
     });
   }
-}
 
-
-function renderTeacherSummaryLanding() {
-  if (!isTeacherView || studentKey) return;
-  if (summaryPageTitle) summaryPageTitle.textContent = "Students Summary";
-  if (summaryPageSubtitle) summaryPageSubtitle.textContent = "Select a student from Group Management to open an individual summary.";
-  if (displayNameCard) displayNameCard.textContent = "No student selected";
-  if (groupCard) groupCard.textContent = "—";
-  if (classActiveBlockHero) classActiveBlockHero.textContent = "—";
-  if (totalBlockPointsCard) totalBlockPointsCard.textContent = "—";
-  if (blockScoreTableBody) blockScoreTableBody.innerHTML = '<tr><td colspan="8">Open a student from Group Management to view the summary.</td></tr>';
-  if (studentHistoryTableBody) studentHistoryTableBody.innerHTML = '<tr><td colspan="7">No student selected.</td></tr>';
-}
-
-if (studentKey) {
   onValue(ref(db, `students/${studentKey}`), (snapshot) => {
     currentStudent = snapshot.val();
-  
+
     if (!currentStudent) {
-      if (isTeacherView) {
-        alert("Student not found.");
-        window.location.href = "/group-mangement";
-      } else {
-        clearStudentSession();
-        window.location.href = "index.html";
-      }
+      clearStudentSession();
+      window.location.href = "index.html";
       return;
     }
-  
+
     renderAll();
   });
-} else if (isTeacherView) {
-  renderTeacherSummaryLanding();
 }
 
 onValue(ref(db, "session/current"), (snapshot) => {

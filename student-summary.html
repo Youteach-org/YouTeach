@@ -7,8 +7,26 @@
   <link rel="stylesheet" href="styles.css?v=titlebar-hamburger-20260916">
   <style>
     .summary-name-card {
-      margin-bottom: 10px;
+      display:flex;
+      align-items:center;
+      gap:8px;
+      margin-bottom:10px;
     }
+
+    .summary-student-nav {
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      width:34px;
+      min-width:34px;
+      height:34px;
+      padding:0;
+      border-radius:9px;
+      font-size:20px;
+      line-height:1;
+    }
+
+    .summary-student-nav[hidden] { display:none!important; }
 
     .student-name-badge {
       display: inline-flex;
@@ -101,7 +119,9 @@
       </header>
 
       <div class="summary-name-card">
+        <button id="previousStudentBtn" class="summary-student-nav" type="button" aria-label="Previous student" title="Previous student" hidden>‹</button>
         <strong id="displayNameCard" class="student-name-badge">---</strong>
+        <button id="nextStudentBtn" class="summary-student-nav" type="button" aria-label="Next student" title="Next student" hidden>›</button>
       </div>
 
       <div class="summary-compact-row">
@@ -163,7 +183,7 @@
     </main>
   </div>
 
-  <script type="module" src="student-summary.js?v=compact-summary-attendance-20260921"></script>
+  <script type="module" src="student-summary.js?v=group-navigation-20260921"></script>
   <script defer src="shared-ui-fixes.js?v=titlebar-hamburger-20260916"></script>
 </body>
 </html>
