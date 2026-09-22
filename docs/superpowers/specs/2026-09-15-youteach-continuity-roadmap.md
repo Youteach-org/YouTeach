@@ -1075,3 +1075,15 @@ This supersedes earlier Teacher Students / Group Management navigation and layou
 - Group-level `assignmentCriterionDefaults/<assignmentTypeCode>` remembers the most recently confirmed criterion for that assignment type. This is a default only; teachers can override it per assignment.
 - Legacy AI-graded assignments without a complete destination are migrated on the Assignments page. They default to **Block 1** when no valid block exists. Criterion assignment is automatic only when unambiguous; ambiguous cases are marked `evaluationTargetNeedsReview: true` instead of guessing.
 - Grade calculation reads the canonical evaluation target first, with legacy fields as fallback.
+
+## Working-group selector, Group Management roster, and Assignment visibility — 2026-09-22
+
+Accepted behavior:
+- The active group label beside the teacher name is clickable/touchable and opens the existing **Groups** selection dialog (`groupsDialog`). Do not introduce a second working-group popup design or a separate inline group selector.
+- `working-group-popup.js` is retired. Pages without the Group Management DOM reuse the same Groups-dialog structure and **Select** interaction through the shared UI layer.
+- **Enrolled Students** in Group Management is always visible once a group is active. The roster has no expand/collapse arrow, no persisted collapsed state, and no `rosterCollapsed` behavior.
+- Group Management route behavior must be tested against `teacher-enrollment.js`, because `group-mangement.html` loads that script.
+- Assignments remain scoped by the global active working group without restoring a page-level group selector.
+- Legacy `ALL` assignments remain visible in every active group.
+- Active-group assignment matching normalizes group names and accepts the current group's stored `name` / `groupName` aliases so legacy records are not hidden by identifier differences.
+- An empty active-group result must distinguish “no assignments for this group/current filters” from “no assignments exist”; when other assignment records exist, the UI reports that they remain stored and directs the teacher to change the global active group.
