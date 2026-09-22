@@ -1,11 +1,13 @@
 import { db } from "./firebase.js";
-import { ref, onValue, runTransaction, set } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { ref, onValue, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireStudentSession, clearStudentSession, saveLeaveLog } from "./student-auth.js";
+import { studentGroupNames } from "./student-groups.js";
+import { canStudentAccessLiveGame } from "./cog-live-session-policy.mjs";
 
 const session = requireStudentSession();
 if (!session) throw new Error("Student session required.");
 
-const { studentKey } = session;
+const { studentKey, externalId } = session;
 
 const logoutBtn = document.getElementById("logoutBtn");
 const attendanceStatusText = document.getElementById("attendanceStatusText");
@@ -13,9 +15,10 @@ const studentName = document.getElementById("studentName");
 const studentTeam = document.getElementById("studentTeam");
 const studentStatus = document.getElementById("studentStatus");
 const buzzBtn = document.getElementById("buzzBtn");
-const openVerbRunnerBtn = document.getElementById("openVerbRunnerBtn");
-
 const activityScoresStrip = document.getElementById("activityScoresStrip");
+const liveGameCard = document.getElementById("liveGameCard");
+const liveGameName = document.getElementById("liveGameName");
+const joinLiveGameBtn = document.getElementById("joinLiveGameBtn");
 
 let currentStudent = null;
 let currentSession = null;
@@ -31,27 +34,6 @@ function todayKey() {
 function getDisplayName(student) {
   if (!student) return "Student";
   return student.nickname || ((student.fullName || student.name || "").split(" ")[0]) || "Student";
-}
-
-function createOpaqueLaunchToken() {
-  const bytes = new Uint8Array(24);
-  crypto.getRandomValues(bytes);
-  let raw = "";
-  bytes.forEach((value) => { raw += String.fromCharCode(value); });
-  return btoa(raw).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
-}
-
-async function createVerbRunnerLaunchToken(studentKey) {
-  const token = createOpaqueLaunchToken();
-  const now = Date.now();
-  await set(ref(db, `classroomGames/verbRunnerV2/launchTokens/${token}`), {
-    studentKey,
-    game: "verb-runner",
-    createdAt: now,
-    expiresAt: now + 5 * 60 * 1000,
-    used: false
-  });
-  return token;
 }
 
 function getBuzzerState() {
@@ -127,6 +109,33 @@ function renderActivityScores() {
   `).join("");
 }
 
+function activeLiveGameForStudent() {
+  const connectedGame = currentSession?.connectedGame || null;
+  if (!currentStudent || !connectedGame) return null;
+  return canStudentAccessLiveGame({
+    connectedGame,
+    studentGroup: currentStudent.groupName || "GENERAL",
+    studentGroups: studentGroupNames(currentStudent),
+    studentKey,
+    now: Date.now()
+  }) ? connectedGame : null;
+}
+
+function renderLiveGameCard() {
+  if (!liveGameCard || !joinLiveGameBtn || !liveGameName) return;
+  const connectedGame = activeLiveGameForStudent();
+  const buzzerNativeGame = connectedGame?.gameId === "100-students-said";
+  liveGameCard.hidden = !connectedGame || buzzerNativeGame;
+  if (!connectedGame || buzzerNativeGame) return;
+
+  liveGameName.textContent = connectedGame.gameName || "Classroom Online Game";
+  const lastJoined = localStorage.getItem("youteachLastLiveGameSession") || "";
+  joinLiveGameBtn.textContent =
+    lastJoined === String(connectedGame.cogSessionId || "")
+      ? "RETURN TO GAME"
+      : "JOIN GAME";
+}
+
 function renderBuzzer() {
   if (!currentStudent) return;
 
@@ -137,13 +146,14 @@ function renderBuzzer() {
     studentStatus.textContent = "No active session.";
     buzzBtn.disabled = true;
     renderActivityScores();
+    renderLiveGameCard();
     return;
   }
 
   const team = currentSession.assignments?.[studentKey] || "No team";
   const buzzer = getBuzzerState();
   const currentBuzz = buzzer.currentBuzz || null;
-  const gameActive = Boolean(currentSession?.connectedGame?.id === "100-students-said" && hundredSS?.integration?.active);
+  const gameActive = Boolean(currentSession?.connectedGame?.gameId === "100-students-said" && currentSession?.connectedGame?.status === "active" && hundredSS?.integration?.active);
   const alreadyParticipated = Boolean(hundredSS?.usedStudents?.[studentKey]);
   const assignedTurn = hundredSS?.turnStudentKey || "";
   if (gameTurnCard) gameTurnCard.hidden = !gameActive;
@@ -153,6 +163,7 @@ function renderBuzzer() {
 
   studentTeam.textContent = team;
   renderActivityScores();
+  renderLiveGameCard();
 
   if (gameActive && (alreadyParticipated || (assignedTurn && assignedTurn !== studentKey))) {
     buzzBtn.disabled = true;
@@ -184,20 +195,39 @@ function renderBuzzer() {
   studentStatus.textContent = "Round is open. Your team can buzz.";
 }
 
-if (openVerbRunnerBtn) {
-  openVerbRunnerBtn.addEventListener("click", async () => {
-    if (!currentStudent || !studentKey) return;
-    openVerbRunnerBtn.disabled = true;
-    const oldText = openVerbRunnerBtn.textContent;
-    openVerbRunnerBtn.textContent = "Opening Verb Runner…";
+if (joinLiveGameBtn) {
+  joinLiveGameBtn.addEventListener("click", async () => {
+    const connectedGame = activeLiveGameForStudent();
+    if (!connectedGame || !studentKey || !externalId) {
+      studentStatus.textContent = "This live activity is not available.";
+      return;
+    }
+
+    joinLiveGameBtn.disabled = true;
+    const oldText = joinLiveGameBtn.textContent;
+    joinLiveGameBtn.textContent = "OPENING…";
+
     try {
-      const token = await createVerbRunnerLaunchToken(studentKey);
-      window.location.href = `https://classroom-online-games.pages.dev/Verb-Runner/?launch=${encodeURIComponent(token)}`;
+      const response = await fetch("/api/cog-live-student-launch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentKey, externalId })
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || payload?.ok !== true || !payload?.launchUrl) {
+        throw new Error(payload?.error || "Could not open the live activity.");
+      }
+
+      localStorage.setItem(
+        "youteachLastLiveGameSession",
+        String(connectedGame.cogSessionId || "")
+      );
+      window.location.href = payload.launchUrl;
     } catch (error) {
-      console.error("Could not create Verb Runner credential", error);
-      studentStatus.textContent = "Could not open Verb Runner. Try again.";
-      openVerbRunnerBtn.disabled = false;
-      openVerbRunnerBtn.textContent = oldText;
+      console.error("Could not open live Classroom Online Game", error);
+      studentStatus.textContent = error?.message || "Could not open the live activity. Try again.";
+      joinLiveGameBtn.disabled = false;
+      joinLiveGameBtn.textContent = oldText;
     }
   });
 }
@@ -215,7 +245,7 @@ buzzBtn.addEventListener("click", async () => {
   const team = currentSession.assignments?.[studentKey] || "No team";
   const studentNameText = getDisplayName(currentStudent);
 
-  if (currentSession?.connectedGame?.id === "100-students-said" && hundredSS?.integration?.active) {
+  if (currentSession?.connectedGame?.gameId === "100-students-said" && currentSession?.connectedGame?.status === "active" && hundredSS?.integration?.active) {
     let eligible = false;
     await runTransaction(ref(db, "classroomGames/hundredStudentsSaid/current"), (game) => {
       if (!game || game.usedStudents?.[studentKey]) return game;
