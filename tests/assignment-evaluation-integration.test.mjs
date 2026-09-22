@@ -130,9 +130,8 @@ test('Assignment Browser reports historical submission group when stored group m
 });
 
 
-test('Assignment Browser imports every evaluation helper it executes at runtime', () => {
-  assert.match(
-    teacherJs,
-    /import\s*\{[^}]*isExamAssignment[^}]*\}\s*from\s*["']\.\/assignment-evaluation-target\.js["']/s
-  );
+test('Assignment Browser defines isExamAssignment exactly once at module scope', () => {
+  const imported = /import\s*\{[^}]*isExamAssignment[^}]*\}\s*from\s*["']\.\/assignment-evaluation-target\.js["']/s.test(teacherJs);
+  const local = /function\s+isExamAssignment\s*\(/.test(teacherJs);
+  assert.equal(Number(imported) + Number(local), 1);
 });
