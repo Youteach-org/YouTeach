@@ -4,9 +4,13 @@ import {
   onValue,
   get,
   update,
-  runTransaction
+  runTransaction,
+  push,
+  set
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
+import { generateId } from "./app.js";
+import { evaluationBlockNames } from "./group-evaluation-model.js";
 
 if (!requireTeacherAuth()) {
   throw new Error("Teacher session required.");
@@ -31,12 +35,118 @@ const roundState = document.getElementById("roundState");
 const currentBuzzState = document.getElementById("currentBuzzState");
 const raceGhostsBtn = document.getElementById("raceGhostsBtn");
 const buzzerProgress = document.getElementById("buzzerProgress");
+const openAddStudentModalBtn = document.getElementById("openAddStudentModalBtn");
+const addStudentDialog = document.getElementById("addStudentDialog");
+const addStudentGroupLabel = document.getElementById("addStudentGroupLabel");
+const closeAddStudentDialogBtn = document.getElementById("closeAddStudentDialogBtn");
+const manualStudentTabBtn = document.getElementById("manualStudentTabBtn");
+const csvStudentTabBtn = document.getElementById("csvStudentTabBtn");
+const pasteStudentTabBtn = document.getElementById("pasteStudentTabBtn");
+const existingStudentTabBtn = document.getElementById("existingStudentTabBtn");
+const manualStudentPane = document.getElementById("manualStudentPane");
+const csvStudentPane = document.getElementById("csvStudentPane");
+const pasteStudentPane = document.getElementById("pasteStudentPane");
+const existingStudentPane = document.getElementById("existingStudentPane");
+const studentNameInput = document.getElementById("studentName");
+const studentNicknameInput = document.getElementById("studentNickname");
+const studentNumberManualInput = document.getElementById("studentNumberManual");
+const createStudentBtn = document.getElementById("createStudent");
+const csvFileInput = document.getElementById("csvFile");
+const importCsvBtn = document.getElementById("importCsv");
+const bulkTextInput = document.getElementById("bulkText");
+const importTextBtn = document.getElementById("importText");
+const existingStudentSearch = document.getElementById("existingStudentSearch");
+const existingStudentGroupFilter = document.getElementById("existingStudentGroupFilter");
+const existingStudentsMasterCheckbox = document.getElementById("existingStudentsMasterCheckbox");
+const existingStudentsList = document.getElementById("existingStudentsList");
+const existingStudentSelectionCount = document.getElementById("existingStudentSelectionCount");
+const enrollExistingStudentsBtn = document.getElementById("enrollExistingStudentsBtn");
+const addStudentStatus = document.getElementById("addStudentStatus");
+
+openAddStudentModalBtn.addEventListener("click", openAddStudentsDialog);
+closeAddStudentDialogBtn.addEventListener("click", () => addStudentDialog.close());
+manualStudentTabBtn.addEventListener("click", () => setAddStudentPane("manual"));
+csvStudentTabBtn.addEventListener("click", () => setAddStudentPane("csv"));
+pasteStudentTabBtn.addEventListener("click", () => setAddStudentPane("paste"));
+existingStudentTabBtn.addEventListener("click", () => setAddStudentPane("existing"));
+existingStudentSearch.addEventListener("input", renderExistingStudents);
+existingStudentGroupFilter.addEventListener("change", renderExistingStudents);
+existingStudentsList.addEventListener("change", (event) => {
+  const checkbox = event.target.closest(".existing-student-checkbox");
+  if (!checkbox) return;
+  const studentKey = String(checkbox.dataset.existingStudentKey || "");
+  if (!studentKey) return;
+  if (checkbox.checked) selectedExistingStudentKeys.add(studentKey);
+  else selectedExistingStudentKeys.delete(studentKey);
+  syncExistingMaster();
+});
+existingStudentsMasterCheckbox.addEventListener("change", () => {
+  existingStudentCandidates().forEach(([studentKey]) => {
+    if (existingStudentsMasterCheckbox.checked) selectedExistingStudentKeys.add(studentKey);
+    else selectedExistingStudentKeys.delete(studentKey);
+  });
+  renderExistingStudents();
+});
+enrollExistingStudentsBtn.addEventListener("click", enrollExistingStudents);
+
+createStudentBtn.addEventListener("click", async () => {
+  const fullName = studentNameInput.value.trim();
+  if (!fullName) {
+    addStudentStatus.textContent = "Enter the student's full name.";
+    return;
+  }
+  await saveStudent(
+    fullName,
+    studentNicknameInput.value.trim(),
+    studentNumberManualInput.value.trim(),
+    { enrollmentSource: "ghost-lab-manual", enrolledBy: getTeacherName() }
+  );
+  studentNameInput.value = "";
+  studentNicknameInput.value = "";
+  studentNumberManualInput.value = "";
+  addStudentStatus.textContent = "Student added to FANTASMA.";
+});
+
+importCsvBtn.addEventListener("click", async () => {
+  const file = csvFileInput.files[0];
+  if (!file) {
+    addStudentStatus.textContent = "Choose a CSV file first.";
+    return;
+  }
+  const students = parseCsv(await file.text());
+  for (const student of students) {
+    await saveStudent(student.fullName, student.nickname, student.studentNumber, {
+      enrollmentSource: "ghost-lab-csv",
+      enrolledBy: getTeacherName()
+    });
+  }
+  csvFileInput.value = "";
+  addStudentStatus.textContent = `${students.length} student(s) imported into FANTASMA.`;
+});
+
+importTextBtn.addEventListener("click", async () => {
+  const students = parseBulkText(bulkTextInput.value);
+  if (!students.length) {
+    addStudentStatus.textContent = "Paste at least one valid student.";
+    return;
+  }
+  for (const student of students) {
+    await saveStudent(student.fullName, student.nickname, student.studentNumber, {
+      enrollmentSource: "ghost-lab-paste",
+      enrolledBy: getTeacherName()
+    });
+  }
+  bulkTextInput.value = "";
+  addStudentStatus.textContent = `${students.length} student(s) imported into FANTASMA.`;
+});
 
 teacherIdentity.textContent = getTeacherName();
 sidebarIdentity.textContent = getTeacherName();
 logoutBtn.addEventListener("click", logoutTeacher);
 
+const GHOST_GROUP = "FANTASMA";
 let studentsCache = {};
+let groupsCache = {};
 let assignmentsCache = {};
 let sessionCache = null;
 let selectedGhostKeys = new Set();
@@ -44,6 +154,7 @@ let selectionInitialized = false;
 let selectedAssignmentId = "";
 let selectedAssignmentSubmissions = {};
 let stopSubmissionListener = null;
+let selectedExistingStudentKeys = new Set();
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -52,6 +163,237 @@ function escapeHtml(value) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
+}
+
+
+function parseCsvLine(line) {
+  const result = [];
+  let current = "";
+  let insideQuotes = false;
+  for (let i = 0; i < line.length; i += 1) {
+    const char = line[i];
+    if (char === '"') {
+      if (insideQuotes && line[i + 1] === '"') {
+        current += '"';
+        i += 1;
+      } else {
+        insideQuotes = !insideQuotes;
+      }
+    } else if (char === "," && !insideQuotes) {
+      result.push(current);
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  result.push(current);
+  return result;
+}
+
+function parseCsv(text) {
+  return String(text || "").replace(/\r/g, "").split("\n")
+    .map((line) => line.trim()).filter(Boolean)
+    .map((line) => {
+      const cols = parseCsvLine(line);
+      return {
+        studentNumber: (cols[0] || "").trim(),
+        fullName: (cols[1] || "").trim(),
+        nickname: (cols[2] || "").trim()
+      };
+    }).filter((student) => student.fullName);
+}
+
+function parseBulkText(text) {
+  return String(text || "").replace(/\r/g, "").split("\n")
+    .map((line) => line.trim()).filter(Boolean)
+    .map((line) => {
+      if (line.includes("\t")) {
+        const parts = line.split("\t");
+        return {
+          studentNumber: (parts[0] || "").trim(),
+          fullName: parts.slice(1).join(" ").trim(),
+          nickname: ""
+        };
+      }
+      const parts = parseCsvLine(line);
+      return {
+        studentNumber: (parts[0] || "").trim(),
+        fullName: (parts[1] || "").trim() || line,
+        nickname: (parts[2] || "").trim()
+      };
+    }).filter((student) => student.fullName);
+}
+
+function initialBlockPoints() {
+  const group = groupsCache?.[GHOST_GROUP] || {};
+  return Object.fromEntries(evaluationBlockNames(group).map((blockName) => [blockName, 0]));
+}
+
+async function saveStudent(fullName, nickname = "", studentNumber = "", extras = {}) {
+  const cleanName = String(fullName || "").trim();
+  const cleanNickname = String(nickname || "").trim() || cleanName.split(" ")[0] || "Student";
+  const cleanNumber = String(studentNumber || "").trim();
+  const internalId = generateId();
+  const newRef = push(ref(db, "students"));
+
+  await set(newRef, {
+    fullName: cleanName,
+    name: cleanName,
+    nickname: cleanNickname,
+    studentNumber: cleanNumber,
+    groupName: GHOST_GROUP,
+    id: internalId,
+    password: "1234",
+    activeNow: false,
+    enrollmentStatus: "approved",
+    enrolledAt: Date.now(),
+    blockPoints: initialBlockPoints(),
+    ...extras
+  });
+
+  return newRef.key;
+}
+
+function setAddStudentPane(active) {
+  const panes = {
+    manual: [manualStudentTabBtn, manualStudentPane],
+    csv: [csvStudentTabBtn, csvStudentPane],
+    paste: [pasteStudentTabBtn, pasteStudentPane],
+    existing: [existingStudentTabBtn, existingStudentPane]
+  };
+  Object.entries(panes).forEach(([key, [button, pane]]) => {
+    const isActive = key === active;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-selected", String(isActive));
+    pane.hidden = !isActive;
+  });
+  if (active === "existing") renderExistingStudents();
+}
+
+function normalizeExistingSearch(value) {
+  return String(value || "").toLocaleLowerCase().trim();
+}
+
+function existingStudentCandidates() {
+  const query = normalizeExistingSearch(existingStudentSearch?.value || "");
+  const groupFilter = String(existingStudentGroupFilter?.value || "");
+  return Object.entries(studentsCache || {})
+    .filter(([, student]) => String(student?.groupName || "") !== GHOST_GROUP)
+    .filter(([, student]) => !groupFilter || String(student?.groupName || "") === groupFilter)
+    .filter(([studentKey, student]) => {
+      if (!query) return true;
+      return [
+        studentKey,
+        student?.fullName,
+        student?.name,
+        student?.nickname,
+        student?.studentNumber,
+        student?.externalId,
+        student?.id,
+        student?.groupName
+      ].map(normalizeExistingSearch).join(" ").includes(query);
+    })
+    .sort((a, b) =>
+      String(a[1]?.fullName || a[1]?.name || a[1]?.nickname || "")
+        .localeCompare(String(b[1]?.fullName || b[1]?.name || b[1]?.nickname || ""), undefined, { sensitivity: "base" })
+    );
+}
+
+function renderExistingGroupFilter() {
+  const previous = existingStudentGroupFilter.value;
+  const groups = [...new Set(
+    Object.values(studentsCache || {})
+      .map((student) => String(student?.groupName || "").trim())
+      .filter(Boolean)
+      .filter((groupName) => groupName !== GHOST_GROUP)
+  )].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+
+  existingStudentGroupFilter.innerHTML =
+    '<option value="">All groups</option>' +
+    groups.map((groupName) => `<option value="${escapeHtml(groupName)}">${escapeHtml(groupName)}</option>`).join("");
+  if (groups.includes(previous)) existingStudentGroupFilter.value = previous;
+}
+
+function syncExistingMaster(entries = existingStudentCandidates()) {
+  const visibleKeys = entries.map(([studentKey]) => studentKey);
+  const selectedVisible = visibleKeys.filter((studentKey) => selectedExistingStudentKeys.has(studentKey));
+  existingStudentsMasterCheckbox.disabled = visibleKeys.length === 0;
+  existingStudentsMasterCheckbox.checked =
+    visibleKeys.length > 0 && selectedVisible.length === visibleKeys.length;
+  existingStudentsMasterCheckbox.indeterminate =
+    selectedVisible.length > 0 && selectedVisible.length < visibleKeys.length;
+  existingStudentSelectionCount.textContent = `${selectedExistingStudentKeys.size} selected`;
+  enrollExistingStudentsBtn.disabled = selectedExistingStudentKeys.size === 0;
+}
+
+function renderExistingStudents() {
+  renderExistingGroupFilter();
+  const entries = existingStudentCandidates();
+  existingStudentsList.innerHTML = entries.length
+    ? entries.map(([studentKey, student]) => {
+        const checked = selectedExistingStudentKeys.has(studentKey) ? "checked" : "";
+        const fullName = String(student?.fullName || student?.name || student?.nickname || studentKey).trim();
+        const nickname = String(student?.nickname || "").trim();
+        const groupName = String(student?.groupName || "").trim();
+        const external = String(student?.studentNumber || student?.externalId || "").trim();
+        return `
+          <tr>
+            <td><input class="existing-student-checkbox" type="checkbox"
+              data-existing-student-key="${escapeHtml(studentKey)}" ${checked}
+              aria-label="Select ${escapeHtml(fullName)}"></td>
+            <td><span class="existing-student-name">${escapeHtml(fullName)}</span></td>
+            <td>${escapeHtml(nickname || "—")}</td>
+            <td>${escapeHtml(groupName || "—")}</td>
+            <td>${escapeHtml(external || "—")}</td>
+          </tr>
+        `;
+      }).join("")
+    : '<tr><td colspan="5">No existing students match this search.</td></tr>';
+  syncExistingMaster(entries);
+}
+
+function openAddStudentsDialog() {
+  addStudentGroupLabel.textContent = `Group: ${GHOST_GROUP}`;
+  addStudentStatus.textContent = "";
+  selectedExistingStudentKeys.clear();
+  existingStudentSearch.value = "";
+  existingStudentGroupFilter.value = "";
+  setAddStudentPane("manual");
+  addStudentDialog.showModal();
+}
+
+async function enrollExistingStudents() {
+  const selectedKeys = [...selectedExistingStudentKeys]
+    .filter((studentKey) => studentsCache?.[studentKey])
+    .filter((studentKey) => String(studentsCache[studentKey]?.groupName || "") !== GHOST_GROUP);
+
+  if (!selectedKeys.length) {
+    addStudentStatus.textContent = "Select at least one existing student.";
+    return;
+  }
+
+  const now = Date.now();
+  const updates = {};
+  selectedKeys.forEach((studentKey) => {
+    const previousGroupName = String(studentsCache[studentKey]?.groupName || "");
+    updates[`students/${studentKey}/groupName`] = GHOST_GROUP;
+    updates[`students/${studentKey}/previousGroupName`] = previousGroupName;
+    updates[`students/${studentKey}/enrollmentStatus`] = "approved";
+    updates[`students/${studentKey}/enrollmentSource`] = "ghost-lab-existing";
+    updates[`students/${studentKey}/enrolledAt`] = now;
+    updates[`students/${studentKey}/enrolledBy`] = getTeacherName();
+  });
+
+  enrollExistingStudentsBtn.disabled = true;
+  try {
+    await update(ref(db), updates);
+    selectedExistingStudentKeys.clear();
+    addStudentStatus.textContent = `${selectedKeys.length} existing student(s) enrolled in ${GHOST_GROUP}.`;
+    renderExistingStudents();
+  } catch (error) {
+    console.error(error);
+    addStudentStatus.textContent = `Could not enroll selected students: ${error?.message || "unknown error"}`;
+  }
 }
 
 function ghostNumber(student) {
@@ -636,8 +978,13 @@ submitGhostWorkBtn.addEventListener("click", () => runAssignmentBatch("submit"))
 withdrawGhostWorkBtn.addEventListener("click", () => runAssignmentBatch("withdraw"));
 raceGhostsBtn.addEventListener("click", simulateRace);
 
+onValue(ref(db, "groups"), (snapshot) => {
+  groupsCache = snapshot.val() || {};
+});
+
 onValue(ref(db, "students"), (snapshot) => {
   studentsCache = snapshot.val() || {};
+  if (existingStudentPane && !existingStudentPane.hidden) renderExistingStudents();
   renderGhosts();
   renderAssignmentOptions();
   renderAssignmentStatus();

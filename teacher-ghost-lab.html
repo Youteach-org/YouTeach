@@ -40,6 +40,26 @@
     .ghost-empty{padding:18px;text-align:center;color:#64748b}
     .ghost-help{display:grid;gap:7px;margin-top:10px;padding-left:20px;color:#475569;font-size:12px;line-height:1.45}
     .danger-outline{background:#fff!important;color:#b91c1c!important;border:1px solid #ef4444!important}
+    dialog{border:0;border-radius:14px;padding:0;width:min(760px,calc(100vw - 28px));box-shadow:0 22px 70px rgba(15,23,42,.35)}
+    dialog::backdrop{background:rgba(15,23,42,.55)}
+    .modal-card{padding:18px;display:grid;gap:13px}
+    .modal-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+    .modal-head h3{margin:0}
+    .modal-close{background:#e2e8f0;color:#0f172a}
+    .modal-tabs{display:flex;gap:6px;flex-wrap:wrap}
+    .modal-tab{background:#fff!important;color:#334155!important;border:1px solid #cbd5e1!important;box-shadow:none!important}
+    .modal-tab.active{background:#2563eb!important;color:#fff!important;border-color:#1d4ed8!important;font-weight:900}
+    .modal-pane{display:grid;gap:10px}
+    .existing-students-tools{display:grid;grid-template-columns:minmax(180px,1fr) minmax(150px,.45fr);gap:8px}
+    .existing-students-table-wrap{max-height:360px;overflow:auto;border:1px solid #dbe3ee;border-radius:9px}
+    .existing-students-table{width:100%;border-collapse:collapse;min-width:620px}
+    .existing-students-table th,.existing-students-table td{padding:7px 8px;border-bottom:1px solid #e2e8f0;text-align:left;font-size:11px}
+    .existing-students-table th{position:sticky;top:0;background:#f8fafc;z-index:1}
+    .existing-students-table tr:last-child td{border-bottom:0}
+    .existing-student-name{font-weight:800;color:#0f172a}
+    .existing-student-actions{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+    .existing-student-count{font-size:11px;font-weight:800;color:#475569}
+
     @media(max-width:900px){.ghost-grid{grid-template-columns:1fr}.ghost-toolbar select{width:100%;min-width:0}.ghost-toolbar button,.ghost-toolbar a{flex:1 1 auto}}
   </style>
 </head>
@@ -76,7 +96,7 @@
 
       <div class="ghost-lab">
         <div class="ghost-banner">
-          This page uses the existing test students in group <strong>FANTASMA</strong>. Their external IDs are <strong>GHOST01–GHOST20</strong> and their nicknames are <strong>FAKE-01–FAKE-20</strong>. It does not create new students. Test assignments must be assigned to FANTASMA (or ALL).
+          This page uses students enrolled in group <strong>FANTASMA</strong>. The existing Ghost accounts use external IDs <strong>GHOST01–GHOST20</strong> and nicknames <strong>FAKE-01–FAKE-20</strong>. Use <strong>Add Students</strong> to create/import students or enroll existing accounts into FANTASMA. Test assignments must be assigned to FANTASMA (or ALL).
         </div>
 
         <section class="ghost-lab-card">
@@ -86,6 +106,7 @@
           <div class="ghost-toolbar">
             <button id="activateGhostsBtn" type="button">Activate selected</button>
             <button id="deactivateGhostsBtn" type="button" class="danger-outline">Deactivate selected</button>
+            <button id="openAddStudentModalBtn" type="button">Add Students</button>
           </div>
           <div class="ghost-table-wrap">
             <table class="ghost-table">
@@ -144,7 +165,68 @@
     </main>
   </div>
 
-  <script type="module" src="teacher-ghost-lab.js?v=ghost-lab-20260920d"></script>
+
+  <dialog id="addStudentDialog">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <h3>Add Students</h3>
+          <div id="addStudentGroupLabel" class="status-text">Group: FANTASMA</div>
+        </div>
+        <button id="closeAddStudentDialogBtn" class="modal-close" type="button">Close</button>
+      </div>
+
+      <div class="modal-tabs">
+        <button id="manualStudentTabBtn" type="button" class="modal-tab active" aria-selected="true">Manual</button>
+        <button id="csvStudentTabBtn" type="button" class="modal-tab" aria-selected="false">CSV</button>
+        <button id="pasteStudentTabBtn" type="button" class="modal-tab" aria-selected="false">Paste List</button>
+        <button id="existingStudentTabBtn" type="button" class="modal-tab" aria-selected="false">Existing</button>
+      </div>
+
+      <div id="manualStudentPane" class="modal-pane">
+        <input id="studentName" placeholder="Full name">
+        <input id="studentNickname" placeholder="Nickname">
+        <input id="studentNumberManual" placeholder="External ID (optional)">
+        <button id="createStudent" type="button">Add Student</button>
+      </div>
+
+      <div id="csvStudentPane" class="modal-pane" hidden>
+        <input id="csvFile" type="file" accept=".csv">
+        <button id="importCsv" type="button">Import CSV</button>
+      </div>
+
+      <div id="pasteStudentPane" class="modal-pane" hidden>
+        <textarea id="bulkText" rows="12" placeholder="GHOST21    TEST STUDENT"></textarea>
+        <button id="importText" type="button">Import Pasted List</button>
+      </div>
+
+      <div id="existingStudentPane" class="modal-pane" hidden>
+        <div class="existing-students-tools">
+          <input id="existingStudentSearch" placeholder="Search group, name, nickname, or External ID" autocomplete="off">
+          <select id="existingStudentGroupFilter"><option value="">All groups</option></select>
+        </div>
+        <div class="existing-students-table-wrap">
+          <table class="existing-students-table">
+            <thead>
+              <tr>
+                <th><input id="existingStudentsMasterCheckbox" type="checkbox" aria-label="Select or deselect all visible existing students" title="Select or deselect all visible"></th>
+                <th>Name</th><th>Nickname</th><th>Group</th><th>External ID</th>
+              </tr>
+            </thead>
+            <tbody id="existingStudentsList"><tr><td colspan="5">No existing students available.</td></tr></tbody>
+          </table>
+        </div>
+        <div class="existing-student-actions">
+          <span id="existingStudentSelectionCount" class="existing-student-count">0 selected</span>
+          <button id="enrollExistingStudentsBtn" type="button">Enroll Selected</button>
+        </div>
+      </div>
+
+      <div id="addStudentStatus" class="status-text"></div>
+    </div>
+  </dialog>
+
+  <script type="module" src="teacher-ghost-lab.js?v=ghost-lab-add-students-20260921"></script>
   <script defer src="shared-ui-fixes.js?v=titlebar-hamburger-20260916"></script>
 </body>
 </html>
