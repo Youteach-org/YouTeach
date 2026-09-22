@@ -30,6 +30,96 @@ function assignmentBlock(assignment) {
   return String(assignmentTarget(assignment).block || "").trim();
 }
 
+function taskAssignmentsForCriterion({
+  studentKey,
+  student,
+  blockName,
+  criterion,
+  config,
+  assignments
+}) {
+  const tagged = [];
+  const untaggedFallback = [];
+
+  Object.entries(assignments || {}).forEach(([assignmentId, assignment]) => {
+    if (!assignmentAppliesToStudent(assignment, studentKey, student)) return;
+    if (assignmentBlock(assignment) !== blockName) return;
+
+    const target = assignmentTarget(assignment);
+    const criterionId = String(
+      target.criterionId || assignment.groupEvaluationCriterionId || ""
+    );
+
+    if (criterionId === criterion.id) {
+      tagged.push([assignmentId, assignment]);
+      return;
+    }
+
+    if (!criterionId) {
+      const typeCode = String(assignment.assignmentTypeCode || "").trim().toUpperCase();
+      if (typeCode !== "EX") untaggedFallback.push([assignmentId, assignment]);
+    }
+  });
+
+  if (tagged.length) return tagged;
+
+  const taskCriteria = (config?.criteria || []).filter((item) => item.source === "tasks");
+  if (criterion.source === "tasks" && taskCriteria.length === 1) return untaggedFallback;
+
+  return [];
+}
+
+export function taskCriterionContribution({
+  studentKey,
+  student,
+  blockName,
+  criterion,
+  config,
+  assignments = {},
+  submissions = {},
+  requirePublished = false
+}) {
+  if (criterion?.source !== "tasks") return null;
+
+  const taskAssignments = taskAssignmentsForCriterion({
+    studentKey,
+    student,
+    blockName,
+    criterion,
+    config,
+    assignments
+  });
+
+  if (!taskAssignments.length) return null;
+
+  const weight = Math.max(0, Number(criterion.weight || 0));
+  const share = taskAssignments.length ? weight / taskAssignments.length : 0;
+  let contribution = 0;
+  let gradedCount = 0;
+
+  taskAssignments.forEach(([assignmentId]) => {
+    const submission = submissions?.[assignmentId]?.[studentKey] || null;
+    if (!submission) return;
+    if (requirePublished && submission.gradePublished !== true) return;
+
+    const raw = submission?.grading?.totalScore;
+    if (raw === null || raw === undefined || raw === "") return;
+
+    const score = Number(raw);
+    if (!Number.isFinite(score)) return;
+
+    const normalizedScore = Math.min(100, Math.max(0, score));
+    gradedCount += 1;
+    contribution += (normalizedScore / 100) * share;
+  });
+
+  return {
+    contribution: Number(contribution.toFixed(2)),
+    assignmentCount: taskAssignments.length,
+    gradedCount
+  };
+}
+
 function assignmentScoresForCriterion({
   studentKey,
   student,
@@ -91,6 +181,21 @@ export function criterionValue({
   submissions = {}
 }) {
   const exam = student?.examPoints?.[blockName] || {};
+
+  if (criterion.source === "tasks") {
+    const taskResult = taskCriterionContribution({
+      studentKey,
+      student,
+      blockName,
+      criterion,
+      config,
+      assignments,
+      submissions
+    });
+    if (taskResult) {
+      return { value: taskResult.contribution, mode: "contribution" };
+    }
+  }
 
   // Explicit assignment-to-criterion links are universal. A teacher should not
   // have to expose or understand an internal "source" selector just to make a
