@@ -11,6 +11,11 @@ export const LIVE_COG_GAMES = Object.freeze({
     name: "Support Meter",
     studentPath: "/Support-Meter/"
   }),
+  "talk-talk": Object.freeze({
+    id: "talk-talk",
+    name: "Talk Talk",
+    studentPath: "/Talk-Talk/"
+  }),
   "100-students-said": Object.freeze({
     id: "100-students-said",
     name: "100 Students Said",
@@ -62,14 +67,14 @@ export function cogOriginForRequest(request) {
   const url = new URL(request.url);
   const host = url.hostname.toLowerCase();
   if (host === "youteach.pages.dev") {
-    return "https://classroom-online-games.pages.dev";
+    return "https://utichgion.org";
   }
   const suffix = ".youteach.pages.dev";
   if (host.endsWith(suffix)) {
     const prefix = host.slice(0, -suffix.length);
     if (prefix) return `https://${prefix}.classroom-online-games.pages.dev`;
   }
-  return "https://classroom-online-games.pages.dev";
+  return "https://utichgion.org";
 }
 
 export function isCogAssignmentForSession(assignment, session) {
@@ -122,6 +127,7 @@ export function allowedCogOrigin(request) {
     if (
       url.protocol === "https:" &&
       (
+        host === "utichgion.org" ||
         host === "classroom-online-games.pages.dev" ||
         host.endsWith(".classroom-online-games.pages.dev")
       )
