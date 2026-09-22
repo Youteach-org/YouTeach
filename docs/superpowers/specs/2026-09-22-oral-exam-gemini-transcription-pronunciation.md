@@ -128,3 +128,14 @@ Do not score pronunciation and do not generate the final PDF until the literal t
 ## 7. Continuity rule
 
 Any future change to this workflow must be written to GitHub before the session ends. A future ChatGPT/Superpowers instance must read this spec before resuming oral-exam transcription or pronunciation evaluation.
+
+
+## 8. Execution state — 2026-09-22
+
+- The original Paul/Paulina source recording has been located in the user's ChatGPT Library as `paulina and paul(1).ogg` (audio/ogg, about 1.6 MB).
+- This recording is the source to use for the restart. Do not use the old PDF review, v0.13/v0.14/v0.15 pilot outputs, or any prior normalized transcript as transcription input.
+- In the current ChatGPT session there is **no Gemini connector and no Gemini/Google GenAI API credential exposed to the agent**. GitHub also contains no existing Gemini integration for this workflow.
+- The agent must **not silently substitute ElevenLabs Scribe, Whisper, OpenPronounce, Wav2Vec2, or another transcription engine** for the agreed Gemini Stage 1.
+- The native ChatGPT Library file cannot be bound directly to the multimedia processor from its Library file ID; an upload/native attachment binding is required before a media-processing tool can consume it.
+- A media picker was opened for the user to bind the original `paulina and paul(1).ogg` recording. This binding step only solves media access; it does not by itself provide Gemini.
+- If Gemini access becomes available in a future session (connector, authorized API route, or another explicit Gemini-capable tool), resume with Stage 1 from the original OGG and the literal-transcription rules in this spec.
