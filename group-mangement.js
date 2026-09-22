@@ -66,8 +66,6 @@ const evaluationTemplateList = document.getElementById("evaluationTemplateList")
 const useSelectedEvaluationTemplateBtn = document.getElementById("useSelectedEvaluationTemplateBtn");
 
 const enrollmentControls = document.getElementById("enrollmentControls");
-const rosterBody = document.getElementById("rosterBody");
-const toggleRosterBtn = document.getElementById("toggleRosterBtn");
 const createEnrollmentLinkBtn = document.getElementById("createEnrollmentLinkBtn");
 const enrollmentLinkInlineControls = document.getElementById("enrollmentLinkInlineControls");
 const enrollmentLinkInput = document.getElementById("enrollmentLinkInput");
@@ -207,7 +205,6 @@ let deletionTargetGroup = "";
 let editingGroupName = "";
 let pendingReportSettings = null;
 let creatingGroup = false;
-let rosterCollapsed = restoredManagementState.rosterCollapsed === true;
 let enrollmentLinkExpanded = restoredManagementState.enrollmentLinkExpanded === true;
 let selectedTemplateId = "";
 let groupsLoaded = false;
@@ -233,7 +230,6 @@ function persistManagementState() {
 
   sessionStorage.setItem(MANAGEMENT_STATE_KEY, JSON.stringify({
     groupName: selectedManagedGroup,
-    rosterCollapsed,
     enrollmentLinkExpanded,
     selectedRosterItems: [...selectedRosterItems]
   }));
@@ -545,7 +541,6 @@ function resetGroupForm() {
   sessionStorage.removeItem(WORKING_GROUP_KEY);
   sessionStorage.removeItem(MANAGEMENT_STATE_KEY);
   selectedRosterItems.clear();
-  rosterCollapsed = true;
 
   if (groupEditorDialog.open) groupEditorDialog.close();
   groupEditorTitle.textContent = "Create Group";
@@ -879,7 +874,6 @@ function selectManagedGroup(groupName) {
 
   if (changedGroup) {
     selectedRosterItems.clear();
-    rosterCollapsed = false;
     enrollmentLinkExpanded = false;
   }
 
@@ -1154,7 +1148,6 @@ function renderManagedStudents() {
 
   if (!groupName || !groupsCache[groupName]) {
     enrollmentControls.hidden = true;
-    toggleRosterBtn.hidden = true;
     createEnrollmentLinkBtn.hidden = true;
     enrollmentLinkInlineControls.hidden = true;
     openAddStudentModalBtn.hidden = true;
@@ -1169,12 +1162,8 @@ function renderManagedStudents() {
   }
 
   enrollmentControls.hidden = false;
-  toggleRosterBtn.hidden = false;
   openAddStudentModalBtn.hidden = false;
   takeAttendanceBtn.hidden = false;
-  toggleRosterBtn.textContent = rosterCollapsed ? "▸" : "▾";
-  toggleRosterBtn.setAttribute("aria-expanded", String(!rosterCollapsed));
-  rosterBody.hidden = rosterCollapsed;
 
   const enrolled = groupStudents(groupName);
   const pending = groupPendingRequests(groupName);
@@ -1995,7 +1984,6 @@ createGroupBtn.addEventListener("click", async () => {
 
   selectedManagedGroup = groupName;
   editingGroupName = groupName;
-  rosterCollapsed = false;
   sessionStorage.setItem(WORKING_GROUP_KEY, groupName);
   loadGroupEditor(groupName);
   renderEvaluationEditorVisibility();
@@ -2131,13 +2119,6 @@ deleteGroupConfirmInput.addEventListener("keydown", async (event) => {
   await deleteGroupWithBackup(deletionTargetGroup);
 });
 
-toggleRosterBtn.addEventListener("click", () => {
-  if (!selectedManagedGroup) return;
-  rosterCollapsed = !rosterCollapsed;
-  persistManagementState();
-  renderManagedStudents();
-  renderGroupsTable();
-});
 
 pendingRequestsList.addEventListener("click", (event) => {
   const row = event.target.closest("[data-selection-key]");
