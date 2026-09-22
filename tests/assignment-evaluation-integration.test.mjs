@@ -113,3 +113,19 @@ test('Assignment Browser empty state distinguishes no group assignments from del
   assert.match(teacherJs, /assignmentBrowserCount/);
   assert.match(teacherJs, /existing assignment/);
 });
+
+
+test('Assignment Browser uses submission history to recover hidden or orphaned assignments', () => {
+  assert.match(teacherJs, /assignmentMatchesGroupEvidence/);
+  assert.match(teacherJs, /buildRecoveredAssignmentFromSubmissions/);
+  assert.match(teacherJs, /assignmentMatchesWorkingGroup\(assignment, assignmentId/);
+  assert.match(teacherJs, /submissionsCache\?\.\[assignmentId\]/);
+  assert.match(teacherJs, /recoverOrphanAssignmentsFromSubmissions/);
+  assert.match(teacherJs, /recoveredFromSubmissionHistory/);
+  assert.match(teacherJs, /scheduleAssignmentRecovery/);
+});
+
+test('Assignment Browser reports historical submission group when stored group metadata is stale', () => {
+  assert.match(teacherJs, /assignmentHistoricalGroupLabel/);
+  assert.match(teacherJs, /Submission history:/);
+});
