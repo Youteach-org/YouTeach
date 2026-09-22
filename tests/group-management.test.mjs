@@ -494,3 +494,16 @@ test('Group Management uses the canonical shared Groups dialog module', () => {
   assert.match(groupsDialogJs, /id="openGroupEvaluationDialogBtn"/);
   assert.match(groupsDialogJs, /id="deleteSelectedGroupBtn"/);
 });
+
+
+test('shared Groups dialog management actions resume in Group Management', () => {
+  assert.match(groupsDialogJs, /managementUrl\("create"\)/);
+  assert.match(groupsDialogJs, /managementUrl\("evaluation", groupName\)/);
+  assert.match(groupsDialogJs, /managementUrl\("delete", groupName\)/);
+  assert.match(js, /REQUESTED_GROUP_ACTION/);
+  assert.match(js, /maybeHandleRequestedGroupAction/);
+  assert.match(js, /REQUESTED_GROUP_NAME/);
+  assert.match(js, /prepareCreateGroupDialog\(\)/);
+  assert.match(js, /openSelectedGroupEvaluationDialog\(\)/);
+  assert.match(js, /openDeleteGroupDialog\(\)/);
+});
