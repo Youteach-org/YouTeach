@@ -6,55 +6,61 @@
   <title>YouTeach - My Summary</title>
   <link rel="stylesheet" href="styles.css?v=titlebar-hamburger-20260916">
   <style>
-    .summary-top-grid {
-      display: grid;
-      grid-template-columns: 1fr 1.25fr;
-      gap: 16px;
-      margin-bottom: 16px;
+    .summary-name-card {
+      margin-bottom: 10px;
     }
 
-    .summary-hero-card {
-      background: linear-gradient(135deg, #eff6ff, #dbeafe);
-      border: 1px solid #bfdbfe;
-      border-radius: 18px;
-      padding: 18px;
-      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
-    }
-
-    .summary-hero-card .hero-label {
-      display: block;
-      font-size: 12px;
-      color: #475569;
-      margin-bottom: 8px;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-    }
-
-    .summary-hero-card .hero-value {
-      display: block;
-      font-size: 30px;
-      font-weight: 800;
+    .student-name-badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 46px;
+      padding: 10px 16px;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      background: #ffffff;
       color: #0f172a;
+      font-size: 24px;
+      font-weight: 900;
       line-height: 1.1;
+      box-shadow: 0 4px 12px rgba(15,23,42,.05);
     }
 
-    .summary-hero-card .hero-subtext {
-      margin-top: 8px;
-      font-size: 13px;
-      color: #475569;
+    .student-name-badge.present-now {
+      background: #dcfce7;
+      border-color: #86efac;
+      color: #166534;
     }
 
-    .summary-meta-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
-      margin-bottom: 16px;
+    .summary-compact-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
     }
 
-    @media (max-width: 1100px) {
-      .summary-top-grid,
-      .summary-meta-grid {
-        grid-template-columns: 1fr;
+    .summary-compact-card {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 6px 10px;
+      border: 1px solid #e2e8f0;
+      border-radius: 9px;
+      background: #ffffff;
+      white-space: nowrap;
+    }
+
+    .summary-compact-card strong {
+      font-size: 14px;
+      line-height: 1;
+      color: #334155;
+    }
+
+    @media (max-width: 700px) {
+      .student-name-badge {
+        font-size: 20px;
+        width: 100%;
+        box-sizing: border-box;
       }
     }
   </style>
@@ -94,33 +100,14 @@
         </div>
       </header>
 
-      <div id="attendanceStatusBar" class="panel-card" style="margin-bottom:16px;">
-        <strong>Current status today:</strong> <span id="attendanceStatusText">Checking...</span>
+      <div class="summary-name-card">
+        <strong id="displayNameCard" class="student-name-badge">---</strong>
       </div>
 
-      <div class="summary-top-grid">
-        <div class="summary-hero-card">
-          <span class="hero-label">Class Active Block</span>
-          <strong id="classActiveBlockHero" class="hero-value">Block 1</strong>
-          <div id="classActiveBlockStatus" class="hero-subtext">Open</div>
-        </div>
-
-        <div class="summary-hero-card">
-          <span class="hero-label">Active Block Total</span>
-          <strong id="totalBlockPointsCard" class="hero-value">NY</strong>
-          <div class="hero-subtext">This total includes E, E.O, E.V, P, A, and T for the active block.</div>
-        </div>
-      </div>
-
-      <div class="summary-meta-grid">
-        <div class="summary-card">
-          <span class="summary-label">Display Name</span>
-          <strong id="displayNameCard">---</strong>
-        </div>
-        <div class="summary-card">
-          <span class="summary-label">Group</span>
-          <strong id="groupCard">---</strong>
-        </div>
+      <div class="summary-compact-row">
+        <div class="summary-compact-card" title="Group"><strong id="groupCard">---</strong></div>
+        <div class="summary-compact-card" title="Current block"><strong id="classActiveBlockHero">Block 1</strong></div>
+        <div class="summary-compact-card" title="Current block total"><strong id="totalBlockPointsCard">NY</strong></div>
       </div>
 
       <div class="panel-card" style="margin-top:12px;">
@@ -176,7 +163,7 @@
     </main>
   </div>
 
-  <script type="module" src="student-summary.js?v=summary-all-blocks-final-20260424233126"></script>
+  <script type="module" src="student-summary.js?v=compact-summary-attendance-20260921"></script>
   <script defer src="shared-ui-fixes.js?v=titlebar-hamburger-20260916"></script>
 </body>
 </html>

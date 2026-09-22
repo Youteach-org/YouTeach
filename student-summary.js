@@ -28,10 +28,8 @@ const studentIdentity = document.getElementById("studentIdentity");
 const displayNameCard = document.getElementById("displayNameCard");
 const groupCard = document.getElementById("groupCard");
 const classActiveBlockHero = document.getElementById("classActiveBlockHero");
-const classActiveBlockStatus = document.getElementById("classActiveBlockStatus");
 const totalBlockPointsCard = document.getElementById("totalBlockPointsCard");
 const studentHistoryTableBody = document.getElementById("studentHistoryTableBody");
-const attendanceStatusText = document.getElementById("attendanceStatusText");
 const summaryPageTitle = document.getElementById("summaryPageTitle");
 const summaryPageSubtitle = document.getElementById("summaryPageSubtitle");
 const blockScoreTableBody = document.getElementById("blockScoreTableBody");
@@ -75,7 +73,6 @@ function setupTeacherViewShell() {
       <a class="sidebar-link" href="teacher.html">Teacher Home</a>
       <a class="sidebar-link" href="/group-mangement">Group Management</a>
       <a class="sidebar-link active-link" href="student-summary.html?teacherMenu=1">Students Summary</a>
-      <a class="sidebar-link" href="teacher-active.html">Active Today</a>
       <a class="sidebar-link" href="/points">Points</a>
       <a class="sidebar-link" href="teacher-history.html">History</a>
       <button id="logoutBtn" class="logout-btn">Logout</button>
@@ -84,27 +81,6 @@ function setupTeacherViewShell() {
 
   const freshLogoutBtn = document.getElementById("logoutBtn");
   if (freshLogoutBtn) freshLogoutBtn.addEventListener("click", logoutTeacher);
-}
-
-function todayKey() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-}
-
-function renderAttendanceStatus(row) {
-  if (!attendanceStatusText) return;
-
-  if (currentStudent?.activeNow === true) {
-    attendanceStatusText.textContent = "Active now";
-    return;
-  }
-
-  if (row?.leaveAt) {
-    attendanceStatusText.textContent = "Logged out today";
-    return;
-  }
-
-  attendanceStatusText.textContent = "Not active yet";
 }
 
 function formatDate(timestamp) {
@@ -258,14 +234,15 @@ function renderAll() {
   const topIdentity = formatTopIdentity(currentStudent);
   const nickname = getNickname(currentStudent);
   const activeBlock = settingsCache.activeBlock || "Block 1";
-  const activeBlockClosed = !!settingsCache?.closedBlocks?.[activeBlock];
   const activeBlockData = getBlockGradeData(activeBlock);
 
   if (studentIdentity) studentIdentity.textContent = isTeacherView ? getTeacherName() : topIdentity;
-  if (displayNameCard) displayNameCard.textContent = isTeacherView ? topIdentity : nickname;
+  if (displayNameCard) {
+    displayNameCard.textContent = isTeacherView ? topIdentity : nickname;
+    displayNameCard.classList.toggle("present-now", currentStudent.activeNow === true);
+  }
   if (groupCard) groupCard.textContent = currentStudent.groupName || "";
   if (classActiveBlockHero) classActiveBlockHero.textContent = activeBlock;
-  if (classActiveBlockStatus) classActiveBlockStatus.textContent = activeBlockClosed ? "Closed block" : "Open block";
 
   if (totalBlockPointsCard) {
     totalBlockPointsCard.textContent = blockHasGrades(activeBlock) ? formatGradeNumber(activeBlockData.total) : "NY";
@@ -297,9 +274,7 @@ function renderTeacherSummaryLanding() {
   if (displayNameCard) displayNameCard.textContent = "No student selected";
   if (groupCard) groupCard.textContent = "—";
   if (classActiveBlockHero) classActiveBlockHero.textContent = "—";
-  if (classActiveBlockStatus) classActiveBlockStatus.textContent = "Teacher view";
   if (totalBlockPointsCard) totalBlockPointsCard.textContent = "—";
-  if (attendanceStatusText) attendanceStatusText.textContent = "No student selected";
   if (blockScoreTableBody) blockScoreTableBody.innerHTML = '<tr><td colspan="8">Open a student from Group Management to view the summary.</td></tr>';
   if (studentHistoryTableBody) studentHistoryTableBody.innerHTML = '<tr><td colspan="7">No student selected.</td></tr>';
 }
@@ -339,9 +314,3 @@ onValue(ref(db, "pointsLog"), (snapshot) => {
   pointsLogCache = snapshot.val() || {};
   renderAll();
 });
-
-if (studentKey) {
-  onValue(ref(db, `attendance/${todayKey()}/${studentKey}`), (snapshot) => {
-    renderAttendanceStatus(snapshot.val() || null);
-  });
-}
