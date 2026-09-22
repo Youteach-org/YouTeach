@@ -277,33 +277,28 @@ function resultEnvelope() {
   };
 }
 
-test("result receipt is canonical, mirrored by assignment, and retry-idempotent", async () => {
+test("result receipt is stored under assignment submissions and retry-idempotent", async () => {
   const { onRequestPost } = await importRequired("functions/api/cog-live-result-submit.js");
-  let canonical = null;
-  let canonicalPuts = 0;
-  const mirrors = [];
+  let stored = null;
+  let resultPuts = 0;
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async (url, init = {}) => {
     const value = String(url);
     if (value.endsWith("/session/current.json") && (!init.method || init.method === "GET")) {
       return new Response(JSON.stringify(currentSession()), { status: 200 });
     }
-    if (value.includes("/classroomGameResults/VR-123/ghost-key-1/vr_VR123_ghost01_attempt1.json")) {
+    if (value.includes("/assignmentSubmissions/assignment-1/ghost-key-1/cogResults/vr_VR123_ghost01_attempt1.json")) {
       if (!init.method || init.method === "GET") {
-        return new Response(JSON.stringify(canonical), {
+        return new Response(JSON.stringify(stored), {
           status: 200,
-          headers: { ETag: canonical ? '"existing-etag"' : '"null-etag"' }
+          headers: { ETag: stored ? '"existing-etag"' : '"null-etag"' }
         });
       }
       if (init.method === "PUT") {
-        canonicalPuts += 1;
-        canonical = JSON.parse(init.body);
-        return new Response(JSON.stringify(canonical), { status: 200 });
+        resultPuts += 1;
+        stored = JSON.parse(init.body);
+        return new Response(JSON.stringify(stored), { status: 200 });
       }
-    }
-    if (value.includes("/classroomGameResultsByAssignment/assignment-1/ghost-key-1/vr_VR123_ghost01_attempt1.json") && init.method === "PUT") {
-      mirrors.push(JSON.parse(init.body));
-      return new Response(init.body, { status: 200 });
     }
     throw new Error("Unexpected fetch: " + value + " " + (init.method || "GET"));
   };
@@ -326,13 +321,12 @@ test("result receipt is canonical, mirrored by assignment, and retry-idempotent"
     assert.equal(first.status, 200);
     const firstPayload = await first.json();
     assert.equal(firstPayload.duplicate, false);
-    assert.equal(canonicalPuts, 1);
-    assert.equal(canonical.studentKey, "ghost-key-1");
-    assert.equal(canonical.assignmentId, "assignment-1");
-    assert.equal(canonical.gameId, "verb-runner");
-    assert.equal(canonical.cogSessionId, "VR-123");
-    assert.equal(canonical.percentage, 85);
-    assert.equal(mirrors.length, 1);
+    assert.equal(resultPuts, 1);
+    assert.equal(stored.studentKey, "ghost-key-1");
+    assert.equal(stored.assignmentId, "assignment-1");
+    assert.equal(stored.gameId, "verb-runner");
+    assert.equal(stored.cogSessionId, "VR-123");
+    assert.equal(stored.percentage, 85);
 
     const retry = await onRequestPost({
       request: await requestFor(),
@@ -341,13 +335,11 @@ test("result receipt is canonical, mirrored by assignment, and retry-idempotent"
     assert.equal(retry.status, 200);
     const retryPayload = await retry.json();
     assert.equal(retryPayload.duplicate, true);
-    assert.equal(canonicalPuts, 1);
-    assert.equal(mirrors.length, 2);
+    assert.equal(resultPuts, 1);
   } finally {
     globalThis.fetch = originalFetch;
   }
 });
-
 
 test("student access policy accepts an active secondary group membership", async () => {
   const policy = await importRequired("cog-live-session-policy.mjs");
