@@ -1,4 +1,5 @@
 import { db } from "./firebase.js";
+import { visibleGroups } from "./group-state.js";
 import { ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 sessionStorage.removeItem("firebase:authUser");
@@ -103,6 +104,6 @@ skipWorkingGroupBtn.addEventListener("click", () => completeLogin(""));
 });
 
 onValue(ref(db, "groups"), (snapshot) => {
-  groupsCache = snapshot.val() || {};
+  groupsCache = visibleGroups(snapshot.val() || {});
   renderGroups();
 });

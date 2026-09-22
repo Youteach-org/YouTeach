@@ -31,14 +31,7 @@ export async function migrateExistingStudentsForTeacher() {
   const groupsSnap = await get(ref(db, "groups"));
   const groups = groupsSnap.val() || {};
 
-  if (!groups.GENERAL) {
-    await update(ref(db, "groups"), {
-      GENERAL: {
-        name: "GENERAL",
-        createdAt: Date.now()
-      }
-    });
-  }
+  const hasGeneralGroup = Boolean(groups?.GENERAL && groups.GENERAL.deleted !== true);
 
   const studentsSnap = await get(ref(db, "students"));
   const students = studentsSnap.val() || {};
@@ -47,7 +40,7 @@ export async function migrateExistingStudentsForTeacher() {
   for (const [key, student] of Object.entries(students)) {
     const fullName = student.fullName || student.name || "";
     const nickname = student.nickname || (fullName ? fullName.split(" ")[0] : "Student");
-    const groupName = student.groupName || "GENERAL";
+    const groupName = student.groupName || (hasGeneralGroup ? "GENERAL" : "");
     const existingBlockPoints =
       student?.blockPoints && typeof student.blockPoints === "object"
         ? student.blockPoints

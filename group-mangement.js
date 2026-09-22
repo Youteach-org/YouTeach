@@ -11,6 +11,7 @@ import { generateId } from "./app.js";
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
 import { migrateExistingStudentsForTeacher } from "./student-auth.js?v=group-evaluation-20260920";
 import { calculateStudentBlockGrade } from "./group-grade-runtime.js";
+import { visibleGroups } from "./group-state.js";
 
 import {
   criteriaToFirebaseObject,
@@ -1605,6 +1606,72 @@ function openDeleteGroupDialog() {
   deleteGroupConfirmInput.focus();
 }
 
+async function readDeletionBranch(path, fallback = {}) {
+  try {
+    const snapshot = await get(ref(db, path));
+    const value = snapshot.val();
+    return value === null || value === undefined ? fallback : value;
+  } catch (error) {
+    console.warn(`Delete backup could not read ${path}:`, error);
+    return fallback;
+  }
+}
+
+async function loadGroupDeletionRoot(groupName) {
+  const [
+    group,
+    students,
+    formerStudents,
+    enrollmentRequests,
+    assignments,
+    assignmentSubmissions,
+    attendance,
+    pointsLog,
+    sessionHistory,
+    pairHistory,
+    currentSession
+  ] = await Promise.all([
+    readDeletionBranch(`groups/${groupName}`, {}),
+    readDeletionBranch("students", {}),
+    readDeletionBranch(`groupFormerStudents/${groupName}`, {}),
+    readDeletionBranch(`groupEnrollmentRequests/${groupName}`, {}),
+    readDeletionBranch("assignments", {}),
+    readDeletionBranch("assignmentSubmissions", {}),
+    readDeletionBranch("attendance", {}),
+    readDeletionBranch("pointsLog", {}),
+    readDeletionBranch("sessionHistory", {}),
+    readDeletionBranch("pairHistory", {}),
+    readDeletionBranch("session/current", null)
+  ]);
+
+  return {
+    groups: { [groupName]: group || {} },
+    students: students || {},
+    groupFormerStudents: { [groupName]: formerStudents || {} },
+    groupEnrollmentRequests: { [groupName]: enrollmentRequests || {} },
+    assignments: assignments || {},
+    assignmentSubmissions: assignmentSubmissions || {},
+    attendance: attendance || {},
+    pointsLog: pointsLog || {},
+    sessionHistory: sessionHistory || {},
+    pairHistory: pairHistory || {},
+    session: { current: currentSession || null }
+  };
+}
+
+function isPermissionDeniedError(error) {
+  const text = String(error?.code || error?.message || error || "");
+  return /permission[-_ ]?denied/i.test(text);
+}
+
+async function markGroupDeleted(groupName) {
+  await update(ref(db, `groups/${groupName}`), {
+    deleted: true,
+    deletedAt: Date.now(),
+    deletedBy: getTeacherName()
+  });
+}
+
 async function deleteGroupWithBackup(groupName) {
   const typed = String(deleteGroupConfirmInput.value || "").trim();
 
@@ -1619,8 +1686,7 @@ async function deleteGroupWithBackup(groupName) {
   deleteGroupStatus.className = "status-text";
 
   try {
-    const rootSnapshot = await get(ref(db));
-    const root = rootSnapshot.val() || {};
+    const root = await loadGroupDeletionRoot(groupName);
     const backup = buildGroupBackup(root, groupName);
     const date = new Date().toISOString().slice(0, 10);
 
@@ -1628,8 +1694,14 @@ async function deleteGroupWithBackup(groupName) {
 
     deleteGroupStatus.textContent = "Deleting group…";
 
-    // Delete the group record first. Related cleanup must never block this primary action.
-    await set(ref(db, `groups/${groupName}`), null);
+    let softDeleted = false;
+    try {
+      await set(ref(db, `groups/${groupName}`), null);
+    } catch (error) {
+      if (!isPermissionDeniedError(error)) throw error;
+      await markGroupDeleted(groupName);
+      softDeleted = true;
+    }
 
     if (groupsCache[groupName]) delete groupsCache[groupName];
     if (popupSelectedGroup === groupName) popupSelectedGroup = "";
@@ -1640,14 +1712,21 @@ async function deleteGroupWithBackup(groupName) {
     if (selectedManagedGroup === groupName) resetGroupForm();
     renderGroupsTable();
 
-    deleteGroupStatus.textContent = cleanupFailures.length
-      ? `Group deleted. ${cleanupFailures.length} related record(s) could not be cleaned automatically.`
-      : "Group deleted.";
-    deleteGroupStatus.className = cleanupFailures.length ? "status-text bad" : "status-text ok";
+    if (softDeleted) {
+      deleteGroupStatus.textContent = cleanupFailures.length
+        ? `Group removed from YouTeach. Firebase blocked physical deletion; ${cleanupFailures.length} related record(s) also could not be cleaned.`
+        : "Group removed from YouTeach. Firebase blocked physical deletion, so it was archived as deleted.";
+      deleteGroupStatus.className = cleanupFailures.length ? "status-text bad" : "status-text ok";
+    } else {
+      deleteGroupStatus.textContent = cleanupFailures.length
+        ? `Group deleted. ${cleanupFailures.length} related record(s) could not be cleaned automatically.`
+        : "Group deleted.";
+      deleteGroupStatus.className = cleanupFailures.length ? "status-text bad" : "status-text ok";
+    }
 
     setTimeout(() => {
       if (deleteGroupDialog.open) deleteGroupDialog.close();
-    }, cleanupFailures.length ? 1800 : 500);
+    }, cleanupFailures.length ? 2200 : 700);
 
     return true;
   } catch (error) {
@@ -2093,7 +2172,7 @@ async function clearRequestedGroupEvaluationOnce() {
 }
 
 onValue(ref(db, "groups"), async (snapshot) => {
-  groupsCache = snapshot.val() || {};
+  groupsCache = visibleGroups(snapshot.val() || {});
   groupsLoaded = true;
 
   const resetPerformed = await clearRequestedGroupEvaluationOnce();

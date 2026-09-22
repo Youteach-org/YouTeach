@@ -1,4 +1,5 @@
 import { db } from "./firebase.js";
+import { visibleGroups } from "./group-state.js";
 import { ref, onValue, update, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
 
@@ -196,7 +197,7 @@ onValue(ref(db, `attendance/${todayKey()}`), (snapshot) => {
 });
 
 onValue(ref(db, "groups"), (snapshot) => {
-  groupsCache = snapshot.val() || {};
+  groupsCache = visibleGroups(snapshot.val() || {});
   renderGroupFilter();
 });
 
