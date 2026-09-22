@@ -1358,7 +1358,7 @@
     .assignment-filter-field.date::before{content:"Date"}
     .assignment-filter-field.group::before{content:"Group"}
     .assignment-filter-field.block::before{content:"Block"}
-    .assignment-filter-field.criterion::before{content:"Criterion"}
+    .assignment-filter-field.category::before{content:"Category"}
     .assignment-filter-field input,
     .assignment-filter-field select{
       width:100%;
@@ -1373,7 +1373,7 @@
     .assignment-filter-field.date input{padding-left:40px}
     .assignment-filter-field.group select{padding-left:45px}
     .assignment-filter-field.block select{padding-left:43px}
-    .assignment-filter-field.criterion select{padding-left:58px}
+    .assignment-filter-field.category select{padding-left:58px}
     .assignment-filter-clear,
     .assignment-actions-menu>summary{
       height:32px;
@@ -1476,7 +1476,7 @@
       }
       .assignment-filter-field.group{grid-column:3}
       .assignment-filter-field.block{grid-column:1 / 3}
-      .assignment-filter-field.criterion{grid-column:3 / 5}
+      .assignment-filter-field.category{grid-column:3 / 5}
       .assignment-filter-clear{grid-column:4}
       .assignment-actions-menu{grid-column:4;grid-row:1}
     }
@@ -1491,7 +1491,7 @@
       .assignment-filter-field.date{grid-column:1 / 2}
       .assignment-filter-field.group{grid-column:2 / 3}
       .assignment-filter-field.block{grid-column:1 / 2}
-      .assignment-filter-field.criterion{grid-column:2 / 4}
+      .assignment-filter-field.category{grid-column:2 / 4}
       .assignment-filter-clear{grid-column:3 / 4}
       .assignment-actions-menu{grid-column:3 / 4;grid-row:1}
       .assignment-list .assignment-item{
@@ -1510,7 +1510,7 @@
       .assignment-filter-field.date{grid-column:1 / -1}
       .assignment-filter-field.group{grid-column:1 / 3}
       .assignment-filter-field.block{grid-column:1 / 2}
-      .assignment-filter-field.criterion{grid-column:2 / 4}
+      .assignment-filter-field.category{grid-column:2 / 4}
       .assignment-filter-clear{grid-column:3 / 4}
       .assignment-list .assignment-item{
         flex-basis:calc(100vw - 92px);
@@ -1617,9 +1617,9 @@
               <input id="assignmentTitle" placeholder="Assignment name">
             </div>
             <div class="field" id="assignmentGroupField">
-              <label for="assignmentGroup">Assign to</label>
-              <select id="assignmentGroup"><option value="ALL">All groups</option></select>
-              <div id="assignmentGroupHelp" class="field-help">Choose a group only when no working group is already active.</div>
+              <label>Group</label>
+              <input id="assignmentGroup" type="hidden">
+              <div id="assignmentGroupHelp" class="field-help">Uses the active working group shown beside the teacher name.</div>
             </div>
             <div id="assignmentTargetField" class="field assignment-target-field" hidden>
               <label for="assignmentTargetSelect">Assign to generated teams</label>
@@ -1741,21 +1741,15 @@
                 <input id="assignmentFilterDate" type="date" aria-label="Filter by date">
               </label>
 
-              <label class="assignment-filter-field group">
-                <select id="assignmentFilterGroup" aria-label="Filter by group">
-                  <option value="ALL">All groups</option>
-                </select>
-              </label>
-
               <label class="assignment-filter-field block">
                 <select id="assignmentFilterBlock" aria-label="Filter by block or unit">
                   <option value="ALL">All blocks</option>
                 </select>
               </label>
 
-              <label class="assignment-filter-field criterion">
-                <select id="assignmentFilterCriterion" aria-label="Filter by evaluation criterion">
-                  <option value="ALL">All criteria</option>
+              <label class="assignment-filter-field category">
+                <select id="assignmentFilterCriterion" aria-label="Filter by category">
+                  <option value="ALL">All categories</option>
                 </select>
               </label>
 
@@ -1796,7 +1790,9 @@
                     </div>
 
                     <div class="toolbar">
-                      <button id="syncAiGradesBtn" type="button" title="Fallback: check Drive now for the latest AI grading results. Normal AI Grading auto-imports when results are ready.">Check AI Results</button>
+                      <button id="detailAiGradingBtn" type="button">AI Grading</button>
+                      <button id="detailManualGradingBtn" type="button">Manual Grading</button>
+                      <button id="retryAiSyncBtn" type="button" hidden>Retry AI sync</button>
                       <button id="openDriveFolderBtn" disabled>Drive</button>
                       <button id="toggleAssignmentBtn">Close</button>
                     </div>

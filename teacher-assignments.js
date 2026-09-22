@@ -111,7 +111,6 @@ const teacherAssignmentList = document.getElementById("teacherAssignmentList");
 const assignmentBrowserCount = document.getElementById("assignmentBrowserCount");
 const assignmentFilterCode = document.getElementById("assignmentFilterCode");
 const assignmentFilterDate = document.getElementById("assignmentFilterDate");
-const assignmentFilterGroup = document.getElementById("assignmentFilterGroup");
 const assignmentFilterBlock = document.getElementById("assignmentFilterBlock");
 const assignmentFilterCriterion = document.getElementById("assignmentFilterCriterion");
 const clearAssignmentFiltersBtn = document.getElementById("clearAssignmentFiltersBtn");
@@ -168,7 +167,9 @@ const examToolButtons = document.querySelectorAll("[data-exam-tool]");
 const manualGradingPanel = document.getElementById("manualGradingPanel");
 const manualGradingTitle = document.getElementById("manualGradingTitle");
 const manualGradingList = document.getElementById("manualGradingList");
-const syncAiGradesBtn = document.getElementById("syncAiGradesBtn");
+const detailAiGradingBtn = document.getElementById("detailAiGradingBtn");
+const detailManualGradingBtn = document.getElementById("detailManualGradingBtn");
+const retryAiSyncBtn = document.getElementById("retryAiSyncBtn");
 const aiSyncStatus = document.getElementById("aiSyncStatus");
 const logoutBtn = document.getElementById("logoutBtn");
 const teacherIdentity = document.getElementById("teacherIdentity");
@@ -188,7 +189,6 @@ const assignmentsModuleContext = ASSIGNMENTS_MODULE_MODE ? readAssignmentsModule
 let selectedAssignmentId = "";
 let selectedDriveFolderUrl = "";
 let selectedManualStudentKey = "";
-let assignmentFilterGroupTouched = false;
 let examAnnotationState = {
   assignmentId: "",
   studentKey: "",
@@ -1777,8 +1777,9 @@ function startAiAutoSync(assignmentId, startedAt) {
     if (attempts >= maxAttempts) {
       stopAiAutoSync(assignmentId);
       if (selectedAssignmentId === assignmentId) {
-        aiSyncStatus.textContent = "AI result not detected yet. Use Check AI Results later.";
+        aiSyncStatus.textContent = "AI result not detected yet.";
         aiSyncStatus.style.color = "#b45309";
+        retryAiSyncBtn.hidden = false;
       }
     }
   };
@@ -1941,7 +1942,7 @@ async function syncAiGrades(options = {}) {
 
   const isSelected = assignmentId === selectedAssignmentId;
   if (isSelected) {
-    syncAiGradesBtn.disabled = true;
+    retryAiSyncBtn.disabled = true;
     if (!options.silentPending) {
       aiSyncStatus.textContent = "Checking AI results...";
       aiSyncStatus.style.color = "#64748b";
@@ -1985,6 +1986,7 @@ async function syncAiGrades(options = {}) {
       aiSyncStatus.textContent = parts.join(" · ");
       aiSyncStatus.style.color =
         result.errors?.length || result.unmatched?.length ? "#b45309" : "#166534";
+      retryAiSyncBtn.hidden = !(result.errors?.length || result.unmatched?.length);
     }
 
     return result;
@@ -1993,10 +1995,11 @@ async function syncAiGrades(options = {}) {
     if (isSelected && !options.silentPending) {
       aiSyncStatus.textContent = error?.message || "Could not apply AI grades.";
       aiSyncStatus.style.color = "#b91c1c";
+      retryAiSyncBtn.hidden = false;
     }
     return { ok: false, error: error?.message || "Could not apply AI grades." };
   } finally {
-    if (isSelected) syncAiGradesBtn.disabled = false;
+    if (isSelected) retryAiSyncBtn.disabled = false;
   }
 }
 
@@ -2377,21 +2380,13 @@ async function toggleGradePublication(studentKey) {
 }
 
 function renderGroupOptions() {
-  const current = assignmentGroup.value;
-  const groups = Object.values(groupsCache || {})
-    .map((group) => String(group?.name || "").trim())
-    .filter(Boolean)
-    .sort((a, b) => a.localeCompare(b));
-
-  assignmentGroup.innerHTML =
-    '<option value="ALL">All groups</option>' +
-    groups.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("");
-
-  if ([...assignmentGroup.options].some((option) => option.value === current)) {
-    assignmentGroup.value = current;
-  }
-
-  applyAssignmentModuleContext();
+  const workingGroup = getWorkingGroup();
+  assignmentGroup.value = workingGroup || "";
+  assignmentGroupHelp.textContent = workingGroup
+    ? `Working group: ${workingGroup}.`
+    : "Select a working group from the group button beside the teacher name.";
+  renderAssignmentTargetOptions();
+  refreshAutomaticTaskCode();
 }
 
 function dateFilterKey(timestamp) {
@@ -2436,31 +2431,7 @@ function availableAssignmentGroups() {
 }
 
 function renderAssignmentFilterOptions() {
-  const groups = availableAssignmentGroups();
-  const previous = assignmentFilterGroup.value;
-  const workingGroup = getWorkingGroup();
-
-  assignmentFilterGroup.innerHTML =
-    '<option value="ALL">All groups</option>' +
-    groups.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("");
-
-  const optionValues = new Set([...assignmentFilterGroup.options].map((option) => option.value));
-
-  if (assignmentFilterGroupTouched && optionValues.has(previous)) {
-    assignmentFilterGroup.value = previous;
-    return;
-  }
-
-  if (!assignmentFilterGroupTouched && workingGroup && optionValues.has(workingGroup)) {
-    assignmentFilterGroup.value = workingGroup;
-    return;
-  }
-
-  if (optionValues.has(previous)) {
-    assignmentFilterGroup.value = previous;
-  } else {
-    assignmentFilterGroup.value = "ALL";
-  }
+  renderAssignmentEvaluationFilterOptions();
 }
 
 function assignmentEvaluationTarget(assignment) {
@@ -2482,14 +2453,14 @@ function assignmentCriterionLabel(assignment, target = assignmentEvaluationTarge
     target.criterionNameSnapshot ||
     assignment?.groupEvaluationCriterionName ||
     target.criterionId ||
-    "Needs criterion"
+    "Unassigned category"
   ).trim();
 }
 
 function renderAssignmentEvaluationFilterOptions() {
   if (!assignmentFilterBlock || !assignmentFilterCriterion) return;
 
-  const groupQuery = String(assignmentFilterGroup?.value || "ALL").trim();
+  const groupQuery = String(getWorkingGroup() || "ALL").trim();
   const previousBlock = String(assignmentFilterBlock.value || "ALL");
   const previousCriterion = String(assignmentFilterCriterion.value || "ALL");
   const blocks = new Set();
@@ -2517,7 +2488,7 @@ function renderAssignmentEvaluationFilterOptions() {
       .join("");
 
   assignmentFilterCriterion.innerHTML =
-    '<option value="ALL">All criteria</option>' +
+    '<option value="ALL">All categories</option>' +
     [...criteria.entries()]
       .sort((a, b) => a[1].localeCompare(b[1], undefined, { sensitivity: "base" }))
       .map(([key, label]) => `<option value="${escapeHtml(key)}">${escapeHtml(label)}</option>`)
@@ -2536,7 +2507,7 @@ function renderAssignmentEvaluationFilterOptions() {
 function assignmentMatchesFilters(assignment) {
   const codeQuery = String(assignmentFilterCode.value || "").trim().toUpperCase();
   const dateQuery = String(assignmentFilterDate.value || "").trim();
-  const groupQuery = String(assignmentFilterGroup.value || "ALL").trim();
+  const groupQuery = String(getWorkingGroup() || "ALL").trim();
   const blockQuery = String(assignmentFilterBlock?.value || "ALL").trim();
   const criterionQuery = String(assignmentFilterCriterion?.value || "ALL").trim();
 
@@ -2597,22 +2568,6 @@ function renderAssignmentList() {
         data-assignment-select="${id}"
         title="${escapeHtml(assignment.title || "Assignment")}"
       >
-        <div class="grading-actions">
-          <button
-            type="button"
-            class="ai-grading-btn"
-            data-grade-assignment="${id}"
-            ${count ? "" : "disabled"}
-            title="${count ? "Open ChatGPT to grade this activity" : "No submissions to grade yet"}"
-          >AI Grading</button>
-          <button
-            type="button"
-            class="manual-grading-btn"
-            data-manual-grade-assignment="${id}"
-            ${count ? "" : "disabled"}
-            title="${count ? "Grade this activity manually" : "No submissions to grade yet"}"
-          >Manual Grading</button>
-        </div>
 
         <div class="assignment-code-row">
           <span class="assignment-code">${escapeHtml(assignment.code || "")}</span>
@@ -2693,6 +2648,8 @@ function renderDetail() {
   eligibleCount.textContent = students.length;
   submittedCount.textContent = validSubmissionEntries.length;
   missingCount.textContent = missing.length;
+  detailAiGradingBtn.disabled = validSubmissionEntries.length === 0;
+  detailManualGradingBtn.disabled = validSubmissionEntries.length === 0;
   const lockedBySubmissions = assignmentHasSubmissions(selectedAssignmentId);
   if (saveSelectedTemplateBtn) saveSelectedTemplateBtn.disabled = false;
   toggleAssignmentBtn.textContent = assignment.active ? "Close Assignment" : "Reopen Assignment";
@@ -3395,18 +3352,6 @@ function wireRubricEditor(presetContainer, customContainer, totalElement, radios
 }
 
 teacherAssignmentList.addEventListener("click", (event) => {
-  const gradeButton = event.target.closest("[data-grade-assignment]");
-  if (gradeButton) {
-    if (!gradeButton.disabled) openChatGPTGrading(gradeButton.dataset.gradeAssignment);
-    return;
-  }
-
-  const manualButton = event.target.closest("[data-manual-grade-assignment]");
-  if (manualButton) {
-    if (!manualButton.disabled) openManualGrading(manualButton.dataset.manualGradeAssignment);
-    return;
-  }
-
   const card = event.target.closest("[data-assignment-select]");
   if (!card) return;
   manualGradingPanel.hidden = true;
@@ -3415,6 +3360,20 @@ teacherAssignmentList.addEventListener("click", (event) => {
   selectedAssignmentId = card.dataset.assignmentSelect;
   renderAssignmentList();
   setTimeout(refreshSelectedAiResults, 0);
+});
+
+teacherAssignmentList.addEventListener("dblclick", (event) => {
+  const card = event.target.closest("[data-assignment-select]");
+  if (!card) return;
+  const assignmentId = String(card.dataset.assignmentSelect || "");
+  const assignment = assignmentsCache[assignmentId];
+  if (!assignment) return;
+  openAssignmentsModule({
+    source: "assignments",
+    mode: "edit",
+    assignmentId,
+    groupName: String(assignment.groupName || getWorkingGroup() || "")
+  });
 });
 
 submissionList.addEventListener("click", (event) => {
@@ -3593,8 +3552,20 @@ function requestInitialAiSync() {
   setTimeout(refreshSelectedAiResults, 600);
 }
 
-syncAiGradesBtn.addEventListener("click", syncAiGrades);
+retryAiSyncBtn.addEventListener("click", syncAiGrades);
+detailAiGradingBtn.addEventListener("click", () => {
+  if (selectedAssignmentId) openChatGPTGrading(selectedAssignmentId);
+});
+detailManualGradingBtn.addEventListener("click", () => {
+  if (selectedAssignmentId) openManualGrading(selectedAssignmentId);
+});
 
+window.addEventListener("youteach:working-group-changed", () => {
+  selectedAssignmentId = "";
+  renderGroupOptions();
+  renderAssignmentEvaluationFilterOptions();
+  renderAssignmentList();
+});
 window.addEventListener("focus", refreshSelectedAiResults);
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") refreshSelectedAiResults();
@@ -3622,19 +3593,12 @@ assignmentDueAt.addEventListener("input", refreshAutomaticTaskCode);
 
 assignmentFilterCode.addEventListener("input", renderAssignmentList);
 assignmentFilterDate.addEventListener("change", renderAssignmentList);
-assignmentFilterGroup.addEventListener("change", () => {
-  assignmentFilterGroupTouched = true;
-  renderAssignmentEvaluationFilterOptions();
-  renderAssignmentList();
-});
 assignmentFilterBlock?.addEventListener("change", renderAssignmentList);
 assignmentFilterCriterion?.addEventListener("change", renderAssignmentList);
 
 clearAssignmentFiltersBtn.addEventListener("click", () => {
   assignmentFilterCode.value = "";
   assignmentFilterDate.value = "";
-  assignmentFilterGroupTouched = true;
-  assignmentFilterGroup.value = "ALL";
   renderAssignmentEvaluationFilterOptions();
   assignmentFilterBlock.value = "ALL";
   assignmentFilterCriterion.value = "ALL";

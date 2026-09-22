@@ -59,8 +59,8 @@ function ensureShell() {
 
   window.addEventListener("message", (event) => {
     if (event.origin !== window.location.origin) return;
-    if (event.data?.type !== "youteach:assignment-created") return;
-    window.dispatchEvent(new CustomEvent("youteach:assignment-created", { detail: event.data }));
+    if (!["youteach:assignment-created", "youteach:assignment-updated"].includes(event.data?.type)) return;
+    window.dispatchEvent(new CustomEvent(event.data.type, { detail: event.data }));
     closeAssignmentsModule();
   });
 
@@ -74,7 +74,11 @@ export function openAssignmentsModule(context = {}) {
   }));
 
   const overlay = ensureShell();
+  const heading = overlay.querySelector(".assignments-module-head strong");
   const frame = overlay.querySelector("#assignmentsModuleFrame");
+  const editMode = context?.mode === "edit";
+  if (heading) heading.textContent = editMode ? "Edit Assignment" : "Create Assignment";
+  overlay.setAttribute("aria-label", editMode ? "Edit Assignment" : "Create Assignment");
   frame.src = `assignment-create-module.html?opened=${Date.now()}`;
   overlay.hidden = false;
   document.body.style.overflow = "hidden";

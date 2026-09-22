@@ -139,8 +139,8 @@
   <main class="create-assignment-module">
     <div class="module-intro">
       <div>
-        <h1>Create Assignment</h1>
-        <p>Create and assign one activity without leaving the current screen.</p>
+        <h1 id="assignmentModuleTitle">Create Assignment</h1>
+        <p id="assignmentModuleSubtitle">Create and assign one activity without leaving the current screen.</p>
       </div>
     </div>
 
@@ -158,7 +158,6 @@
       <div class="library-filters">
         <input id="assignmentLibrarySearch" type="search" placeholder="Search previous assignments..." aria-label="Search Assignment Library">
         <select id="assignmentLibraryTypeFilter" aria-label="Filter by type"><option value="">All types</option></select>
-        <select id="assignmentLibraryGroupFilter" aria-label="Filter by original group"><option value="">All original groups</option></select>
         <select id="assignmentLibrarySourceFilter" aria-label="Filter by source">
           <option value="">All sources</option>
           <option value="assignment">Previous assignments</option>
@@ -200,8 +199,9 @@
       </div>
 
       <div class="field" id="assignmentGroupField">
-        <label for="assignmentGroup">Assign to</label>
-        <select id="assignmentGroup"><option value="ALL">All groups</option></select>
+        <label>Group</label>
+        <input id="assignmentGroup" type="hidden">
+        <div class="field-help">Active group: <strong id="assignmentGroupDisplay">No active group</strong></div>
         <div id="assignmentGroupHelp" class="field-help"></div>
       </div>
 
@@ -222,9 +222,9 @@
       </div>
 
       <div class="field" id="assignmentGroupCriterionField">
-        <label for="assignmentGroupCriterion">Evaluation criterion</label>
+        <label for="assignmentGroupCriterion">Category</label>
         <select id="assignmentGroupCriterion">
-          <option value="">Select criterion</option>
+          <option value="">Select category</option>
         </select>
         <div id="assignmentGroupCriterionHelp" class="field-help">
           Required for every assignment except exams.

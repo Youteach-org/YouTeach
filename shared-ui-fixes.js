@@ -13,6 +13,28 @@
     const style = document.createElement("style");
     style.id = "youteach-global-responsive-layout";
     style.textContent = `
+      .active-group-identity {
+        display:inline-flex !important;
+        align-items:center !important;
+        gap:5px !important;
+        padding:4px 8px !important;
+        margin-left:8px !important;
+        border:1px solid #cbd5e1 !important;
+        border-radius:999px !important;
+        background:#fff !important;
+        color:#334155 !important;
+        font-size:12px !important;
+        font-weight:800 !important;
+        cursor:pointer !important;
+        touch-action:manipulation !important;
+      }
+      .active-group-identity:hover,
+      .active-group-identity:focus-visible {
+        border-color:#2563eb !important;
+        color:#1d4ed8 !important;
+        outline:none !important;
+      }
+
       /* Hamburger space belongs only to the title bar.
          Everything below the title uses the full page width. */
       .hamburger-btn {
@@ -351,21 +373,39 @@
       wrapper.appendChild(btn);
     });
 
+    async function openWorkingGroupDialog() {
+      const workingGroupDialog = document.getElementById("workingGroupDialog");
+      if (workingGroupDialog?.showModal) {
+        workingGroupDialog.showModal();
+        return;
+      }
+      try {
+        const popup = await import("./working-group-popup.js?v=working-group-popup-20260922");
+        popup.openWorkingGroupDialog();
+      } catch (error) {
+        console.error("Could not open working-group popup", error);
+      }
+    }
+
     function syncActiveGroupIdentity() {
       const teacherIdentity = document.getElementById("teacherIdentity");
       if (!teacherIdentity) return;
 
       let groupIdentity = document.getElementById("activeGroupIdentity");
       if (!groupIdentity) {
-        groupIdentity = document.createElement("span");
+        groupIdentity = document.createElement("button");
+        groupIdentity.type = "button";
         groupIdentity.id = "activeGroupIdentity";
         groupIdentity.className = "active-group-identity";
+        groupIdentity.title = "Change working group";
+        groupIdentity.setAttribute("aria-haspopup", "dialog");
+        groupIdentity.addEventListener("click", openWorkingGroupDialog);
         teacherIdentity.insertAdjacentElement("afterend", groupIdentity);
       }
 
       const groupName = String(sessionStorage.getItem("youteachWorkingGroup") || "").trim();
-      groupIdentity.textContent = groupName;
-      groupIdentity.hidden = !groupName;
+      groupIdentity.textContent = groupName || "Select group";
+      groupIdentity.hidden = false;
     }
 
     syncIdentity();

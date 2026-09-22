@@ -55,12 +55,14 @@ const PRESET_CRITERIA = [
 ];
 
 const context = readAssignmentsModuleContext() || {};
+const editingAssignmentId = context.mode === "edit" ? String(context.assignmentId || "") : "";
 
 const assignmentType = document.getElementById("assignmentType");
 const assignmentOtherTypeField = document.getElementById("assignmentOtherTypeField");
 const assignmentOtherType = document.getElementById("assignmentOtherType");
 const assignmentTitle = document.getElementById("assignmentTitle");
 const assignmentGroup = document.getElementById("assignmentGroup");
+const assignmentGroupDisplay = document.getElementById("assignmentGroupDisplay");
 const assignmentGroupHelp = document.getElementById("assignmentGroupHelp");
 const assignmentTargetField = document.getElementById("assignmentTargetField");
 const assignmentTargetSelect = document.getElementById("assignmentTargetSelect");
@@ -92,7 +94,6 @@ const createFromLibraryBtn = document.getElementById("createFromLibraryBtn");
 const assignmentLibraryPanel = document.getElementById("assignmentLibraryPanel");
 const assignmentLibrarySearch = document.getElementById("assignmentLibrarySearch");
 const assignmentLibraryTypeFilter = document.getElementById("assignmentLibraryTypeFilter");
-const assignmentLibraryGroupFilter = document.getElementById("assignmentLibraryGroupFilter");
 const assignmentLibrarySourceFilter = document.getElementById("assignmentLibrarySourceFilter");
 const clearAssignmentLibraryFiltersBtn = document.getElementById("clearAssignmentLibraryFiltersBtn");
 const assignmentLibraryList = document.getElementById("assignmentLibraryList");
@@ -107,6 +108,8 @@ let assignmentTemplatesCache = {};
 let settingsCache = {};
 let loadedLibrarySource = null;
 let creationMode = "scratch";
+let editingLoaded = false;
+let editingHasSubmissions = false;
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, (char) => ({
@@ -224,8 +227,8 @@ function hasGeneratedTeamContext() {
 }
 
 function getWorkingGroup() {
-  const teamGroup = hasGeneratedTeamContext() ? String(context?.groupName || "").trim() : "";
-  if (teamGroup) return teamGroup;
+  const contextGroup = String(context?.groupName || "").trim();
+  if (contextGroup) return contextGroup;
   return String(
     sessionStorage.getItem(WORKING_GROUP_KEY) ||
     localStorage.getItem(WORKING_GROUP_KEY) ||
@@ -313,7 +316,7 @@ function renderEvaluationTargetOptions() {
     assignmentEvaluationBlock.disabled = true;
     assignmentGroupCriterion.innerHTML = exam
       ? '<option value="">Exam grading is handled separately</option>'
-      : '<option value="">Select criterion</option>';
+      : '<option value="">Select category</option>';
     assignmentGroupCriterion.value = "";
     assignmentGroupCriterion.disabled = true;
     assignmentEvaluationBlockHelp.textContent =
@@ -321,8 +324,8 @@ function renderEvaluationTargetOptions() {
         ? "Choose one specific group so the assignment can be linked to a block / unit."
         : "This group needs a valid evaluation setup before assignments can be graded.";
     assignmentGroupCriterionHelp.textContent = exam
-      ? "Exams belong to a block / unit but do not use an assignment criterion."
-      : "Choose a configured group to select its evaluation criterion.";
+      ? "Exams belong to a block / unit but do not use an assignment category."
+      : "Choose a configured group to select its category.";
     assignmentEvaluationTargetSummary.textContent =
       "Choose a specific group with a valid evaluation setup.";
     return;
@@ -350,7 +353,7 @@ function renderEvaluationTargetOptions() {
   } else {
     assignmentGroupCriterion.disabled = false;
     assignmentGroupCriterion.innerHTML =
-      '<option value="">Select criterion</option>' +
+      '<option value="">Select category</option>' +
       config.criteria.map((criterion) =>
         `<option value="${escapeHtml(criterion.id)}">${escapeHtml(criterion.name)} · ${criterion.weight}%</option>`
       ).join("");
@@ -371,32 +374,16 @@ function renderEvaluationTargetOptions() {
     ? `This exam will contribute to: ${preferredBlock || "No block selected"}.`
     : criterion
       ? `This assignment will contribute to: ${preferredBlock || "No block selected"} → ${criterion.name} (${criterion.weight}%).`
-      : `Select the evaluation criterion for ${preferredBlock || "this block / unit"}.`;
+      : `Select the category for ${preferredBlock || "this block / unit"}.`;
 }
 
 function renderGroupOptions() {
   const workingGroup = getWorkingGroup();
-  const groups = availableGroups();
-
-  assignmentGroup.innerHTML =
-    '<option value="ALL">All groups</option>' +
-    groups.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("");
-
-  if (workingGroup) {
-    if (![...assignmentGroup.options].some((option) => option.value === workingGroup)) {
-      const option = document.createElement("option");
-      option.value = workingGroup;
-      option.textContent = workingGroup;
-      assignmentGroup.appendChild(option);
-    }
-    assignmentGroup.value = workingGroup;
-    assignmentGroup.disabled = true;
-    assignmentGroupHelp.textContent = `Working group: ${workingGroup}.`;
-  } else {
-    assignmentGroup.disabled = false;
-    assignmentGroupHelp.textContent = "No working group is active. Choose who should receive this assignment.";
-  }
-
+  assignmentGroup.value = workingGroup || "";
+  assignmentGroupDisplay.textContent = workingGroup || "No active group";
+  assignmentGroupHelp.textContent = workingGroup
+    ? "Change the working group from the group button beside the teacher name."
+    : "Select a working group before creating an assignment.";
   renderTargetOptions();
   renderEvaluationTargetOptions();
   refreshAutomaticTaskCode();
@@ -497,8 +484,10 @@ function taskCodeBase() {
 
 function taskCodeExists(code) {
   const target = String(code || "").trim().toUpperCase();
-  return Object.values(assignmentsCache || {}).some(
-    (assignment) => String(assignment?.code || "").trim().toUpperCase() === target
+  return Object.entries(assignmentsCache || {}).some(
+    ([assignmentId, assignment]) =>
+      assignmentId !== editingAssignmentId &&
+      String(assignment?.code || "").trim().toUpperCase() === target
   );
 }
 
@@ -511,6 +500,14 @@ function renderOtherTypeField() {
 
 function refreshAutomaticTaskCode() {
   renderOtherTypeField();
+  if (editingAssignmentId && editingLoaded) {
+    const existing = assignmentsCache?.[editingAssignmentId];
+    assignmentCode.value = String(existing?.code || "");
+    assignmentCode.readOnly = true;
+    taskCodeStatus.textContent = "Task code locked while editing.";
+    taskCodeStatus.style.color = "#64748b";
+    return;
+  }
   const code = taskCodeBase();
   assignmentCode.value = code;
 
@@ -870,7 +867,6 @@ function replaceLibraryOptions(select, values, allLabel) {
 function renderAssignmentLibraryFilters() {
   const entries = libraryEntries();
   replaceLibraryOptions(assignmentLibraryTypeFilter, entries.map((entry) => entry.type), "All types");
-  replaceLibraryOptions(assignmentLibraryGroupFilter, entries.map((entry) => entry.groupName), "All original groups");
 }
 
 function filteredLibraryEntries() {
@@ -1028,12 +1024,167 @@ function loadLibraryEntry(key) {
   setStatus("Previous assignment loaded. Review it and choose the new due date.", "ok");
 }
 
+function toDateTimeLocal(timestamp) {
+  const value = Number(timestamp || 0);
+  if (!value) return "";
+  const date = new Date(value);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function loadEditingAssignmentIfReady() {
+  if (!editingAssignmentId || editingLoaded) return;
+  const assignment = assignmentsCache?.[editingAssignmentId];
+  if (!assignment) return;
+
+  const typeCode = String(assignment.assignmentTypeCode || "CT").toUpperCase();
+  const standardCodes = new Set(["CT","HW","EX","PJ","PC","RS","PT","COG"]);
+  assignmentType.value = standardCodes.has(typeCode) ? typeCode : "OTHER";
+  assignmentOtherType.value = standardCodes.has(typeCode) ? "" : String(assignment.assignmentType || typeCode);
+  assignmentType.disabled = true;
+  assignmentOtherType.disabled = true;
+
+  assignmentTitle.value = String(assignment.title || "");
+  assignmentInstructions.value = splitStoredInstructions(assignment.instructions).visibleInstructions;
+  assignmentEvaluationNotes.value = String(assignment.evaluationNotes || getAssignmentRubric(assignment).notes || "");
+  assignmentDueAt.value = toDateTimeLocal(assignment.dueAt);
+  assignmentGroup.value = String(assignment.groupName || getWorkingGroup() || "");
+  assignmentGroupDisplay.textContent = assignmentGroup.value || "No active group";
+
+  const rubric = getAssignmentRubric(assignment);
+  renderRubricEditors(rubric.criteria, rubric.distribution);
+
+  projectCheckpointRows.innerHTML = "";
+  if (typeCode === "PJ") {
+    Object.entries(assignment.projectCheckpoints || {}).forEach(([id, checkpoint]) => {
+      addProjectCheckpointRow({ id, ...(checkpoint || {}) });
+    });
+  }
+
+  renderOtherTypeField();
+  refreshProjectCheckpointBuilder();
+  renderEvaluationTargetOptions();
+  if (assignment.evaluationBlock) assignmentEvaluationBlock.value = assignment.evaluationBlock;
+  if (assignment.groupEvaluationCriterionId) assignmentGroupCriterion.value = assignment.groupEvaluationCriterionId;
+  renderEvaluationTargetOptions();
+
+  assignmentCode.value = String(assignment.code || "");
+  assignmentCode.readOnly = true;
+  createAssignmentBtn.textContent = "Save Assignment";
+  document.getElementById("assignmentModuleTitle").textContent = "Edit Assignment";
+  document.getElementById("assignmentModuleSubtitle").textContent = "Update this assignment without changing its Task Code.";
+  document.querySelector(".creation-source-toggle").hidden = true;
+  assignmentLibraryPanel.hidden = true;
+  editingLoaded = true;
+  refreshAutomaticTaskCode();
+
+  if (editingHasSubmissions) {
+    createPresetCriteria.querySelectorAll("input,button").forEach((control) => control.disabled = true);
+    createCriteriaRows.querySelectorAll("input,textarea,button").forEach((control) => control.disabled = true);
+    createDistributionRadios.forEach((control) => control.disabled = true);
+    addCreateCriterionBtn.disabled = true;
+  }
+}
+
+async function saveEditingAssignment() {
+  const existing = assignmentsCache?.[editingAssignmentId];
+  if (!existing) return setStatus("Assignment not found.", "bad");
+
+  const title = assignmentTitle.value.trim();
+  const groupName = String(existing.groupName || assignmentGroup.value || getWorkingGroup() || "");
+  const evaluationBlock = String(assignmentEvaluationBlock.value || "");
+  const groupConfig = groupEvaluationConfig(groupsCache?.[groupName] || {});
+  const groupCriterion = groupConfig.criteria.find(
+    (criterion) => criterion.id === String(assignmentGroupCriterion.value || "")
+  ) || null;
+  const dueAt = assignmentDueAt.value ? new Date(assignmentDueAt.value).getTime() : 0;
+  const typeCode = String(existing.assignmentTypeCode || selectedTypeCode()).toUpperCase();
+  const typeLabel = String(existing.assignmentType || selectedTypeLabel());
+  const existingRubric = getAssignmentRubric(existing);
+  const rubric = editingHasSubmissions ? existingRubric : collectRubric();
+
+  if (!title) return setStatus("Enter an assignment name.", "bad");
+  if (!groupName) return setStatus("Select a working group.", "bad");
+  if (!evaluationBlock) return setStatus("Select the block / unit for this assignment.", "bad");
+  if (typeCode !== "EX" && !groupCriterion) return setStatus("Select the category for this assignment.", "bad");
+  if (!dueAt || Number.isNaN(dueAt)) return setStatus("Select the due date and time.", "bad");
+  if (rubric.error) return setStatus(rubric.error, "bad");
+
+  const now = Date.now();
+  const storedInstructions = buildStoredInstructions(assignmentInstructions.value.trim(), {
+    schemaVersion: 1,
+    assignmentType: typeLabel,
+    assignmentTypeCode: typeCode,
+    criteria: rubric.criteria,
+    distribution: rubric.distribution || existing.evaluationDistribution || "equal",
+    notes: assignmentEvaluationNotes.value.trim(),
+    updatedAt: now
+  });
+
+  const patch = {
+    title,
+    instructions: storedInstructions,
+    evaluationNotes: assignmentEvaluationNotes.value.trim(),
+    dueAt,
+    evaluationBlock,
+    groupEvaluationCriterionId: groupCriterion?.id || "",
+    groupEvaluationCriterionName: groupCriterion?.name || "",
+    evaluationTarget: buildAssignmentEvaluationTarget({
+      groupName,
+      block: evaluationBlock,
+      criterion: groupCriterion,
+      assignment: existing
+    }),
+    [`evaluationTargets/${groupName}`]: buildAssignmentEvaluationTarget({
+      groupName,
+      block: evaluationBlock,
+      criterion: groupCriterion,
+      assignment: existing
+    }),
+    updatedAt: now,
+    updatedBy: getTeacherName()
+  };
+
+  if (!editingHasSubmissions) {
+    patch.evaluationCriteria = rubric.criteria;
+    patch.evaluationDistribution = rubric.distribution || getDistributionMode();
+    const project = collectProjectCheckpoints(dueAt);
+    if (project.error) return setStatus(project.error, "bad");
+    patch.projectCheckpoints = typeCode === "PJ" ? project.checkpoints : null;
+  }
+
+  createAssignmentBtn.disabled = true;
+  setStatus("Saving...");
+  try {
+    await update(ref(db, `assignments/${editingAssignmentId}`), patch);
+    if (typeCode !== "EX" && groupCriterion?.id) {
+      await update(ref(db, `groups/${groupName}/assignmentCriterionDefaults`), {
+        [typeCode]: groupCriterion.id
+      });
+    }
+    setStatus("Assignment updated.", "ok");
+    if (window.parent !== window) {
+      window.parent.postMessage({
+        type: "youteach:assignment-updated",
+        assignmentId: editingAssignmentId,
+        code: String(existing.code || "")
+      }, window.location.origin);
+    }
+  } catch (error) {
+    console.error(error);
+    setStatus(error?.message ? `Could not update the assignment: ${error.message}` : "Could not update the assignment.", "bad");
+  } finally {
+    createAssignmentBtn.disabled = false;
+  }
+}
+
 function setStatus(message, kind = "") {
   createAssignmentStatus.textContent = message;
   createAssignmentStatus.className = `status ${kind}`.trim();
 }
 
 async function createAssignment() {
+  if (context.mode === "edit" && editingAssignmentId) return saveEditingAssignment();
   refreshDistribution();
   refreshAutomaticTaskCode();
 
@@ -1061,7 +1212,7 @@ async function createAssignment() {
   }
   if (!evaluationBlock) return setStatus("Select the block / unit for this assignment.", "bad");
   if (typeCode !== "EX" && !groupCriterion) {
-    return setStatus("Select the evaluation criterion for this assignment.", "bad");
+    return setStatus("Select the category for this assignment.", "bad");
   }
   if (assignmentType.value === "OTHER" && !assignmentOtherType.value.trim()) {
     return setStatus("Specify the assignment type.", "bad");
@@ -1194,12 +1345,10 @@ createFromLibraryBtn.addEventListener("click", () => {
 
 assignmentLibrarySearch.addEventListener("input", renderAssignmentLibrary);
 assignmentLibraryTypeFilter.addEventListener("change", renderAssignmentLibrary);
-assignmentLibraryGroupFilter.addEventListener("change", renderAssignmentLibrary);
 assignmentLibrarySourceFilter.addEventListener("change", renderAssignmentLibrary);
 clearAssignmentLibraryFiltersBtn.addEventListener("click", () => {
   assignmentLibrarySearch.value = "";
   assignmentLibraryTypeFilter.value = "";
-  assignmentLibraryGroupFilter.value = "";
   assignmentLibrarySourceFilter.value = "";
   renderAssignmentLibrary();
 });
@@ -1226,10 +1375,6 @@ assignmentType.addEventListener("change", () => {
 });
 assignmentOtherType.addEventListener("input", refreshAutomaticTaskCode);
 assignmentTitle.addEventListener("input", refreshAutomaticTaskCode);
-assignmentGroup.addEventListener("change", () => {
-  renderEvaluationTargetOptions();
-  refreshAutomaticTaskCode();
-});
 assignmentEvaluationBlock.addEventListener("change", renderEvaluationTargetOptions);
 assignmentGroupCriterion.addEventListener("change", () => {
   renderEvaluationTargetOptions();
@@ -1287,6 +1432,7 @@ onValue(ref(db, "assignments"), (snapshot) => {
   assignmentsCache = snapshot.val() || {};
   refreshAutomaticTaskCode();
   renderAssignmentLibraryFilters();
+  loadEditingAssignmentIfReady();
   if (creationMode === "library") renderAssignmentLibrary();
 });
 
@@ -1299,4 +1445,17 @@ onValue(ref(db, "assignmentTemplates"), (snapshot) => {
 onValue(ref(db, "settings"), (snapshot) => {
   settingsCache = snapshot.val() || {};
   renderEvaluationTargetOptions();
+  loadEditingAssignmentIfReady();
 });
+
+if (editingAssignmentId) {
+  onValue(ref(db, `assignmentSubmissions/${editingAssignmentId}`), (snapshot) => {
+    editingHasSubmissions = Object.values(snapshot.val() || {}).some(Boolean);
+    if (editingLoaded && editingHasSubmissions) {
+      createPresetCriteria.querySelectorAll("input,button").forEach((control) => control.disabled = true);
+      createCriteriaRows.querySelectorAll("input,textarea,button").forEach((control) => control.disabled = true);
+      createDistributionRadios.forEach((control) => control.disabled = true);
+      addCreateCriterionBtn.disabled = true;
+    }
+  });
+}
