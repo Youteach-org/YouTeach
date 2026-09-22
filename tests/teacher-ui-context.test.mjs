@@ -37,7 +37,7 @@ test('active group identity opens the one canonical reusable Groups dialog', () 
   assert.match(shared, /import\("\.\/groups-dialog\.js/);
   assert.doesNotMatch(shared, /dialog\.innerHTML|sharedGroupsState|sharedGroupsDialogStyles/);
   assert.doesNotMatch(groupManagementHtml, /<dialog id="groupsDialog">/);
-  assert.match(groupManagementJs, /import \{ ensureGroupsDialog \} from "\.\/groups-dialog\.js"/);
+  assert.match(groupManagementJs, /import \{ ensureGroupsDialog, renderGroupsDialog \} from "\.\/groups-dialog\.js"/);
   assert.match(groupManagementJs, /ensureGroupsDialog\(\);/);
 
   assert.match(groupsDialogJs, /id="groupsDialog"/);
