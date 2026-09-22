@@ -60,6 +60,105 @@
       color: #166534;
     }
 
+    .student-name-badge.teacher-selectable {
+      cursor: pointer;
+      user-select: none;
+    }
+
+    #studentPickerDialog {
+      border: 0;
+      padding: 0;
+      background: transparent;
+      width: min(560px, 94vw);
+      max-width: none;
+    }
+
+    #studentPickerDialog::backdrop {
+      background: rgba(15, 23, 42, .52);
+    }
+
+    .student-picker-shell {
+      background: #ffffff;
+      border-radius: 14px;
+      box-shadow: 0 22px 54px rgba(15, 23, 42, .24);
+      overflow: hidden;
+    }
+
+    .student-picker-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 16px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .student-picker-head h3 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .student-picker-close {
+      width: 34px;
+      height: 34px;
+      padding: 0;
+      border-radius: 9px;
+      font-size: 22px;
+      line-height: 1;
+    }
+
+    .student-picker-body {
+      padding: 14px 16px 16px;
+    }
+
+    #studentPickerSearch {
+      width: 100%;
+      box-sizing: border-box;
+      margin-bottom: 10px;
+    }
+
+    .student-picker-list {
+      display: grid;
+      gap: 7px;
+      max-height: 58vh;
+      overflow: auto;
+    }
+
+    .student-picker-row {
+      width: 100%;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      text-align: left;
+      padding: 10px 12px;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      background: #ffffff;
+      color: #0f172a;
+    }
+
+    .student-picker-row.current {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 1px #bfdbfe;
+    }
+
+    .student-picker-row strong,
+    .student-picker-row small {
+      display: block;
+    }
+
+    .student-picker-row small {
+      color: #64748b;
+      margin-top: 2px;
+    }
+
+    .student-picker-empty {
+      padding: 18px 12px;
+      text-align: center;
+      color: #64748b;
+    }
+
     .summary-compact-row {
       display: flex;
       align-items: center;
@@ -195,7 +294,23 @@
     </main>
   </div>
 
-  <script type="module" src="student-summary.js?v=display-toggle-20260922"></script>
+  <dialog id="studentPickerDialog">
+    <div class="student-picker-shell">
+      <div class="student-picker-head">
+        <div>
+          <h3>Select student</h3>
+          <small id="studentPickerGroupLabel"></small>
+        </div>
+        <button id="studentPickerCloseBtn" class="student-picker-close" type="button" aria-label="Close student search">×</button>
+      </div>
+      <div class="student-picker-body">
+        <input id="studentPickerSearch" type="search" placeholder="Search name, last name, nickname or External ID" autocomplete="off">
+        <div id="studentPickerList" class="student-picker-list"></div>
+      </div>
+    </div>
+  </dialog>
+
+  <script type="module" src="student-summary.js?v=task-weighting-student-picker-20260922"></script>
   <script defer src="shared-ui-fixes.js?v=titlebar-hamburger-20260916"></script>
 </body>
 </html>
