@@ -1,11 +1,14 @@
 import { db } from "./firebase.js";
 import { visibleGroups } from "./group-state.js";
 import { studentGroupNames, studentInGroup } from "./student-groups.js";
-import { ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { normalizeStudentDisplayMode, studentPrimaryDisplay } from "./student-display-mode.js";
+import { ref, onValue, update, push } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
 import { evaluationBlockNames, groupEvaluationConfig } from "./group-evaluation-model.js";
 
 requireTeacherAuth();
+
+const WORKING_GROUP_KEY = "youteachWorkingGroup";
 
 const teacherIdentity = document.getElementById("teacherIdentity");
 const logoutBtn = document.getElementById("logoutBtn");
@@ -31,6 +34,16 @@ const deleteBlockSelect = document.getElementById("deleteBlockSelect");
 const deleteGroupSelect = document.getElementById("deleteGroupSelect");
 const deleteGradesBtn = document.getElementById("deleteGradesBtn");
 const deleteGradesResultBox = document.getElementById("deleteGradesResultBox");
+const activePointsGroup = document.getElementById("activePointsGroup");
+const pointStudentSearch = document.getElementById("pointStudentSearch");
+const pointStudentSelect = document.getElementById("pointStudentSelect");
+const pointBlockSelect = document.getElementById("pointBlockSelect");
+const pointAmountInput = document.getElementById("pointAmountInput");
+const pointStudentPreview = document.getElementById("pointStudentPreview");
+const addPointsBtn = document.getElementById("addPointsBtn");
+const subtractPointsBtn = document.getElementById("subtractPointsBtn");
+const setPointsBtn = document.getElementById("setPointsBtn");
+const pointHistoryList = document.getElementById("pointHistoryList");
 
 teacherIdentity.textContent = getTeacherName();
 logoutBtn.addEventListener("click", logoutTeacher);
@@ -38,6 +51,7 @@ logoutBtn.addEventListener("click", logoutTeacher);
 let studentsCache = {};
 let groupsCache = {};
 let settingsCache = {};
+let pointsLogCache = {};
 let parsedRowsCache = [];
 
 function normalizeText(value) {
@@ -161,6 +175,196 @@ function renderExportGroups() {
   }
 
   renderBlockSelectors();
+}
+
+
+function activePointsGroupName() {
+  const preferred = String(sessionStorage.getItem(WORKING_GROUP_KEY) || "").trim();
+  const groups = getAllGroupNames();
+  if (preferred && groups.includes(preferred)) return preferred;
+  return groups[0] || "";
+}
+
+function pointDisplayMode(groupName) {
+  return normalizeStudentDisplayMode(groupsCache?.[groupName]?.studentListDisplayMode);
+}
+
+function pointStudentEntries(groupName) {
+  const query = normalizeText(pointStudentSearch?.value || "");
+  return Object.entries(studentsCache || {})
+    .filter(([, student]) => studentInGroup(student, groupName))
+    .filter(([, student]) => {
+      if (!query) return true;
+      const haystack = normalizeText([
+        student?.fullName,
+        student?.name,
+        student?.nickname,
+        student?.studentNumber,
+        student?.externalId,
+        student?.id
+      ].filter(Boolean).join(" "));
+      return haystack.includes(query);
+    })
+    .sort((a, b) =>
+      studentPrimaryDisplay(a[1], pointDisplayMode(groupName)).localeCompare(
+        studentPrimaryDisplay(b[1], pointDisplayMode(groupName)),
+        undefined,
+        { sensitivity: "base" }
+      )
+    );
+}
+
+function isPointsBlockClosed(blockName) {
+  return Boolean(settingsCache?.closedBlocks?.[blockName]);
+}
+
+function renderPointHistory() {
+  if (!pointHistoryList) return;
+  const groupName = activePointsGroupName();
+  const studentKey = pointStudentSelect?.value || "";
+  const entries = Object.values(pointsLogCache || {})
+    .filter((entry) => !studentKey || String(entry?.studentKey || "") === studentKey)
+    .filter((entry) => {
+      if (!groupName) return true;
+      if (entry?.groupName) return String(entry.groupName) === groupName;
+      const student = studentsCache?.[entry?.studentKey];
+      return student ? studentInGroup(student, groupName) : true;
+    })
+    .sort((a, b) => Number(b?.appliedAt || 0) - Number(a?.appliedAt || 0))
+    .slice(0, 20);
+
+  if (!entries.length) {
+    pointHistoryList.textContent = "No point history found for this selection.";
+    return;
+  }
+
+  pointHistoryList.innerHTML = entries.map((entry) => {
+    const delta = Number(entry?.addedPoints || 0);
+    const signedDelta = delta > 0 ? `+${delta}` : String(delta);
+    return `
+      <div class="points-history-entry">
+        <strong>${escapeHtml(entry?.studentName || "Student")}</strong> ·
+        ${escapeHtml(entry?.block || "Block 1")} ·
+        ${escapeHtml(entry?.operation || entry?.type || "adjustment")}<br>
+        Change: ${escapeHtml(signedDelta)} ·
+        Previous: ${escapeHtml(entry?.previousPoints ?? 0)} ·
+        New: ${escapeHtml(entry?.newPoints ?? 0)}<br>
+        ${escapeHtml(entry?.appliedAt ? new Date(entry.appliedAt).toLocaleString() : "")}
+      </div>
+    `;
+  }).join("");
+}
+
+function renderPointAdjustment() {
+  if (!pointStudentSelect || !pointBlockSelect) return;
+
+  const groupName = activePointsGroupName();
+  if (activePointsGroup) activePointsGroup.textContent = groupName || "No active group";
+
+  const blocks = blockNamesForGroup(groupName);
+  replaceBlockOptions(pointBlockSelect, blocks, settingsCache.activeBlock || "Block 1");
+
+  const previousStudent = pointStudentSelect.value;
+  const students = pointStudentEntries(groupName);
+  pointStudentSelect.innerHTML =
+    '<option value="">Select student</option>' +
+    students.map(([studentKey, student]) => {
+      const primary = studentPrimaryDisplay(student, pointDisplayMode(groupName));
+      const externalId = getStudentExternalId(student);
+      const suffix = externalId ? ` · ${externalId}` : "";
+      return `<option value="${escapeHtml(studentKey)}">${escapeHtml(primary + suffix)}</option>`;
+    }).join("");
+
+  if (students.some(([studentKey]) => studentKey === previousStudent)) {
+    pointStudentSelect.value = previousStudent;
+  } else if (students.length) {
+    pointStudentSelect.value = students[0][0];
+  }
+
+  const studentKey = pointStudentSelect.value;
+  const student = studentsCache?.[studentKey];
+  const blockName = pointBlockSelect.value || settingsCache.activeBlock || "Block 1";
+
+  if (!groupName) {
+    pointStudentPreview.textContent = "Select an active group in Group Management first.";
+  } else if (!student) {
+    pointStudentPreview.textContent = "No student selected.";
+  } else {
+    const currentPoints = Number(student?.blockPoints?.[blockName] || 0);
+    pointStudentPreview.innerHTML = `
+      <strong>${escapeHtml(studentPrimaryDisplay(student, pointDisplayMode(groupName)))}</strong><br>
+      Current points in ${escapeHtml(blockName)}: <strong>${escapeHtml(currentPoints)}</strong><br>
+      Block status: <strong>${isPointsBlockClosed(blockName) ? "CLOSED" : "OPEN"}</strong>
+    `;
+  }
+
+  renderPointHistory();
+}
+
+async function adjustStudentPoints(operation) {
+  const groupName = activePointsGroupName();
+  const studentKey = pointStudentSelect?.value || "";
+  const blockName = pointBlockSelect?.value || settingsCache.activeBlock || "Block 1";
+  const amount = Number(pointAmountInput?.value);
+
+  if (!groupName) {
+    alert("Select an active group first.");
+    return;
+  }
+
+  const student = studentsCache?.[studentKey];
+  if (!student || !studentInGroup(student, groupName)) {
+    alert("Select a student from the active group.");
+    return;
+  }
+
+  if (!Number.isFinite(amount) || (operation !== "set" && amount <= 0)) {
+    alert(operation === "set" ? "Enter a valid point value." : "Enter a positive point amount.");
+    return;
+  }
+
+  if (isPointsBlockClosed(blockName)) {
+    alert(`The block (${blockName}) is closed. Reopen it before changing points.`);
+    return;
+  }
+
+  const previousPoints = Number(student?.blockPoints?.[blockName] || 0);
+  const newPoints = operation === "add"
+    ? previousPoints + amount
+    : operation === "subtract"
+      ? previousPoints - amount
+      : amount;
+  const delta = newPoints - previousPoints;
+  const logRef = push(ref(db, "pointsLog"));
+  const logKey = logRef.key;
+
+  const updates = {
+    [`students/${studentKey}/blockPoints/${blockName}`]: Number(newPoints.toFixed(2))
+  };
+
+  if (logKey) {
+    updates[`pointsLog/${logKey}`] = {
+      studentKey,
+      studentName: getDisplayName(student),
+      groupName,
+      block: blockName,
+      type: "manual",
+      operation,
+      addedPoints: Number(delta.toFixed(2)),
+      previousPoints: Number(previousPoints.toFixed(2)),
+      newPoints: Number(newPoints.toFixed(2)),
+      appliedAt: Date.now(),
+      teacherName: getTeacherName()
+    };
+  }
+
+  try {
+    await update(ref(db), updates);
+    pointAmountInput.value = "";
+  } catch (error) {
+    console.error(error);
+    alert("Could not update points.");
+  }
 }
 
 function renderManualCriterionGroups() {
@@ -540,6 +744,17 @@ function exportGrades() {
   downloadTextFile(`${blockName.replace(/\s+/g, "_").toLowerCase()}_${groupSuffix}_grades.csv`, lines.join("\n"));
 }
 
+pointStudentSearch?.addEventListener("input", renderPointAdjustment);
+pointStudentSelect?.addEventListener("change", renderPointAdjustment);
+pointBlockSelect?.addEventListener("change", renderPointAdjustment);
+addPointsBtn?.addEventListener("click", () => adjustStudentPoints("add"));
+subtractPointsBtn?.addEventListener("click", () => adjustStudentPoints("subtract"));
+setPointsBtn?.addEventListener("click", () => adjustStudentPoints("set"));
+window.addEventListener("youteach:working-group-changed", renderPointAdjustment);
+window.addEventListener("storage", (event) => {
+  if (event.key === WORKING_GROUP_KEY) renderPointAdjustment();
+});
+
 manualCriterionGroupSelect.addEventListener("change", renderManualCriterionContext);
 manualCriterionBlockSelect.addEventListener("change", renderManualCriterionContext);
 saveManualCriterionScoreBtn.addEventListener("click", saveManualCriterionScore);
@@ -557,6 +772,7 @@ onValue(ref(db, "students"), (snapshot) => {
   studentsCache = snapshot.val() || {};
   renderExportGroups();
   renderManualCriterionGroups();
+  renderPointAdjustment();
 
   if (parsedRowsCache.length) {
     renderPreview(parsedRowsCache);
@@ -568,10 +784,17 @@ onValue(ref(db, "groups"), (snapshot) => {
   renderExportGroups();
   renderBlockSelectors();
   renderManualCriterionGroups();
+  renderPointAdjustment();
 });
 
 onValue(ref(db, "settings"), (snapshot) => {
   settingsCache = snapshot.val() || {};
   renderBlockSelectors();
   renderManualCriterionContext();
+  renderPointAdjustment();
+});
+
+onValue(ref(db, "pointsLog"), (snapshot) => {
+  pointsLogCache = snapshot.val() || {};
+  renderPointHistory();
 });
