@@ -135,18 +135,6 @@ function sameCanonicalResult(existing, grant, result) {
   );
 }
 
-async function mirrorAssignmentResult(record) {
-  const assignmentId = String(record?.assignmentId || "").trim();
-  const studentKey = String(record?.studentKey || "").trim();
-  const resultId = String(record?.resultId || "").trim();
-  if (!assignmentId || !studentKey || !resultId) {
-    throw new Error("Cannot index a COG result without assignment, student and result identifiers.");
-  }
-  await firebasePut(
-    `classroomGameResultsByAssignment/${assignmentId}/${studentKey}/${resultId}`,
-    record
-  );
-}
 
 export function onRequestOptions({ request }) {
   return optionsResponse(request);
@@ -223,7 +211,7 @@ export async function onRequestPost({ request, env }) {
     }
 
     const resultPath =
-      `classroomGameResults/${cogSessionId}/${studentKey}/${result.resultId}`;
+      `assignmentSubmissions/${assignmentId}/${studentKey}/cogResults/${result.resultId}`;
     let snapshot = await firebaseGetWithEtag(resultPath);
 
     if (snapshot.value != null) {
@@ -233,7 +221,6 @@ export async function onRequestPost({ request, env }) {
           error: "This result ID is already used by another result."
         });
       }
-      await mirrorAssignmentResult(snapshot.value);
       return corsJson(request, 200, {
         ok: true,
         duplicate: true,
@@ -257,7 +244,6 @@ export async function onRequestPost({ request, env }) {
     if (!write.written && write.conflict) {
       snapshot = await firebaseGetWithEtag(resultPath);
       if (sameCanonicalResult(snapshot.value, grant, result)) {
-        await mirrorAssignmentResult(snapshot.value);
         return corsJson(request, 200, {
           ok: true,
           duplicate: true,
@@ -270,7 +256,6 @@ export async function onRequestPost({ request, env }) {
       });
     }
 
-    await mirrorAssignmentResult(record);
     return corsJson(request, 200, {
       ok: true,
       duplicate: false,
