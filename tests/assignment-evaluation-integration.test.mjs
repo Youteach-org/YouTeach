@@ -135,3 +135,10 @@ test('Assignment Browser defines isExamAssignment exactly once at module scope',
   const local = /function\s+isExamAssignment\s*\(/.test(teacherJs);
   assert.equal(Number(imported) + Number(local), 1);
 });
+
+
+test('Assignments hidden working-group field is never treated as a select', () => {
+  assert.match(teacherHtml, /<input id="assignmentGroup" type="hidden">/);
+  assert.doesNotMatch(teacherJs, /assignmentGroup\.options/);
+  assert.doesNotMatch(teacherJs, /assignmentGroup\.appendChild\(/);
+});
