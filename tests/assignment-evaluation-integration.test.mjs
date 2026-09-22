@@ -128,3 +128,11 @@ test('Assignment Browser reports historical submission group when stored group m
   assert.match(teacherJs, /assignmentHistoricalGroupLabel/);
   assert.match(teacherJs, /Submission history:/);
 });
+
+
+test('Assignment Browser imports every evaluation helper it executes at runtime', () => {
+  assert.match(
+    teacherJs,
+    /import\s*\{[^}]*isExamAssignment[^}]*\}\s*from\s*["']\.\/assignment-evaluation-target\.js["']/s
+  );
+});
