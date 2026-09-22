@@ -31,6 +31,7 @@ jobs:
           const groups = await read("groups");
           const assignments = await read("assignments");
           const submissions = await read("assignmentSubmissions");
+          const students = await read("students");
 
           if (groups) {
             console.log("=== GROUPS ===");
@@ -50,6 +51,22 @@ jobs:
                 keys: Object.keys(group || {}).sort()
               }));
             }
+          }
+
+          if (students) {
+            const rows = Object.values(students || {});
+            const primaryGeneral = rows.filter(student =>
+              String(student?.groupName || "").trim().toUpperCase() === "GENERAL"
+            ).length;
+            const memberGeneral = rows.filter(student =>
+              student?.groupMemberships?.GENERAL === true
+            ).length;
+            console.log("=== GENERAL STUDENT REFERENCES ===");
+            console.log(JSON.stringify({
+              totalStudents: rows.length,
+              primaryGeneral,
+              memberGeneral
+            }));
           }
 
           if (assignments) {
