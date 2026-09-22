@@ -207,7 +207,7 @@ let deletionTargetGroup = "";
 let editingGroupName = "";
 let pendingReportSettings = null;
 let creatingGroup = false;
-let rosterCollapsed = restoredManagementState.rosterCollapsed !== false;
+let rosterCollapsed = restoredManagementState.rosterCollapsed === true;
 let enrollmentLinkExpanded = restoredManagementState.enrollmentLinkExpanded === true;
 let selectedTemplateId = "";
 let groupsLoaded = false;
