@@ -157,8 +157,8 @@ test('assignment card defers single-click selection so double-click edit can win
   assert.match(clickBlock, /event\.detail\s*>\s*1/);
   assert.match(clickBlock, /clearTimeout\(/);
   assert.match(doubleBlock, /clearTimeout\(/);
-  assert.match(doubleBlock, /openAssignmentsModule\(/);
-  assert.match(doubleBlock, /mode:\s*"edit"/);
+  assert.match(doubleBlock, /openAssignmentEditorFromCard\(card\)/);
+  assert.match(teacherJs, /function openAssignmentEditorFromCard\(card\)[\s\S]*openAssignmentsModule\([\s\S]*mode:\s*"edit"/);
 });
 
 test('assignment overview stacks Assignment first and Criteria second at full width with readable text', () => {
