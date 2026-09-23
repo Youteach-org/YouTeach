@@ -507,3 +507,23 @@ test('shared Groups dialog management actions resume in Group Management', () =>
   assert.match(js, /openSelectedGroupEvaluationDialog\(\)/);
   assert.match(js, /openDeleteGroupDialog\(\)/);
 });
+
+
+test('evaluation autosave stays bound to the group opened in Blocks & Criteria', () => {
+  const saveStart = js.indexOf('async function saveExistingGroupEvaluation');
+  const saveEnd = js.indexOf('function scheduleExistingGroupEvaluationSave', saveStart);
+  const saveBlock = js.slice(saveStart, saveEnd);
+  assert.match(saveBlock, /groupName\s*=\s*editingGroupName/);
+
+  const scheduleStart = js.indexOf('function scheduleExistingGroupEvaluationSave');
+  const scheduleEnd = js.indexOf('function selectManagedGroup', scheduleStart);
+  const scheduleBlock = js.slice(scheduleStart, scheduleEnd);
+  assert.match(scheduleBlock, /const groupName = editingGroupName/);
+  assert.match(scheduleBlock, /saveExistingGroupEvaluation\(groupName\)/);
+
+  const groupsListenerStart = js.indexOf('onValue(ref(db, "groups")');
+  const groupsListenerEnd = js.indexOf('onValue(ref(db, TEMPLATE_LIBRARY_PATH)', groupsListenerStart);
+  const groupsListener = js.slice(groupsListenerStart, groupsListenerEnd);
+  assert.match(groupsListener, /!groupEditorDialog\.open/);
+  assert.doesNotMatch(groupsListener, /groupEditorDialog\.open[\s\S]{0,300}editingGroupName\s*=\s*selectedManagedGroup/);
+});
