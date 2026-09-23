@@ -799,10 +799,10 @@ Both tests must assert exact values for:
 - 60-minute TTL constant;
 - allowed production origins.
 
-- [ ] write contract tests.
-- [ ] deliberately change one fixture/value to verify RED, then restore.
-- [ ] run all tests.
-- [ ] commit matching contract version `schemaVersion: 1`.
+- [x] write contract tests.
+- [x] deliberately change one fixture/value to verify RED, then restore.
+- [x] run all tests.
+- [x] commit matching contract version `schemaVersion: 1`.
 
 ## Task 16: Browser smoke test the complete story
 
@@ -832,6 +832,21 @@ Verify in browser:
 ## Task 17: Production verification and documentation
 
 **Repository:** both
+
+### Verified integration checkpoint — 2026-09-23
+
+- YouTeach integration branch: `live-cog-20260922`.
+- COG integration branch: `live-cog-20260922`.
+- Preview aliases are intentionally short and identical by branch prefix so YouTeach can derive the matching COG preview host without Cloudflare truncation/suffix mismatch.
+- YouTeach automated browser smoke run `35827006544`: GREEN. Covered teacher login, FANTASMA Smart Teams using all 20 existing Ghost memberships, COG assignment creation/teacher launch, Verb Runner session registration, GHOST20 Student Buzzer JOIN GAME, canonical YouTeach identity, heartbeat, idempotent result receipt, Teacher Results UI, and END ACTIVITY.
+- YouTeach verification run `35827006542`: 203/203 tests GREEN, server/client syntax GREEN, Pages build GREEN.
+- YouTeach preview deploy run `35827006728`: GREEN.
+- COG verification run `35766282665`: GREEN.
+- COG preview deploy run `35766282680`: GREEN.
+- Final live result storage uses `assignmentSubmissions/{assignmentId}/{studentKey}/cogResults/{resultId}` rather than a separate root result tree, because the current Firebase rules permit the existing assignment-submission surface and Teacher Assignments already observes it.
+- Multi-group students are eligible when the active working group is present in `groupMemberships`; the bridge token carries the active Buzzer group and does not overwrite the student's primary `groupName`.
+- Browser `.mjs` modules are part of the Pages artifact; `build-pages.sh` copies root `.mjs` files.
+
 
 Run YouTeach:
 
