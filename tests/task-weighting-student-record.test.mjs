@@ -324,3 +324,59 @@ test("a PJ explicitly linked to a Project criterion never affects T even when Ta
 
   assert.equal(result, null);
 });
+
+
+test("tagged Task assignments and eligible legacy untagged assignments share the same T denominator", () => {
+  const manualTaskCriterion = {
+    id: "task-manual",
+    name: "Task",
+    shortLabel: "T.",
+    weight: 10,
+    source: "manual",
+    order: 0
+  };
+
+  const result = taskCriterionContribution({
+    studentKey: "s1",
+    student: { groupName: "G", groupMemberships: { G: true } },
+    blockName: "Block 1",
+    criterion: manualTaskCriterion,
+    config: { criteria: [manualTaskCriterion] },
+    assignments: {
+      tagged: {
+        code: "HW-TAGGED-G-AAA11",
+        groupName: "G",
+        evaluationBlock: "Block 1",
+        groupEvaluationCriterionId: "task-manual",
+        evaluationTarget: {
+          groupName: "G",
+          block: "Block 1",
+          criterionId: "task-manual",
+          mode: "assignment"
+        }
+      },
+      legacy: {
+        code: "PJ-LEGACY-G-220926",
+        groupName: "G",
+        evaluationBlock: "Block 1",
+        evaluationTarget: {
+          groupName: "G",
+          block: "Block 1",
+          criterionId: "",
+          mode: "assignment"
+        }
+      }
+    },
+    submissions: {
+      tagged: { s1: { gradePublished: true, grading: { totalScore: 100 } } },
+      legacy: { s1: { gradePublished: true, grading: { totalScore: 50 } } }
+    },
+    requirePublished: true
+  });
+
+  assert.deepEqual(result, {
+    contribution: 7.5,
+    assignmentCount: 2,
+    gradedCount: 2
+  });
+});
