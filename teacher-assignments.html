@@ -1539,7 +1539,100 @@
       padding:7px
     }
 
-  </style>
+  
+    /* Assignment detail: full-width stacked Assignment then Criteria */
+    .assignment-overview-grid{
+      grid-template-columns:1fr!important;
+      gap:10px!important;
+    }
+    .assignment-overview-card,
+    .criteria-summary-card{
+      width:100%!important;
+      max-width:none!important;
+      min-height:0!important;
+      height:auto!important;
+      padding:10px 12px!important;
+    }
+    .assignment-overview-card{
+      align-items:flex-start!important;
+      overflow:visible!important;
+    }
+    .overview-main{
+      min-width:0!important;
+      flex:1 1 100%!important;
+      overflow:visible!important;
+    }
+    .overview-main h3{
+      font-size:18px!important;
+      line-height:1.2!important;
+      white-space:normal!important;
+      overflow:visible!important;
+      text-overflow:clip!important;
+    }
+    .overview-main .submission-meta{
+      margin-top:5px!important;
+      font-size:11px!important;
+      line-height:1.35!important;
+      white-space:normal!important;
+      overflow:visible!important;
+      text-overflow:clip!important;
+    }
+    .criteria-summary-card{
+      display:grid!important;
+      grid-template-rows:auto auto!important;
+      gap:8px!important;
+      overflow:visible!important;
+    }
+    .criteria-summary-header{
+      align-items:center!important;
+    }
+    .criteria-summary-title{
+      font-size:13px!important;
+      line-height:1.2!important;
+    }
+    .criteria-summary-card #editCriteriaBtn{
+      padding:6px 9px!important;
+      font-size:10px!important;
+    }
+    .criteria-summary-card #criteriaReadOnly{
+      display:grid!important;
+      gap:7px!important;
+      overflow:visible!important;
+    }
+    .criteria-summary-card .criteria-compact-list{
+      display:grid!important;
+      grid-template-columns:repeat(auto-fit,minmax(220px,1fr))!important;
+      gap:7px!important;
+      overflow:visible!important;
+    }
+    .criteria-summary-card .criteria-compact-item{
+      width:100%!important;
+      max-width:none!important;
+      padding:7px 9px!important;
+      font-size:11px!important;
+      line-height:1.25!important;
+      white-space:normal!important;
+      overflow:visible!important;
+    }
+    .criteria-summary-card .criteria-compact-item strong{
+      white-space:normal!important;
+      overflow:visible!important;
+      text-overflow:clip!important;
+    }
+    .criteria-summary-card .criteria-compact-notes{
+      max-width:none!important;
+      padding:6px 8px!important;
+      font-size:10px!important;
+      line-height:1.3!important;
+      white-space:normal!important;
+      overflow:visible!important;
+      text-overflow:clip!important;
+    }
+    .criteria-summary-card .criteria-compact-total{
+      font-size:11px!important;
+    }
+
+</style>
   <script>
     if (new URLSearchParams(window.location.search).get("module") === "1") {
       document.documentElement.classList.add("assignment-module-mode");
