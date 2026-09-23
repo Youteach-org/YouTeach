@@ -3527,6 +3527,8 @@ teacherAssignmentList.addEventListener("click", (event) => {
   if (!card) return;
 
   if (event.detail > 1) {
+    clearTimeout(assignmentCardClickTimer);
+    assignmentCardClickTimer = null;
     openAssignmentEditorFromCard(card);
     return;
   }
