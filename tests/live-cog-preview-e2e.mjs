@@ -417,6 +417,15 @@ async function main() {
   assert.equal(storedReceipt.percentage, 88);
 
   console.log("E2E teacher: Results UI shows receipt, not grade/PDF");
+  const assignmentRuntimeErrors = [];
+  teacherPage.on("pageerror", (error) => {
+    assignmentRuntimeErrors.push("pageerror: " + String(error?.stack || error?.message || error));
+  });
+  teacherPage.on("console", (message) => {
+    if (message.type() === "error") {
+      assignmentRuntimeErrors.push("console: " + message.text());
+    }
+  });
   await teacherPage.goto(`${YT}/teacher-assignments.html`, { waitUntil: "domcontentloaded" });
   await new Promise((resolve) => setTimeout(resolve, 2500));
   const assignmentsDiagnostic = await teacherPage.evaluate(() => ({
@@ -427,8 +436,10 @@ async function main() {
     listText: (document.querySelector("#teacherAssignmentList")?.textContent || "").trim().slice(0, 800),
     browserCount: (document.querySelector("#assignmentBrowserCount")?.textContent || "").trim(),
     codeFilter: document.querySelector("#assignmentFilterCode")?.value || "",
-    dateFilter: document.querySelector("#assignmentFilterDate")?.value || ""
+    dateFilter: document.querySelector("#assignmentFilterDate")?.value || "",
+    readyState: document.readyState
   }));
+  console.log("E2E diagnostic Teacher Assignments runtime errors", JSON.stringify(assignmentRuntimeErrors));
   console.log("E2E diagnostic Teacher Assignments list", JSON.stringify(assignmentsDiagnostic));
   const assignmentCard = teacherPage.locator(`[data-assignment-select="${assignmentId}"]`);
   await assignmentCard.waitFor({ state: "visible", timeout: 30000 });
