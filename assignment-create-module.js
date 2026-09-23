@@ -1456,12 +1456,6 @@ const assignmentEditorRoot = document.querySelector(".create-assignment-module")
 assignmentEditorRoot?.addEventListener("input", markFormDirty);
 assignmentEditorRoot?.addEventListener("change", markFormDirty);
 
-window.addEventListener("beforeunload", (event) => {
-  if (!formDirty) return;
-  event.preventDefault();
-  event.returnValue = "";
-});
-
 renderOtherTypeField();
 renderRubricEditors();
 renderTargetOptions();
