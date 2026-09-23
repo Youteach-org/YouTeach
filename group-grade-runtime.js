@@ -69,6 +69,24 @@ function isProjectCriterion(criterion = {}) {
   );
 }
 
+function staleTargetMatchesTaskCriterion(target = {}, criterion = {}, config = {}) {
+  const targetId = String(target?.criterionId || "").trim();
+  if (!targetId) return false;
+
+  const criteria = Array.isArray(config?.criteria) ? config.criteria : [];
+  if (criteria.some((item) => String(item?.id || "") === targetId)) return false;
+
+  const snapshotName = String(target?.criterionNameSnapshot || "").trim();
+  if (!snapshotName) return false;
+
+  if (isTaskCriterion({ name: snapshotName })) return true;
+
+  return (
+    normalizeCriterionText(snapshotName) === normalizeCriterionText(criterion?.name) ||
+    normalizeCriterionText(snapshotName) === normalizeCriterionText(criterion?.shortLabel)
+  );
+}
+
 export function taskCriterionForConfig(config = {}) {
   const criteria = Array.isArray(config?.criteria) ? config.criteria : [];
   const sourceTasks = criteria.filter((criterion) => criterion?.source === "tasks");
@@ -105,7 +123,10 @@ function taskAssignmentsForCriterion({
       target.criterionId || assignment.groupEvaluationCriterionId || ""
     );
 
-    if (criterionId === criterion.id) {
+    if (
+      criterionId === criterion.id ||
+      staleTargetMatchesTaskCriterion(target, criterion, config)
+    ) {
       tagged.push([assignmentId, assignment]);
       return;
     }
@@ -203,7 +224,10 @@ function assignmentScoresForCriterion({
       assignmentTarget(assignment).criterionId || assignment.groupEvaluationCriterionId || ""
     );
 
-    if (criterionId === criterion.id) {
+    if (
+      criterionId === criterion.id ||
+      staleTargetMatchesTaskCriterion(assignmentTarget(assignment), criterion, config)
+    ) {
       tagged.push(normalizedScore);
       return;
     }
