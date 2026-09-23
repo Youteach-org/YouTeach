@@ -1632,6 +1632,44 @@
       font-size:11px!important;
     }
 
+
+    .criteria-summary-card #criteriaReadOnly{
+      grid-template-rows:auto auto auto!important;
+      gap:8px!important;
+    }
+    .criteria-assignment-instructions{
+      display:grid;
+      gap:5px;
+      padding:10px 12px;
+      border:1px solid #bfdbfe;
+      border-radius:9px;
+      background:#eff6ff;
+      color:#0f172a;
+      font-size:12px;
+      line-height:1.45;
+      white-space:pre-wrap;
+      overflow:visible;
+    }
+    .criteria-assignment-instructions strong{
+      font-size:12px;
+      color:#1d4ed8;
+    }
+    .criteria-chatgpt-instructions{
+      min-width:0;
+      flex:1 1 auto;
+      padding:7px 9px;
+      border:1px solid #e2e8f0;
+      border-radius:8px;
+      background:#f8fafc;
+      font-size:10px;
+      line-height:1.35;
+      white-space:normal;
+      overflow:visible;
+    }
+    .criteria-chatgpt-instructions strong{
+      display:block;
+      margin-bottom:2px;
+    }
 </style>
   <script>
     if (new URLSearchParams(window.location.search).get("module") === "1") {
@@ -2045,7 +2083,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-  <script type="module" src="teacher-assignments.js?v=assignments-repair-20260920"></script>
+  <script type="module" src="teacher-assignments.js?v=planning-unsaved-instructions-20260922"></script>
   <script defer src="shared-ui-fixes.js?v=titlebar-hamburger-20260916"></script>
 </body>
 </html>
