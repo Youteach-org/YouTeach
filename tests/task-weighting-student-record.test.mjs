@@ -192,3 +192,135 @@ test("legacy task points remain the fallback only when the block has no task ass
 
   assert.deepEqual(value, { value: 7, mode: "contribution" });
 });
+
+
+test("manual-source criterion named Task is treated as the Tasks criterion", () => {
+  const manualTaskCriterion = {
+    id: "task-manual",
+    name: "Task",
+    shortLabel: "T.",
+    weight: 10,
+    source: "manual",
+    order: 3
+  };
+  const manualConfig = {
+    criteria: [
+      { id: "written", name: "Written Exam", shortLabel: "E.", weight: 35, source: "manual", order: 0 },
+      { id: "oral", name: "Oral Exam", shortLabel: "Pr. O.", weight: 40, source: "manual", order: 1 },
+      { id: "verbs", name: "Verb Exam", shortLabel: "V.", weight: 15, source: "manual", order: 2 },
+      manualTaskCriterion
+    ]
+  };
+
+  const result = taskCriterionContribution({
+    studentKey: "s1",
+    student: { groupName: "G", groupMemberships: { G: true } },
+    blockName: "Block 1",
+    criterion: manualTaskCriterion,
+    config: manualConfig,
+    assignments: {
+      a1: {
+        code: "HW-ONE-G-220926",
+        groupName: "G",
+        evaluationBlock: "Block 1",
+        evaluationTarget: { groupName: "G", block: "Block 1", criterionId: "", mode: "assignment" }
+      }
+    },
+    submissions: {
+      a1: { s1: { gradePublished: true, grading: { totalScore: 50 } } }
+    }
+  });
+
+  assert.deepEqual(result, {
+    contribution: 5,
+    assignmentCount: 1,
+    gradedCount: 1
+  });
+});
+
+test("an untagged project can fall into Task only when no separate Project criterion exists", () => {
+  const manualTaskCriterion = {
+    id: "task-manual",
+    name: "Task",
+    shortLabel: "T.",
+    weight: 10,
+    source: "manual",
+    order: 0
+  };
+  const project = {
+    code: "PJ-MODEL-G-220926",
+    groupName: "G",
+    evaluationBlock: "Block 1",
+    evaluationTarget: { groupName: "G", block: "Block 1", criterionId: "", mode: "assignment" }
+  };
+
+  const withoutProjectCriterion = taskCriterionContribution({
+    studentKey: "s1",
+    student: { groupName: "G", groupMemberships: { G: true } },
+    blockName: "Block 1",
+    criterion: manualTaskCriterion,
+    config: { criteria: [manualTaskCriterion] },
+    assignments: { p1: project },
+    submissions: { p1: { s1: { grading: { totalScore: 50 } } } }
+  });
+  assert.equal(withoutProjectCriterion.assignmentCount, 1);
+  assert.equal(withoutProjectCriterion.contribution, 5);
+
+  const withProjectCriterion = taskCriterionContribution({
+    studentKey: "s1",
+    student: { groupName: "G", groupMemberships: { G: true } },
+    blockName: "Block 1",
+    criterion: manualTaskCriterion,
+    config: {
+      criteria: [
+        manualTaskCriterion,
+        { id: "project", name: "Project", shortLabel: "PJ", weight: 20, source: "manual", order: 1 }
+      ]
+    },
+    assignments: { p1: project },
+    submissions: { p1: { s1: { grading: { totalScore: 50 } } } }
+  });
+  assert.equal(withProjectCriterion, null);
+});
+
+test("a PJ explicitly linked to a Project criterion never affects T even when Task is manual-source", () => {
+  const manualTaskCriterion = {
+    id: "task-manual",
+    name: "Task",
+    shortLabel: "T.",
+    weight: 10,
+    source: "manual",
+    order: 0
+  };
+  const projectCriterionManual = {
+    id: "project-manual",
+    name: "Project",
+    shortLabel: "PJ",
+    weight: 20,
+    source: "manual",
+    order: 1
+  };
+  const result = taskCriterionContribution({
+    studentKey: "s1",
+    student: { groupName: "G", groupMemberships: { G: true } },
+    blockName: "Block 1",
+    criterion: manualTaskCriterion,
+    config: { criteria: [manualTaskCriterion, projectCriterionManual] },
+    assignments: {
+      p1: {
+        code: "PJ-MODEL-G-220926",
+        groupName: "G",
+        evaluationBlock: "Block 1",
+        evaluationTarget: {
+          groupName: "G",
+          block: "Block 1",
+          criterionId: "project-manual",
+          mode: "assignment"
+        }
+      }
+    },
+    submissions: { p1: { s1: { grading: { totalScore: 100 } } } }
+  });
+
+  assert.equal(result, null);
+});
