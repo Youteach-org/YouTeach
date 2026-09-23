@@ -118,12 +118,12 @@ function taskAssignmentsForCriterion({
     }
   });
 
-  if (tagged.length) return tagged;
-
   const configuredTaskCriterion = taskCriterionForConfig(config);
-  if (configuredTaskCriterion?.id === criterion?.id) return untaggedFallback;
+  if (configuredTaskCriterion?.id === criterion?.id) {
+    return [...tagged, ...untaggedFallback];
+  }
 
-  return [];
+  return tagged;
 }
 
 export function taskCriterionContribution({
