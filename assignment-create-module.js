@@ -94,6 +94,7 @@ const createFromLibraryBtn = document.getElementById("createFromLibraryBtn");
 const assignmentLibraryPanel = document.getElementById("assignmentLibraryPanel");
 const assignmentLibrarySearch = document.getElementById("assignmentLibrarySearch");
 const assignmentLibraryTypeFilter = document.getElementById("assignmentLibraryTypeFilter");
+const assignmentLibraryGroupFilter = document.getElementById("assignmentLibraryGroupFilter");
 const assignmentLibrarySourceFilter = document.getElementById("assignmentLibrarySourceFilter");
 const clearAssignmentLibraryFiltersBtn = document.getElementById("clearAssignmentLibraryFiltersBtn");
 const assignmentLibraryList = document.getElementById("assignmentLibraryList");
@@ -867,6 +868,7 @@ function replaceLibraryOptions(select, values, allLabel) {
 function renderAssignmentLibraryFilters() {
   const entries = libraryEntries();
   replaceLibraryOptions(assignmentLibraryTypeFilter, entries.map((entry) => entry.type), "All types");
+  replaceLibraryOptions(assignmentLibraryGroupFilter, entries.map((entry) => entry.groupName), "All groups");
 }
 
 function filteredLibraryEntries() {
@@ -1345,10 +1347,12 @@ createFromLibraryBtn.addEventListener("click", () => {
 
 assignmentLibrarySearch.addEventListener("input", renderAssignmentLibrary);
 assignmentLibraryTypeFilter.addEventListener("change", renderAssignmentLibrary);
+assignmentLibraryGroupFilter.addEventListener("change", renderAssignmentLibrary);
 assignmentLibrarySourceFilter.addEventListener("change", renderAssignmentLibrary);
 clearAssignmentLibraryFiltersBtn.addEventListener("click", () => {
   assignmentLibrarySearch.value = "";
   assignmentLibraryTypeFilter.value = "";
+  assignmentLibraryGroupFilter.value = "";
   assignmentLibrarySourceFilter.value = "";
   renderAssignmentLibrary();
 });
