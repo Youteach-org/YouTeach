@@ -4,7 +4,7 @@ import { requireStudentSession, clearStudentSession, saveLeaveLog } from "./stud
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
 import { studentGroupNames, studentInGroup } from "./student-groups.js";
 import { groupEvaluationConfig } from "./group-evaluation-model.js";
-import { taskCriterionContribution } from "./group-grade-runtime.js";
+import { taskCriterionContribution, taskCriterionForConfig } from "./group-grade-runtime.js";
 import {
   nextStudentDisplayMode,
   normalizeStudentDisplayMode,
@@ -173,7 +173,7 @@ function summaryGroupName(student) {
 function taskGradeState(student, blockName) {
   const groupName = summaryGroupName(student);
   const config = groupEvaluationConfig(groupsCache?.[groupName] || {});
-  const criterion = config.criteria.find((item) => item.source === "tasks");
+  const criterion = taskCriterionForConfig(config);
 
   if (criterion) {
     const assignmentResult = taskCriterionContribution({
