@@ -176,3 +176,12 @@ test('selected Assignment Criteria card shows student instructions prominently a
   const block = assignmentsJs.slice(start, end);
   assert.doesNotMatch(block, />Notes:/);
 });
+
+
+test('Project checkpoints card stays visible in Create Assignment and activates for PJ', () => {
+  assert.match(createModuleHtml, /<section id="projectCheckpointBuilder" class="project-builder">/);
+  assert.match(createModuleHtml, /id="projectCheckpointState"/);
+  assert.match(createModuleJs, /projectCheckpointBuilder\.classList\.toggle\("inactive", !projectSelected\)/);
+  assert.match(createModuleJs, /projectCheckpointState\.textContent/);
+  assert.match(createModuleJs, /addProjectCheckpointBtn\.disabled = !projectSelected/);
+});
