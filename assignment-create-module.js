@@ -2,7 +2,7 @@ import { db } from "./firebase.js";
 import { visibleGroups } from "./group-state.js";
 import { ref, onValue, push, set, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireTeacherAuth, getTeacherName } from "./teacher-auth.js";
-import { readAssignmentsModuleContext } from "./assignment-module-launcher.js?v=popup-library-20260920";
+import { readAssignmentsModuleContext } from "./assignment-module-launcher.js?v=unsaved-close-20260922";
 import { evaluationBlockNames, groupEvaluationConfig } from "./group-evaluation-model.js";
 import {
   buildAssignmentEvaluationTarget,
@@ -85,6 +85,7 @@ const createDistributionRadios = document.querySelectorAll('input[name="createDi
 const addCreateCriterionBtn = document.getElementById("addCreateCriterionBtn");
 const assignmentEvaluationNotes = document.getElementById("assignmentEvaluationNotes");
 const projectCheckpointBuilder = document.getElementById("projectCheckpointBuilder");
+const projectCheckpointState = document.getElementById("projectCheckpointState");
 const projectCheckpointRows = document.getElementById("projectCheckpointRows");
 const addProjectCheckpointBtn = document.getElementById("addProjectCheckpointBtn");
 const createAssignmentBtn = document.getElementById("createAssignmentBtn");
@@ -94,6 +95,7 @@ const createFromLibraryBtn = document.getElementById("createFromLibraryBtn");
 const assignmentLibraryPanel = document.getElementById("assignmentLibraryPanel");
 const assignmentLibrarySearch = document.getElementById("assignmentLibrarySearch");
 const assignmentLibraryTypeFilter = document.getElementById("assignmentLibraryTypeFilter");
+const assignmentLibraryGroupFilter = document.getElementById("assignmentLibraryGroupFilter");
 const assignmentLibrarySourceFilter = document.getElementById("assignmentLibrarySourceFilter");
 const clearAssignmentLibraryFiltersBtn = document.getElementById("clearAssignmentLibraryFiltersBtn");
 const assignmentLibraryList = document.getElementById("assignmentLibraryList");
@@ -110,6 +112,24 @@ let loadedLibrarySource = null;
 let creationMode = "scratch";
 let editingLoaded = false;
 let editingHasSubmissions = false;
+let draftAssignmentId = editingAssignmentId || push(ref(db, "assignments")).key || `assignment-${Date.now()}`;
+let formDirty = false;
+
+function postDirtyState(type) {
+  if (window.parent === window) return;
+  window.parent.postMessage({ type }, window.location.origin);
+}
+
+function markFormDirty() {
+  if (formDirty) return;
+  formDirty = true;
+  postDirtyState("youteach:assignment-dirty");
+}
+
+function markFormClean() {
+  formDirty = false;
+  postDirtyState("youteach:assignment-clean");
+}
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, (char) => ({
@@ -439,17 +459,6 @@ function compactGroupCode(value) {
   return tokens.map((token) => token[0]).join("").slice(0, 4);
 }
 
-function dateCode(value) {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return [
-    String(date.getDate()).padStart(2, "0"),
-    String(date.getMonth() + 1).padStart(2, "0"),
-    String(date.getFullYear()).slice(-2)
-  ].join("");
-}
-
 function selectedTypeCode() {
   if (assignmentType.value !== "OTHER") return assignmentType.value;
   return compactInitials(assignmentOtherType.value, 3) || "OT";
@@ -471,15 +480,22 @@ function generatedTeamCodePart() {
   return number ? `T${number}` : (compactInitials(target.label, 3) || "TM");
 }
 
+function internalCodeSuffix(value = draftAssignmentId) {
+  return String(value || "")
+    .replace(/[^A-Za-z0-9]/g, "")
+    .slice(-5)
+    .toUpperCase() || "NEW";
+}
+
 function taskCodeBase() {
   const typePart = selectedTypeCode();
   const titlePart = compactTitleCode(assignmentTitle.value);
   const groupPart = compactGroupCode(assignmentGroup.value);
   const teamPart = generatedTeamCodePart();
-  const datePart = dateCode(assignmentDueAt.value);
+  const idPart = internalCodeSuffix();
 
-  if (!typePart || !titlePart || !groupPart || !datePart) return "";
-  return [typePart, titlePart, groupPart, teamPart, datePart].filter(Boolean).join("-");
+  if (!typePart || !titlePart || !groupPart || !idPart) return "";
+  return [typePart, titlePart, groupPart, teamPart, idPart].filter(Boolean).join("-");
 }
 
 function taskCodeExists(code) {
@@ -512,13 +528,13 @@ function refreshAutomaticTaskCode() {
   assignmentCode.value = code;
 
   if (!code) {
-    taskCodeStatus.textContent = "Complete type, name, target, and due date to generate the code.";
+    taskCodeStatus.textContent = "Complete type, name, and target to generate the code.";
     taskCodeStatus.style.color = "#64748b";
     return;
   }
 
   if (taskCodeExists(code)) {
-    taskCodeStatus.textContent = "This task code already exists. Change the name, target, date, or type.";
+    taskCodeStatus.textContent = "This task code already exists. Change the name, target, or type.";
     taskCodeStatus.style.color = "#b91c1c";
     return;
   }
@@ -763,7 +779,14 @@ function addProjectCheckpointRow(checkpoint = {}) {
 
 function refreshProjectCheckpointBuilder() {
   const projectSelected = assignmentType.value === "PJ";
-  projectCheckpointBuilder.hidden = !projectSelected;
+  projectCheckpointBuilder.hidden = false;
+  projectCheckpointBuilder.classList.toggle("inactive", !projectSelected);
+  projectCheckpointBuilder.setAttribute("aria-disabled", String(!projectSelected));
+  addProjectCheckpointBtn.disabled = !projectSelected;
+  projectCheckpointState.textContent = projectSelected
+    ? "Project checkpoints are active for this assignment."
+    : "Select Project (PJ) to configure checkpoints.";
+
   if (projectSelected && !projectCheckpointRows.querySelector("[data-project-checkpoint-row]")) {
     addProjectCheckpointRow();
   }
@@ -867,6 +890,7 @@ function replaceLibraryOptions(select, values, allLabel) {
 function renderAssignmentLibraryFilters() {
   const entries = libraryEntries();
   replaceLibraryOptions(assignmentLibraryTypeFilter, entries.map((entry) => entry.type), "All types");
+  replaceLibraryOptions(assignmentLibraryGroupFilter, entries.map((entry) => entry.groupName), "All groups");
 }
 
 function filteredLibraryEntries() {
@@ -1020,8 +1044,9 @@ function loadLibraryEntry(key) {
   refreshProjectCheckpointBuilder();
   refreshAutomaticTaskCode();
   renderAssignmentLibrary();
-  assignmentLibraryStatus.textContent = `Loaded: ${entry.title}. Choose the new target and due date.`;
-  setStatus("Previous assignment loaded. Review it and choose the new due date.", "ok");
+  assignmentLibraryStatus.textContent = `Loaded: ${entry.title}. Review the target and optional due date.`;
+  setStatus("Previous assignment loaded. Review it before creating the new assignment.", "ok");
+  markFormDirty();
 }
 
 function toDateTimeLocal(timestamp) {
@@ -1072,7 +1097,7 @@ function loadEditingAssignmentIfReady() {
   assignmentCode.readOnly = true;
   createAssignmentBtn.textContent = "Save Assignment";
   document.getElementById("assignmentModuleTitle").textContent = "Edit Assignment";
-  document.getElementById("assignmentModuleSubtitle").textContent = "Update this assignment without changing its Task Code.";
+  document.getElementById("assignmentModuleSubtitle").textContent = "Update this assignment. Its internal ID and Task Code stay stable.";
   document.querySelector(".creation-source-toggle").hidden = true;
   assignmentLibraryPanel.hidden = true;
   editingLoaded = true;
@@ -1107,7 +1132,6 @@ async function saveEditingAssignment() {
   if (!groupName) return setStatus("Select a working group.", "bad");
   if (!evaluationBlock) return setStatus("Select the block / unit for this assignment.", "bad");
   if (typeCode !== "EX" && !groupCriterion) return setStatus("Select the category for this assignment.", "bad");
-  if (!dueAt || Number.isNaN(dueAt)) return setStatus("Select the due date and time.", "bad");
   if (rubric.error) return setStatus(rubric.error, "bad");
 
   const now = Date.now();
@@ -1122,10 +1146,15 @@ async function saveEditingAssignment() {
   });
 
   const patch = {
+    internalId: String(existing.internalId || editingAssignmentId),
     title,
     instructions: storedInstructions,
     evaluationNotes: assignmentEvaluationNotes.value.trim(),
     dueAt,
+    planning: !dueAt,
+    active: dueAt
+      ? (existing.planning ? true : Boolean(existing.active))
+      : false,
     evaluationBlock,
     groupEvaluationCriterionId: groupCriterion?.id || "",
     groupEvaluationCriterionName: groupCriterion?.name || "",
@@ -1163,6 +1192,7 @@ async function saveEditingAssignment() {
       });
     }
     setStatus("Assignment updated.", "ok");
+    markFormClean();
     if (window.parent !== window) {
       window.parent.postMessage({
         type: "youteach:assignment-updated",
@@ -1235,7 +1265,6 @@ async function createAssignment() {
   if (assignmentType.value === "OTHER" && !assignmentOtherType.value.trim()) {
     return setStatus("Specify the assignment type.", "bad");
   }
-  if (!dueAt || Number.isNaN(dueAt)) return setStatus("Select the due date and time.", "bad");
 
   if (hasGeneratedTeamContext() && !normalizeRecipientKeys(targetMetadata.recipientStudentKeys).length) {
     return setStatus("The selected generated team has no students.", "bad");
@@ -1253,8 +1282,8 @@ async function createAssignment() {
   const project = collectProjectCheckpoints(dueAt);
   if (project.error) return setStatus(project.error, "bad");
 
-  if (!code) return setStatus("Complete type, name, target, and due date to generate the Task Code.", "bad");
-  if (taskCodeExists(code)) return setStatus("That activity already exists. Change the name, target, date, or type.", "bad");
+  if (!code) return setStatus("Complete type, name, and target to generate the Task Code.", "bad");
+  if (taskCodeExists(code)) return setStatus("That activity code already exists. Change the name, target, or type.", "bad");
 
   const cogLaunchWindow = typeCode === "COG" ? window.open("about:blank", "_blank") : null;
   if (cogLaunchWindow) cogLaunchWindow.opener = null;
@@ -1265,7 +1294,7 @@ async function createAssignment() {
 
   try {
     const now = Date.now();
-    const target = push(ref(db, "assignments"));
+    const target = ref(db, `assignments/${draftAssignmentId}`);
     const storedInstructions = buildStoredInstructions(assignmentInstructions.value.trim(), {
       schemaVersion: 1,
       assignmentType: typeLabel,
@@ -1277,6 +1306,7 @@ async function createAssignment() {
     });
 
     const payload = {
+      internalId: draftAssignmentId,
       code,
       title,
       instructions: storedInstructions,
@@ -1316,7 +1346,8 @@ async function createAssignment() {
       },
       ...targetMetadata,
       dueAt,
-      active: true,
+      planning: !dueAt,
+      active: Boolean(dueAt),
       storageProvider: "google-drive",
       createdAt: now,
       createdBy: getTeacherName()
@@ -1343,7 +1374,7 @@ async function createAssignment() {
     if (typeCode === "COG") {
       setStatus("Assignment created. Opening Classroom Online Games...", "ok");
       try {
-        await launchCogAssignment(target.key, cogLaunchWindow);
+        await launchCogAssignment(target.key || draftAssignmentId, cogLaunchWindow);
         cogLaunchSucceeded = true;
       } catch (launchError) {
         if (cogLaunchWindow && !cogLaunchWindow.closed) cogLaunchWindow.close();
@@ -1353,13 +1384,14 @@ async function createAssignment() {
         );
       }
     } else {
-      setStatus("Assignment created.", "ok");
+      setStatus(dueAt ? "Assignment created." : "Planning assignment created without a due date.", "ok");
     }
+    markFormClean();
 
     if (window.parent !== window) {
       window.parent.postMessage({
         type: "youteach:assignment-created",
-        assignmentId: target.key,
+        assignmentId: draftAssignmentId,
         code
       }, window.location.origin);
     }
@@ -1375,7 +1407,11 @@ async function createAssignment() {
 }
 
 createFromScratchBtn.addEventListener("click", () => {
+  if (!editingAssignmentId) {
+    draftAssignmentId = push(ref(db, "assignments")).key || `assignment-${Date.now()}`;
+  }
   setCreationMode("scratch", { reset: true });
+  markFormDirty();
 });
 
 createFromLibraryBtn.addEventListener("click", () => {
@@ -1384,10 +1420,12 @@ createFromLibraryBtn.addEventListener("click", () => {
 
 assignmentLibrarySearch.addEventListener("input", renderAssignmentLibrary);
 assignmentLibraryTypeFilter.addEventListener("change", renderAssignmentLibrary);
+assignmentLibraryGroupFilter.addEventListener("change", renderAssignmentLibrary);
 assignmentLibrarySourceFilter.addEventListener("change", renderAssignmentLibrary);
 clearAssignmentLibraryFiltersBtn.addEventListener("click", () => {
   assignmentLibrarySearch.value = "";
   assignmentLibraryTypeFilter.value = "";
+  assignmentLibraryGroupFilter.value = "";
   assignmentLibrarySourceFilter.value = "";
   renderAssignmentLibrary();
 });
@@ -1444,23 +1482,33 @@ createDistributionRadios.forEach((radio) => radio.addEventListener("change", ref
 addCreateCriterionBtn.addEventListener("click", () => {
   addCustomCriterionRow();
   refreshDistribution();
+  markFormDirty();
 });
 
-addProjectCheckpointBtn.addEventListener("click", addProjectCheckpointRow);
+addProjectCheckpointBtn.addEventListener("click", () => {
+  addProjectCheckpointRow();
+  markFormDirty();
+});
 projectCheckpointRows.addEventListener("click", (event) => {
   const remove = event.target.closest("[data-remove-checkpoint]");
   if (!remove) return;
   remove.closest("[data-project-checkpoint-row]")?.remove();
   if (!projectCheckpointRows.querySelector("[data-project-checkpoint-row]")) addProjectCheckpointRow();
+  markFormDirty();
 });
 
 createAssignmentBtn.addEventListener("click", createAssignment);
+
+const assignmentEditorRoot = document.querySelector(".create-assignment-module");
+assignmentEditorRoot?.addEventListener("input", markFormDirty);
+assignmentEditorRoot?.addEventListener("change", markFormDirty);
 
 renderOtherTypeField();
 renderRubricEditors();
 renderTargetOptions();
 refreshProjectCheckpointBuilder();
 setCreationMode("scratch");
+markFormClean();
 
 onValue(ref(db, "groups"), (snapshot) => {
   groupsCache = visibleGroups(snapshot.val() || {});
