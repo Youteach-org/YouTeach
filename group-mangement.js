@@ -822,8 +822,7 @@ async function refreshGradeEvidenceCaches() {
   pointsLogCache = pointsLogSnapshot.val() || {};
 }
 
-async function saveExistingGroupEvaluation() {
-  const groupName = editingGroupName;
+async function saveExistingGroupEvaluation(groupName = editingGroupName) {
   if (!groupName || !groupsCache[groupName]) return;
 
   const version = ++evaluationAutosaveVersion;
@@ -904,15 +903,19 @@ async function saveExistingGroupEvaluation() {
 }
 
 function scheduleExistingGroupEvaluationSave({ immediate = false } = {}) {
-  if (!editingGroupName || !groupsCache[editingGroupName]) return;
+  const groupName = editingGroupName;
+  if (!groupName || !groupsCache[groupName]) return;
+
   clearTimeout(evaluationAutosaveTimer);
   if (immediate) {
-    saveExistingGroupEvaluation();
+    saveExistingGroupEvaluation(groupName);
     return;
   }
+
   evaluationAutosaveTimer = setTimeout(() => {
     evaluationAutosaveTimer = null;
-    saveExistingGroupEvaluation();
+    if (editingGroupName !== groupName) return;
+    saveExistingGroupEvaluation(groupName);
   }, 450);
 }
 
@@ -2424,7 +2427,11 @@ onValue(ref(db, "groups"), async (snapshot) => {
   if (selectedManagedGroup && !groupsCache[selectedManagedGroup]) {
     resetGroupForm();
   } else if (selectedManagedGroup) {
-    if (!creatingGroup && editingGroupName !== selectedManagedGroup) {
+    if (
+      !creatingGroup &&
+      !groupEditorDialog.open &&
+      editingGroupName !== selectedManagedGroup
+    ) {
       editingGroupName = selectedManagedGroup;
       loadGroupEditor(selectedManagedGroup, { preserveView: true });
     }
