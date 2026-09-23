@@ -3,7 +3,7 @@ import { visibleGroups } from "./group-state.js";
 import { studentGroupNames, studentInGroup } from "./student-groups.js";
 import { ref, get, onValue, push, set, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
-import { openAssignmentsModule, readAssignmentsModuleContext } from "./assignment-module-launcher.js?v=popup-library-20260920";
+import { openAssignmentsModule, readAssignmentsModuleContext } from "./assignment-module-launcher.js?v=unsaved-close-20260922";
 import {
   buildAssignmentTemplateRecord,
   buildAssignedInstanceFromTemplate,
@@ -1597,12 +1597,22 @@ function renderEvaluationCriteria(assignment) {
   const rubric = getAssignmentRubric(assignment);
   const criteria = rubric.criteria;
   const notes = String(rubric.notes || "").trim();
+  const studentInstructions = String(
+    splitStoredInstructions(assignment.instructions).visibleInstructions || ""
+  ).trim();
   const total = criteria.reduce((sum, criterion) => sum + Number(criterion.maxPoints || 0), 0);
 
-  if (!criteria.length && !notes) {
-    criteriaReadOnly.innerHTML = '<div class="status-text">No evaluation criteria.</div>';
+  if (!criteria.length && !notes && !studentInstructions) {
+    criteriaReadOnly.innerHTML = '<div class="status-text">No instructions or evaluation criteria.</div>';
     return;
   }
+
+  const instructionsHtml = studentInstructions
+    ? `<section class="criteria-assignment-instructions">
+        <strong>Assignment instructions</strong>
+        <div>${escapeHtml(studentInstructions)}</div>
+      </section>`
+    : "";
 
   const criteriaHtml = criteria.length
     ? `<div class="criteria-compact-list">
@@ -1615,15 +1625,21 @@ function renderEvaluationCriteria(assignment) {
       </div>`
     : "";
 
-  const notesHtml = notes
-    ? `<div class="criteria-compact-notes" title="${escapeHtml(notes)}">Notes: ${escapeHtml(notes)}</div>`
+  const chatGptHtml = notes
+    ? `<div class="criteria-chatgpt-instructions">
+        <strong>ChatGPT review instructions:</strong>
+        <span>${escapeHtml(notes)}</span>
+      </div>`
     : "";
 
   criteriaReadOnly.innerHTML = `
+    ${instructionsHtml}
     ${criteriaHtml}
     <div class="criteria-compact-footer">
-      ${notesHtml}
-      <div class="criteria-compact-total">${Number(total.toFixed(2))} / 100 points</div>
+      ${chatGptHtml}
+      ${criteria.length
+        ? `<div class="criteria-compact-total">${Number(total.toFixed(2))} / 100 points</div>`
+        : ""}
     </div>
   `;
 }
