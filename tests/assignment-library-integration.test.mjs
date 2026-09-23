@@ -60,6 +60,6 @@ test('Assignment Library group filter exists everywhere the renderer expects it'
 test('Create Assignment popup cache-busts the current module revision', () => {
   assert.match(
     moduleHtml,
-    /assignment-create-module\.js\?v=planning-unsaved-instructions-20260922/
+    /assignment-create-module\.js\?v=doubleclick-task-checkpoints-20260923/
   );
 });
