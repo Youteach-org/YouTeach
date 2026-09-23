@@ -30,6 +30,61 @@ function assignmentBlock(assignment) {
   return String(assignmentTarget(assignment).block || "").trim();
 }
 
+function normalizeCriterionText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function assignmentTypeCodeForRuntime(assignment = {}) {
+  const explicit = String(assignment?.assignmentTypeCode || "").trim().toUpperCase();
+  if (explicit) return explicit;
+  return String(assignment?.code || "")
+    .trim()
+    .toUpperCase()
+    .split("-")
+    .filter(Boolean)[0] || "";
+}
+
+function isTaskCriterion(criterion = {}) {
+  if (criterion?.source === "tasks") return true;
+  const name = normalizeCriterionText(criterion?.name);
+  const shortLabel = normalizeCriterionText(criterion?.shortLabel);
+  return (
+    ["task", "tasks", "tarea", "tareas", "homework"].includes(name) ||
+    ["t", "task", "tasks"].includes(shortLabel)
+  );
+}
+
+function isProjectCriterion(criterion = {}) {
+  const name = normalizeCriterionText(criterion?.name);
+  const shortLabel = normalizeCriterionText(criterion?.shortLabel);
+  return (
+    name.includes("project") ||
+    name.includes("proyecto") ||
+    ["pj", "proj"].includes(shortLabel)
+  );
+}
+
+export function taskCriterionForConfig(config = {}) {
+  const criteria = Array.isArray(config?.criteria) ? config.criteria : [];
+  const sourceTasks = criteria.filter((criterion) => criterion?.source === "tasks");
+  if (sourceTasks.length === 1) return sourceTasks[0];
+
+  const semanticTasks = criteria.filter(isTaskCriterion);
+  return semanticTasks.length === 1 ? semanticTasks[0] : null;
+}
+
+function assignmentHasSeparateProjectCriterion(assignment, config, taskCriterion) {
+  if (assignmentTypeCodeForRuntime(assignment) !== "PJ") return false;
+  return (config?.criteria || []).some((criterion) =>
+    criterion?.id !== taskCriterion?.id && isProjectCriterion(criterion)
+  );
+}
+
 function taskAssignmentsForCriterion({
   studentKey,
   student,
@@ -56,15 +111,17 @@ function taskAssignmentsForCriterion({
     }
 
     if (!criterionId) {
-      const typeCode = String(assignment.assignmentTypeCode || "").trim().toUpperCase();
-      if (typeCode !== "EX") untaggedFallback.push([assignmentId, assignment]);
+      const typeCode = assignmentTypeCodeForRuntime(assignment);
+      if (typeCode === "EX") return;
+      if (assignmentHasSeparateProjectCriterion(assignment, config, criterion)) return;
+      untaggedFallback.push([assignmentId, assignment]);
     }
   });
 
   if (tagged.length) return tagged;
 
-  const taskCriteria = (config?.criteria || []).filter((item) => item.source === "tasks");
-  if (criterion.source === "tasks" && taskCriteria.length === 1) return untaggedFallback;
+  const configuredTaskCriterion = taskCriterionForConfig(config);
+  if (configuredTaskCriterion?.id === criterion?.id) return untaggedFallback;
 
   return [];
 }
@@ -79,7 +136,7 @@ export function taskCriterionContribution({
   submissions = {},
   requirePublished = false
 }) {
-  if (criterion?.source !== "tasks") return null;
+  if (!isTaskCriterion(criterion)) return null;
 
   const taskAssignments = taskAssignmentsForCriterion({
     studentKey,
@@ -151,16 +208,18 @@ function assignmentScoresForCriterion({
       return;
     }
 
-    if (!criterionId && criterion.source === "tasks") {
-      const typeCode = String(assignment.assignmentTypeCode || "").trim().toUpperCase();
-      if (typeCode !== "EX") untaggedTaskFallback.push(normalizedScore);
+    if (!criterionId && isTaskCriterion(criterion)) {
+      const typeCode = assignmentTypeCodeForRuntime(assignment);
+      if (typeCode === "EX") return;
+      if (assignmentHasSeparateProjectCriterion(assignment, config, criterion)) return;
+      untaggedTaskFallback.push(normalizedScore);
     }
   });
 
   if (tagged.length) return tagged;
 
-  const taskCriteria = (config?.criteria || []).filter((item) => item.source === "tasks");
-  if (criterion.source === "tasks" && taskCriteria.length === 1) return untaggedTaskFallback;
+  const configuredTaskCriterion = taskCriterionForConfig(config);
+  if (configuredTaskCriterion?.id === criterion?.id) return untaggedTaskFallback;
 
   return [];
 }
@@ -182,7 +241,7 @@ export function criterionValue({
 }) {
   const exam = student?.examPoints?.[blockName] || {};
 
-  if (criterion.source === "tasks") {
+  if (isTaskCriterion(criterion)) {
     const taskResult = taskCriterionContribution({
       studentKey,
       student,
@@ -194,6 +253,10 @@ export function criterionValue({
     });
     if (taskResult) {
       return { value: taskResult.contribution, mode: "contribution" };
+    }
+
+    if (student?.taskPoints?.[blockName] !== undefined) {
+      return { value: Number(student.taskPoints[blockName] || 0), mode: "contribution" };
     }
   }
 
