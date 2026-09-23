@@ -435,13 +435,6 @@ function applyAssignmentGroupContext() {
   const workingGroup = currentCreateWorkingGroup();
 
   if (workingGroup) {
-    if (![...assignmentGroup.options].some((option) => option.value === workingGroup)) {
-      const option = document.createElement("option");
-      option.value = workingGroup;
-      option.textContent = workingGroup;
-      assignmentGroup.appendChild(option);
-    }
-
     assignmentGroup.value = workingGroup;
     assignmentGroup.disabled = true;
     if (assignmentGroupHelp) {
