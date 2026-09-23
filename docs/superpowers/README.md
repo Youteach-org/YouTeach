@@ -55,14 +55,7 @@ GitHub is the source of truth. Chat memory is secondary.
    - verified identity handoff and automatic result return;
    - explicit end plus 60-minute zero-presence expiry.
 
-7. `docs/superpowers/specs/2026-09-22-oral-exam-gemini-transcription-pronunciation.md`
-   - restart oral-exam transcription from the original audio;
-   - Gemini literal-heard transcription with no correction or normalization;
-   - separate intended-word/pronunciation analysis;
-   - one evaluation PDF per pair after transcript validation;
-   - previous local-PC transcription experiments are non-canonical.
-
-8. Relevant implementation files and recent commits on `main`.
+7. Relevant implementation files and recent commits on `main`.
    - UI micro-decisions that are already implemented are authoritative in code/commit history even when not repeated word-for-word in a spec.
 
 ## Global UI rules
@@ -97,7 +90,6 @@ Do not replace this standard pattern with separate `Select all` / `Deselect all`
 11. External AI exam creation/rearrangement is outside the Exam Bank and must be designed separately.
 12. Admin is a separate role-aware section from Teacher.
 13. Current project terminology should stay consistent with the specs.
-14. **Creative Claw is not an approved tool for this project or its oral-exam workflow. Do not invoke it for media import, transcription, generation, or processing unless the user explicitly reauthorizes Creative Claw in a later message.**
 
 ## Current high-level sequence
 
@@ -146,12 +138,11 @@ Current verified behavior:
 - Student Buzzer shows `JOIN GAME` only for an active connected game and an eligible assignment recipient.
 - Group eligibility uses the current multi-group membership model; a student's primary `groupName` does not need to equal the active working group when `groupMemberships` includes that group.
 - Live heartbeat, explicit end, 90-second stale-presence evaluation, and 60-minute zero-presence expiry remain Firebase-backed.
-- Verified COG results are stored under `assignmentSubmissions/{assignmentId}/{studentKey}/cogResults/{resultId}`. This keeps result receipts inside the existing Firebase-permitted assignment data surface and lets Teacher Assignments display result history without treating game results as PDF submissions or automatic grades.
+- Verified COG results are stored under `assignmentSubmissions/{assignmentId}/{studentKey}/cogResults/{resultId}`.
+- COG result receipts are displayed in Teacher Assignments as result history; they are not PDF submissions and are not automatic assignment grades.
 - Root browser `.mjs` modules must be copied by `build-pages.sh`; Student Buzzer imports `cog-live-session-policy.mjs` at runtime.
-- Preview E2E on YouTeach run `35827006544` passed the complete automated smoke: teacher login, FANTASMA Smart Teams, COG assignment launch, GHOST20 Student Buzzer JOIN GAME, canonical YouTeach identity, heartbeat, idempotent result receipt, Teacher Results UI, and END ACTIVITY.
+- Preview E2E on YouTeach run `35827006544` passed teacher login, FANTASMA Smart Teams, COG assignment launch, GHOST20 JOIN GAME, canonical identity, heartbeat, idempotent result receipt, Teacher Results UI, and END ACTIVITY.
 - YouTeach verification run `35827006542`: 203/203 tests, syntax checks, and Pages build GREEN.
-- YouTeach preview deploy run `35827006728`: GREEN.
-- COG verification run `35766282665`: GREEN.
-- COG preview deploy run `35766282680`: GREEN.
+- COG verification/deploy checkpoint: runs `35766282665` / `35766282680` GREEN.
 
 Do not revive the abandoned KV/session-store authentication design. Firebase Realtime Database remains the canonical live-state architecture for YouTeach.
