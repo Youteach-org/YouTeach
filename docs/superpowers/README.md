@@ -1,6 +1,6 @@
 # YouTeach Superpowers continuity index
 
-Repository: `youteachtk/YouTeach`
+Repository: `Youteach-org/YouTeach`
 Canonical branch: `main`
 Production flow: GitHub -> Cloudflare Pages
 
@@ -125,9 +125,33 @@ When asked to continue YouTeach:
 
 ## Source-of-truth summary
 
-- Repository: `youteachtk/YouTeach`
+- Repository: `Youteach-org/YouTeach`
 - Branch: `main`
 - Hosting: Cloudflare Pages
 - Database/live state: Firebase Realtime Database
 - Assignment evidence: Google Drive
 - Canonical project continuity: `docs/superpowers/`
+
+
+## Live COG integration checkpoint — 2026-09-23
+
+Integration branch: `live-cog-20260922`.
+
+Verified preview pair:
+- YouTeach: `https://live-cog-20260922.youteach.pages.dev`
+- Classroom Online Games: `https://live-cog-20260922.classroom-online-games.pages.dev`
+
+Current verified behavior:
+- Teacher selects the working group in YouTeach, generates Smart Teams, opens Assignments, creates a `COG` assignment, and receives a signed COG teacher launch.
+- Student Buzzer shows `JOIN GAME` only for an active connected game and an eligible assignment recipient.
+- Group eligibility uses the current multi-group membership model; a student's primary `groupName` does not need to equal the active working group when `groupMemberships` includes that group.
+- Live heartbeat, explicit end, 90-second stale-presence evaluation, and 60-minute zero-presence expiry remain Firebase-backed.
+- Verified COG results are stored under `assignmentSubmissions/{assignmentId}/{studentKey}/cogResults/{resultId}`. This keeps result receipts inside the existing Firebase-permitted assignment data surface and lets Teacher Assignments display result history without treating game results as PDF submissions or automatic grades.
+- Root browser `.mjs` modules must be copied by `build-pages.sh`; Student Buzzer imports `cog-live-session-policy.mjs` at runtime.
+- Preview E2E on YouTeach run `35827006544` passed the complete automated smoke: teacher login, FANTASMA Smart Teams, COG assignment launch, GHOST20 Student Buzzer JOIN GAME, canonical YouTeach identity, heartbeat, idempotent result receipt, Teacher Results UI, and END ACTIVITY.
+- YouTeach verification run `35827006542`: 203/203 tests, syntax checks, and Pages build GREEN.
+- YouTeach preview deploy run `35827006728`: GREEN.
+- COG verification run `35766282665`: GREEN.
+- COG preview deploy run `35766282680`: GREEN.
+
+Do not revive the abandoned KV/session-store authentication design. Firebase Realtime Database remains the canonical live-state architecture for YouTeach.
