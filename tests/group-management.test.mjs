@@ -524,6 +524,8 @@ test('evaluation autosave stays bound to the group opened in Blocks & Criteria',
   const groupsListenerStart = js.indexOf('onValue(ref(db, "groups")');
   const groupsListenerEnd = js.indexOf('onValue(ref(db, TEMPLATE_LIBRARY_PATH)', groupsListenerStart);
   const groupsListener = js.slice(groupsListenerStart, groupsListenerEnd);
-  assert.match(groupsListener, /!groupEditorDialog\.open/);
-  assert.doesNotMatch(groupsListener, /groupEditorDialog\.open[\s\S]{0,300}editingGroupName\s*=\s*selectedManagedGroup/);
+  assert.match(
+    groupsListener,
+    /!creatingGroup\s*&&\s*!groupEditorDialog\.open\s*&&\s*editingGroupName\s*!==\s*selectedManagedGroup/
+  );
 });
