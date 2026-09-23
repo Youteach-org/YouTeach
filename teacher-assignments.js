@@ -3,7 +3,7 @@ import { visibleGroups } from "./group-state.js";
 import { studentGroupNames, studentInGroup } from "./student-groups.js";
 import { ref, get, onValue, push, set, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
-import { openAssignmentsModule, readAssignmentsModuleContext } from "./assignment-module-launcher.js?v=popup-library-20260920";
+import { openAssignmentsModule, readAssignmentsModuleContext } from "./assignment-module-launcher.js?v=unsaved-close-20260922";
 import {
   buildAssignmentTemplateRecord,
   buildAssignedInstanceFromTemplate,
@@ -207,6 +207,10 @@ const assignmentsModuleContext = ASSIGNMENTS_MODULE_MODE ? readAssignmentsModule
 let selectedAssignmentId = "";
 let selectedDriveFolderUrl = "";
 let selectedManualStudentKey = "";
+let assignmentCardClickTimer = null;
+let submissionCardClickTimer = null;
+const CARD_CLICK_DELAY_MS = 240;
+const SUBMISSION_CARD_CLICK_DELAY_MS = CARD_CLICK_DELAY_MS;
 let examAnnotationState = {
   assignmentId: "",
   studentKey: "",
@@ -1606,12 +1610,22 @@ function renderEvaluationCriteria(assignment) {
   const rubric = getAssignmentRubric(assignment);
   const criteria = rubric.criteria;
   const notes = String(rubric.notes || "").trim();
+  const studentInstructions = String(
+    splitStoredInstructions(assignment.instructions).visibleInstructions || ""
+  ).trim();
   const total = criteria.reduce((sum, criterion) => sum + Number(criterion.maxPoints || 0), 0);
 
-  if (!criteria.length && !notes) {
-    criteriaReadOnly.innerHTML = '<div class="status-text">No evaluation criteria.</div>';
+  if (!criteria.length && !notes && !studentInstructions) {
+    criteriaReadOnly.innerHTML = '<div class="status-text">No instructions or evaluation criteria.</div>';
     return;
   }
+
+  const instructionsHtml = studentInstructions
+    ? `<section class="criteria-assignment-instructions">
+        <strong>Assignment instructions</strong>
+        <div>${escapeHtml(studentInstructions)}</div>
+      </section>`
+    : "";
 
   const criteriaHtml = criteria.length
     ? `<div class="criteria-compact-list">
@@ -1624,15 +1638,21 @@ function renderEvaluationCriteria(assignment) {
       </div>`
     : "";
 
-  const notesHtml = notes
-    ? `<div class="criteria-compact-notes" title="${escapeHtml(notes)}">Notes: ${escapeHtml(notes)}</div>`
+  const chatGptHtml = notes
+    ? `<div class="criteria-chatgpt-instructions">
+        <strong>ChatGPT review instructions:</strong>
+        <span>${escapeHtml(notes)}</span>
+      </div>`
     : "";
 
   criteriaReadOnly.innerHTML = `
+    ${instructionsHtml}
     ${criteriaHtml}
     <div class="criteria-compact-footer">
-      ${notesHtml}
-      <div class="criteria-compact-total">${Number(total.toFixed(2))} / 100 points</div>
+      ${chatGptHtml}
+      ${criteria.length
+        ? `<div class="criteria-compact-total">${Number(total.toFixed(2))} / 100 points</div>`
+        : ""}
     </div>
   `;
 }
@@ -1652,6 +1672,13 @@ function assignmentStudents(assignment, assignmentId = "") {
 
 function assignmentSubmissions(assignmentId) {
   return submissionsCache?.[assignmentId] || {};
+}
+
+function openStudentRecord(studentKey) {
+  const key = String(studentKey || "").trim();
+  if (!key) return;
+  sessionStorage.setItem("teacherViewStudentKey", key);
+  window.location.href = `student-summary.html?teacherViewStudentKey=${encodeURIComponent(key)}`;
 }
 
 function assignmentCogResults(assignmentId) {
@@ -2932,7 +2959,7 @@ function renderDetail() {
             ? "Published"
             : (gradingMode === "ai" ? "AI graded · teacher review pending" : "Manual grade · unpublished"));
         return `
-          <article class="submission-card ${graded ? "graded" : "pending-grade"} ${!manualGradingPanel.hidden && selectedManualStudentKey === studentKey ? "selected-for-grading" : ""}" data-submission-student-key="${escapeHtml(studentKey)}">
+          <article class="submission-card ${graded ? "graded" : "pending-grade"} ${!manualGradingPanel.hidden && selectedManualStudentKey === studentKey ? "selected-for-grading" : ""}" data-submission-student-key="${escapeHtml(studentKey)}" data-student-record-key="${escapeHtml(studentKey)}">
             <h4>${escapeHtml(submission.studentName || "Student")}</h4>
             <div class="submission-meta">
               ${escapeHtml(submission.studentNumber || "No ID")} ·
@@ -3005,7 +3032,7 @@ function renderDetail() {
         const group = student.groupName || assignment.groupName || "GENERAL";
 
         return `
-          <article class="missing-student-card">
+          <article class="missing-student-card" data-student-record-key="${escapeHtml(studentKey)}">
             <div class="missing-student-main">
               <strong>${escapeHtml(name)}</strong>
               <span>${escapeHtml(id)} · ${escapeHtml(group)}</span>
@@ -3609,29 +3636,67 @@ function wireRubricEditor(presetContainer, customContainer, totalElement, radios
   }
 }
 
-teacherAssignmentList.addEventListener("click", (event) => {
-  const card = event.target.closest("[data-assignment-select]");
-  if (!card) return;
-  manualGradingPanel.hidden = true;
-  examAnnotationPanel.hidden = true;
-  selectedManualStudentKey = "";
-  selectedAssignmentId = card.dataset.assignmentSelect;
-  renderAssignmentList();
-  setTimeout(refreshSelectedAiResults, 0);
-});
+let lastAssignmentEditorOpen = { assignmentId: "", at: 0 };
 
-teacherAssignmentList.addEventListener("dblclick", (event) => {
-  const card = event.target.closest("[data-assignment-select]");
-  if (!card) return;
+function openAssignmentEditorFromCard(card) {
+  if (!card) return false;
+
+  clearTimeout(assignmentCardClickTimer);
+  assignmentCardClickTimer = null;
+
   const assignmentId = String(card.dataset.assignmentSelect || "");
   const assignment = assignmentsCache[assignmentId];
-  if (!assignment) return;
+  if (!assignment) return false;
+
+  const now = Date.now();
+  if (
+    lastAssignmentEditorOpen.assignmentId === assignmentId &&
+    now - lastAssignmentEditorOpen.at < 600
+  ) {
+    return false;
+  }
+
+  lastAssignmentEditorOpen = { assignmentId, at: now };
   openAssignmentsModule({
     source: "assignments",
     mode: "edit",
     assignmentId,
     groupName: String(assignment.groupName || getWorkingGroup() || "")
   });
+  return true;
+}
+
+teacherAssignmentList.addEventListener("click", (event) => {
+  const card = event.target.closest("[data-assignment-select]");
+  if (!card) return;
+
+  if (event.detail > 1) {
+    clearTimeout(assignmentCardClickTimer);
+    assignmentCardClickTimer = null;
+    openAssignmentEditorFromCard(card);
+    return;
+  }
+
+  clearTimeout(assignmentCardClickTimer);
+  const assignmentId = String(card.dataset.assignmentSelect || "");
+  assignmentCardClickTimer = setTimeout(() => {
+    assignmentCardClickTimer = null;
+    manualGradingPanel.hidden = true;
+    examAnnotationPanel.hidden = true;
+    selectedManualStudentKey = "";
+    selectedAssignmentId = assignmentId;
+    renderAssignmentList();
+    setTimeout(refreshSelectedAiResults, 0);
+  }, CARD_CLICK_DELAY_MS);
+});
+
+teacherAssignmentList.addEventListener("dblclick", (event) => {
+  const card = event.target.closest("[data-assignment-select]");
+  if (!card) return;
+  event.preventDefault();
+  clearTimeout(assignmentCardClickTimer);
+  assignmentCardClickTimer = null;
+  openAssignmentEditorFromCard(card);
 });
 
 submissionList.addEventListener("click", (event) => {
@@ -3674,7 +3739,36 @@ submissionList.addEventListener("click", (event) => {
   if (event.target.closest("a,button")) return;
   const card = event.target.closest("[data-submission-student-key]");
   if (!card) return;
-  openManualGrading(selectedAssignmentId, card.dataset.submissionStudentKey);
+
+  if (event.detail > 1) {
+    clearTimeout(submissionCardClickTimer);
+    submissionCardClickTimer = null;
+    return;
+  }
+
+  clearTimeout(submissionCardClickTimer);
+  const assignmentId = selectedAssignmentId;
+  const studentKey = card.dataset.submissionStudentKey;
+  submissionCardClickTimer = setTimeout(() => {
+    submissionCardClickTimer = null;
+    openManualGrading(assignmentId, studentKey);
+  }, SUBMISSION_CARD_CLICK_DELAY_MS);
+});
+
+submissionList.addEventListener("dblclick", (event) => {
+  if (event.target.closest("a,button")) return;
+  const card = event.target.closest("[data-student-record-key]");
+  if (!card) return;
+
+  clearTimeout(submissionCardClickTimer);
+  submissionCardClickTimer = null;
+  openStudentRecord(card.dataset.studentRecordKey);
+});
+
+missingList.addEventListener("dblclick", (event) => {
+  const card = event.target.closest("[data-student-record-key]");
+  if (!card) return;
+  openStudentRecord(card.dataset.studentRecordKey);
 });
 
 examToolButtons.forEach((button) => {
