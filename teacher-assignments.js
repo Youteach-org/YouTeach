@@ -194,8 +194,10 @@ const assignmentsModuleContext = ASSIGNMENTS_MODULE_MODE ? readAssignmentsModule
 let selectedAssignmentId = "";
 let selectedDriveFolderUrl = "";
 let selectedManualStudentKey = "";
+let assignmentCardClickTimer = null;
 let submissionCardClickTimer = null;
-const SUBMISSION_CARD_CLICK_DELAY_MS = 240;
+const CARD_CLICK_DELAY_MS = 240;
+const SUBMISSION_CARD_CLICK_DELAY_MS = CARD_CLICK_DELAY_MS;
 let examAnnotationState = {
   assignmentId: "",
   studentKey: "",
@@ -3477,17 +3479,33 @@ function wireRubricEditor(presetContainer, customContainer, totalElement, radios
 teacherAssignmentList.addEventListener("click", (event) => {
   const card = event.target.closest("[data-assignment-select]");
   if (!card) return;
-  manualGradingPanel.hidden = true;
-  examAnnotationPanel.hidden = true;
-  selectedManualStudentKey = "";
-  selectedAssignmentId = card.dataset.assignmentSelect;
-  renderAssignmentList();
-  setTimeout(refreshSelectedAiResults, 0);
+
+  if (event.detail > 1) {
+    clearTimeout(assignmentCardClickTimer);
+    assignmentCardClickTimer = null;
+    return;
+  }
+
+  clearTimeout(assignmentCardClickTimer);
+  const assignmentId = String(card.dataset.assignmentSelect || "");
+  assignmentCardClickTimer = setTimeout(() => {
+    assignmentCardClickTimer = null;
+    manualGradingPanel.hidden = true;
+    examAnnotationPanel.hidden = true;
+    selectedManualStudentKey = "";
+    selectedAssignmentId = assignmentId;
+    renderAssignmentList();
+    setTimeout(refreshSelectedAiResults, 0);
+  }, CARD_CLICK_DELAY_MS);
 });
 
 teacherAssignmentList.addEventListener("dblclick", (event) => {
   const card = event.target.closest("[data-assignment-select]");
   if (!card) return;
+
+  clearTimeout(assignmentCardClickTimer);
+  assignmentCardClickTimer = null;
+
   const assignmentId = String(card.dataset.assignmentSelect || "");
   const assignment = assignmentsCache[assignmentId];
   if (!assignment) return;
