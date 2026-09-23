@@ -3550,6 +3550,8 @@ teacherAssignmentList.addEventListener("dblclick", (event) => {
   const card = event.target.closest("[data-assignment-select]");
   if (!card) return;
   event.preventDefault();
+  clearTimeout(assignmentCardClickTimer);
+  assignmentCardClickTimer = null;
   openAssignmentEditorFromCard(card);
 });
 
