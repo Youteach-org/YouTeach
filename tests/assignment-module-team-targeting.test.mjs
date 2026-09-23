@@ -128,3 +128,51 @@ test('Create Assignment source toggle has a visible active color state', () => {
   assert.match(createModuleHtml, /background:#2563eb/);
   assert.match(createModuleJs, /classList\.toggle\("active"/);
 });
+
+
+test('Create Assignment uses an internal assignment id and Task Code no longer depends on due date', () => {
+  assert.match(createModuleJs, /let draftAssignmentId\s*=/);
+  assert.match(createModuleJs, /push\(ref\(db, "assignments"\)\)\.key/);
+  assert.match(createModuleJs, /internalId:\s*draftAssignmentId/);
+  assert.match(createModuleJs, /function internalCodeSuffix\(/);
+  const taskCodeStart = createModuleJs.indexOf('function taskCodeBase()');
+  const taskCodeEnd = createModuleJs.indexOf('function taskCodeExists', taskCodeStart);
+  const taskCodeBlock = createModuleJs.slice(taskCodeStart, taskCodeEnd);
+  assert.doesNotMatch(taskCodeBlock, /dateCode|assignmentDueAt/);
+  assert.match(taskCodeBlock, /internalCodeSuffix/);
+});
+
+test('Due date is optional and date-less assignments are saved as planning items', () => {
+  assert.match(createModuleHtml, /Due date and time \(optional\)/);
+  assert.doesNotMatch(createModuleHtml, /id="assignmentDueAt"[^>]*required/);
+  assert.doesNotMatch(createModuleJs, /Select the due date and time/);
+  assert.match(createModuleJs, /planning:\s*!dueAt/);
+  assert.match(createModuleJs, /active:\s*Boolean\(dueAt\)/);
+});
+
+test('Create Assignment warns before closing dirty unsaved work', () => {
+  assert.match(createModuleJs, /function markFormDirty\(/);
+  assert.match(createModuleJs, /youteach:assignment-dirty/);
+  assert.match(createModuleJs, /youteach:assignment-clean/);
+  assert.match(moduleLauncherJs, /unsaved changes/i);
+  assert.match(moduleLauncherJs, /window\.confirm\(/);
+  assert.match(moduleLauncherJs, /assignmentDirty/);
+});
+
+test('Project checkpoints remain before full-width ChatGPT instructions', () => {
+  const checkpointIndex = createModuleHtml.indexOf('id="projectCheckpointBuilder"');
+  const chatgptIndex = createModuleHtml.indexOf('id="assignmentEvaluationNotes"');
+  assert.ok(checkpointIndex >= 0);
+  assert.ok(chatgptIndex > checkpointIndex);
+  assert.match(createModuleHtml, /\.instructions-field\s*\{[^}]*grid-column:1\/-1/s);
+});
+
+test('selected Assignment Criteria card shows student instructions prominently and does not call them Notes', () => {
+  assert.match(assignmentsJs, /criteria-assignment-instructions/);
+  assert.match(assignmentsJs, /splitStoredInstructions\(assignment\.instructions\)\.visibleInstructions/);
+  assert.match(assignmentsJs, /ChatGPT review instructions:/);
+  const start = assignmentsJs.indexOf('function renderEvaluationCriteria');
+  const end = assignmentsJs.indexOf('function assignmentStudents', start);
+  const block = assignmentsJs.slice(start, end);
+  assert.doesNotMatch(block, />Notes:/);
+});
