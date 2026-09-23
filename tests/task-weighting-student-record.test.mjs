@@ -380,3 +380,106 @@ test("tagged Task assignments and eligible legacy untagged assignments share the
     gradedCount: 2
   });
 });
+
+
+test("a published Task grade survives criterion recreation when the assignment keeps the old criterion id", () => {
+  const recreatedTaskCriterion = {
+    id: "task-new-id",
+    name: "Tasks",
+    shortLabel: "T",
+    weight: 20,
+    source: "manual",
+    order: 0
+  };
+
+  const result = taskCriterionContribution({
+    studentKey: "bruno",
+    student: {
+      groupName: "FANTASMA",
+      groupMemberships: { FANTASMA: true, EPIDEMIOLOGIA: true }
+    },
+    blockName: "Block 1",
+    criterion: recreatedTaskCriterion,
+    config: { criteria: [recreatedTaskCriterion] },
+    assignments: {
+      oldTask: {
+        assignmentTypeCode: "HW",
+        code: "HW-OLD-FAN-A1B2C",
+        groupName: "FANTASMA",
+        evaluationBlock: "Block 1",
+        groupEvaluationCriterionId: "task-old-id",
+        groupEvaluationCriterionName: "Tasks",
+        evaluationTarget: {
+          groupName: "FANTASMA",
+          block: "Block 1",
+          criterionId: "task-old-id",
+          criterionNameSnapshot: "Tasks",
+          mode: "assignment"
+        }
+      }
+    },
+    submissions: {
+      oldTask: {
+        bruno: {
+          gradePublished: true,
+          grading: { totalScore: 80 }
+        }
+      }
+    },
+    requirePublished: true
+  });
+
+  assert.deepEqual(result, {
+    contribution: 16,
+    assignmentCount: 1,
+    gradedCount: 1
+  });
+});
+
+test("a stale Project criterion snapshot does not leak into T after criteria are recreated", () => {
+  const recreatedTaskCriterion = {
+    id: "task-new-id",
+    name: "Tasks",
+    shortLabel: "T",
+    weight: 20,
+    source: "manual",
+    order: 0
+  };
+  const recreatedProjectCriterion = {
+    id: "project-new-id",
+    name: "Project",
+    shortLabel: "PJ",
+    weight: 30,
+    source: "manual",
+    order: 1
+  };
+
+  const result = taskCriterionContribution({
+    studentKey: "s1",
+    student: { groupName: "FANTASMA", groupMemberships: { FANTASMA: true } },
+    blockName: "Block 1",
+    criterion: recreatedTaskCriterion,
+    config: { criteria: [recreatedTaskCriterion, recreatedProjectCriterion] },
+    assignments: {
+      oldProject: {
+        assignmentTypeCode: "PJ",
+        code: "PJ-OLD-FAN-Z9Y8X",
+        groupName: "FANTASMA",
+        evaluationBlock: "Block 1",
+        evaluationTarget: {
+          groupName: "FANTASMA",
+          block: "Block 1",
+          criterionId: "project-old-id",
+          criterionNameSnapshot: "Project",
+          mode: "assignment"
+        }
+      }
+    },
+    submissions: {
+      oldProject: { s1: { gradePublished: true, grading: { totalScore: 100 } } }
+    },
+    requirePublished: true
+  });
+
+  assert.equal(result, null);
+});
