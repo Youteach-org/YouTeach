@@ -7,6 +7,16 @@ on:
     paths:
       - tests/live-cog-preview-e2e.mjs
       - .github/workflows/live-cog-preview-e2e.yml
+      - teacher-assignments.js
+      - teacher-assignments.html
+      - assignment-create-module.js
+      - student-buzzer.js
+      - student-buzzer.html
+      - cog-live-session-policy.mjs
+      - cog-assignment-results.mjs
+      - build-pages.sh
+      - functions/api/cog-live-*.js
+      - functions/_shared/cog-live-*.js
   workflow_dispatch:
 
 permissions:
