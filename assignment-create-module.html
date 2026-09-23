@@ -103,6 +103,9 @@
     .criteria-help{font-size:9px;color:#64748b}
     .project-builder{grid-column:1/-1;border:1px solid #dbeafe;border-radius:10px;background:#f8fafc;padding:10px;display:grid;gap:8px}
     .project-builder[hidden]{display:none!important}
+    .project-builder.inactive{border-style:dashed;background:#f8fafc}
+    .project-builder.inactive .project-rows{display:none}
+    .project-checkpoint-state{display:block;margin-top:4px;font-size:10px;font-weight:800;color:#64748b}
     .project-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
     .project-head h2{margin:0;font-size:13px}
     .project-head p{margin:2px 0 0;font-size:9px;color:#64748b}
@@ -289,13 +292,14 @@
         </div>
       </section>
 
-      <section id="projectCheckpointBuilder" class="project-builder" hidden>
+      <section id="projectCheckpointBuilder" class="project-builder">
         <div class="project-head">
           <div>
             <h2>Project checkpoints</h2>
             <p>Progress reviews before the final project submission.</p>
+            <span id="projectCheckpointState" class="project-checkpoint-state">Select Project (PJ) to configure checkpoints.</span>
           </div>
-          <button id="addProjectCheckpointBtn" type="button">+ Add checkpoint</button>
+          <button id="addProjectCheckpointBtn" type="button" disabled>+ Add checkpoint</button>
         </div>
         <div id="projectCheckpointRows" class="project-rows"></div>
       </section>
@@ -313,6 +317,6 @@
     </div>
   </main>
 
-  <script type="module" src="assignment-create-module.js?v=planning-unsaved-instructions-20260922"></script>
+  <script type="module" src="assignment-create-module.js?v=doubleclick-task-checkpoints-20260923"></script>
 </body>
 </html>
