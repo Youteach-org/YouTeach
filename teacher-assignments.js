@@ -3492,13 +3492,42 @@ function wireRubricEditor(presetContainer, customContainer, totalElement, radios
   }
 }
 
+let lastAssignmentEditorOpen = { assignmentId: "", at: 0 };
+
+function openAssignmentEditorFromCard(card) {
+  if (!card) return false;
+
+  clearTimeout(assignmentCardClickTimer);
+  assignmentCardClickTimer = null;
+
+  const assignmentId = String(card.dataset.assignmentSelect || "");
+  const assignment = assignmentsCache[assignmentId];
+  if (!assignment) return false;
+
+  const now = Date.now();
+  if (
+    lastAssignmentEditorOpen.assignmentId === assignmentId &&
+    now - lastAssignmentEditorOpen.at < 600
+  ) {
+    return false;
+  }
+
+  lastAssignmentEditorOpen = { assignmentId, at: now };
+  openAssignmentsModule({
+    source: "assignments",
+    mode: "edit",
+    assignmentId,
+    groupName: String(assignment.groupName || getWorkingGroup() || "")
+  });
+  return true;
+}
+
 teacherAssignmentList.addEventListener("click", (event) => {
   const card = event.target.closest("[data-assignment-select]");
   if (!card) return;
 
   if (event.detail > 1) {
-    clearTimeout(assignmentCardClickTimer);
-    assignmentCardClickTimer = null;
+    openAssignmentEditorFromCard(card);
     return;
   }
 
@@ -3518,19 +3547,8 @@ teacherAssignmentList.addEventListener("click", (event) => {
 teacherAssignmentList.addEventListener("dblclick", (event) => {
   const card = event.target.closest("[data-assignment-select]");
   if (!card) return;
-
-  clearTimeout(assignmentCardClickTimer);
-  assignmentCardClickTimer = null;
-
-  const assignmentId = String(card.dataset.assignmentSelect || "");
-  const assignment = assignmentsCache[assignmentId];
-  if (!assignment) return;
-  openAssignmentsModule({
-    source: "assignments",
-    mode: "edit",
-    assignmentId,
-    groupName: String(assignment.groupName || getWorkingGroup() || "")
-  });
+  event.preventDefault();
+  openAssignmentEditorFromCard(card);
 });
 
 submissionList.addEventListener("click", (event) => {
