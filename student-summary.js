@@ -4,7 +4,7 @@ import { requireStudentSession, clearStudentSession, saveLeaveLog } from "./stud
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
 import { studentGroupNames, studentInGroup } from "./student-groups.js";
 import { groupEvaluationConfig } from "./group-evaluation-model.js";
-import { taskCriterionContribution, taskCriterionForConfig } from "./group-grade-runtime.js?v=mixed-task-grades-20260923";
+import { taskCriterionContribution, taskCriterionForConfig } from "./group-grade-runtime.js?v=criterion-relink-20260923";
 import {
   nextStudentDisplayMode,
   normalizeStudentDisplayMode,
