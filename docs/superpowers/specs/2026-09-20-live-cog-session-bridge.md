@@ -3,7 +3,7 @@
 Date: 2026-09-20
 Status: Approved by user on 2026-09-20
 
-This specification is mirrored in both `youteachtk/YouTeach` and `youteachtk/Classroom-Online-Games`. It defines the canonical live-session contract between YouTeach Buzzer and Classroom Online Games (COG).
+This specification is mirrored in both `Youteach-org/YouTeach` and `Youteach-org/Classroom-Online-Games`. It defines the canonical live-session contract between YouTeach Buzzer and Classroom Online Games (COG).
 
 ## Purpose
 
@@ -263,3 +263,18 @@ Assignment creation rules:
 The same reusable Assignments module is accessible from the normal Assignments screen. The current Team Generator lives inside Buzzer, so Buzzer/Team Generator share the same team-context launch point.
 
 Classroom Online Games (COG) remains an Assignment Type. Secure COG launch/session behavior remains governed by the live-session bridge; the removed standalone Classroom Games button must not be restored.
+
+
+## Implementation reconciliation — 2026-09-23
+
+The verified Firebase implementation on `live-cog-20260922` refines this specification in the following approved ways:
+
+- The teacher entry point is the shared Assignments activity flow from Buzzer, not a permanent standalone COG button. A COG assignment/activity supplies the verified target group and exact recipient keys used by the live session.
+- Student eligibility follows the current multi-group model. The active Buzzer group is valid when it appears in the student's `groupMemberships`, even if the student's primary `groupName` points to another enrolled group.
+- The signed student bridge carries the active Buzzer group for the current live activity. It does not rewrite or replace the student's primary group.
+- Verified live-game result receipts are stored under `assignmentSubmissions/{assignmentId}/{studentKey}/cogResults/{resultId}`. This reuses the existing Firebase-permitted assignment data surface, preserves attempt history, and allows Teacher Assignments to display COG results without treating them as PDF submissions or automatic grades.
+- Result retries are idempotent by result id.
+- Browser ES modules used by the live bridge, including `cog-live-session-policy.mjs`, must be present in the Cloudflare Pages artifact.
+- Preview branches for cross-repository E2E should use the same short branch name in both repositories so Cloudflare produces matching aliases and YouTeach can derive the corresponding COG preview origin.
+
+Verified automated browser smoke: YouTeach Actions run `35827006544` on 2026-09-23, with matching COG preview branch `live-cog-20260922`.
