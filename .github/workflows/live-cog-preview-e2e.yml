@@ -10,6 +10,11 @@ on:
       - teacher-assignments.js
       - teacher-assignments.html
       - assignment-create-module.js
+      - assignment-module-launcher.js
+      - buzzer.js
+      - buzzer.html
+      - student-groups.js
+      - group-state.js
       - student-buzzer.js
       - student-buzzer.html
       - cog-live-session-policy.mjs
