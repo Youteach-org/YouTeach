@@ -85,6 +85,7 @@ const createDistributionRadios = document.querySelectorAll('input[name="createDi
 const addCreateCriterionBtn = document.getElementById("addCreateCriterionBtn");
 const assignmentEvaluationNotes = document.getElementById("assignmentEvaluationNotes");
 const projectCheckpointBuilder = document.getElementById("projectCheckpointBuilder");
+const projectCheckpointState = document.getElementById("projectCheckpointState");
 const projectCheckpointRows = document.getElementById("projectCheckpointRows");
 const addProjectCheckpointBtn = document.getElementById("addProjectCheckpointBtn");
 const createAssignmentBtn = document.getElementById("createAssignmentBtn");
@@ -778,7 +779,14 @@ function addProjectCheckpointRow(checkpoint = {}) {
 
 function refreshProjectCheckpointBuilder() {
   const projectSelected = assignmentType.value === "PJ";
-  projectCheckpointBuilder.hidden = !projectSelected;
+  projectCheckpointBuilder.hidden = false;
+  projectCheckpointBuilder.classList.toggle("inactive", !projectSelected);
+  projectCheckpointBuilder.setAttribute("aria-disabled", String(!projectSelected));
+  addProjectCheckpointBtn.disabled = !projectSelected;
+  projectCheckpointState.textContent = projectSelected
+    ? "Project checkpoints are active for this assignment."
+    : "Select Project (PJ) to configure checkpoints.";
+
   if (projectSelected && !projectCheckpointRows.querySelector("[data-project-checkpoint-row]")) {
     addProjectCheckpointRow();
   }
