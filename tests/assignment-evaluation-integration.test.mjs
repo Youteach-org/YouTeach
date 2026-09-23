@@ -171,3 +171,14 @@ test('assignment overview stacks Assignment first and Criteria second at full wi
   assert.match(teacherHtml, /\.criteria-summary-title\s*\{[^}]*font-size:\s*(?:1[234]|1[5-9]|2\d)px/s);
   assert.match(teacherHtml, /\.criteria-summary-card \.criteria-compact-item\s*\{[^}]*font-size:\s*(?:10|11|12|13|14)px/s);
 });
+
+
+test('assignment card second click opens Edit Assignment without relying only on native dblclick', () => {
+  const clickStart = teacherJs.indexOf('teacherAssignmentList.addEventListener("click"');
+  const doubleStart = teacherJs.indexOf('teacherAssignmentList.addEventListener("dblclick"');
+  const clickBlock = teacherJs.slice(clickStart, doubleStart);
+
+  assert.match(clickBlock, /event\.detail\s*>\s*1/);
+  assert.match(clickBlock, /openAssignmentEditorFromCard\(card\)/);
+  assert.match(teacherJs, /function openAssignmentEditorFromCard\(card\)/);
+});
