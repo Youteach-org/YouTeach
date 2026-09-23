@@ -59,9 +59,21 @@ function ensureShell() {
 
   window.addEventListener("message", (event) => {
     if (event.origin !== window.location.origin) return;
+
+    if (event.data?.type === "youteach:assignment-dirty") {
+      overlay.dataset.assignmentDirty = "true";
+      return;
+    }
+
+    if (event.data?.type === "youteach:assignment-clean") {
+      overlay.dataset.assignmentDirty = "false";
+      return;
+    }
+
     if (!["youteach:assignment-created", "youteach:assignment-updated"].includes(event.data?.type)) return;
+    overlay.dataset.assignmentDirty = "false";
     window.dispatchEvent(new CustomEvent(event.data.type, { detail: event.data }));
-    closeAssignmentsModule();
+    closeAssignmentsModule({ force: true });
   });
 
   return overlay;
@@ -79,18 +91,30 @@ export function openAssignmentsModule(context = {}) {
   const editMode = context?.mode === "edit";
   if (heading) heading.textContent = editMode ? "Edit Assignment" : "Create Assignment";
   overlay.setAttribute("aria-label", editMode ? "Edit Assignment" : "Create Assignment");
+  overlay.dataset.assignmentDirty = "false";
   frame.src = `assignment-create-module.html?opened=${Date.now()}`;
   overlay.hidden = false;
   document.body.style.overflow = "hidden";
 }
 
-export function closeAssignmentsModule() {
+export function closeAssignmentsModule({ force = false } = {}) {
   const overlay = document.getElementById("assignmentsModuleOverlay");
-  if (!overlay) return;
+  if (!overlay) return false;
+
+  const assignmentDirty = overlay.dataset.assignmentDirty === "true";
+  if (!force && assignmentDirty) {
+    const confirmed = window.confirm(
+      "This assignment has unsaved changes. If you leave now, your changes will be lost. Do you want to close anyway?"
+    );
+    if (!confirmed) return false;
+  }
+
+  overlay.dataset.assignmentDirty = "false";
   overlay.hidden = true;
   const frame = overlay.querySelector("#assignmentsModuleFrame");
   if (frame) frame.src = "about:blank";
   document.body.style.overflow = "";
+  return true;
 }
 
 export function readAssignmentsModuleContext() {
