@@ -128,3 +128,57 @@ test('Assignment Browser reports historical submission group when stored group m
   assert.match(teacherJs, /assignmentHistoricalGroupLabel/);
   assert.match(teacherJs, /Submission history:/);
 });
+
+
+test('Assignment Browser defines isExamAssignment exactly once at module scope', () => {
+  const imported = /import\s*\{[^}]*isExamAssignment[^}]*\}\s*from\s*["']\.\/assignment-evaluation-target\.js["']/s.test(teacherJs);
+  const local = /function\s+isExamAssignment\s*\(/.test(teacherJs);
+  assert.equal(Number(imported) + Number(local), 1);
+});
+
+
+test('Assignments hidden working-group field is never treated as a select', () => {
+  assert.match(teacherHtml, /<input id="assignmentGroup" type="hidden">/);
+  assert.doesNotMatch(teacherJs, /assignmentGroup\.options/);
+  assert.doesNotMatch(teacherJs, /assignmentGroup\.appendChild\(/);
+});
+
+
+test('assignment card defers single-click selection so double-click edit can win', () => {
+  const clickStart = teacherJs.indexOf('teacherAssignmentList.addEventListener("click"');
+  const doubleStart = teacherJs.indexOf('teacherAssignmentList.addEventListener("dblclick"');
+  assert.ok(clickStart >= 0);
+  assert.ok(doubleStart > clickStart);
+
+  const clickBlock = teacherJs.slice(clickStart, doubleStart);
+  const doubleBlock = teacherJs.slice(doubleStart, doubleStart + 900);
+
+  assert.match(clickBlock, /setTimeout\(/);
+  assert.match(clickBlock, /event\.detail\s*>\s*1/);
+  assert.match(clickBlock, /clearTimeout\(/);
+  assert.match(doubleBlock, /clearTimeout\(/);
+  assert.match(doubleBlock, /openAssignmentEditorFromCard\(card\)/);
+  assert.match(teacherJs, /function openAssignmentEditorFromCard\(card\)[\s\S]*openAssignmentsModule\([\s\S]*mode:\s*"edit"/);
+});
+
+test('assignment overview stacks Assignment first and Criteria second at full width with readable text', () => {
+  const assignmentIndex = teacherHtml.indexOf('class="assignment-overview-card"');
+  const criteriaIndex = teacherHtml.indexOf('class="criteria-summary-card"');
+  assert.ok(assignmentIndex >= 0);
+  assert.ok(criteriaIndex > assignmentIndex);
+  assert.match(teacherHtml, /\.assignment-overview-grid\s*\{[^}]*grid-template-columns:\s*1fr/s);
+  assert.match(teacherHtml, /\.overview-main h3\s*\{[^}]*font-size:\s*(?:1[6789]|2\d)px/s);
+  assert.match(teacherHtml, /\.criteria-summary-title\s*\{[^}]*font-size:\s*(?:1[234]|1[5-9]|2\d)px/s);
+  assert.match(teacherHtml, /\.criteria-summary-card \.criteria-compact-item\s*\{[^}]*font-size:\s*(?:10|11|12|13|14)px/s);
+});
+
+
+test('assignment card second click opens Edit Assignment without relying only on native dblclick', () => {
+  const clickStart = teacherJs.indexOf('teacherAssignmentList.addEventListener("click"');
+  const doubleStart = teacherJs.indexOf('teacherAssignmentList.addEventListener("dblclick"');
+  const clickBlock = teacherJs.slice(clickStart, doubleStart);
+
+  assert.match(clickBlock, /event\.detail\s*>\s*1/);
+  assert.match(clickBlock, /openAssignmentEditorFromCard\(card\)/);
+  assert.match(teacherJs, /function openAssignmentEditorFromCard\(card\)/);
+});

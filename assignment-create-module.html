@@ -60,10 +60,11 @@
       font:inherit;font-size:12px;background:#fff
     }
     .field textarea{min-height:68px;resize:vertical}
+    .instructions-field textarea{min-height:120px;font-size:13px;line-height:1.45}
     .field input[readonly]{background:#f1f5f9;color:#475569;font-weight:700}
     .field-help{font-size:9px;line-height:1.3;color:#64748b}
     .title-field{grid-column:span 2}
-    .instructions-field{grid-column:span 3}
+    .instructions-field{grid-column:1/-1}
     .student-instructions{grid-column:1/-1}
     .student-instructions textarea{
       min-height:170px;
@@ -102,6 +103,9 @@
     .criteria-help{font-size:9px;color:#64748b}
     .project-builder{grid-column:1/-1;border:1px solid #dbeafe;border-radius:10px;background:#f8fafc;padding:10px;display:grid;gap:8px}
     .project-builder[hidden]{display:none!important}
+    .project-builder.inactive{border-style:dashed;background:#f8fafc}
+    .project-builder.inactive .project-rows{display:none}
+    .project-checkpoint-state{display:block;margin-top:4px;font-size:10px;font-weight:800;color:#64748b}
     .project-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
     .project-head h2{margin:0;font-size:13px}
     .project-head p{margin:2px 0 0;font-size:9px;color:#64748b}
@@ -158,6 +162,7 @@
       <div class="library-filters">
         <input id="assignmentLibrarySearch" type="search" placeholder="Search previous assignments..." aria-label="Search Assignment Library">
         <select id="assignmentLibraryTypeFilter" aria-label="Filter by type"><option value="">All types</option></select>
+        <select id="assignmentLibraryGroupFilter" aria-label="Filter by group"><option value="">All groups</option></select>
         <select id="assignmentLibrarySourceFilter" aria-label="Filter by source">
           <option value="">All sources</option>
           <option value="assignment">Previous assignments</option>
@@ -238,8 +243,8 @@
       </div>
 
       <div class="field">
-        <label for="assignmentDueAt">Due date and time</label>
-        <input id="assignmentDueAt" type="datetime-local" required>
+        <label for="assignmentDueAt">Due date and time (optional)</label>
+        <input id="assignmentDueAt" type="datetime-local">
       </div>
 
       <div class="field">
@@ -256,7 +261,10 @@
       <section class="rubric" aria-labelledby="criteriaHeading">
         <div class="rubric-header">
           <div>
-            <h2 id="criteriaHeading">Evaluation criteria</h2>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <h2 id="criteriaHeading">Evaluation criteria</h2>
+              <div id="createCriteriaTotal" class="criteria-total">0 / 100</div>
+            </div>
             <p>Use preset and/or custom criteria. When criteria are used, they must total exactly 100 points.</p>
           </div>
           <div class="rubric-summary">
@@ -264,7 +272,6 @@
               <label><input type="radio" name="createDistribution" value="equal" checked> Equal</label>
               <label><input type="radio" name="createDistribution" value="manual"> Manual</label>
             </div>
-            <div id="createCriteriaTotal" class="criteria-total">0 / 100</div>
           </div>
         </div>
 
@@ -285,22 +292,23 @@
         </div>
       </section>
 
+      <section id="projectCheckpointBuilder" class="project-builder">
+        <div class="project-head">
+          <div>
+            <h2>Project checkpoints</h2>
+            <p>Progress reviews before the final project submission.</p>
+            <span id="projectCheckpointState" class="project-checkpoint-state">Select Project (PJ) to configure checkpoints.</span>
+          </div>
+          <button id="addProjectCheckpointBtn" type="button" disabled>+ Add checkpoint</button>
+        </div>
+        <div id="projectCheckpointRows" class="project-rows"></div>
+      </section>
+
       <div class="field instructions-field">
         <label for="assignmentEvaluationNotes">Instructions for ChatGPT when reviewing</label>
         <textarea id="assignmentEvaluationNotes" placeholder="Special review/grading instructions, evidence rules, tolerances, deductions, or exceptions."></textarea>
         <div class="field-help">Teacher-only. Students do not see this text.</div>
       </div>
-
-      <section id="projectCheckpointBuilder" class="project-builder" hidden>
-        <div class="project-head">
-          <div>
-            <h2>Project checkpoints</h2>
-            <p>Progress reviews before the final project submission.</p>
-          </div>
-          <button id="addProjectCheckpointBtn" type="button">+ Add checkpoint</button>
-        </div>
-        <div id="projectCheckpointRows" class="project-rows"></div>
-      </section>
 
       <div class="footer-actions">
         <div id="createAssignmentStatus" class="status" aria-live="polite"></div>
@@ -309,6 +317,6 @@
     </div>
   </main>
 
-  <script type="module" src="assignment-create-module.js?v=assignment-targets-20260922"></script>
+  <script type="module" src="assignment-create-module.js?v=doubleclick-task-checkpoints-20260923"></script>
 </body>
 </html>

@@ -46,3 +46,20 @@ test('legacy template model remains available without visible main-page library 
   assert.match(teacherJs, /buildAssignmentTemplateRecord/);
   assert.match(teacherJs, /buildAssignedInstanceFromTemplate/);
 });
+
+
+test('Assignment Library group filter exists everywhere the renderer expects it', () => {
+  assert.match(moduleHtml, /id="assignmentLibraryGroupFilter"/);
+  assert.match(moduleJs, /const assignmentLibraryGroupFilter = document\.getElementById\("assignmentLibraryGroupFilter"\)/);
+  assert.match(moduleJs, /replaceLibraryOptions\(assignmentLibraryGroupFilter, entries\.map\(\(entry\) => entry\.groupName\), "All groups"\)/);
+  assert.match(moduleJs, /assignmentLibraryGroupFilter\.addEventListener\("change", renderAssignmentLibrary\)/);
+  assert.match(moduleJs, /assignmentLibraryGroupFilter\.value = ""/);
+});
+
+
+test('Create Assignment popup cache-busts the current module revision', () => {
+  assert.match(
+    moduleHtml,
+    /assignment-create-module\.js\?v=doubleclick-task-checkpoints-20260923/
+  );
+});
