@@ -141,8 +141,8 @@ Current verified behavior:
 - Verified COG results are stored under `assignmentSubmissions/{assignmentId}/{studentKey}/cogResults/{resultId}`.
 - COG result receipts are displayed in Teacher Assignments as result history; they are not PDF submissions and are not automatic assignment grades.
 - Root browser `.mjs` modules must be copied by `build-pages.sh`; Student Buzzer imports `cog-live-session-policy.mjs` at runtime.
-- Preview E2E on YouTeach run `35827006544` passed teacher login, FANTASMA Smart Teams, COG assignment launch, GHOST20 JOIN GAME, canonical identity, heartbeat, idempotent result receipt, Teacher Results UI, and END ACTIVITY.
-- YouTeach verification run `35827006542`: 203/203 tests, syntax checks, and Pages build GREEN.
-- COG verification/deploy checkpoint: runs `35766282665` / `35766282680` GREEN.
+- Preview E2E on YouTeach run `35828301497` passed teacher login, FANTASMA Smart Teams, COG assignment launch, GHOST20 JOIN GAME, canonical identity, heartbeat, idempotent result receipt, Teacher Results UI, and END ACTIVITY.
+- YouTeach verification run `35828301309`: 230/230 tests, syntax checks, and Pages build GREEN.
+- COG verification/deploy checkpoint: runs `35828254105` / `35828254080` GREEN.
 
 Do not revive the abandoned KV/session-store authentication design. Firebase Realtime Database remains the canonical live-state architecture for YouTeach.

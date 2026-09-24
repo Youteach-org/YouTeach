@@ -277,4 +277,4 @@ The verified Firebase implementation on `live-cog-20260922` refines this specifi
 - Browser ES modules used by the live bridge, including `cog-live-session-policy.mjs`, must be present in the Cloudflare Pages artifact.
 - Preview branches for cross-repository E2E should use the same short branch name in both repositories so Cloudflare produces matching aliases and YouTeach can derive the corresponding COG preview origin.
 
-Verified automated browser smoke: YouTeach Actions run `35827006544` on 2026-09-23, with matching COG preview branch `live-cog-20260922`.
+Verified automated browser smoke: YouTeach Actions run `35828301497` on 2026-09-23, with matching COG preview branch `live-cog-20260922`.
