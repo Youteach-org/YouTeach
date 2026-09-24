@@ -101,6 +101,24 @@ export function evaluationBlockNames(group = {}) {
   return Array.from({ length: unitCount }, (_, index) => `Block ${index + 1}`);
 }
 
+export function validEvaluationBlockForGroup(group = {}, preferred = "") {
+  const blocks = evaluationBlockNames(group);
+  const requested = String(preferred || "").trim();
+  if (blocks.includes(requested)) return requested;
+  return blocks[0] || "Block 1";
+}
+
+export function activeEvaluationBlockForGroup(group = {}, legacySettings = {}) {
+  const blocks = evaluationBlockNames(group);
+  const stored = String(group?.activeEvaluationBlock || "").trim();
+  if (blocks.includes(stored)) return stored;
+
+  const legacy = String(legacySettings?.activeBlock || "").trim();
+  if (blocks.includes(legacy)) return legacy;
+
+  return blocks[0] || "Block 1";
+}
+
 export function averageScores(values = []) {
   const valid = values
     .map(Number)
