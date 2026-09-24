@@ -66,6 +66,11 @@ export function activitySubtypeForLegacyCode(code = "") {
   return LEGACY_TO_ACTIVITY[cleanKey(code)] || "OTHER";
 }
 
+export function systemCategoryForLegacyTypeCode(code = "") {
+  const subtype = activitySubtypeForLegacyCode(code);
+  return (activityDefinition(subtype) || ACTIVITIES.OTHER).systemCategory;
+}
+
 export function activityMetadataForAssignment(assignment = {}) {
   const explicitSubtype = cleanKey(assignment.activitySubtype);
   const subtype = activityDefinition(explicitSubtype)
