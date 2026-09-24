@@ -208,3 +208,28 @@ Still pending from the approved 2026-09-24 architecture:
 3. Assignment Browser grouping by evaluation category.
 4. Universal in-page **Review submission** PDF + grading modal.
 5. Progressive migration of other global-active-block consumers to the group-aware resolver.
+
+
+## Assignment category hierarchy checkpoint — 2026-09-24
+
+Implementation branch: `feature/assignment-category-hierarchy-20260924`.
+
+Implemented after the group-specific Active Block foundation:
+
+- Evaluation criteria remain teacher-named primary categories and now persist an underlying `systemCategory`: `EXAM`, `TASK`, `PARTICIPATION`, `ATTENDANCE`, or `OTHER`.
+- Group Management exposes that underlying family beside the freely editable visible category name. Existing criteria infer a safe family from their previous source/name when possible.
+- Added `assignment-activity-model.js` as the canonical compatibility taxonomy for legacy codes, activity subtypes, and default grading behavior.
+- Legacy codes remain supported: `EX`, `CT`, `HW`, `PJ`, `PC`, `RS`, `PT`, and `COG`.
+- Create Assignment now presents **Evaluation category -> Activity type -> Grading scheme -> Grading workflow**. The old flat Assignment Type selector remains hidden only as a compatibility bridge for Task Codes and existing special workflows.
+- Exam activities now target a configured evaluation category just like other graded activities. Legacy exams that cannot be mapped safely remain reviewable/unassigned rather than being guessed.
+- New assignment records add `systemCategory`, `activitySubtype`, `activitySubtypeLabel`, `gradingScheme`, and `gradingWorkflow` without deleting legacy fields.
+- Assignment Library keeps the new reusable activity/grading defaults but still strips group, Block, evaluation target, due date, Task Code, submissions, and grading state.
+- Assignment Browser groups cards under the configured evaluation categories and shows Activity Type on each card.
+- Unresolved legacy records appear under **Needs category review**.
+- Project keeps `PJ` compatibility for checkpoints/evidence; COG keeps `COG`; all Exam subtypes keep `EX`.
+
+Next implementation checkpoint:
+
+1. Run full regression/build/deploy validation for the hierarchy.
+2. Implement the universal in-page **Review submission** modal with PDF viewer plus grading.
+3. Reuse/generalize the existing authenticated Exam PDF source and annotation workflow instead of introducing a second PDF stack.
