@@ -4,12 +4,14 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import {
+  activeEvaluationBlockForGroup,
   calculateBlockGrade,
   criteriaToFirebaseObject,
   evaluationBlockNames,
   evaluationWeightTotal,
   groupEvaluationConfig,
-  normalizeEvaluationCriteria
+  normalizeEvaluationCriteria,
+  validEvaluationBlockForGroup
 } from '../group-evaluation-model.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -59,6 +61,47 @@ test('group block names come from configured evaluation unit count', () => {
       evaluationCriteria: criteriaToFirebaseObject(criteria)
     }),
     ['Block 1', 'Block 2', 'Block 3', 'Block 4']
+  );
+});
+
+test('group active block is group-specific and falls back safely to legacy settings', () => {
+  const groupA = {
+    evaluationUnitCount: 3,
+    activeEvaluationBlock: 'Block 2',
+    evaluationCriteria: criteriaToFirebaseObject(criteria)
+  };
+  const groupB = {
+    evaluationUnitCount: 3,
+    activeEvaluationBlock: 'Block 3',
+    evaluationCriteria: criteriaToFirebaseObject(criteria)
+  };
+
+  assert.equal(activeEvaluationBlockForGroup(groupA, { activeBlock: 'Block 1' }), 'Block 2');
+  assert.equal(activeEvaluationBlockForGroup(groupB, { activeBlock: 'Block 1' }), 'Block 3');
+  assert.equal(
+    activeEvaluationBlockForGroup(
+      { evaluationUnitCount: 3, evaluationCriteria: criteriaToFirebaseObject(criteria) },
+      { activeBlock: 'Block 2' }
+    ),
+    'Block 2'
+  );
+  assert.equal(
+    activeEvaluationBlockForGroup(
+      { evaluationUnitCount: 2, activeEvaluationBlock: 'Block 9', evaluationCriteria: criteriaToFirebaseObject(criteria) },
+      { activeBlock: 'Block 8' }
+    ),
+    'Block 1'
+  );
+  assert.equal(validEvaluationBlockForGroup(groupA, 'Block 3'), 'Block 3');
+  assert.equal(validEvaluationBlockForGroup(groupA, 'Block 9'), 'Block 1');
+});
+
+test('Create Assignment defaults to the group active block instead of the global block', () => {
+  assert.match(createAssignmentJs, /activeEvaluationBlockForGroup(group, settingsCache)/);
+  assert.match(createAssignmentJs, /const groupActiveBlock = activeEvaluationBlockForGroup/);
+  assert.doesNotMatch(
+    createAssignmentJs,
+    /blocks.includes(settingsCache.activeBlock)s*?s*settingsCache.activeBlock/
   );
 });
 
