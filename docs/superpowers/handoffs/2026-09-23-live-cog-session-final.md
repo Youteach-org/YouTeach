@@ -53,8 +53,16 @@ Support Meter, OSASCOMP, and 100 Students Said remain verified by their dedicate
 
 - Task 15 — cross-repository contract: COMPLETE.
 - Task 16 — browser E2E: COMPLETE.
-- Task 17 — final documentation / PR / production merge and production verification: READY.
+- Task 17 — final documentation / PR / production merge and production verification: COMPLETE.
 
 ## Next action
 
 Create PRs from `live-cog-20260922` to `main` in both repositories. Confirm required checks on the exact PR heads. Merge only after those checks remain GREEN, then verify the production Cloudflare deploys for the resulting `main` commits.
+
+
+## Production completion
+
+- COG PR #47 merged first to `main` as `7ee3af882ccebbec0514d2cc29ed58b224c9ae46`.
+- COG production workflows `35942782489` and `35942782493`: GREEN.
+- YouTeach PR #15 merged to `main` as `f11d83cc7d2a49bdbfee576c8b202c5f669672b2`.
+- YouTeach production workflow `35942862101`: GREEN, including regression tests, Pages build, deploy, and production-state inspection.

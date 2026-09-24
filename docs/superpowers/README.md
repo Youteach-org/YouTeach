@@ -146,3 +146,17 @@ Current verified behavior:
 - COG verification/deploy checkpoint: runs `35828254105` / `35828254080` GREEN.
 
 Do not revive the abandoned KV/session-store authentication design. Firebase Realtime Database remains the canonical live-state architecture for YouTeach.
+
+
+## Production merge — 2026-09-23
+
+Live COG integration is now merged to `main`.
+
+- Production merge commit: `f11d83cc7d2a49bdbfee576c8b202c5f669672b2`
+- Production Cloudflare workflow: `35942862101` — GREEN
+- Regression tests in production workflow: GREEN
+- Pages build: GREEN
+- Cloudflare deploy: GREEN
+- Cloudflare production-state inspection: GREEN
+
+Matching COG production merge: `7ee3af882ccebbec0514d2cc29ed58b224c9ae46`.

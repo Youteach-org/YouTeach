@@ -912,3 +912,10 @@ The implementation plan is amended as follows:
 - team-context Assignments can target All Generated Teams or one generated team and persist exact recipient student keys;
 - there is no separate `teamActivities` planning ledger for this flow; the normal `assignments` instance is the canonical activity record;
 - a future/remaining authenticated COG launch action must originate from a COG assignment/activity in this shared flow, not from a permanent COG-only button.
+
+
+### Production completion — 2026-09-23
+
+- COG PR #47 merged as `7ee3af882ccebbec0514d2cc29ed58b224c9ae46`; production workflows `35942782489` and `35942782493` GREEN.
+- YouTeach PR #15 merged as `f11d83cc7d2a49bdbfee576c8b202c5f669672b2`; production workflow `35942862101` GREEN.
+- Task 17 is complete.
