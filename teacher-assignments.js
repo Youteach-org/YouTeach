@@ -666,6 +666,7 @@ async function migrateAiGradedAssignmentEvaluationTargets() {
         block: target.block,
         criterionId: target.criterionId,
         criterionNameSnapshot: target.criterionNameSnapshot,
+        systemCategory: target.systemCategory || "",
         mode: target.mode
       };
       updates[`${base}/evaluationTargets/${groupName}`] = {
@@ -673,6 +674,7 @@ async function migrateAiGradedAssignmentEvaluationTargets() {
         block: target.block,
         criterionId: target.criterionId,
         criterionNameSnapshot: target.criterionNameSnapshot,
+        systemCategory: target.systemCategory || "",
         mode: target.mode
       };
       updates[`${base}/evaluationTargetNeedsReview`] = needsReviewFlag || null;
