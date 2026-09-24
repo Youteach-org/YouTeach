@@ -1,4 +1,5 @@
 import { evaluationBlockNames, groupEvaluationConfig } from "./group-evaluation-model.js";
+import { systemCategoryForLegacyTypeCode } from "./assignment-activity-model.js";
 
 const TYPE_HINTS = Object.freeze({
   CT: ["classroom", "class", "activity", "task", "trabajo", "actividad", "tarea"],
@@ -7,7 +8,8 @@ const TYPE_HINTS = Object.freeze({
   PC: ["practice", "practica", "práctica", "laboratory", "lab", "laboratorio"],
   RS: ["research", "investigacion", "investigación", "investigation"],
   PT: ["presentation", "presentacion", "presentación", "exposition", "exposición"],
-  COG: ["participation", "activity", "game", "participacion", "participación", "actividad"]
+  COG: ["participation", "activity", "game", "participacion", "participación", "actividad"],
+  EX: ["exam", "test", "oral", "verb", "examen", "evaluacion", "evaluación"]
 });
 
 function normalizeText(value) {
@@ -46,6 +48,7 @@ export function evaluationTargetForAssignment(assignment = {}, groupName = "") {
       criterionNameSnapshot: String(
         target.criterionNameSnapshot || target.groupEvaluationCriterionName || ""
       ).trim(),
+      systemCategory: String(target.systemCategory || assignment?.systemCategory || "").trim(),
       mode: String(target.mode || (isExamAssignment(assignment) ? "exam" : "assignment"))
     };
   }
@@ -55,6 +58,7 @@ export function evaluationTargetForAssignment(assignment = {}, groupName = "") {
     block: String(assignment?.evaluationBlock || assignment?.block || "").trim(),
     criterionId: String(assignment?.groupEvaluationCriterionId || "").trim(),
     criterionNameSnapshot: String(assignment?.groupEvaluationCriterionName || "").trim(),
+    systemCategory: String(assignment?.systemCategory || "").trim(),
     mode: isExamAssignment(assignment) ? "exam" : "assignment"
   };
 }
@@ -78,6 +82,12 @@ function uniqueAssignmentSourceCriterion(criteria = []) {
   return candidates.length === 1 ? candidates[0] : null;
 }
 
+function uniqueSystemCategoryCriterion(criteria = [], typeCode = "") {
+  const family = systemCategoryForLegacyTypeCode(typeCode);
+  const candidates = criteria.filter((criterion) => criterion.systemCategory === family);
+  return candidates.length === 1 ? candidates[0] : null;
+}
+
 function uniqueNameHintCriterion(criteria = [], typeCode = "") {
   const hints = TYPE_HINTS[String(typeCode || "").toUpperCase()] || [];
   if (!hints.length) return null;
@@ -96,8 +106,13 @@ export function resolveAssignmentCriterion(group = {}, typeCode = "") {
   const explicit = explicitDefaultCriterion(group, typeCode, config.criteria);
   if (explicit) return explicit;
 
-  const sourceMatch = uniqueAssignmentSourceCriterion(config.criteria);
-  if (sourceMatch) return sourceMatch;
+  const familyMatch = uniqueSystemCategoryCriterion(config.criteria, typeCode);
+  if (familyMatch) return familyMatch;
+
+  if (String(typeCode || "").toUpperCase() !== "EX") {
+    const sourceMatch = uniqueAssignmentSourceCriterion(config.criteria);
+    if (sourceMatch) return sourceMatch;
+  }
 
   const nameMatch = uniqueNameHintCriterion(config.criteria, typeCode);
   if (nameMatch) return nameMatch;
@@ -115,8 +130,9 @@ export function buildAssignmentEvaluationTarget({
   return {
     groupName: String(groupName || "").trim(),
     block: String(block || "").trim(),
-    criterionId: exam ? "" : String(criterion?.id || "").trim(),
-    criterionNameSnapshot: exam ? "" : String(criterion?.name || "").trim(),
+    criterionId: String(criterion?.id || "").trim(),
+    criterionNameSnapshot: String(criterion?.name || "").trim(),
+    systemCategory: String(criterion?.systemCategory || "").trim(),
     mode: exam ? "exam" : "assignment"
   };
 }

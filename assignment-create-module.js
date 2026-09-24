@@ -13,6 +13,13 @@ import {
   isExamAssignment,
   resolveAssignmentCriterion
 } from "./assignment-evaluation-target.js";
+import {
+  activityDefinition,
+  activityMetadataForAssignment,
+  activitySubtypeForLegacyCode,
+  activityTypesForSystemCategory,
+  defaultGradingForActivity
+} from "./assignment-activity-model.js";
 
 if (!requireTeacherAuth()) throw new Error("Teacher authentication required.");
 
@@ -62,6 +69,10 @@ const context = readAssignmentsModuleContext() || {};
 const editingAssignmentId = context.mode === "edit" ? String(context.assignmentId || "") : "";
 
 const assignmentType = document.getElementById("assignmentType");
+const assignmentActivityType = document.getElementById("assignmentActivityType");
+const assignmentActivityTypeHelp = document.getElementById("assignmentActivityTypeHelp");
+const assignmentGradingScheme = document.getElementById("assignmentGradingScheme");
+const assignmentGradingWorkflow = document.getElementById("assignmentGradingWorkflow");
 const assignmentOtherTypeField = document.getElementById("assignmentOtherTypeField");
 const assignmentOtherType = document.getElementById("assignmentOtherType");
 const assignmentTitle = document.getElementById("assignmentTitle");
@@ -217,6 +228,11 @@ function reusableContentFromAssignment(assignment = {}) {
     instructions: parsed.visibleInstructions,
     assignmentType: String(assignment.assignmentType || ""),
     assignmentTypeCode: String(assignment.assignmentTypeCode || ""),
+    systemCategory: String(assignment.systemCategory || ""),
+    activitySubtype: String(assignment.activitySubtype || ""),
+    activitySubtypeLabel: String(assignment.activitySubtypeLabel || ""),
+    gradingScheme: String(assignment.gradingScheme || ""),
+    gradingWorkflow: String(assignment.gradingWorkflow || ""),
     evaluationCriteria: rubric.criteria,
     evaluationDistribution: rubric.distribution,
     evaluationNotes: rubric.notes,
@@ -325,12 +341,102 @@ function availableGroups() {
   return [...names].sort((a, b) => a.localeCompare(b));
 }
 
+function selectedGroupCriterion() {
+  const groupName = String(assignmentGroup.value || "");
+  const config = groupEvaluationConfig(groupsCache?.[groupName] || {});
+  return config.criteria.find((criterion) => criterion.id === String(assignmentGroupCriterion.value || "")) || null;
+}
+
+function syncLegacyTypeFromActivity({ resetGrading = false } = {}) {
+  const activityKey = String(assignmentActivityType?.value || "");
+  const definition = activityDefinition(activityKey);
+
+  if (!definition) {
+    assignmentType.value = "OTHER";
+    renderOtherTypeField();
+    return;
+  }
+
+  const legacyOption = [...assignmentType.options].some((option) => option.value === definition.legacyCode);
+  assignmentType.value = legacyOption ? definition.legacyCode : "OTHER";
+  if (legacyOption) assignmentOtherType.value = "";
+  renderOtherTypeField();
+
+  if (resetGrading) {
+    const defaults = defaultGradingForActivity(activityKey);
+    assignmentGradingScheme.value = defaults.gradingScheme;
+    assignmentGradingWorkflow.value = defaults.gradingWorkflow;
+  }
+
+  refreshProjectCheckpointBuilder();
+  refreshAutomaticTaskCode();
+}
+
+function renderActivityTypeOptions({ resetGrading = false, preferredSubtype = "" } = {}) {
+  const criterion = selectedGroupCriterion();
+  const previous = String(preferredSubtype || assignmentActivityType?.value || "");
+  if (!criterion) {
+    assignmentActivityType.innerHTML = '<option value="">Select evaluation category first</option>';
+    assignmentActivityType.value = "";
+    assignmentActivityType.disabled = true;
+    assignmentActivityTypeHelp.textContent = "Choose an evaluation category first.";
+    assignmentType.value = "CT";
+    renderOtherTypeField();
+    return;
+  }
+
+  const activities = activityTypesForSystemCategory(criterion.systemCategory);
+  assignmentActivityType.disabled = false;
+  assignmentActivityType.innerHTML =
+    activities.map((activity) =>
+      `<option value="${escapeHtml(activity.key)}">${escapeHtml(activity.label)}</option>`
+    ).join("") +
+    '<option value="CUSTOM">Custom activity type</option>';
+
+  const legacySubtype = activitySubtypeForLegacyCode(assignmentType.value);
+  const candidate = activities.some((activity) => activity.key === previous)
+    ? previous
+    : (activities.some((activity) => activity.key === legacySubtype)
+      ? legacySubtype
+      : (activities[0]?.key || "CUSTOM"));
+
+  assignmentActivityType.value = candidate;
+  assignmentActivityTypeHelp.textContent =
+    `Category family: ${criterion.systemCategory}. You can choose a built-in activity type or a custom one.`;
+
+  syncLegacyTypeFromActivity({
+    resetGrading: resetGrading || !previous || previous !== candidate
+  });
+}
+
+function selectedActivityMetadata() {
+  const criterion = selectedGroupCriterion();
+  const activityKey = String(assignmentActivityType?.value || "");
+  const definition = activityDefinition(activityKey);
+
+  if (!definition) {
+    return {
+      systemCategory: String(criterion?.systemCategory || "OTHER"),
+      activitySubtype: "CUSTOM",
+      activitySubtypeLabel: assignmentOtherType.value.trim() || "Custom activity",
+      gradingScheme: String(assignmentGradingScheme.value || "RUBRIC"),
+      gradingWorkflow: String(assignmentGradingWorkflow.value || "MANUAL")
+    };
+  }
+
+  return {
+    systemCategory: String(criterion?.systemCategory || definition.systemCategory),
+    activitySubtype: definition.key,
+    activitySubtypeLabel: definition.label,
+    gradingScheme: String(assignmentGradingScheme.value || definition.gradingScheme),
+    gradingWorkflow: String(assignmentGradingWorkflow.value || definition.gradingWorkflow)
+  };
+}
+
 function renderEvaluationTargetOptions() {
   const groupName = String(assignmentGroup.value || "");
   const group = groupsCache?.[groupName] || null;
   const config = groupEvaluationConfig(group || {});
-  const typeCode = selectedTypeCode();
-  const exam = typeCode === "EX";
   const previousBlock = String(assignmentEvaluationBlock.value || "");
   const previousCriterion = String(assignmentGroupCriterion.value || "");
 
@@ -338,20 +444,17 @@ function renderEvaluationTargetOptions() {
     assignmentEvaluationBlock.innerHTML = '<option value="">Select block / unit</option>';
     assignmentEvaluationBlock.value = "";
     assignmentEvaluationBlock.disabled = true;
-    assignmentGroupCriterion.innerHTML = exam
-      ? '<option value="">Exam grading is handled separately</option>'
-      : '<option value="">Select category</option>';
+    assignmentGroupCriterion.innerHTML = '<option value="">Select category</option>';
     assignmentGroupCriterion.value = "";
     assignmentGroupCriterion.disabled = true;
     assignmentEvaluationBlockHelp.textContent =
       groupName === "ALL"
         ? "Choose one specific group so the assignment can be linked to a block / unit."
         : "This group needs a valid evaluation setup before assignments can be graded.";
-    assignmentGroupCriterionHelp.textContent = exam
-      ? "Exams belong to a block / unit but do not use an assignment category."
-      : "Choose a configured group to select its category.";
+    assignmentGroupCriterionHelp.textContent = "Choose a configured group to select its evaluation category.";
     assignmentEvaluationTargetSummary.textContent =
       "Choose a specific group with a valid evaluation setup.";
+    renderActivityTypeOptions();
     return;
   }
 
@@ -368,38 +471,29 @@ function renderEvaluationTargetOptions() {
   assignmentEvaluationBlockHelp.textContent =
     "Required. This determines which block or unit receives the assignment grade.";
 
-  if (exam) {
-    assignmentGroupCriterion.innerHTML =
-      '<option value="">Exam grading is handled separately</option>';
-    assignmentGroupCriterion.value = "";
-    assignmentGroupCriterion.disabled = true;
-    assignmentGroupCriterionHelp.textContent =
-      "Exams are linked only to the selected block / unit.";
+  assignmentGroupCriterion.disabled = false;
+  assignmentGroupCriterion.innerHTML =
+    '<option value="">Select category</option>' +
+    config.criteria.map((criterion) =>
+      `<option value="${escapeHtml(criterion.id)}">${escapeHtml(criterion.name)} · ${criterion.weight}% · ${escapeHtml(criterion.systemCategory)}</option>`
+    ).join("");
+
+  if (config.criteria.some((criterion) => criterion.id === previousCriterion)) {
+    assignmentGroupCriterion.value = previousCriterion;
   } else {
-    assignmentGroupCriterion.disabled = false;
-    assignmentGroupCriterion.innerHTML =
-      '<option value="">Select category</option>' +
-      config.criteria.map((criterion) =>
-        `<option value="${escapeHtml(criterion.id)}">${escapeHtml(criterion.name)} · ${criterion.weight}%</option>`
-      ).join("");
-
-    if (config.criteria.some((criterion) => criterion.id === previousCriterion)) {
-      assignmentGroupCriterion.value = previousCriterion;
-    } else {
-      const automatic = resolveAssignmentCriterion(group, typeCode);
-      assignmentGroupCriterion.value = automatic?.id || "";
-    }
-
-    assignmentGroupCriterionHelp.textContent =
-      "Required. YouTeach remembers the selected criterion as the default for this assignment type in this group.";
+    const automatic = resolveAssignmentCriterion(group, selectedTypeCode());
+    assignmentGroupCriterion.value = automatic?.id || "";
   }
 
-  const criterion = config.criteria.find((item) => item.id === assignmentGroupCriterion.value) || null;
-  assignmentEvaluationTargetSummary.textContent = exam
-    ? `This exam will contribute to: ${preferredBlock || "No block selected"}.`
-    : criterion
-      ? `This assignment will contribute to: ${preferredBlock || "No block selected"} → ${criterion.name} (${criterion.weight}%).`
-      : `Select the category for ${preferredBlock || "this block / unit"}.`;
+  assignmentGroupCriterionHelp.textContent =
+    "Required. This group criterion is the primary category that receives the assignment grade.";
+
+  const criterion = selectedGroupCriterion();
+  renderActivityTypeOptions();
+
+  assignmentEvaluationTargetSummary.textContent = criterion
+    ? `This activity will contribute to: ${preferredBlock || "No block selected"} → ${criterion.name} (${criterion.weight}%).`
+    : `Select the evaluation category for ${preferredBlock || "this block / unit"}.`;
 }
 
 function renderGroupOptions() {
@@ -465,11 +559,15 @@ function compactGroupCode(value) {
 }
 
 function selectedTypeCode() {
+  const definition = activityDefinition(String(assignmentActivityType?.value || ""));
+  if (definition) return definition.legacyCode;
   if (assignmentType.value !== "OTHER") return assignmentType.value;
   return compactInitials(assignmentOtherType.value, 3) || "OT";
 }
 
 function selectedTypeLabel() {
+  const definition = activityDefinition(String(assignmentActivityType?.value || ""));
+  if (definition) return definition.label;
   if (assignmentType.value === "OTHER") {
     return assignmentOtherType.value.trim() || "Other";
   }
@@ -513,7 +611,7 @@ function taskCodeExists(code) {
 }
 
 function renderOtherTypeField() {
-  const show = assignmentType.value === "OTHER";
+  const show = String(assignmentActivityType?.value || "") === "CUSTOM";
   assignmentOtherTypeField.hidden = !show;
   assignmentOtherTypeField.style.display = show ? "grid" : "none";
   if (!show) assignmentOtherType.value = "";
@@ -988,12 +1086,16 @@ function resetReusableForm() {
   basedOnSourceChip.textContent = "";
   assignmentType.value = "CT";
   assignmentOtherType.value = "";
+  assignmentActivityType.value = "";
+  assignmentGradingScheme.value = "RUBRIC";
+  assignmentGradingWorkflow.value = "AI_ASSISTED";
   assignmentTitle.value = "";
   assignmentInstructions.value = "";
   assignmentEvaluationNotes.value = "";
   assignmentDueAt.value = "";
   projectCheckpointRows.innerHTML = "";
   renderRubricEditors([], "equal");
+  renderEvaluationTargetOptions();
   renderOtherTypeField();
   refreshProjectCheckpointBuilder();
   refreshAutomaticTaskCode();
@@ -1009,26 +1111,45 @@ function loadLibraryEntry(key) {
   if (!entry) return;
 
   const content = entry.content || {};
-  const typeCode = String(content.assignmentTypeCode || "").trim().toUpperCase();
+  const activity = activityMetadataForAssignment(content);
+  const typeCode = String(content.assignmentTypeCode || activity.assignmentTypeCode || "").trim().toUpperCase();
   const standardCodes = new Set(["CT", "HW", "EX", "PJ", "PC", "RS", "PT", "COG"]);
 
-  if (standardCodes.has(typeCode)) {
-    assignmentType.value = typeCode;
-    assignmentOtherType.value = "";
-  } else {
-    assignmentType.value = "OTHER";
-    assignmentOtherType.value = String(content.assignmentType || typeCode || "");
-  }
-
+  assignmentType.value = standardCodes.has(typeCode) ? typeCode : "OTHER";
+  assignmentOtherType.value = "";
   assignmentTitle.value = String(content.title || "");
   assignmentInstructions.value = splitStoredInstructions(content.instructions).visibleInstructions;
+
   const rubric = getAssignmentRubric(content);
   assignmentEvaluationNotes.value = rubric.notes || "";
   renderRubricEditors(rubric.criteria, rubric.distribution);
 
   assignmentDueAt.value = "";
   projectCheckpointRows.innerHTML = "";
-  if (assignmentType.value === "PJ") {
+
+  renderEvaluationTargetOptions();
+
+  const groupConfig = groupEvaluationConfig(groupsCache?.[String(assignmentGroup.value || "")] || {});
+  const compatibleCriteria = groupConfig.criteria.filter((criterion) =>
+    criterion.systemCategory === activity.systemCategory
+  );
+  if (compatibleCriteria.length === 1) {
+    assignmentGroupCriterion.value = compatibleCriteria[0].id;
+  }
+
+  renderActivityTypeOptions({ preferredSubtype: activity.activitySubtype });
+  if (activityDefinition(activity.activitySubtype)) {
+    assignmentActivityType.value = activity.activitySubtype;
+    assignmentOtherType.value = "";
+  } else {
+    assignmentActivityType.value = "CUSTOM";
+    assignmentOtherType.value = String(content.activitySubtypeLabel || content.assignmentType || typeCode || "");
+  }
+  assignmentGradingScheme.value = String(content.gradingScheme || activity.gradingScheme || "RUBRIC");
+  assignmentGradingWorkflow.value = String(content.gradingWorkflow || activity.gradingWorkflow || "MANUAL");
+  syncLegacyTypeFromActivity({ resetGrading: false });
+
+  if (selectedTypeCode() === "PJ") {
     Object.entries(content.projectCheckpoints || {}).forEach(([id, checkpoint]) => {
       addProjectCheckpointRow({ id, ...(checkpoint || {}) });
     });
@@ -1049,7 +1170,7 @@ function loadLibraryEntry(key) {
   refreshProjectCheckpointBuilder();
   refreshAutomaticTaskCode();
   renderAssignmentLibrary();
-  assignmentLibraryStatus.textContent = `Loaded: ${entry.title}. Review the target and optional due date.`;
+  assignmentLibraryStatus.textContent = `Loaded: ${entry.title}. Review the category, activity type, and optional due date.`;
   setStatus("Previous assignment loaded. Review it before creating the new assignment.", "ok");
   markFormDirty();
 }
@@ -1067,12 +1188,11 @@ function loadEditingAssignmentIfReady() {
   const assignment = assignmentsCache?.[editingAssignmentId];
   if (!assignment) return;
 
-  const typeCode = String(assignment.assignmentTypeCode || "CT").toUpperCase();
+  const activity = activityMetadataForAssignment(assignment);
+  const typeCode = String(assignment.assignmentTypeCode || activity.assignmentTypeCode || "CT").toUpperCase();
   const standardCodes = new Set(["CT","HW","EX","PJ","PC","RS","PT","COG"]);
   assignmentType.value = standardCodes.has(typeCode) ? typeCode : "OTHER";
-  assignmentOtherType.value = standardCodes.has(typeCode) ? "" : String(assignment.assignmentType || typeCode);
   assignmentType.disabled = true;
-  assignmentOtherType.disabled = true;
 
   assignmentTitle.value = String(assignment.title || "");
   assignmentInstructions.value = splitStoredInstructions(assignment.instructions).visibleInstructions;
@@ -1085,7 +1205,36 @@ function loadEditingAssignmentIfReady() {
   renderRubricEditors(rubric.criteria, rubric.distribution);
 
   projectCheckpointRows.innerHTML = "";
-  if (typeCode === "PJ") {
+  renderEvaluationTargetOptions();
+
+  const target = assignment.evaluationTarget || assignment.evaluationTargets?.[assignmentGroup.value] || {};
+  const storedBlock = String(target.block || assignment.evaluationBlock || "");
+  const storedCriterionId = String(target.criterionId || assignment.groupEvaluationCriterionId || "");
+
+  if (storedBlock && [...assignmentEvaluationBlock.options].some((option) => option.value === storedBlock)) {
+    assignmentEvaluationBlock.value = storedBlock;
+  }
+  if (storedCriterionId && [...assignmentGroupCriterion.options].some((option) => option.value === storedCriterionId)) {
+    assignmentGroupCriterion.value = storedCriterionId;
+  } else if (!storedCriterionId) {
+    const group = groupsCache?.[assignmentGroup.value] || {};
+    const automatic = resolveAssignmentCriterion(group, typeCode);
+    if (automatic?.id) assignmentGroupCriterion.value = automatic.id;
+  }
+
+  renderActivityTypeOptions({ preferredSubtype: activity.activitySubtype });
+  if (activityDefinition(activity.activitySubtype)) {
+    assignmentActivityType.value = activity.activitySubtype;
+    assignmentOtherType.value = "";
+  } else {
+    assignmentActivityType.value = "CUSTOM";
+    assignmentOtherType.value = String(assignment.activitySubtypeLabel || assignment.assignmentType || typeCode);
+  }
+  assignmentGradingScheme.value = String(assignment.gradingScheme || activity.gradingScheme || "RUBRIC");
+  assignmentGradingWorkflow.value = String(assignment.gradingWorkflow || activity.gradingWorkflow || "MANUAL");
+  syncLegacyTypeFromActivity({ resetGrading: false });
+
+  if (typeCode === "PJ" || activity.activitySubtype === "PROJECT") {
     Object.entries(assignment.projectCheckpoints || {}).forEach(([id, checkpoint]) => {
       addProjectCheckpointRow({ id, ...(checkpoint || {}) });
     });
@@ -1094,9 +1243,20 @@ function loadEditingAssignmentIfReady() {
   renderOtherTypeField();
   refreshProjectCheckpointBuilder();
   renderEvaluationTargetOptions();
-  if (assignment.evaluationBlock) assignmentEvaluationBlock.value = assignment.evaluationBlock;
-  if (assignment.groupEvaluationCriterionId) assignmentGroupCriterion.value = assignment.groupEvaluationCriterionId;
-  renderEvaluationTargetOptions();
+
+  // Re-apply the stored target after the generic renderer has refreshed the options.
+  if (storedBlock && [...assignmentEvaluationBlock.options].some((option) => option.value === storedBlock)) {
+    assignmentEvaluationBlock.value = storedBlock;
+  }
+  if (storedCriterionId && [...assignmentGroupCriterion.options].some((option) => option.value === storedCriterionId)) {
+    assignmentGroupCriterion.value = storedCriterionId;
+  }
+  renderActivityTypeOptions({ preferredSubtype: activity.activitySubtype });
+  if (activityDefinition(activity.activitySubtype)) assignmentActivityType.value = activity.activitySubtype;
+  else assignmentActivityType.value = "CUSTOM";
+  assignmentGradingScheme.value = String(assignment.gradingScheme || activity.gradingScheme || "RUBRIC");
+  assignmentGradingWorkflow.value = String(assignment.gradingWorkflow || activity.gradingWorkflow || "MANUAL");
+  syncLegacyTypeFromActivity({ resetGrading: false });
 
   assignmentCode.value = String(assignment.code || "");
   assignmentCode.readOnly = true;
@@ -1113,6 +1273,9 @@ function loadEditingAssignmentIfReady() {
     createCriteriaRows.querySelectorAll("input,textarea,button").forEach((control) => control.disabled = true);
     createDistributionRadios.forEach((control) => control.disabled = true);
     addCreateCriterionBtn.disabled = true;
+    assignmentActivityType.disabled = true;
+    assignmentGradingScheme.disabled = true;
+    assignmentGradingWorkflow.disabled = true;
   }
 }
 
@@ -1128,15 +1291,23 @@ async function saveEditingAssignment() {
     (criterion) => criterion.id === String(assignmentGroupCriterion.value || "")
   ) || null;
   const dueAt = assignmentDueAt.value ? new Date(assignmentDueAt.value).getTime() : 0;
-  const typeCode = String(existing.assignmentTypeCode || selectedTypeCode()).toUpperCase();
-  const typeLabel = String(existing.assignmentType || selectedTypeLabel());
+  const activity = selectedActivityMetadata();
+  const typeCode = String(editingHasSubmissions
+    ? (existing.assignmentTypeCode || selectedTypeCode())
+    : selectedTypeCode()
+  ).toUpperCase();
+  const typeLabel = String(activity.activitySubtypeLabel || selectedTypeLabel());
   const existingRubric = getAssignmentRubric(existing);
   const rubric = editingHasSubmissions ? existingRubric : collectRubric();
 
   if (!title) return setStatus("Enter an assignment name.", "bad");
   if (!groupName) return setStatus("Select a working group.", "bad");
   if (!evaluationBlock) return setStatus("Select the block / unit for this assignment.", "bad");
-  if (typeCode !== "EX" && !groupCriterion) return setStatus("Select the category for this assignment.", "bad");
+  if (!groupCriterion) return setStatus("Select the evaluation category for this assignment.", "bad");
+  if (!assignmentActivityType.value) return setStatus("Select the activity type.", "bad");
+  if (assignmentActivityType.value === "CUSTOM" && !assignmentOtherType.value.trim()) {
+    return setStatus("Specify the custom activity type.", "bad");
+  }
   if (rubric.error) return setStatus(rubric.error, "bad");
 
   const now = Date.now();
@@ -1154,7 +1325,14 @@ async function saveEditingAssignment() {
     internalId: String(existing.internalId || editingAssignmentId),
     title,
     instructions: storedInstructions,
+    assignmentType: typeLabel,
+    assignmentTypeCode: typeCode,
     evaluationNotes: assignmentEvaluationNotes.value.trim(),
+    systemCategory: activity.systemCategory,
+    activitySubtype: activity.activitySubtype,
+    activitySubtypeLabel: activity.activitySubtypeLabel,
+    gradingScheme: activity.gradingScheme,
+    gradingWorkflow: activity.gradingWorkflow,
     dueAt,
     planning: !dueAt,
     active: dueAt
@@ -1184,14 +1362,14 @@ async function saveEditingAssignment() {
     patch.evaluationDistribution = rubric.distribution || getDistributionMode();
     const project = collectProjectCheckpoints(dueAt);
     if (project.error) return setStatus(project.error, "bad");
-    patch.projectCheckpoints = typeCode === "PJ" ? project.checkpoints : null;
+    patch.projectCheckpoints = activity.activitySubtype === "PROJECT" ? project.checkpoints : null;
   }
 
   createAssignmentBtn.disabled = true;
   setStatus("Saving...");
   try {
     await update(ref(db, `assignments/${editingAssignmentId}`), patch);
-    if (typeCode !== "EX" && groupCriterion?.id) {
+    if (groupCriterion?.id) {
       await update(ref(db, `groups/${groupName}/assignmentCriterionDefaults`), {
         [typeCode]: groupCriterion.id
       });
@@ -1242,8 +1420,9 @@ async function createAssignment() {
   refreshAutomaticTaskCode();
 
   const title = assignmentTitle.value.trim();
+  const activity = selectedActivityMetadata();
   const typeCode = selectedTypeCode();
-  const typeLabel = selectedTypeLabel();
+  const typeLabel = activity.activitySubtypeLabel || selectedTypeLabel();
   const groupName = assignmentGroup.value || "ALL";
   const evaluationBlock = String(assignmentEvaluationBlock.value || "");
   const groupCriterionId = String(assignmentGroupCriterion.value || "");
@@ -1264,11 +1443,14 @@ async function createAssignment() {
     return setStatus("This group needs a valid evaluation setup before creating graded assignments.", "bad");
   }
   if (!evaluationBlock) return setStatus("Select the block / unit for this assignment.", "bad");
-  if (typeCode !== "EX" && !groupCriterion) {
-    return setStatus("Select the category for this assignment.", "bad");
+  if (!groupCriterion) {
+    return setStatus("Select the evaluation category for this assignment.", "bad");
   }
-  if (assignmentType.value === "OTHER" && !assignmentOtherType.value.trim()) {
-    return setStatus("Specify the assignment type.", "bad");
+  if (!assignmentActivityType.value) {
+    return setStatus("Select the activity type.", "bad");
+  }
+  if (assignmentActivityType.value === "CUSTOM" && !assignmentOtherType.value.trim()) {
+    return setStatus("Specify the custom activity type.", "bad");
   }
 
   if (hasGeneratedTeamContext() && !normalizeRecipientKeys(targetMetadata.recipientStudentKeys).length) {
@@ -1317,6 +1499,11 @@ async function createAssignment() {
       instructions: storedInstructions,
       assignmentType: typeLabel,
       assignmentTypeCode: typeCode,
+      systemCategory: activity.systemCategory,
+      activitySubtype: activity.activitySubtype,
+      activitySubtypeLabel: activity.activitySubtypeLabel,
+      gradingScheme: activity.gradingScheme,
+      gradingWorkflow: activity.gradingWorkflow,
       evaluationCriteria: rubric.criteria,
       evaluationDistribution,
       evaluationNotes,
@@ -1360,7 +1547,7 @@ async function createAssignment() {
 
     await set(target, payload);
 
-    if (typeCode !== "EX" && groupCriterion?.id) {
+    if (groupCriterion?.id) {
       await update(ref(db, `groups/${groupName}/assignmentCriterionDefaults`), {
         [typeCode]: groupCriterion.id
       });
@@ -1449,16 +1636,18 @@ assignmentLibraryList.addEventListener("keydown", (event) => {
   loadLibraryEntry(String(card.dataset.libraryKey || ""));
 });
 
-assignmentType.addEventListener("change", () => {
-  renderOtherTypeField();
-  refreshProjectCheckpointBuilder();
+assignmentActivityType.addEventListener("change", () => {
+  syncLegacyTypeFromActivity({ resetGrading: true });
   renderEvaluationTargetOptions();
-  refreshAutomaticTaskCode();
 });
-assignmentOtherType.addEventListener("input", refreshAutomaticTaskCode);
+assignmentOtherType.addEventListener("input", () => {
+  refreshAutomaticTaskCode();
+  renderOtherTypeField();
+});
 assignmentTitle.addEventListener("input", refreshAutomaticTaskCode);
 assignmentEvaluationBlock.addEventListener("change", renderEvaluationTargetOptions);
 assignmentGroupCriterion.addEventListener("change", () => {
+  renderActivityTypeOptions({ resetGrading: true });
   renderEvaluationTargetOptions();
   refreshAutomaticTaskCode();
 });
@@ -1508,9 +1697,10 @@ const assignmentEditorRoot = document.querySelector(".create-assignment-module")
 assignmentEditorRoot?.addEventListener("input", markFormDirty);
 assignmentEditorRoot?.addEventListener("change", markFormDirty);
 
-renderOtherTypeField();
 renderRubricEditors();
 renderTargetOptions();
+renderEvaluationTargetOptions();
+renderOtherTypeField();
 refreshProjectCheckpointBuilder();
 setCreationMode("scratch");
 markFormClean();

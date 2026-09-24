@@ -178,8 +178,7 @@
     <div id="basedOnSource" hidden><span id="basedOnSourceChip" class="based-on-chip"></span></div>
 
     <div class="create-grid">
-      <div class="field">
-        <label for="assignmentType">Assignment type</label>
+      <div hidden aria-hidden="true">
         <select id="assignmentType">
           <option value="CT">Classroom Task (CT)</option>
           <option value="HW">Homework (HW)</option>
@@ -191,11 +190,6 @@
           <option value="COG">Classroom Online Games (COG)</option>
           <option value="OTHER">Other</option>
         </select>
-      </div>
-
-      <div class="field" id="assignmentOtherTypeField" hidden style="display:none">
-        <label for="assignmentOtherType">Specify other type</label>
-        <input id="assignmentOtherType" placeholder="e.g. Lab, Debate">
       </div>
 
       <div class="field title-field">
@@ -227,18 +221,55 @@
       </div>
 
       <div class="field" id="assignmentGroupCriterionField">
-        <label for="assignmentGroupCriterion">Category</label>
+        <label for="assignmentGroupCriterion">Evaluation category</label>
         <select id="assignmentGroupCriterion">
           <option value="">Select category</option>
         </select>
         <div id="assignmentGroupCriterionHelp" class="field-help">
-          Required for every assignment except exams.
+          Required. This is the group criterion that receives the grade.
         </div>
+      </div>
+
+      <div class="field" id="assignmentActivityTypeField">
+        <label for="assignmentActivityType">Activity type</label>
+        <select id="assignmentActivityType">
+          <option value="">Select activity type</option>
+        </select>
+        <div id="assignmentActivityTypeHelp" class="field-help">
+          Available activity types depend on the selected evaluation category.
+        </div>
+      </div>
+
+      <div class="field" id="assignmentOtherTypeField" hidden style="display:none">
+        <label for="assignmentOtherType">Custom activity type</label>
+        <input id="assignmentOtherType" placeholder="e.g. Lab, Debate">
+      </div>
+
+      <div class="field">
+        <label for="assignmentGradingScheme">Grading scheme</label>
+        <select id="assignmentGradingScheme">
+          <option value="RUBRIC">Rubric</option>
+          <option value="POINTS">Points</option>
+          <option value="PERCENTAGE">Percentage</option>
+          <option value="CHECKLIST">Checklist</option>
+          <option value="ANSWER_KEY">Answer key</option>
+          <option value="ORAL_RUBRIC">Oral rubric</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="assignmentGradingWorkflow">Grading workflow</label>
+        <select id="assignmentGradingWorkflow">
+          <option value="MANUAL">Manual</option>
+          <option value="AI_ASSISTED">AI-assisted</option>
+          <option value="AUTOMATIC">Automatic</option>
+          <option value="HYBRID">Hybrid</option>
+        </select>
       </div>
 
       <div class="field full">
         <div id="assignmentEvaluationTargetSummary" class="field-help">
-          Choose a group, block / unit, and evaluation criterion.
+          Choose a group, block / unit, evaluation category, and activity type.
         </div>
       </div>
 

@@ -15,6 +15,7 @@ import { visibleGroups } from "./group-state.js";
 import { studentGroupNames, studentInGroup } from "./student-groups.js";
 import { planStudentRemovalFromGroup } from "./group-membership-deletion.js";
 import { ensureGroupsDialog, renderGroupsDialog } from "./groups-dialog.js";
+import { SYSTEM_CATEGORIES } from "./assignment-activity-model.js";
 
 import {
   activeEvaluationBlockForGroup,
@@ -279,12 +280,22 @@ function makeEnrollmentToken() {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
+function systemCategoryOptions(selected = "OTHER") {
+  const current = String(selected || "OTHER").trim().toUpperCase();
+  return SYSTEM_CATEGORIES.map((category) =>
+    `<option value="${escapeHtml(category.key)}" ${category.key === current ? "selected" : ""}>${escapeHtml(category.label)}</option>`
+  ).join("");
+}
+
 function criterionRowHtml(criterion = {}) {
   const id = String(criterion.id || makeCriterionId());
   return `
     <div class="criterion-row" data-evaluation-criterion data-criterion-id="${escapeHtml(id)}"
       data-criterion-source="${escapeHtml(criterion.source || "manual")}">
-      <input data-criterion-name value="${escapeHtml(criterion.name || "")}" placeholder="Criterion name">
+      <input data-criterion-name value="${escapeHtml(criterion.name || "")}" placeholder="Category name">
+      <select data-criterion-system-category aria-label="Underlying system category" title="Controls which activity types and grading modes are available">
+        ${systemCategoryOptions(criterion.systemCategory || "OTHER")}
+      </select>
       <input data-criterion-short-label value="${escapeHtml(criterion.shortLabel || "")}" placeholder="Abbr." aria-label="Abbreviation" title="Abbreviation used in reports">
       <input data-criterion-weight type="number" min="0" max="100" step="0.1"
         value="${Number(criterion.weight || 0) || ""}" placeholder="%">
@@ -306,6 +317,7 @@ function criteriaFromForm() {
       shortLabel: String(row.querySelector("[data-criterion-short-label]")?.value || "").trim(),
       weight: Number(row.querySelector("[data-criterion-weight]")?.value || 0),
       source: String(row.dataset.criterionSource || "manual"),
+      systemCategory: String(row.querySelector("[data-criterion-system-category]")?.value || "OTHER"),
       order
     }))
   );
@@ -334,7 +346,7 @@ function renderEvaluationEditorVisibility() {
 function templateComparable({ evaluationCriteria } = {}) {
   return {
     criteria: normalizeEvaluationCriteria(evaluationCriteria || []).map((criterion) =>
-      String(criterion.name || "").trim().toLocaleLowerCase()
+      `${String(criterion.name || "").trim().toLocaleLowerCase()}::${criterion.systemCategory}`
     )
   };
 }

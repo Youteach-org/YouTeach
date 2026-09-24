@@ -33,7 +33,8 @@ test('Create Assignment popup offers explicit scratch/library source toggle and 
   assert.match(createModuleHtml, /id="assignmentType"/);
   assert.match(createModuleHtml, /id="assignmentOtherTypeField" hidden/);
   assert.match(createModuleJs, /function renderOtherTypeField\(\)/);
-  assert.match(createModuleJs, /assignmentType\.value === "OTHER"/);
+  assert.match(createModuleJs, /assignmentActivityType\?\.value \|\| ""/);
+  assert.match(createModuleJs, /=== "CUSTOM"/);
 });
 
 test('Create Assignment popup keeps the canonical assignment fields while Library is only a source chooser', () => {
@@ -84,7 +85,8 @@ test('Assignments popup loads only the dedicated Create Assignment module', () =
 test('Create Assignment popup keeps Other conditional and student instructions dominant', () => {
   assert.match(createModuleHtml, /id="assignmentOtherTypeField" hidden style="display:none"/);
   assert.match(createModuleJs, /function renderOtherTypeField\(\)/);
-  assert.match(createModuleJs, /assignmentType\.value === "OTHER"/);
+  assert.match(createModuleJs, /assignmentActivityType\?\.value \|\| ""/);
+  assert.match(createModuleJs, /=== "CUSTOM"/);
   assert.match(createModuleHtml, /class="field student-instructions"/);
   assert.match(createModuleHtml, /min-height:170px/);
 });

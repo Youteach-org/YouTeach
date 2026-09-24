@@ -166,14 +166,30 @@ test('new assignments can be linked to a group evaluation criterion', () => {
   assert.match(createAssignmentHtml, /id="assignmentEvaluationBlock"/);
 });
 
-test('normalization keeps teacher-defined criterion names and sources', () => {
+test('normalization keeps teacher-defined names while attaching an underlying system family', () => {
   const normalized = normalizeEvaluationCriteria({
-    customKey: { name: 'Portfolio', weight: 25, source: 'manual', order: 1 }
+    customKey: { name: 'Portfolio', weight: 25, source: 'manual', systemCategory: 'TASK', order: 1 }
   });
   assert.equal(normalized.length, 1);
   assert.equal(normalized[0].id, 'customKey');
   assert.equal(normalized[0].name, 'Portfolio');
   assert.equal(normalized[0].source, 'manual');
+  assert.equal(normalized[0].systemCategory, 'TASK');
+  assert.equal(criteriaToFirebaseObject(normalized).customKey.systemCategory, 'TASK');
+
+  const inferred = normalizeEvaluationCriteria({
+    exam: { name: 'Written exam', weight: 50, source: 'writtenExam', order: 0 },
+    work: { name: 'Projects', weight: 50, source: 'manual', order: 1 }
+  });
+  assert.equal(inferred[0].systemCategory, 'EXAM');
+  assert.equal(inferred[1].systemCategory, 'TASK');
+});
+
+test('Group Management exposes the system family without restricting the visible category name', () => {
+  assert.match(enrollmentJs, /SYSTEM_CATEGORIES/);
+  assert.match(enrollmentJs, /data-criterion-system-category/);
+  assert.match(enrollmentJs, /placeholder="Category name"/);
+  assert.match(enrollmentJs, /systemCategory:/);
 });
 
 
@@ -252,6 +268,7 @@ test('template identity uses ordered rubric names, not percentages or group sett
   assert.doesNotMatch(block, /reportSettings/);
   assert.doesNotMatch(block, /shortLabel/);
   assert.doesNotMatch(block, /criterion\.source/);
+  assert.match(block, /criterion\.systemCategory/);
 });
 
 test('template stores editable percentage defaults without copying group-specific settings', () => {
