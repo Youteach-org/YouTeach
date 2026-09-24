@@ -2,6 +2,7 @@ import { db } from "./firebase.js";
 import { visibleGroups } from "./group-state.js";
 import { studentGroupNames, studentInGroup } from "./student-groups.js";
 import { activeEvaluationBlockForGroup, evaluationBlockNames } from "./group-evaluation-model.js";
+import { activityMetadataForAssignment } from "./assignment-activity-model.js";
 import { ref, get, onValue, push, set, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
 import { openAssignmentsModule, readAssignmentsModuleContext } from "./assignment-module-launcher.js?v=unsaved-close-20260922";
@@ -2695,18 +2696,16 @@ function assignmentEvaluationTarget(assignment) {
 }
 
 function assignmentCriterionFilterKey(assignment, target = assignmentEvaluationTarget(assignment)) {
-  if (isExamAssignment(assignment)) return "__EXAM__";
   if (!target.criterionId) return "__UNASSIGNED__";
   return `${String(assignment?.groupName || "")}::${target.criterionId}`;
 }
 
 function assignmentCriterionLabel(assignment, target = assignmentEvaluationTarget(assignment)) {
-  if (isExamAssignment(assignment)) return "Exam";
   return String(
     target.criterionNameSnapshot ||
     assignment?.groupEvaluationCriterionName ||
     target.criterionId ||
-    "Unassigned category"
+    "Needs category review"
   ).trim();
 }
 
@@ -2792,6 +2791,56 @@ function assignmentMatchesFilters(assignment, assignmentId = "") {
   return true;
 }
 
+function assignmentCardHtml({ id, assignment, evaluation }) {
+  const count = evaluation.submitted;
+  const total = evaluation.totalStudents;
+  const missing = evaluation.missing;
+  const isCogAssignment = evaluation.isCog;
+  const evaluatedClass = evaluation.complete && !evaluation.isCog ? "evaluated" : "";
+  const target = assignmentEvaluationTarget(assignment);
+  const criterionLabel = assignmentCriterionLabel(assignment, target);
+  const activity = activityMetadataForAssignment(assignment);
+  const historicalGroupLabel = assignmentHistoricalGroupLabel(id, assignment);
+
+  return `
+    <article
+      class="assignment-item ${id === selectedAssignmentId ? "active" : ""} ${evaluatedClass}"
+      data-assignment-select="${escapeHtml(id)}"
+      title="${escapeHtml(assignment.title || "Assignment")}"
+    >
+      <div class="assignment-code-row">
+        <span class="assignment-code">${escapeHtml(assignment.code || "")}</span>
+      </div>
+
+      <strong>${escapeHtml(assignment.title || "Assignment")}</strong>
+
+      <span class="assignment-item-meta">
+        <span class="assignment-mini-chip assignment-activity-type">${escapeHtml(activity.activitySubtypeLabel || assignment.assignmentType || "Activity")}</span>
+        <span class="assignment-mini-chip">${escapeHtml(assignment.groupName || "ALL")}</span>
+        ${historicalGroupLabel
+          ? `<span class="assignment-mini-chip assignment-history-group">${escapeHtml(historicalGroupLabel)}</span>`
+          : ""}
+        <span class="assignment-mini-chip assignment-target-block">${escapeHtml(target.block || "No block")}</span>
+        <span class="assignment-mini-chip assignment-target-criterion">${escapeHtml(criterionLabel)}</span>
+        ${assignment.recipientTeamTarget
+          ? `<span class="assignment-mini-chip">${escapeHtml(assignment.recipientTeamTarget)}</span>`
+          : ""}
+        <span class="assignment-mini-chip">${escapeHtml(formatCompactDate(assignment.dueAt))}</span>
+        <span class="assignment-mini-chip ${assignment.active ? "open" : "closed"}">
+          ${assignment.active ? "Open" : "Closed"}
+        </span>
+        ${evaluation.complete && !evaluation.isCog ? '<span class="evaluated-chip">Evaluated</span>' : ""}
+      </span>
+
+      <span class="assignment-progress">
+        ${isCogAssignment
+          ? `${count}/${total} results · ${missing} no result`
+          : `${count}/${total} submitted · ${evaluation.graded}/${count || 0} graded · ${missing} missing`}
+      </span>
+    </article>
+  `;
+}
+
 function renderAssignmentList() {
   const allEntries = Object.entries(assignmentsCache || {})
     .map(([id, assignment]) => ({
@@ -2828,54 +2877,40 @@ function renderAssignmentList() {
     selectedAssignmentId = entries[0].id;
   }
 
-  teacherAssignmentList.innerHTML = entries.map(({ id, assignment, evaluation }) => {
-    const count = evaluation.submitted;
-    const total = evaluation.totalStudents;
-    const missing = evaluation.missing;
-    const isCogAssignment = evaluation.isCog;
-    const evaluatedClass = evaluation.complete && !evaluation.isCog ? "evaluated" : "";
-    const target = assignmentEvaluationTarget(assignment);
-    const criterionLabel = assignmentCriterionLabel(assignment, target);
-    const historicalGroupLabel = assignmentHistoricalGroupLabel(id, assignment);
+  const workingGroup = getWorkingGroup();
+  const configuredCriteria = groupEvaluationConfig(groupsCache?.[workingGroup] || {}).criteria;
+  const criterionOrder = new Map(configuredCriteria.map((criterion, index) => [criterion.id, index]));
+  const groups = new Map();
 
-    return `
-      <article
-        class="assignment-item ${id === selectedAssignmentId ? "active" : ""} ${evaluatedClass}"
-        data-assignment-select="${id}"
-        title="${escapeHtml(assignment.title || "Assignment")}"
-      >
+  entries.forEach((entry) => {
+    const target = assignmentEvaluationTarget(entry.assignment);
+    const key = assignmentCriterionFilterKey(entry.assignment, target);
+    const label = assignmentCriterionLabel(entry.assignment, target);
+    const order = target.criterionId && criterionOrder.has(target.criterionId)
+      ? criterionOrder.get(target.criterionId)
+      : Number.MAX_SAFE_INTEGER;
 
-        <div class="assignment-code-row">
-          <span class="assignment-code">${escapeHtml(assignment.code || "")}</span>
-        </div>
+    if (!groups.has(key)) groups.set(key, { key, label, order, entries: [] });
+    groups.get(key).entries.push(entry);
+  });
 
-        <strong>${escapeHtml(assignment.title || "Assignment")}</strong>
+  const categoryGroups = [...groups.values()].sort((a, b) =>
+    a.order - b.order ||
+    (a.key === "__UNASSIGNED__" ? 1 : 0) - (b.key === "__UNASSIGNED__" ? 1 : 0) ||
+    a.label.localeCompare(b.label, undefined, { sensitivity: "base" })
+  );
 
-        <span class="assignment-item-meta">
-          <span class="assignment-mini-chip">${escapeHtml(assignment.groupName || "ALL")}</span>
-          ${historicalGroupLabel
-            ? `<span class="assignment-mini-chip assignment-history-group">${escapeHtml(historicalGroupLabel)}</span>`
-            : ""}
-          <span class="assignment-mini-chip assignment-target-block">${escapeHtml(target.block || "No block")}</span>
-          <span class="assignment-mini-chip assignment-target-criterion">${escapeHtml(criterionLabel)}</span>
-          ${assignment.recipientTeamTarget
-            ? `<span class="assignment-mini-chip">${escapeHtml(assignment.recipientTeamTarget)}</span>`
-            : ""}
-          <span class="assignment-mini-chip">${escapeHtml(formatCompactDate(assignment.dueAt))}</span>
-          <span class="assignment-mini-chip ${assignment.active ? "open" : "closed"}">
-            ${assignment.active ? "Open" : "Closed"}
-          </span>
-          ${evaluation.complete && !evaluation.isCog ? '<span class="evaluated-chip">Evaluated</span>' : ""}
-        </span>
-
-        <span class="assignment-progress">
-          ${isCogAssignment
-            ? `${count}/${total} results · ${missing} no result`
-            : `${count}/${total} submitted · ${evaluation.graded}/${count || 0} graded · ${missing} missing`}
-        </span>
-      </article>
-    `;
-  }).join("");
+  teacherAssignmentList.innerHTML = categoryGroups.map((group) => `
+    <section class="assignment-category-group ${group.key === "__UNASSIGNED__" ? "needs-review" : ""}">
+      <div class="assignment-category-heading">
+        <strong>${escapeHtml(group.label)}</strong>
+        <span>${group.entries.length} activit${group.entries.length === 1 ? "y" : "ies"}</span>
+      </div>
+      <div class="assignment-category-items">
+        ${group.entries.map(assignmentCardHtml).join("")}
+      </div>
+    </section>
+  `).join("");
 
   renderDetail();
 }
