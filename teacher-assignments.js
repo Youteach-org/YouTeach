@@ -1,6 +1,7 @@
 import { db } from "./firebase.js";
 import { visibleGroups } from "./group-state.js";
 import { studentGroupNames, studentInGroup } from "./student-groups.js";
+import { activeEvaluationBlockForGroup, evaluationBlockNames } from "./group-evaluation-model.js";
 import { ref, get, onValue, push, set, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
 import { openAssignmentsModule, readAssignmentsModuleContext } from "./assignment-module-launcher.js?v=unsaved-close-20260922";
@@ -198,6 +199,7 @@ let assignmentTemplatesCache = {};
 let submissionsCache = {};
 let studentsCache = {};
 let groupsCache = {};
+let settingsCache = {};
 let projectEvidenceCache = {};
 let loadedAssignmentTemplateId = "";
 const WORKING_GROUP_KEY = "youteachWorkingGroup";
@@ -229,6 +231,8 @@ let assignmentEvaluationMigrationBusy = false;
 let assignmentEvaluationMigrationQueued = false;
 let assignmentRecoveryBusy = false;
 let assignmentRecoveryQueued = false;
+let assignmentBlockFilterTouched = false;
+let assignmentBlockFilterGroup = "";
 
 teacherIdentity.textContent = getTeacherName();
 
@@ -2709,13 +2713,24 @@ function assignmentCriterionLabel(assignment, target = assignmentEvaluationTarge
 function renderAssignmentEvaluationFilterOptions() {
   if (!assignmentFilterBlock || !assignmentFilterCriterion) return;
 
+  const workingGroup = getWorkingGroup();
+  const workingGroupChanged = assignmentBlockFilterGroup !== workingGroup;
+  if (workingGroupChanged) {
+    assignmentBlockFilterGroup = workingGroup;
+    assignmentBlockFilterTouched = false;
+  }
+
   const previousBlock = String(assignmentFilterBlock.value || "ALL");
   const previousCriterion = String(assignmentFilterCriterion.value || "ALL");
   const blocks = new Set();
   const criteria = new Map();
 
+  const workingGroupConfig = workingGroup ? groupsCache?.[workingGroup] : null;
+  if (workingGroupConfig) {
+    evaluationBlockNames(workingGroupConfig).forEach((block) => blocks.add(block));
+  }
+
   Object.entries(assignmentsCache || {}).forEach(([assignmentId, assignment]) => {
-    const groupName = String(assignment?.groupName || "ALL").trim();
     if (!assignmentMatchesWorkingGroup(assignment, assignmentId)) return;
 
     const target = assignmentEvaluationTarget(assignment);
@@ -2723,8 +2738,7 @@ function renderAssignmentEvaluationFilterOptions() {
 
     const key = assignmentCriterionFilterKey(assignment, target);
     const baseLabel = assignmentCriterionLabel(assignment, target);
-    const label = baseLabel;
-    criteria.set(key, label);
+    criteria.set(key, baseLabel);
   });
 
   assignmentFilterBlock.innerHTML =
@@ -2740,10 +2754,19 @@ function renderAssignmentEvaluationFilterOptions() {
       .map(([key, label]) => `<option value="${escapeHtml(key)}">${escapeHtml(label)}</option>`)
       .join("");
 
-  assignmentFilterBlock.value =
-    [...assignmentFilterBlock.options].some((option) => option.value === previousBlock)
-      ? previousBlock
-      : "ALL";
+  const availableBlocks = [...assignmentFilterBlock.options].map((option) => option.value);
+  const activeBlock = workingGroupConfig
+    ? activeEvaluationBlockForGroup(workingGroupConfig, settingsCache)
+    : "ALL";
+
+  if (!assignmentBlockFilterTouched) {
+    assignmentFilterBlock.value = availableBlocks.includes(activeBlock) ? activeBlock : "ALL";
+  } else if (availableBlocks.includes(previousBlock)) {
+    assignmentFilterBlock.value = previousBlock;
+  } else {
+    assignmentFilterBlock.value = availableBlocks.includes(activeBlock) ? activeBlock : "ALL";
+  }
+
   assignmentFilterCriterion.value =
     [...assignmentFilterCriterion.options].some((option) => option.value === previousCriterion)
       ? previousCriterion
@@ -3914,6 +3937,7 @@ detailManualGradingBtn.addEventListener("click", () => {
 
 window.addEventListener("youteach:working-group-changed", () => {
   selectedAssignmentId = "";
+  assignmentBlockFilterTouched = false;
   renderGroupOptions();
   renderAssignmentEvaluationFilterOptions();
   renderAssignmentList();
@@ -3945,15 +3969,18 @@ assignmentDueAt.addEventListener("input", refreshAutomaticTaskCode);
 
 assignmentFilterCode.addEventListener("input", renderAssignmentList);
 assignmentFilterDate.addEventListener("change", renderAssignmentList);
-assignmentFilterBlock?.addEventListener("change", renderAssignmentList);
+assignmentFilterBlock?.addEventListener("change", () => {
+  assignmentBlockFilterTouched = true;
+  renderAssignmentList();
+});
 assignmentFilterCriterion?.addEventListener("change", renderAssignmentList);
 
 clearAssignmentFiltersBtn.addEventListener("click", () => {
   assignmentFilterCode.value = "";
   assignmentFilterDate.value = "";
-  renderAssignmentEvaluationFilterOptions();
-  assignmentFilterBlock.value = "ALL";
+  assignmentBlockFilterTouched = false;
   assignmentFilterCriterion.value = "ALL";
+  renderAssignmentEvaluationFilterOptions();
   renderAssignmentList();
 });
 
@@ -4067,6 +4094,12 @@ renderAssignmentLibrary();
 if (saveSelectedTemplateBtn) saveSelectedTemplateBtn.disabled = true;
 
 logoutBtn.addEventListener("click", logoutTeacher);
+
+onValue(ref(db, "settings"), (snapshot) => {
+  settingsCache = snapshot.val() || {};
+  renderAssignmentEvaluationFilterOptions();
+  renderAssignmentList();
+});
 
 onValue(ref(db, "groups"), (snapshot) => {
   groupsCache = visibleGroups(snapshot.val() || {});
