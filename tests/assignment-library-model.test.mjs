@@ -18,6 +18,11 @@ test('extractReusableAssignmentContent excludes assigned-instance state', () => 
     instructions: 'Build the model',
     assignmentType: 'Project',
     assignmentTypeCode: 'PJ',
+    systemCategory: 'TASK',
+    activitySubtype: 'PROJECT',
+    activitySubtypeLabel: 'Project',
+    gradingScheme: 'RUBRIC',
+    gradingWorkflow: 'HYBRID',
     evaluationCriteria: [{ id: 'c1', title: 'Form', maxPoints: 100 }],
     evaluationDistribution: 'manual',
     evaluationNotes: 'Teacher notes',
@@ -29,8 +34,17 @@ test('extractReusableAssignmentContent excludes assigned-instance state', () => 
   assert.equal(reusable.title, 'Anatomical model');
   assert.equal(reusable.instructions, 'Build the model');
   assert.equal(reusable.assignmentTypeCode, 'PJ');
+  assert.equal(reusable.systemCategory, 'TASK');
+  assert.equal(reusable.activitySubtype, 'PROJECT');
+  assert.equal(reusable.activitySubtypeLabel, 'Project');
+  assert.equal(reusable.gradingScheme, 'RUBRIC');
+  assert.equal(reusable.gradingWorkflow, 'HYBRID');
   assert.equal('code' in reusable, false);
   assert.equal('groupName' in reusable, false);
+  assert.equal('evaluationTarget' in reusable, false);
+  assert.equal('evaluationTargets' in reusable, false);
+  assert.equal('evaluationBlock' in reusable, false);
+  assert.equal('groupEvaluationCriterionId' in reusable, false);
   assert.equal('dueAt' in reusable, false);
   assert.equal('active' in reusable, false);
   assert.equal('assignmentSubmissions' in reusable, false);
