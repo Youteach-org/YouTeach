@@ -66,6 +66,36 @@ test('Assignment Browser filters by canonical block and criterion targets', () =
   assert.match(teacherJs, /renderAssignmentEvaluationFilterOptions/);
 });
 
+test('Assignment Browser defaults to the working group active block while keeping All blocks available', () => {
+  assert.match(teacherHtml, /<option value="ALL">All blocks<\/option>/);
+  assert.match(teacherJs, /activeEvaluationBlockForGroup/);
+  assert.match(teacherJs, /evaluationBlockNames\(workingGroupConfig\)/);
+  assert.match(teacherJs, /assignmentBlockFilterTouched/);
+  assert.match(teacherJs, /assignmentBlockFilterGroup/);
+  assert.match(
+    teacherJs,
+    /assignmentFilterBlock\.value = availableBlocks\.includes\(activeBlock\) \? activeBlock : "ALL"/
+  );
+});
+
+test('manual All blocks or another block remains a browser filter and does not persist an active block', () => {
+  const listenerStart = teacherJs.indexOf('assignmentFilterBlock?.addEventListener("change"');
+  const listenerEnd = teacherJs.indexOf('assignmentFilterCriterion?.addEventListener', listenerStart);
+  const listener = teacherJs.slice(listenerStart, listenerEnd);
+  assert.match(listener, /assignmentBlockFilterTouched = true/);
+  assert.doesNotMatch(listener, /activeEvaluationBlock|settings\/activeBlock|update\(ref\(db/);
+});
+
+test('clearing Assignment Browser filters returns to the group active block', () => {
+  const clearStart = teacherJs.indexOf('clearAssignmentFiltersBtn.addEventListener');
+  const clearEnd = teacherJs.indexOf('assignmentScrollLeftBtn.addEventListener', clearStart);
+  const clearBlock = teacherJs.slice(clearStart, clearEnd);
+  assert.match(clearBlock, /assignmentBlockFilterTouched = false/);
+  assert.match(clearBlock, /renderAssignmentEvaluationFilterOptions\(\)/);
+  assert.doesNotMatch(clearBlock, /assignmentFilterBlock\.value = "ALL"/);
+});
+
+
 
 test('assignment cards edit on double click and do not carry grading action buttons', () => {
   assert.match(teacherJs, /teacherAssignmentList\.addEventListener\("dblclick"/);
