@@ -30,7 +30,7 @@ test('evaluation targets keep block and criterion separate from assignment type'
   const target = buildAssignmentEvaluationTarget({
     groupName: '533-2',
     block: 'Block 2',
-    criterion: { id: 'tasks', name: 'Tasks' },
+    criterion: { id: 'tasks', name: 'Tasks', systemCategory: 'TASK' },
     assignment: { assignmentTypeCode: 'PJ' }
   });
   assert.deepEqual(target, {
@@ -38,16 +38,34 @@ test('evaluation targets keep block and criterion separate from assignment type'
     block: 'Block 2',
     criterionId: 'tasks',
     criterionNameSnapshot: 'Tasks',
+    systemCategory: 'TASK',
     mode: 'assignment'
   });
 });
 
-test('exams belong to a block but not to an assignment criterion', () => {
+test('exam activities target the configured evaluation category while retaining exam mode', () => {
   const target = buildAssignmentEvaluationTarget({
     groupName: '533-2',
     block: 'Block 1',
-    criterion: { id: 'tasks', name: 'Tasks' },
+    criterion: { id: 'written', name: 'Written exam', systemCategory: 'EXAM' },
     assignment: { assignmentTypeCode: 'EX' }
+  });
+  assert.equal(target.block, 'Block 1');
+  assert.equal(target.criterionId, 'written');
+  assert.equal(target.criterionNameSnapshot, 'Written exam');
+  assert.equal(target.systemCategory, 'EXAM');
+  assert.equal(target.mode, 'exam');
+  assert.equal(resolveAssignmentCriterion(group, 'EX')?.id, 'written');
+});
+
+test('legacy exam migration may remain unassigned when no safe category is supplied', () => {
+  const target = legacyAssignmentMigrationTarget({
+    assignment: { groupName: 'G', assignmentTypeCode: 'EX' },
+    group,
+    groupName: 'G',
+    submissions: {
+      s1: { grading: { totalScore: 90, gradedBy: 'ChatGPT' } }
+    }
   });
   assert.equal(target.block, 'Block 1');
   assert.equal(target.criterionId, '');
