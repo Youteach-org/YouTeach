@@ -55,7 +55,16 @@ GitHub is the source of truth. Chat memory is secondary.
    - verified identity handoff and automatic result return;
    - explicit end plus 60-minute zero-presence expiry.
 
-7. Relevant implementation files and recent commits on `main`.
+7. `docs/superpowers/specs/2026-09-24-assignment-architecture-active-block-review-grading.md`
+   - group-specific persistent Active Block / Unit;
+   - Evaluation Category -> Activity Type -> grading configuration hierarchy;
+   - legacy Assignment Type compatibility;
+   - in-page Review submission PDF + grading workflow.
+
+8. `docs/superpowers/plans/2026-09-24-assignment-architecture-active-block-review-grading.md`
+   - staged implementation plan and regression checklist for the 2026-09-24 redesign.
+
+9. Relevant implementation files and recent commits on `main`.
    - UI micro-decisions that are already implemented are authoritative in code/commit history even when not repeated word-for-word in a spec.
 
 ## Global UI rules
@@ -160,3 +169,16 @@ Live COG integration is now merged to `main`.
 - Cloudflare production-state inspection: GREEN
 
 Matching COG production merge: `7ee3af882ccebbec0514d2cc29ed58b224c9ae46`.
+
+
+## Assignment architecture checkpoint — 2026-09-24
+
+Accepted and documented before implementation:
+
+- The active Block / Unit becomes group-specific and persistent at `groups/<groupName>/activeEvaluationBlock`; global `settings.activeBlock` is migration fallback only.
+- Teacher Assignments defaults its Block filter to the selected group's active block; `All blocks` remains an explicit temporary browser filter.
+- Group evaluation criteria are the primary Assignment categories. Teacher-visible names remain configurable while each criterion gains an underlying system family.
+- Assignment classification is separated into Evaluation Category, Activity Type/subtype, grading scheme, and grading workflow.
+- Legacy `assignmentTypeCode` values remain supported and are not destructively migrated.
+- `Open submitted PDF` is to become an in-page `Review submission` modal with PDF viewer plus manual/AI grading controls.
+- Canonical spec and implementation plan are the two 2026-09-24 files listed above.
