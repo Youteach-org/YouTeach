@@ -13,6 +13,13 @@ import {
   isExamAssignment,
   resolveAssignmentCriterion
 } from "./assignment-evaluation-target.js";
+import {
+  activityDefinition,
+  activityMetadataForAssignment,
+  activitySubtypeForLegacyCode,
+  activityTypesForSystemCategory,
+  defaultGradingForActivity
+} from "./assignment-activity-model.js";
 
 if (!requireTeacherAuth()) throw new Error("Teacher authentication required.");
 
@@ -62,6 +69,10 @@ const context = readAssignmentsModuleContext() || {};
 const editingAssignmentId = context.mode === "edit" ? String(context.assignmentId || "") : "";
 
 const assignmentType = document.getElementById("assignmentType");
+const assignmentActivityType = document.getElementById("assignmentActivityType");
+const assignmentActivityTypeHelp = document.getElementById("assignmentActivityTypeHelp");
+const assignmentGradingScheme = document.getElementById("assignmentGradingScheme");
+const assignmentGradingWorkflow = document.getElementById("assignmentGradingWorkflow");
 const assignmentOtherTypeField = document.getElementById("assignmentOtherTypeField");
 const assignmentOtherType = document.getElementById("assignmentOtherType");
 const assignmentTitle = document.getElementById("assignmentTitle");
@@ -325,12 +336,102 @@ function availableGroups() {
   return [...names].sort((a, b) => a.localeCompare(b));
 }
 
+function selectedGroupCriterion() {
+  const groupName = String(assignmentGroup.value || "");
+  const config = groupEvaluationConfig(groupsCache?.[groupName] || {});
+  return config.criteria.find((criterion) => criterion.id === String(assignmentGroupCriterion.value || "")) || null;
+}
+
+function syncLegacyTypeFromActivity({ resetGrading = false } = {}) {
+  const activityKey = String(assignmentActivityType?.value || "");
+  const definition = activityDefinition(activityKey);
+
+  if (!definition) {
+    assignmentType.value = "OTHER";
+    renderOtherTypeField();
+    return;
+  }
+
+  const legacyOption = [...assignmentType.options].some((option) => option.value === definition.legacyCode);
+  assignmentType.value = legacyOption ? definition.legacyCode : "OTHER";
+  if (legacyOption) assignmentOtherType.value = "";
+  renderOtherTypeField();
+
+  if (resetGrading) {
+    const defaults = defaultGradingForActivity(activityKey);
+    assignmentGradingScheme.value = defaults.gradingScheme;
+    assignmentGradingWorkflow.value = defaults.gradingWorkflow;
+  }
+
+  refreshProjectCheckpointBuilder();
+  refreshAutomaticTaskCode();
+}
+
+function renderActivityTypeOptions({ resetGrading = false, preferredSubtype = "" } = {}) {
+  const criterion = selectedGroupCriterion();
+  const previous = String(preferredSubtype || assignmentActivityType?.value || "");
+  if (!criterion) {
+    assignmentActivityType.innerHTML = '<option value="">Select evaluation category first</option>';
+    assignmentActivityType.value = "";
+    assignmentActivityType.disabled = true;
+    assignmentActivityTypeHelp.textContent = "Choose an evaluation category first.";
+    assignmentType.value = "CT";
+    renderOtherTypeField();
+    return;
+  }
+
+  const activities = activityTypesForSystemCategory(criterion.systemCategory);
+  assignmentActivityType.disabled = false;
+  assignmentActivityType.innerHTML =
+    activities.map((activity) =>
+      `<option value="${escapeHtml(activity.key)}">${escapeHtml(activity.label)}</option>`
+    ).join("") +
+    '<option value="CUSTOM">Custom activity type</option>';
+
+  const legacySubtype = activitySubtypeForLegacyCode(assignmentType.value);
+  const candidate = activities.some((activity) => activity.key === previous)
+    ? previous
+    : (activities.some((activity) => activity.key === legacySubtype)
+      ? legacySubtype
+      : (activities[0]?.key || "CUSTOM"));
+
+  assignmentActivityType.value = candidate;
+  assignmentActivityTypeHelp.textContent =
+    `Category family: ${criterion.systemCategory}. You can choose a built-in activity type or a custom one.`;
+
+  syncLegacyTypeFromActivity({
+    resetGrading: resetGrading || !previous || previous !== candidate
+  });
+}
+
+function selectedActivityMetadata() {
+  const criterion = selectedGroupCriterion();
+  const activityKey = String(assignmentActivityType?.value || "");
+  const definition = activityDefinition(activityKey);
+
+  if (!definition) {
+    return {
+      systemCategory: String(criterion?.systemCategory || "OTHER"),
+      activitySubtype: "CUSTOM",
+      activitySubtypeLabel: assignmentOtherType.value.trim() || "Custom activity",
+      gradingScheme: String(assignmentGradingScheme.value || "RUBRIC"),
+      gradingWorkflow: String(assignmentGradingWorkflow.value || "MANUAL")
+    };
+  }
+
+  return {
+    systemCategory: String(criterion?.systemCategory || definition.systemCategory),
+    activitySubtype: definition.key,
+    activitySubtypeLabel: definition.label,
+    gradingScheme: String(assignmentGradingScheme.value || definition.gradingScheme),
+    gradingWorkflow: String(assignmentGradingWorkflow.value || definition.gradingWorkflow)
+  };
+}
+
 function renderEvaluationTargetOptions() {
   const groupName = String(assignmentGroup.value || "");
   const group = groupsCache?.[groupName] || null;
   const config = groupEvaluationConfig(group || {});
-  const typeCode = selectedTypeCode();
-  const exam = typeCode === "EX";
   const previousBlock = String(assignmentEvaluationBlock.value || "");
   const previousCriterion = String(assignmentGroupCriterion.value || "");
 
@@ -338,20 +439,17 @@ function renderEvaluationTargetOptions() {
     assignmentEvaluationBlock.innerHTML = '<option value="">Select block / unit</option>';
     assignmentEvaluationBlock.value = "";
     assignmentEvaluationBlock.disabled = true;
-    assignmentGroupCriterion.innerHTML = exam
-      ? '<option value="">Exam grading is handled separately</option>'
-      : '<option value="">Select category</option>';
+    assignmentGroupCriterion.innerHTML = '<option value="">Select category</option>';
     assignmentGroupCriterion.value = "";
     assignmentGroupCriterion.disabled = true;
     assignmentEvaluationBlockHelp.textContent =
       groupName === "ALL"
         ? "Choose one specific group so the assignment can be linked to a block / unit."
         : "This group needs a valid evaluation setup before assignments can be graded.";
-    assignmentGroupCriterionHelp.textContent = exam
-      ? "Exams belong to a block / unit but do not use an assignment category."
-      : "Choose a configured group to select its category.";
+    assignmentGroupCriterionHelp.textContent = "Choose a configured group to select its evaluation category.";
     assignmentEvaluationTargetSummary.textContent =
       "Choose a specific group with a valid evaluation setup.";
+    renderActivityTypeOptions();
     return;
   }
 
@@ -368,38 +466,29 @@ function renderEvaluationTargetOptions() {
   assignmentEvaluationBlockHelp.textContent =
     "Required. This determines which block or unit receives the assignment grade.";
 
-  if (exam) {
-    assignmentGroupCriterion.innerHTML =
-      '<option value="">Exam grading is handled separately</option>';
-    assignmentGroupCriterion.value = "";
-    assignmentGroupCriterion.disabled = true;
-    assignmentGroupCriterionHelp.textContent =
-      "Exams are linked only to the selected block / unit.";
+  assignmentGroupCriterion.disabled = false;
+  assignmentGroupCriterion.innerHTML =
+    '<option value="">Select category</option>' +
+    config.criteria.map((criterion) =>
+      `<option value="${escapeHtml(criterion.id)}">${escapeHtml(criterion.name)} · ${criterion.weight}% · ${escapeHtml(criterion.systemCategory)}</option>`
+    ).join("");
+
+  if (config.criteria.some((criterion) => criterion.id === previousCriterion)) {
+    assignmentGroupCriterion.value = previousCriterion;
   } else {
-    assignmentGroupCriterion.disabled = false;
-    assignmentGroupCriterion.innerHTML =
-      '<option value="">Select category</option>' +
-      config.criteria.map((criterion) =>
-        `<option value="${escapeHtml(criterion.id)}">${escapeHtml(criterion.name)} · ${criterion.weight}%</option>`
-      ).join("");
-
-    if (config.criteria.some((criterion) => criterion.id === previousCriterion)) {
-      assignmentGroupCriterion.value = previousCriterion;
-    } else {
-      const automatic = resolveAssignmentCriterion(group, typeCode);
-      assignmentGroupCriterion.value = automatic?.id || "";
-    }
-
-    assignmentGroupCriterionHelp.textContent =
-      "Required. YouTeach remembers the selected criterion as the default for this assignment type in this group.";
+    const automatic = resolveAssignmentCriterion(group, selectedTypeCode());
+    assignmentGroupCriterion.value = automatic?.id || "";
   }
 
-  const criterion = config.criteria.find((item) => item.id === assignmentGroupCriterion.value) || null;
-  assignmentEvaluationTargetSummary.textContent = exam
-    ? `This exam will contribute to: ${preferredBlock || "No block selected"}.`
-    : criterion
-      ? `This assignment will contribute to: ${preferredBlock || "No block selected"} → ${criterion.name} (${criterion.weight}%).`
-      : `Select the category for ${preferredBlock || "this block / unit"}.`;
+  assignmentGroupCriterionHelp.textContent =
+    "Required. This group criterion is the primary category that receives the assignment grade.";
+
+  const criterion = selectedGroupCriterion();
+  renderActivityTypeOptions();
+
+  assignmentEvaluationTargetSummary.textContent = criterion
+    ? `This activity will contribute to: ${preferredBlock || "No block selected"} → ${criterion.name} (${criterion.weight}%).`
+    : `Select the evaluation category for ${preferredBlock || "this block / unit"}.`;
 }
 
 function renderGroupOptions() {
@@ -465,11 +554,15 @@ function compactGroupCode(value) {
 }
 
 function selectedTypeCode() {
+  const definition = activityDefinition(String(assignmentActivityType?.value || ""));
+  if (definition) return definition.legacyCode;
   if (assignmentType.value !== "OTHER") return assignmentType.value;
   return compactInitials(assignmentOtherType.value, 3) || "OT";
 }
 
 function selectedTypeLabel() {
+  const definition = activityDefinition(String(assignmentActivityType?.value || ""));
+  if (definition) return definition.label;
   if (assignmentType.value === "OTHER") {
     return assignmentOtherType.value.trim() || "Other";
   }
@@ -513,7 +606,7 @@ function taskCodeExists(code) {
 }
 
 function renderOtherTypeField() {
-  const show = assignmentType.value === "OTHER";
+  const show = String(assignmentActivityType?.value || "") === "CUSTOM";
   assignmentOtherTypeField.hidden = !show;
   assignmentOtherTypeField.style.display = show ? "grid" : "none";
   if (!show) assignmentOtherType.value = "";
