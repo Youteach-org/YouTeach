@@ -1,3 +1,5 @@
+import { normalizeSystemCategory } from "./assignment-activity-model.js";
+
 export const EVALUATION_SOURCE_OPTIONS = Object.freeze([
   { key: "writtenExam", label: "Written exam weighted points (legacy/import)" },
   { key: "oralExam", label: "Oral exam weighted points (legacy/import)" },
@@ -25,6 +27,29 @@ function sourceKeys() {
   return new Set(EVALUATION_SOURCE_OPTIONS.map((option) => option.key));
 }
 
+export function inferEvaluationSystemCategory(criterion = {}) {
+  const explicit = String(criterion?.systemCategory || "").trim().toUpperCase();
+  if (explicit) return normalizeSystemCategory(explicit);
+
+  const source = String(criterion?.source || "").trim();
+  if (["writtenExam", "oralExam", "verbsExam"].includes(source)) return "EXAM";
+  if (source === "tasks") return "TASK";
+  if (source === "participation") return "PARTICIPATION";
+  if (source === "attendance") return "ATTENDANCE";
+
+  const name = String(criterion?.name || criterion?.title || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+
+  if (/\b(exam|test|oral|verb|quiz)\b/.test(name)) return "EXAM";
+  if (/\b(attendance|asistencia)\b/.test(name)) return "ATTENDANCE";
+  if (/\b(participation|participacion|discussion|teamwork|game|cog)\b/.test(name)) return "PARTICIPATION";
+  if (/\b(task|homework|project|practice|lab|research|presentation|portfolio|classwork|tarea|proyecto|practica|investigacion|presentacion|trabajo)\b/.test(name)) return "TASK";
+
+  return "OTHER";
+}
+
 export function normalizeEvaluationCriteria(value = []) {
   const raw = Array.isArray(value)
     ? value
@@ -45,6 +70,7 @@ export function normalizeEvaluationCriteria(value = []) {
         shortLabel: String(criterion.shortLabel || criterion.abbreviation || "").trim(),
         weight: Number.isFinite(weight) ? Math.max(0, weight) : 0,
         source,
+        systemCategory: inferEvaluationSystemCategory({ ...criterion, source }),
         order: Number.isFinite(Number(criterion.order)) ? Number(criterion.order) : index
       };
     })
@@ -71,6 +97,7 @@ export function criteriaToFirebaseObject(criteria = []) {
         shortLabel: criterion.shortLabel,
         weight: criterion.weight,
         source: criterion.source,
+        systemCategory: criterion.systemCategory,
         order: criterion.order
       }
     ])
