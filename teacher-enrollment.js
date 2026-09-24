@@ -17,6 +17,7 @@ import { planStudentRemovalFromGroup } from "./group-membership-deletion.js";
 import { ensureGroupsDialog, renderGroupsDialog } from "./groups-dialog.js";
 
 import {
+  activeEvaluationBlockForGroup,
   criteriaToFirebaseObject,
   evaluationBlockNames,
   groupEvaluationConfig,
@@ -89,6 +90,14 @@ const managedStudentSearch = document.getElementById("managedStudentSearch");
 const managedStudentsTableHeadRow = document.getElementById("managedStudentsTableHeadRow");
 const managedStudentsTableBody = document.getElementById("managedStudentsTableBody");
 const openManagedBlockReportBtn = document.getElementById("openManagedBlockReportBtn");
+const activeEvaluationBlockBtn = document.getElementById("activeEvaluationBlockBtn");
+const activeEvaluationBlockDialog = document.getElementById("activeEvaluationBlockDialog");
+const activeEvaluationBlockGroupLabel = document.getElementById("activeEvaluationBlockGroupLabel");
+const activeEvaluationBlockSelect = document.getElementById("activeEvaluationBlockSelect");
+const activeEvaluationBlockStatus = document.getElementById("activeEvaluationBlockStatus");
+const closeActiveEvaluationBlockDialogBtn = document.getElementById("closeActiveEvaluationBlockDialogBtn");
+const cancelActiveEvaluationBlockBtn = document.getElementById("cancelActiveEvaluationBlockBtn");
+const saveActiveEvaluationBlockBtn = document.getElementById("saveActiveEvaluationBlockBtn");
 const takeAttendanceBtn = document.getElementById("takeAttendanceBtn");
 const pendingRequestActions = document.getElementById("pendingRequestActions");
 const pendingRequestLabel = document.getElementById("pendingRequestLabel");
@@ -196,6 +205,7 @@ function readManagementState() {
 const restoredManagementState = readManagementState();
 
 let groupsCache = {};
+let settingsCache = {};
 let studentsCache = {};
 let assignmentsCache = {};
 let assignmentSubmissionsCache = {};
@@ -1200,8 +1210,91 @@ function renderPendingRequestActions() {
     : "";
 }
 
+function renderActiveEvaluationBlockControl() {
+  const groupName = selectedManagedGroup;
+  const group = groupName ? groupsCache?.[groupName] : null;
+  const hasGroup = Boolean(groupName && group);
+
+  activeEvaluationBlockBtn.hidden = !hasGroup;
+  if (!hasGroup) {
+    activeEvaluationBlockBtn.textContent = "Active Block";
+    return;
+  }
+
+  const activeBlock = activeEvaluationBlockForGroup(group, settingsCache);
+  activeEvaluationBlockBtn.textContent = `Active Block: ${activeBlock}`;
+  activeEvaluationBlockBtn.title = `Change the persistent working block for ${groupName}`;
+}
+
+function openActiveEvaluationBlockDialog() {
+  const groupName = selectedManagedGroup;
+  const group = groupName ? groupsCache?.[groupName] : null;
+  if (!groupName || !group) return;
+
+  const blocks = evaluationBlockNames(group);
+  const activeBlock = activeEvaluationBlockForGroup(group, settingsCache);
+  activeEvaluationBlockGroupLabel.textContent = groupName;
+  activeEvaluationBlockSelect.innerHTML = blocks
+    .map((block) => `<option value="${escapeHtml(block)}">${escapeHtml(block)}</option>`)
+    .join("");
+  activeEvaluationBlockSelect.value = blocks.includes(activeBlock) ? activeBlock : (blocks[0] || "");
+  activeEvaluationBlockStatus.textContent = "";
+  activeEvaluationBlockStatus.className = "status-text";
+
+  if (!activeEvaluationBlockDialog.open) activeEvaluationBlockDialog.showModal();
+}
+
+async function saveActiveEvaluationBlock() {
+  const groupName = selectedManagedGroup;
+  const group = groupName ? groupsCache?.[groupName] : null;
+  if (!groupName || !group) return;
+
+  const blocks = evaluationBlockNames(group);
+  const selectedBlock = String(activeEvaluationBlockSelect.value || "").trim();
+  if (!blocks.includes(selectedBlock)) {
+    activeEvaluationBlockStatus.textContent = "Choose a valid block / unit.";
+    activeEvaluationBlockStatus.className = "status-text bad";
+    return;
+  }
+
+  saveActiveEvaluationBlockBtn.disabled = true;
+  activeEvaluationBlockStatus.textContent = "Saving…";
+  activeEvaluationBlockStatus.className = "status-text";
+
+  try {
+    const updates = {
+      [`groups/${groupName}/activeEvaluationBlock`]: selectedBlock
+    };
+
+    if (sessionStorage.getItem(WORKING_GROUP_KEY) === groupName) {
+      updates["settings/activeBlock"] = selectedBlock;
+    }
+
+    await update(ref(db), updates);
+
+    groupsCache[groupName] = {
+      ...groupsCache[groupName],
+      activeEvaluationBlock: selectedBlock
+    };
+    if (sessionStorage.getItem(WORKING_GROUP_KEY) === groupName) {
+      settingsCache = { ...settingsCache, activeBlock: selectedBlock };
+    }
+
+    renderActiveEvaluationBlockControl();
+    activeEvaluationBlockDialog.close();
+  } catch (error) {
+    console.error("Active block save failed:", error);
+    activeEvaluationBlockStatus.textContent =
+      `Could not save the active block: ${error?.message || "unknown Firebase error"}`;
+    activeEvaluationBlockStatus.className = "status-text bad";
+  } finally {
+    saveActiveEvaluationBlockBtn.disabled = false;
+  }
+}
+
 function renderManagedStudents() {
   const groupName = selectedManagedGroup;
+  renderActiveEvaluationBlockControl();
 
   if (!groupName || !groupsCache[groupName]) {
     enrollmentControls.hidden = true;
@@ -2186,6 +2279,11 @@ managedStudentSearch.addEventListener("input", renderManagedStudents);
 
 takeAttendanceBtn.addEventListener("click", takeAttendanceForGreenStudents);
 
+activeEvaluationBlockBtn.addEventListener("click", openActiveEvaluationBlockDialog);
+closeActiveEvaluationBlockDialogBtn.addEventListener("click", () => activeEvaluationBlockDialog.close());
+cancelActiveEvaluationBlockBtn.addEventListener("click", () => activeEvaluationBlockDialog.close());
+saveActiveEvaluationBlockBtn.addEventListener("click", saveActiveEvaluationBlock);
+
 openManagedBlockReportBtn.addEventListener("click", () => {
   const group = selectedManagedGroup || "";
   const query = group ? `?group=${encodeURIComponent(group)}` : "";
@@ -2411,6 +2509,11 @@ async function clearRequestedGroupEvaluationOnce() {
     requestedCriteriaResetInProgress = false;
   }
 }
+
+onValue(ref(db, "settings"), (snapshot) => {
+  settingsCache = snapshot.val() || {};
+  renderActiveEvaluationBlockControl();
+});
 
 onValue(ref(db, "groups"), async (snapshot) => {
   groupsCache = visibleGroups(snapshot.val() || {});

@@ -182,3 +182,29 @@ Accepted and documented before implementation:
 - Legacy `assignmentTypeCode` values remain supported and are not destructively migrated.
 - `Open submitted PDF` is to become an in-page `Review submission` modal with PDF viewer plus manual/AI grading controls.
 - Canonical spec and implementation plan are the two 2026-09-24 files listed above.
+
+
+## Assignment architecture implementation checkpoint — 2026-09-24
+
+Phase 1 implementation PR: **#17 — Add group-specific active block workflow**.
+
+Implemented on `feature/assignment-architecture-implementation-20260924`:
+
+- canonical group-specific block state at `groups/<groupName>/activeEvaluationBlock`;
+- shared group-aware active-block resolver with legacy `settings.activeBlock` fallback;
+- Group Management **Active Block** button and popup;
+- temporary compatibility mirror to `settings.activeBlock` for the current working group while older consumers are migrated;
+- Teacher Assignments defaults its Block filter to the working group's active block;
+- **All blocks** remains an explicit temporary browser filter and does not mutate the group's active block;
+- clearing Assignment Browser filters returns to the group's active block;
+- Create Assignment defaults to the group's active block while still allowing a per-assignment override;
+- both `group-mangement.html/js` and the currently loaded `teacher-enrollment.html/js` path are kept compatible;
+- regression tests cover independent active blocks for different groups and the new Assignments/Create Assignment defaults.
+
+Still pending from the approved 2026-09-24 architecture:
+
+1. Evaluation Category system-family metadata and configurable activity subtypes.
+2. Create Assignment hierarchy redesign.
+3. Assignment Browser grouping by evaluation category.
+4. Universal in-page **Review submission** PDF + grading modal.
+5. Progressive migration of other global-active-block consumers to the group-aware resolver.

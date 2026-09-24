@@ -3,7 +3,11 @@ import { visibleGroups } from "./group-state.js";
 import { ref, onValue, push, set, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireTeacherAuth, getTeacherName } from "./teacher-auth.js";
 import { readAssignmentsModuleContext } from "./assignment-module-launcher.js?v=unsaved-close-20260922";
-import { evaluationBlockNames, groupEvaluationConfig } from "./group-evaluation-model.js";
+import {
+  activeEvaluationBlockForGroup,
+  evaluationBlockNames,
+  groupEvaluationConfig
+} from "./group-evaluation-model.js";
 import {
   buildAssignmentEvaluationTarget,
   isExamAssignment,
@@ -356,9 +360,10 @@ function renderEvaluationTargetOptions() {
   assignmentEvaluationBlock.innerHTML = blocks
     .map((block) => `<option value="${escapeHtml(block)}">${escapeHtml(block)}</option>`)
     .join("");
+  const groupActiveBlock = activeEvaluationBlockForGroup(group, settingsCache);
   const preferredBlock = blocks.includes(previousBlock)
     ? previousBlock
-    : (blocks.includes(settingsCache.activeBlock) ? settingsCache.activeBlock : blocks[0]);
+    : (blocks.includes(groupActiveBlock) ? groupActiveBlock : blocks[0]);
   assignmentEvaluationBlock.value = preferredBlock || "";
   assignmentEvaluationBlockHelp.textContent =
     "Required. This determines which block or unit receives the assignment grade.";

@@ -58,6 +58,22 @@ test('Groups popup requires an explicit Select action before changing the active
   assert.doesNotMatch(js, /selectedManagedGroup === groupName[\s\S]{0,180}rosterCollapsed = !rosterCollapsed/);
 });
 
+test('Group Management persists a group-specific active block from a popup', () => {
+  assert.match(html, /id="activeEvaluationBlockBtn"/);
+  assert.match(html, /<dialog id="activeEvaluationBlockDialog">/);
+  assert.match(html, /id="activeEvaluationBlockSelect"/);
+  assert.match(html, /id="saveActiveEvaluationBlockBtn"/);
+
+  for (const source of [js, liveJs]) {
+    assert.match(source, /activeEvaluationBlockForGroup/);
+    assert.match(source, /function openActiveEvaluationBlockDialog/);
+    assert.match(source, /function saveActiveEvaluationBlock/);
+    assert.match(source, /groups\/\$\{groupName\}\/activeEvaluationBlock/);
+    assert.match(source, /updates\["settings\/activeBlock"\] = selectedBlock/);
+    assert.match(source, /renderActiveEvaluationBlockControl/);
+  }
+});
+
 test('Group Management contains the canonical student progress matrix', () => {
   assert.doesNotMatch(html, /id="managedStudentsList"/);
   assert.doesNotMatch(html, /student-list-head student-grid/);
