@@ -97,7 +97,7 @@ test('group active block is group-specific and falls back safely to legacy setti
 });
 
 test('Create Assignment defaults to the group active block instead of the global block', () => {
-  assert.match(createAssignmentJs, /activeEvaluationBlockForGroup(group, settingsCache)/);
+  assert.match(createAssignmentJs, /activeEvaluationBlockForGroup\(group, settingsCache\)/);
   assert.match(createAssignmentJs, /const groupActiveBlock = activeEvaluationBlockForGroup/);
   assert.doesNotMatch(
     createAssignmentJs,
