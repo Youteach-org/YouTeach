@@ -73,7 +73,25 @@ export function systemCategoryForLegacyTypeCode(code = "") {
 
 export function activityMetadataForAssignment(assignment = {}) {
   const explicitSubtype = cleanKey(assignment.activitySubtype);
-  const subtype = activityDefinition(explicitSubtype)
+  const explicitDefinition = activityDefinition(explicitSubtype);
+
+  if (explicitSubtype && !explicitDefinition) {
+    const fallbackDefinition = activityDefinition(
+      activitySubtypeForLegacyCode(assignment.assignmentTypeCode)
+    ) || ACTIVITIES.OTHER;
+    return {
+      systemCategory: normalizeSystemCategory(assignment.systemCategory, fallbackDefinition.systemCategory),
+      activitySubtype: explicitSubtype,
+      activitySubtypeLabel: String(
+        assignment.activitySubtypeLabel || assignment.assignmentType || "Custom activity"
+      ).trim(),
+      assignmentTypeCode: cleanKey(assignment.assignmentTypeCode) || fallbackDefinition.legacyCode,
+      gradingScheme: cleanKey(assignment.gradingScheme) || fallbackDefinition.gradingScheme,
+      gradingWorkflow: cleanKey(assignment.gradingWorkflow) || fallbackDefinition.gradingWorkflow
+    };
+  }
+
+  const subtype = explicitDefinition
     ? explicitSubtype
     : activitySubtypeForLegacyCode(assignment.assignmentTypeCode);
   const definition = activityDefinition(subtype) || ACTIVITIES.OTHER;
