@@ -175,6 +175,7 @@
               </div>
               <button id="createEnrollmentLinkBtn" class="active-enrollment-link-btn" type="button" hidden aria-expanded="false" aria-pressed="false">Active enrollment link</button>
               <button id="openAddStudentModalBtn" type="button" hidden>Add Student</button>
+              <button id="activeEvaluationBlockBtn" type="button" hidden>Active Block: Block 1</button>
               <button id="openManagedBlockReportBtn" type="button">Reports</button>
             </div>
           </div>
@@ -229,6 +230,30 @@
         <button id="confirmDeleteGroupBtn" class="delete-group-btn" type="button">Delete Group</button>
       </div>
       <div id="deleteGroupStatus" class="status-text"></div>
+    </div>
+  </dialog>
+
+  <dialog id="activeEvaluationBlockDialog">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <h3>Active Block / Unit</h3>
+          <div id="activeEvaluationBlockGroupLabel" class="status-text"></div>
+        </div>
+        <button id="closeActiveEvaluationBlockDialogBtn" class="modal-close" type="button">Cancel</button>
+      </div>
+
+      <div class="stack-controls">
+        <label for="activeEvaluationBlockSelect"><strong>Working block / unit</strong></label>
+        <select id="activeEvaluationBlockSelect"></select>
+        <div class="status-text">This remains the default working block for this group until you change it.</div>
+      </div>
+
+      <div class="group-form-actions">
+        <button id="cancelActiveEvaluationBlockBtn" class="modal-close" type="button">Cancel</button>
+        <button id="saveActiveEvaluationBlockBtn" type="button">Save Active Block</button>
+      </div>
+      <div id="activeEvaluationBlockStatus" class="status-text"></div>
     </div>
   </dialog>
 
