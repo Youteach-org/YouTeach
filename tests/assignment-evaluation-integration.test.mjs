@@ -22,11 +22,32 @@ test('Create Assignment requires an explicit block or unit', () => {
   assert.match(createJs, /evaluationBlock,/);
 });
 
-test('Create Assignment requires a criterion for non-exams and exempts exams', () => {
-  assert.match(createHtml, /Required for every assignment except exams/);
-  assert.match(createJs, /if \(typeCode !== "EX" && !groupCriterion\)/);
+test('Create Assignment requires an evaluation category for every graded activity including exams', () => {
+  assert.match(createHtml, /Evaluation category/);
+  assert.match(createHtml, /This is the group criterion that receives the grade/);
+  assert.match(createJs, /if \(!groupCriterion\)/);
+  assert.doesNotMatch(createJs, /typeCode !== "EX" && !groupCriterion/);
   assert.match(createJs, /groupEvaluationCriterionId: groupCriterion\?\.id \|\| ""/);
+  assert.match(targetJs, /criterionId: String\(criterion\?\.id \|\| ""\)/);
   assert.match(targetJs, /mode: exam \? "exam" : "assignment"/);
+});
+
+test('Create Assignment separates category, activity type, grading scheme, and grading workflow', () => {
+  for (const id of [
+    'assignmentGroupCriterion',
+    'assignmentActivityType',
+    'assignmentGradingScheme',
+    'assignmentGradingWorkflow'
+  ]) {
+    assert.match(createHtml, new RegExp(`id="${id}"`));
+  }
+  assert.match(createJs, /activityTypesForSystemCategory/);
+  assert.match(createJs, /selectedActivityMetadata/);
+  assert.match(createJs, /systemCategory: activity\.systemCategory/);
+  assert.match(createJs, /activitySubtype: activity\.activitySubtype/);
+  assert.match(createJs, /gradingScheme: activity\.gradingScheme/);
+  assert.match(createJs, /gradingWorkflow: activity\.gradingWorkflow/);
+  assert.match(createJs, /assignmentTypeCode: typeCode/);
 });
 
 test('Create Assignment persists the canonical target plus legacy compatibility fields', () => {
@@ -114,12 +135,22 @@ test('assignment edit mode reuses Create Assignment and updates the existing rec
   assert.match(createModuleJs, /assignmentCode\.readOnly = true/);
 });
 
-test('assignment evaluation destination is labeled Category, not Criterion', () => {
-  assert.match(createModuleHtml, />Category<\/label>/);
+test('assignment evaluation destination is the primary Evaluation category', () => {
+  assert.match(createModuleHtml, />Evaluation category<\/label>/);
   assert.doesNotMatch(createModuleHtml, />Evaluation criterion<\/label>/);
   assert.match(teacherHtml, /class="assignment-filter-field category"/);
-  assert.match(teacherJs, /"Unassigned category"/);
+  assert.match(teacherJs, /"Needs category review"/);
   assert.doesNotMatch(teacherJs, /"Needs criterion"/);
+});
+
+test('Assignment Browser groups cards under evaluation categories and labels the activity subtype', () => {
+  assert.match(teacherHtml, /assignment-category-group/);
+  assert.match(teacherHtml, /assignment-category-items/);
+  assert.match(teacherJs, /function assignmentCardHtml/);
+  assert.match(teacherJs, /activityMetadataForAssignment/);
+  assert.match(teacherJs, /assignment-activity-type/);
+  assert.match(teacherJs, /Needs category review/);
+  assert.match(teacherJs, /groupEvaluationConfig\(groupsCache\?\.\[workingGroup\]/);
 });
 
 test('manual Check AI Results is removed and retry is only exposed for sync problems', () => {
