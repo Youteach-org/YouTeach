@@ -1273,6 +1273,9 @@ function loadEditingAssignmentIfReady() {
     createCriteriaRows.querySelectorAll("input,textarea,button").forEach((control) => control.disabled = true);
     createDistributionRadios.forEach((control) => control.disabled = true);
     addCreateCriterionBtn.disabled = true;
+    assignmentActivityType.disabled = true;
+    assignmentGradingScheme.disabled = true;
+    assignmentGradingWorkflow.disabled = true;
   }
 }
 
@@ -1289,8 +1292,11 @@ async function saveEditingAssignment() {
   ) || null;
   const dueAt = assignmentDueAt.value ? new Date(assignmentDueAt.value).getTime() : 0;
   const activity = selectedActivityMetadata();
-  const typeCode = String(existing.assignmentTypeCode || selectedTypeCode()).toUpperCase();
-  const typeLabel = String(activity.activitySubtypeLabel || existing.assignmentType || selectedTypeLabel());
+  const typeCode = String(editingHasSubmissions
+    ? (existing.assignmentTypeCode || selectedTypeCode())
+    : selectedTypeCode()
+  ).toUpperCase();
+  const typeLabel = String(activity.activitySubtypeLabel || selectedTypeLabel());
   const existingRubric = getAssignmentRubric(existing);
   const rubric = editingHasSubmissions ? existingRubric : collectRubric();
 
@@ -1319,6 +1325,8 @@ async function saveEditingAssignment() {
     internalId: String(existing.internalId || editingAssignmentId),
     title,
     instructions: storedInstructions,
+    assignmentType: typeLabel,
+    assignmentTypeCode: typeCode,
     evaluationNotes: assignmentEvaluationNotes.value.trim(),
     systemCategory: activity.systemCategory,
     activitySubtype: activity.activitySubtype,
@@ -1354,7 +1362,7 @@ async function saveEditingAssignment() {
     patch.evaluationDistribution = rubric.distribution || getDistributionMode();
     const project = collectProjectCheckpoints(dueAt);
     if (project.error) return setStatus(project.error, "bad");
-    patch.projectCheckpoints = typeCode === "PJ" ? project.checkpoints : null;
+    patch.projectCheckpoints = activity.activitySubtype === "PROJECT" ? project.checkpoints : null;
   }
 
   createAssignmentBtn.disabled = true;
