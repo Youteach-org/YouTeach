@@ -24,6 +24,7 @@ const numTeamsInput = document.getElementById("numTeams");
 const teamSourceSelect = document.getElementById("teamSourceSelect");
 const teamSourceStudentCount = document.getElementById("teamSourceStudentCount");
 const openAssignmentsModuleBtn = document.getElementById("openAssignmentsModuleBtn");
+const launchTalkTalkBtn = document.getElementById("launchTalkTalkBtn");
 const createTeamsBtn = document.getElementById("createTeams");
 const printTeamsBtn = document.getElementById("printTeamsBtn");
 const printNameModeSelect = document.getElementById("printNameModeSelect");
@@ -327,6 +328,77 @@ function renderAssignmentsModuleButton() {
   openAssignmentsModuleBtn.title = context
     ? "Open Assignments for the generated teams"
     : "Generate teams first";
+}
+
+function renderTalkTalkLaunchButton() {
+  if (!launchTalkTalkBtn) return;
+  const context = buildAssignmentsModuleContext();
+  launchTalkTalkBtn.disabled = !context;
+  launchTalkTalkBtn.title = context
+    ? "Launch Tell Me What Happened with the generated teams"
+    : "Generate teams first";
+}
+
+async function launchTalkTalk() {
+  const context = buildAssignmentsModuleContext();
+  if (!context) {
+    alert("Generate teams first.");
+    return;
+  }
+
+  const launchWindow = window.open("about:blank", "_blank");
+  if (launchWindow) launchWindow.opener = null;
+  launchTalkTalkBtn.disabled = true;
+
+  try {
+    const target = push(ref(db, "assignments"));
+    const assignmentId = target.key;
+    if (!assignmentId) throw new Error("Could not create the Talk Talk activity.");
+
+    const recipientStudentKeys = [...new Set(
+      context.teams.flatMap((team) => team.memberKeys || []).map(String).filter(Boolean)
+    )];
+    const now = Date.now();
+
+    await set(target, {
+      internalId: assignmentId,
+      code: `COG-TT-${String(now).slice(-6)}`,
+      title: "Talk Talk · Tell Me What Happened",
+      instructions: "Live speaking activity: Tell Me What Happened.",
+      assignmentType: "Classroom Online Games",
+      assignmentTypeCode: "COG",
+      cogGameId: "talk-talk",
+      active: true,
+      groupName: context.groupName,
+      recipientMode: "generated-teams",
+      recipientStudentKeys,
+      sourceBuzzerSessionCreatedAt: context.sessionCreatedAt,
+      createdAt: now,
+      updatedAt: now,
+      createdBy: getTeacherName()
+    });
+
+    const response = await fetch("/api/cog-live-teacher-launch", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ assignmentId })
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || payload?.ok !== true || !payload?.launchUrl) {
+      throw new Error(payload?.error || "Could not launch Talk Talk.");
+    }
+
+    if (launchWindow && !launchWindow.closed) {
+      launchWindow.location.href = payload.launchUrl;
+    } else {
+      window.open(payload.launchUrl, "_blank", "noopener");
+    }
+  } catch (error) {
+    if (launchWindow && !launchWindow.closed) launchWindow.close();
+    alert(error?.message || "Could not launch Talk Talk.");
+  } finally {
+    renderTalkTalkLaunchButton();
+  }
 }
 
 function todayKey() {
@@ -793,6 +865,11 @@ window.addEventListener("youteach:working-group-changed", () => {
   renderHeader();
   renderResult();
   renderAssignmentsModuleButton();
+  renderTalkTalkLaunchButton();
+});
+
+launchTalkTalkBtn?.addEventListener("click", () => {
+  launchTalkTalk();
 });
 
 openAssignmentsModuleBtn?.addEventListener("click", () => {
@@ -1118,6 +1195,7 @@ onValue(ref(db, "session/current"), (snapshot) => {
   renderTeamRoster();
   renderLiveScores();
   renderAssignmentsModuleButton();
+  renderTalkTalkLaunchButton();
 });
 
 if (printTeamsBtn) printTeamsBtn.addEventListener("click", printTeamsPdf);

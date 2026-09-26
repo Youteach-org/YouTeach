@@ -16,6 +16,39 @@ function nonce() {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
+function labelForTeamKey(teamKey) {
+  const match = String(teamKey || "").match(/^team(\d+)$/i);
+  return match ? `Team ${match[1]}` : String(teamKey || "").trim();
+}
+
+function canonicalTeamContext(session, studentKey) {
+  const key = String(studentKey || "").trim();
+  const assignments = session?.assignments || {};
+  const teamLabel = String(assignments[key] || "").trim();
+  if (!teamLabel) return null;
+
+  const teams = session?.teams || {};
+  const teamKey = Object.keys(teams).find((candidate) =>
+    labelForTeamKey(candidate).toLowerCase() === teamLabel.toLowerCase()
+  ) || teamLabel.toLowerCase().replace(/[^a-z0-9]+/g, "");
+
+  const memberKeys = Object.entries(assignments)
+    .filter(([, assignedLabel]) => String(assignedLabel || "") === teamLabel)
+    .map(([memberKey]) => String(memberKey));
+
+  const memberNames = Array.isArray(teams?.[teamKey])
+    ? teams[teamKey].map(String)
+    : [];
+
+  return {
+    teamKey,
+    teamLabel,
+    memberKeys,
+    memberNames,
+    teamRevision: `${youTeachSessionId(session)}:${teamKey}:${memberKeys.join(",")}`
+  };
+}
+
 export function onRequestOptions({ request }) {
   return optionsResponse(request);
 }
@@ -60,6 +93,8 @@ export async function onRequestPost({ request, env }) {
       return corsJson(request, 409, { ok: false, error: "The live game session changed. Return to Student Buzzer and join again." });
     }
 
+    const teamContext = canonicalTeamContext(session, studentKey);
+
     const now = Date.now();
     const bridgePayload = {
       purpose: "cog-live-student-session",
@@ -71,6 +106,8 @@ export async function onRequestPost({ request, env }) {
       gameId: String(connectedGame.gameId || "").trim(),
       gameName: String(connectedGame.gameName || "").trim(),
       cogSessionId: String(connectedGame.cogSessionId || "").trim(),
+      teamKey: String(teamContext?.teamKey || ""),
+      teamRevision: String(teamContext?.teamRevision || ""),
       iat: now,
       exp: now + BRIDGE_TTL_MS,
       nonce: nonce()
@@ -95,6 +132,7 @@ export async function onRequestPost({ request, env }) {
         assignmentId: bridgePayload.assignmentId,
         launchMode: "live-buzzer"
       },
+      teamContext,
       bridgeToken,
       bridgeExpiresAt: bridgePayload.exp
     });

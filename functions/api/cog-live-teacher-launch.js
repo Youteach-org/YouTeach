@@ -4,6 +4,7 @@ import {
   firebaseGet,
   isCogAssignmentForSession,
   json,
+  liveGame,
   normalizeRecipientKeys,
   youTeachSessionId
 } from "../_shared/cog-live-http.js";
@@ -46,6 +47,7 @@ export async function onRequestPost({ request, env }) {
       return json(409, { ok: false, error: "That assignment is not an active COG activity for the current Buzzer session." });
     }
 
+    const requestedGame = liveGame(assignment.cogGameId);
     const now = Date.now();
     const groupName = String(session.groupName || "").trim();
     const recipientStudentKeys = normalizeRecipientKeys(assignment.recipientStudentKeys);
@@ -58,6 +60,7 @@ export async function onRequestPost({ request, env }) {
       assignmentTitle: String(assignment.title || "Classroom Online Games").trim(),
       recipientMode: String(assignment.recipientMode || "").trim(),
       recipientStudentKeys,
+      gameId: String(requestedGame?.id || ""),
       iat: now,
       exp: now + TEACHER_LAUNCH_TTL_MS,
       nonce: nonce()
@@ -65,7 +68,8 @@ export async function onRequestPost({ request, env }) {
 
     const token = await signCogLiveToken(grant, env.YOUTEACH_SESSION_SECRET);
     const issuer = new URL(request.url).origin;
-    const target = new URL("/teacher/", cogOriginForRequest(request));
+    const teacherPath = String(requestedGame?.teacherPath || "/teacher/");
+    const target = new URL(teacherPath, cogOriginForRequest(request));
     target.searchParams.set("ytLiveTeacher", token);
     target.searchParams.set("issuer", issuer);
 
