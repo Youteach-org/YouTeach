@@ -74,3 +74,75 @@ test("teacher launch opens Talk Talk monitor directly for a Talk Talk COG assign
     globalThis.fetch=originalFetch;
   }
 });
+
+
+test("Talk Talk student resolve returns canonical team context", async () => {
+  const { signCogLiveToken }=await import("../functions/_shared/cog-live-token.js?t="+Date.now());
+  const { onRequestPost }=await import("../functions/api/cog-live-student-resolve.js?t="+Date.now());
+  const secret="test-session-secret-abcdefghijklmnopqrstuvwxyz-123456";
+  const now=Date.now();
+  const launch=await signCogLiveToken({
+    purpose:"cog-live-student",
+    studentKey:"ghost-1",
+    externalId:"GHOST01",
+    groupName:"FANTASMA",
+    youTeachSessionId:"yt-talk",
+    assignmentId:"talk-assignment",
+    gameId:"talk-talk",
+    gameName:"Talk Talk",
+    cogSessionId:"TT123",
+    iat:now,
+    exp:now+60_000,
+    nonce:"launch"
+  },secret);
+
+  const originalFetch=globalThis.fetch;
+  globalThis.fetch=async (url)=>{
+    const value=String(url);
+    if(value.endsWith("/students/ghost-1.json")){
+      return new Response(JSON.stringify({
+        fullName:"Ghost 1",nickname:"FAKE-01",studentNumber:"GHOST01",
+        groupName:"FANTASMA",groupMemberships:{FANTASMA:true}
+      }),{status:200});
+    }
+    if(value.endsWith("/session/current.json")){
+      return new Response(JSON.stringify({
+        active:true,sessionId:"yt-talk",groupName:"FANTASMA",
+        teams:{team1:["FAKE-01","FAKE-02"]},
+        assignments:{"ghost-1":"Team 1","ghost-2":"Team 1"},
+        connectedGame:{
+          gameId:"talk-talk",gameName:"Talk Talk",cogSessionId:"TT123",
+          assignmentId:"talk-assignment",groupName:"FANTASMA",
+          status:"active",launchMode:"live-buzzer",
+          recipientStudentKeys:["ghost-1","ghost-2"]
+        }
+      }),{status:200});
+    }
+    throw new Error("Unexpected fetch: "+value);
+  };
+
+  try{
+    const response=await onRequestPost({
+      request:new Request("https://youteach.pages.dev/api/cog-live-student-resolve",{
+        method:"POST",
+        headers:{Origin:"https://utichgion.org","Content-Type":"application/json"},
+        body:JSON.stringify({token:launch})
+      }),
+      env:{YOUTEACH_SESSION_SECRET:secret}
+    });
+    assert.equal(response.status,200);
+    const payload=await response.json();
+    assert.equal(payload.teamContext.teamKey,"team1");
+    assert.equal(payload.teamContext.teamLabel,"Team 1");
+    assert.deepEqual(payload.teamContext.memberKeys,["ghost-1","ghost-2"]);
+  } finally {
+    globalThis.fetch=originalFetch;
+  }
+});
+
+test("Talk Talk result sanitizer rejects raw transcript fields", async () => {
+  const source=await readFile(new URL("../functions/api/cog-live-result-submit.js",import.meta.url),"utf8");
+  assert.match(source,/cleanTalkTalkMetrics/);
+  assert.match(source,/rawTranscript/);
+  assert.match(source,/gameId/);
+});
