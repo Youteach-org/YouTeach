@@ -10,21 +10,40 @@ permissions:
   contents: read
 
 jobs:
-  test:
+  talk-talk-current:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Check functions
-        run: find functions -name '*.js' -print0 | xargs -0 -n1 node --check
-      - name: Run Talk Talk current tests
-        run: node --test tests/talk-talk-current-ui.test.mjs tests/talk-talk-current-live.test.mjs
-      - name: Live COG contract
-        run: node --test tests/cog-live-contract.test.mjs
-      - name: Live COG Firebase bridge
-        run: node --test tests/cog-live-firebase-bridge.test.mjs
-      - name: Live COG Firebase lifecycle
-        run: node --test tests/cog-live-firebase-lifecycle.test.mjs
-      - name: Live COG Firebase UI
-        run: node --test tests/cog-live-firebase-ui.test.mjs
-      - name: Build Pages
-        run: sh build-pages.sh
+      - run: node --test tests/talk-talk-current-ui.test.mjs tests/talk-talk-current-live.test.mjs
+
+  cog-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: node --test tests/cog-live-contract.test.mjs
+
+  cog-bridge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: node --test tests/cog-live-firebase-bridge.test.mjs
+
+  cog-lifecycle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: node --test tests/cog-live-firebase-lifecycle.test.mjs
+
+  cog-ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: node --test tests/cog-live-firebase-ui.test.mjs
+
+  build:
+    needs: [talk-talk-current, cog-contract, cog-bridge, cog-lifecycle, cog-ui]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: find functions -name '*.js' -print0 | xargs -0 -n1 node --check
+      - run: sh build-pages.sh
