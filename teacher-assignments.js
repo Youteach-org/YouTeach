@@ -194,6 +194,24 @@ const aiSyncStatus = document.getElementById("aiSyncStatus");
 const logoutBtn = document.getElementById("logoutBtn");
 const teacherIdentity = document.getElementById("teacherIdentity");
 const openAssignmentsModuleBtn = document.getElementById("openAssignmentsModuleBtn");
+const reviewSubmissionDialog = document.getElementById("reviewSubmissionDialog");
+const reviewSubmissionTitle = document.getElementById("reviewSubmissionTitle");
+const reviewSubmissionMeta = document.getElementById("reviewSubmissionMeta");
+const reviewSubmissionCloseBtn = document.getElementById("reviewSubmissionCloseBtn");
+const reviewSubmissionStandardViewer = document.getElementById("reviewSubmissionStandardViewer");
+const reviewSubmissionPdfFrame = document.getElementById("reviewSubmissionPdfFrame");
+const reviewSubmissionPdfStatus = document.getElementById("reviewSubmissionPdfStatus");
+const reviewSubmissionOpenDriveLink = document.getElementById("reviewSubmissionOpenDriveLink");
+const reviewSubmissionExamHost = document.getElementById("reviewSubmissionExamHost");
+const reviewSubmissionGradeState = document.getElementById("reviewSubmissionGradeState");
+const reviewSubmissionClearBtn = document.getElementById("reviewSubmissionClearBtn");
+const reviewSubmissionPublishBtn = document.getElementById("reviewSubmissionPublishBtn");
+const reviewSubmissionGradingHost = document.getElementById("reviewSubmissionGradingHost");
+const reviewSubmissionHistory = document.getElementById("reviewSubmissionHistory");
+const manualGradingHomeParent = manualGradingPanel.parentNode;
+const manualGradingHomeNext = manualGradingPanel.nextSibling;
+const examAnnotationHomeParent = examAnnotationPanel.parentNode;
+const examAnnotationHomeNext = examAnnotationPanel.nextSibling;
 
 let assignmentsCache = {};
 let assignmentTemplatesCache = {};
@@ -223,6 +241,10 @@ let examAnnotationState = {
   pageCount: 0,
   tool: "correct",
   annotations: []
+};
+let reviewSubmissionState = {
+  assignmentId: "",
+  studentKey: ""
 };
 const aiAutoSyncTimers = new Map();
 const AI_PENDING_RUN_KEY = "youteachAiGradingPendingRunV1";
@@ -2088,6 +2110,148 @@ function identityStatusLabel(status) {
   return "Identity pending review";
 }
 
+function restoreReviewPanel(node, parent, nextSibling) {
+  if (!node || !parent) return;
+  if (nextSibling && nextSibling.parentNode === parent) {
+    parent.insertBefore(node, nextSibling);
+  } else {
+    parent.appendChild(node);
+  }
+}
+
+function restoreReviewSubmissionPanels() {
+  restoreReviewPanel(examAnnotationPanel, examAnnotationHomeParent, examAnnotationHomeNext);
+  restoreReviewPanel(manualGradingPanel, manualGradingHomeParent, manualGradingHomeNext);
+}
+
+function currentReviewSubmission() {
+  const assignment = assignmentsCache?.[reviewSubmissionState.assignmentId] || null;
+  const submission = submissionsCache?.[reviewSubmissionState.assignmentId]?.[reviewSubmissionState.studentKey] || null;
+  return { assignment, submission };
+}
+
+function updateReviewSubmissionPanel() {
+  if (!reviewSubmissionDialog?.open) return;
+  const { assignment, submission } = currentReviewSubmission();
+  if (!assignment || !submission) return;
+
+  const target = assignmentEvaluationTarget(assignment);
+  const activity = activityMetadataForAssignment(assignment);
+  const total = gradingTotalForSubmission(submission);
+  const mode = String(submission?.grading?.mode || "");
+  const published = Boolean(submission?.gradePublished && total !== null);
+  const source = mode === "ai" ? "AI" : (mode === "manual" ? "Manual" : "Not graded");
+
+  reviewSubmissionTitle.textContent = `Review submission · ${submission.studentName || "Student"}`;
+  reviewSubmissionMeta.textContent = [
+    assignment.code || "Assignment",
+    assignment.title || "",
+    target.block || "No block",
+    assignmentCriterionLabel(assignment, target),
+    activity.activitySubtypeLabel || activity.activitySubtype || ""
+  ].filter(Boolean).join(" · ");
+
+  reviewSubmissionGradeState.innerHTML = `
+    <strong>${escapeHtml(total === null ? "No grade yet" : `${Number(total.toFixed(2))} / 100`)}</strong><br>
+    Source: ${escapeHtml(source)} · ${published ? "Published" : "Unpublished"}<br>
+    ${escapeHtml(identityStatusLabel(submission.identityReviewStatus))}
+  `;
+
+  reviewSubmissionPublishBtn.disabled = total === null;
+  reviewSubmissionPublishBtn.textContent = published ? "Unpublish grade" : "Publish grade";
+  reviewSubmissionClearBtn.disabled = total === null;
+  reviewSubmissionHistory.innerHTML = gradeHistoryHtml(submission) ||
+    '<div class="status-text">No grading history yet.</div>';
+
+  if (reviewSubmissionGradingHost.contains(manualGradingPanel)) {
+    manualGradingPanel.hidden = false;
+    selectedManualStudentKey = reviewSubmissionState.studentKey;
+    renderManualGrading();
+  }
+}
+
+function drivePreviewUrl(submission) {
+  const fileId = String(submission?.driveFileId || "").trim();
+  if (fileId) return `https://drive.google.com/file/d/${encodeURIComponent(fileId)}/preview`;
+
+  const viewUrl = String(submission?.driveFileUrl || "").trim();
+  if (!viewUrl) return "";
+  return viewUrl.replace(/\/view(?:\?.*)?$/i, "/preview");
+}
+
+function loadReviewSubmissionDrivePreview(submission) {
+  const previewUrl = drivePreviewUrl(submission);
+  const viewUrl = String(submission?.driveFileUrl || "").trim();
+
+  reviewSubmissionPdfFrame.src = previewUrl || "about:blank";
+  reviewSubmissionOpenDriveLink.href = viewUrl || "#";
+  reviewSubmissionOpenDriveLink.hidden = !viewUrl;
+  reviewSubmissionPdfStatus.textContent = previewUrl
+    ? "Submitted PDF · Drive preview"
+    : "This submission has no available Drive preview.";
+  reviewSubmissionPdfStatus.className = previewUrl ? "status-text ok" : "status-text bad";
+}
+
+async function openReviewSubmission(studentKey) {
+  const assignmentId = selectedAssignmentId;
+  const assignment = assignmentsCache?.[assignmentId];
+  const submission = submissionsCache?.[assignmentId]?.[studentKey];
+  if (!assignment || !submission?.driveFileId) return;
+
+  if (reviewSubmissionDialog.open) reviewSubmissionDialog.close();
+
+  reviewSubmissionState = {
+    assignmentId,
+    studentKey
+  };
+  selectedManualStudentKey = studentKey;
+
+  reviewSubmissionGradingHost.appendChild(manualGradingPanel);
+  manualGradingPanel.hidden = false;
+  renderManualGrading();
+
+  reviewSubmissionDialog.showModal();
+  updateReviewSubmissionPanel();
+
+  if (isExamAssignment(assignment)) {
+    reviewSubmissionStandardViewer.hidden = true;
+    reviewSubmissionExamHost.hidden = false;
+    reviewSubmissionExamHost.appendChild(examAnnotationPanel);
+    examAnnotationPanel.hidden = true;
+
+    try {
+      await openExamAnnotation(studentKey);
+    } finally {
+      manualGradingPanel.hidden = false;
+      selectedManualStudentKey = studentKey;
+      renderManualGrading();
+      updateReviewSubmissionPanel();
+    }
+    return;
+  }
+
+  reviewSubmissionExamHost.hidden = true;
+  reviewSubmissionStandardViewer.hidden = false;
+  examAnnotationPanel.hidden = true;
+
+  loadReviewSubmissionDrivePreview(submission);
+}
+
+function cleanupReviewSubmission() {
+  restoreReviewSubmissionPanels();
+  manualGradingPanel.hidden = true;
+  examAnnotationPanel.hidden = true;
+  selectedManualStudentKey = "";
+  reviewSubmissionState = {
+    assignmentId: "",
+    studentKey: ""
+  };
+  reviewSubmissionPdfFrame.src = "about:blank";
+  reviewSubmissionOpenDriveLink.href = "#";
+  reviewSubmissionOpenDriveLink.hidden = true;
+  renderDetail();
+}
+
 async function syncAiGrades(options = {}) {
   const assignmentId = String(options.assignmentId || selectedAssignmentId || "");
   const assignment = assignmentsCache[assignmentId];
@@ -2265,9 +2429,6 @@ function renderManualGrading() {
       >${escapeHtml(savedFeedback)}</textarea>
 
       <div class="manual-grade-actions">
-        <a class="pdf-link" href="${escapeHtml(submission.driveFileUrl || "#")}" target="_blank" rel="noopener">
-          Open PDF
-        </a>
         <div class="manual-grade-action-buttons">
           ${submission?.grading?.mode === "manual"
             ? `<button type="button" class="clear-manual-grade-btn" data-clear-manual-grade="${escapeHtml(studentKey)}">Clear Grade</button>`
@@ -2396,7 +2557,7 @@ async function saveManualGrade(studentKey) {
         gradedBy: getTeacherName()
       },
       reviewStatus: "manual-graded",
-      teacherReviewStatus: "accepted",
+      teacherReviewStatus: submission?.grading?.mode === "ai" ? "corrected" : "accepted",
       gradePublished: false,
       gradePublishedAt: null,
       gradePublishedBy: null,
@@ -2434,9 +2595,9 @@ async function clearManualGrade(studentKey) {
   );
   const status = card?.querySelector("[data-manual-grade-status]");
 
-  if (!submission || submission?.grading?.mode !== "manual") {
+  if (!submission || gradingTotalForSubmission(submission) === null) {
     if (status) {
-      status.textContent = "There is no manual grade to clear.";
+      status.textContent = "There is no grade to clear.";
       status.style.color = "#b45309";
     }
     return;
@@ -2444,14 +2605,14 @@ async function clearManualGrade(studentKey) {
 
   const studentName = submission.studentName || "this student";
   const confirmed = window.confirm(
-    `Clear the manual grade for ${studentName}? The submitted file will NOT be deleted. The grade will return to pending and can be graded again manually or with AI.`
+    `Clear the current grade for ${studentName}? The submitted file will NOT be deleted. The grade will return to pending and can be graded again manually or with AI.`
   );
   if (!confirmed) return;
 
   const clearButton = card?.querySelector("[data-clear-manual-grade]");
   if (clearButton) clearButton.disabled = true;
   if (status) {
-    status.textContent = "Clearing manual grade...";
+    status.textContent = "Clearing grade...";
     status.style.color = "#64748b";
   }
 
@@ -2481,16 +2642,16 @@ async function clearManualGrade(studentKey) {
     );
 
     if (status) {
-      status.textContent = "Manual grade cleared. Ready to grade again.";
+      status.textContent = "Grade cleared. Ready to grade again.";
       status.style.color = "#166534";
     } else {
-      aiSyncStatus.textContent = "Manual grade cleared. Ready to grade again.";
+      aiSyncStatus.textContent = "Grade cleared. Ready to grade again.";
       aiSyncStatus.style.color = "#166534";
     }
   } catch (error) {
     console.error(error);
     if (status) {
-      status.textContent = "Could not clear the manual grade.";
+      status.textContent = "Could not clear the grade.";
       status.style.color = "#b91c1c";
     }
     if (clearButton) clearButton.disabled = false;
@@ -3048,9 +3209,9 @@ function renderDetail() {
             ${gradeHistoryHtml(submission)}
 
             <div class="submission-card-actions">
-              <a class="pdf-link" href="${escapeHtml(submission.driveFileUrl || "#")}" target="_blank" rel="noopener">
-                Open submitted PDF →
-              </a>
+              <button type="button" class="pdf-link review-submission-btn" data-review-submission="${escapeHtml(studentKey)}">
+                Review submission
+              </button>
               <div class="submission-grade-actions">
                 ${isExamAssignment(assignment)
                   ? `<button type="button" class="manual-takeover-btn" data-annotate-exam="${escapeHtml(studentKey)}">${submission.examAnnotatedDriveFileId ? "Edit annotations" : "Annotate exam"}</button>`
@@ -3104,6 +3265,7 @@ function renderDetail() {
     : `<div class="missing-empty-state">${isCogAssignment ? "Every eligible student has a result." : "No missing submissions."}</div>`;
 
   if (!isCogAssignment && !manualGradingPanel.hidden) renderManualGrading();
+  if (reviewSubmissionDialog?.open) updateReviewSubmissionPanel();
 }
 
 function replaceAssignmentLibraryFilterOptions(select, values, allLabel) {
@@ -3760,6 +3922,16 @@ teacherAssignmentList.addEventListener("dblclick", (event) => {
 });
 
 submissionList.addEventListener("click", (event) => {
+  const reviewButton = event.target.closest("[data-review-submission]");
+  if (reviewButton) {
+    openReviewSubmission(reviewButton.dataset.reviewSubmission).catch((error) => {
+      console.error(error);
+      aiSyncStatus.textContent = "Could not open submission review.";
+      aiSyncStatus.style.color = "#b91c1c";
+    });
+    return;
+  }
+
   const annotateButton = event.target.closest("[data-annotate-exam]");
   if (annotateButton) {
     openExamAnnotation(annotateButton.dataset.annotateExam).catch((error) => {
@@ -3780,7 +3952,7 @@ submissionList.addEventListener("click", (event) => {
   if (clearButton) {
     clearManualGrade(clearButton.dataset.clearCardGrade).catch((error) => {
       console.error(error);
-      aiSyncStatus.textContent = "Could not clear the manual grade.";
+      aiSyncStatus.textContent = "Could not clear the grade.";
       aiSyncStatus.style.color = "#b91c1c";
     });
     return;
@@ -3829,6 +4001,33 @@ missingList.addEventListener("dblclick", (event) => {
   const card = event.target.closest("[data-student-record-key]");
   if (!card) return;
   openStudentRecord(card.dataset.studentRecordKey);
+});
+
+reviewSubmissionCloseBtn.addEventListener("click", () => {
+  reviewSubmissionDialog.close();
+});
+
+reviewSubmissionDialog.addEventListener("cancel", (event) => {
+  event.preventDefault();
+  reviewSubmissionDialog.close();
+});
+
+reviewSubmissionDialog.addEventListener("close", cleanupReviewSubmission);
+
+reviewSubmissionPublishBtn.addEventListener("click", () => {
+  if (!reviewSubmissionState.studentKey) return;
+  toggleGradePublication(reviewSubmissionState.studentKey).catch((error) => {
+    console.error(error);
+    reviewSubmissionGradeState.textContent = "Could not change grade publication.";
+  });
+});
+
+reviewSubmissionClearBtn.addEventListener("click", () => {
+  if (!reviewSubmissionState.studentKey) return;
+  clearManualGrade(reviewSubmissionState.studentKey).catch((error) => {
+    console.error(error);
+    reviewSubmissionGradeState.textContent = "Could not clear the grade.";
+  });
 });
 
 examToolButtons.forEach((button) => {
