@@ -17,7 +17,7 @@ test('submitted PDFs use an in-page Review submission modal instead of the old n
   assert.doesNotMatch(teacherJs, /Open submitted PDF/);
 });
 
-test('Review submission includes PDF navigation, grading context, and publication controls', () => {
+test('Review submission includes the document viewer, grading context, and publication controls', () => {
   for (const id of [
     'reviewSubmissionTitle',
     'reviewSubmissionMeta',
