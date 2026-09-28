@@ -1,0 +1,101 @@
+const DATABASE_URL = "https://youteach-d9a79-default-rtdb.firebaseio.com";
+
+function json(status, payload) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: {
+      "Content-Type": "application/json; charset=UTF-8",
+      "Cache-Control": "no-store"
+    }
+  });
+}
+
+async function firebaseGet(path) {
+  const response = await fetch(`${DATABASE_URL}/${path}.json`);
+  if (!response.ok) throw new Error(`Firebase read failed: ${response.status}`);
+  return response.json();
+}
+
+async function getAccessToken(env) {
+  const clientId = env.GOOGLE_DRIVE_CLIENT_ID;
+  const clientSecret = env.GOOGLE_DRIVE_CLIENT_SECRET;
+  const refreshToken = env.GOOGLE_DRIVE_REFRESH_TOKEN;
+
+  if (!clientId || !clientSecret || !refreshToken) {
+    const error = new Error("Google Drive is not configured on the server.");
+    error.code = "DRIVE_NOT_CONFIGURED";
+    throw error;
+  }
+
+  const response = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: refreshToken,
+      grant_type: "refresh_token"
+    })
+  });
+
+  const data = await response.json();
+  if (!response.ok || !data.access_token) {
+    throw new Error(data.error_description || data.error || "Could not authorize Google Drive.");
+  }
+  return data.access_token;
+}
+
+export async function onRequestPost(context) {
+  const { request, env } = context;
+
+  try {
+    const body = await request.json().catch(() => ({}));
+    const assignmentId = String(body?.assignmentId || "").trim();
+    const studentKey = String(body?.studentKey || "").trim();
+
+    if (!assignmentId || !studentKey) {
+      return json(400, { ok: false, error: "Missing assignment or student." });
+    }
+
+    const [assignment, submission] = await Promise.all([
+      firebaseGet(`assignments/${encodeURIComponent(assignmentId)}`),
+      firebaseGet(`assignmentSubmissions/${encodeURIComponent(assignmentId)}/${encodeURIComponent(studentKey)}`)
+    ]);
+
+    if (!assignment || !submission?.driveFileId) {
+      return json(404, { ok: false, error: "Assignment submission not found." });
+    }
+
+    const accessToken = await getAccessToken(env);
+    const response = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(submission.driveFileId)}?alt=media`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+
+    if (!response.ok) {
+      let message = "Could not read the submitted PDF from Google Drive.";
+      try {
+        const data = await response.json();
+        message = data.error?.message || message;
+      } catch (_) {}
+      throw new Error(message);
+    }
+
+    const bytes = await response.arrayBuffer();
+    return new Response(bytes, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `inline; filename="${String(submission.driveFileName || "submission.pdf").replace(/"/g, "")}"`,
+        "Cache-Control": "no-store",
+        "X-Original-Drive-File-Id": String(submission.driveFileId)
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    return json(error?.code === "DRIVE_NOT_CONFIGURED" ? 503 : 500, {
+      ok: false,
+      error: error?.message || "Could not load the submitted PDF."
+    });
+  }
+}
