@@ -60,3 +60,24 @@ test('Review submission reuses current manual grading and grade lifecycle operat
   assert.match(teacherJs, /clearManualGrade\(reviewSubmissionState\.studentKey\)/);
   assert.match(teacherJs, /gradeHistoryHtml\(submission\)/);
 });
+
+
+test('manual correction over an AI grade is explicitly marked corrected and unpublished', () => {
+  assert.match(
+    teacherJs,
+    /teacherReviewStatus: submission\?\.grading\?\.mode === "ai" \? "corrected" : "accepted"/
+  );
+  assert.match(teacherJs, /gradePublished: false/);
+  assert.match(teacherJs, /gradePublishedAt: null/);
+});
+
+test('Review submission Clear grade can reset either an AI or manual numeric grade', () => {
+  assert.match(
+    teacherJs,
+    /if \(!submission \|\| gradingTotalForSubmission\(submission\) === null\)/
+  );
+  assert.doesNotMatch(
+    teacherJs,
+    /if \(!submission \|\| submission\?\.grading\?\.mode !== "manual"\)/
+  );
+});
