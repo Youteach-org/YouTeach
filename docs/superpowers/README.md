@@ -232,7 +232,7 @@ Next implementation checkpoint:
 
 1. Run full regression/build/deploy validation for the hierarchy.
 2. Implement the universal in-page **Review submission** modal with PDF viewer plus grading.
-3. Reuse/generalize the existing authenticated Exam PDF source and annotation workflow instead of introducing a second PDF stack.
+3. Reuse the existing Exam PDF source and annotation workflow instead of introducing a second annotation stack; do not broaden server-side Drive PDF streaming until backend-validated teacher sessions exist.
 
 
 ## Review submission implementation checkpoint — 2026-09-27
@@ -243,7 +243,7 @@ Implemented from Phase 9 of the approved 2026-09-24 assignment architecture plan
 
 - The submission-card `Open submitted PDF ->` new-tab action is replaced by **Review submission**.
 - A modal keeps the submitted PDF and grading workflow inside YouTeach, with the document area on the left and grading context/actions on the right.
-- Ordinary assignment PDFs are streamed through the new `/api/assignment-pdf-source` endpoint and rendered with the existing PDF.js dependency.
+- Ordinary assignment PDFs use the existing Google Drive file permission path and are embedded through Drive's preview URL inside the modal; no new universal server-side PDF proxy is introduced.
 - Exam reviews reuse the existing `examAnnotationPanel`, original-exam source endpoint, annotation metadata, and annotated-PDF workflow inside the same Review submission modal rather than creating a second annotation stack.
 - The existing manual grading panel is reused inside the modal, preserving rubric score inputs, feedback, grading history, and current Firebase write paths.
 - A manual correction made after an AI grade is explicitly recorded with `teacherReviewStatus = "corrected"`; the corrected grade remains unpublished until the teacher publishes it.
@@ -257,7 +257,7 @@ Verification state for this checkpoint:
 - `teacher-assignments.js` passes a syntax parse check after stripping browser imports.
 - The branch is based on current `main` commit `e608d96ccf890f60dd7493f3f011d0b6c303d140`.
 - Full `node --test tests/*.test.mjs`, Pages build, and Cloudflare deployment are still pending because the production workflow runs on a push to `main`, not on this feature branch.
-- The new general PDF source follows the same server-side Google Drive retrieval pattern as the existing exam PDF source; no new teacher-session authentication subsystem was introduced in this phase.
+- Security review rejected the first universal server-side PDF proxy approach because YouTeach does not yet have backend-validated teacher sessions. The branch therefore keeps ordinary submissions on existing Drive permissions; the existing Exam PDF.js source remains unchanged for annotation compatibility.
 
 Next action:
 
