@@ -199,11 +199,9 @@ const reviewSubmissionTitle = document.getElementById("reviewSubmissionTitle");
 const reviewSubmissionMeta = document.getElementById("reviewSubmissionMeta");
 const reviewSubmissionCloseBtn = document.getElementById("reviewSubmissionCloseBtn");
 const reviewSubmissionStandardViewer = document.getElementById("reviewSubmissionStandardViewer");
-const reviewSubmissionPrevPageBtn = document.getElementById("reviewSubmissionPrevPageBtn");
-const reviewSubmissionNextPageBtn = document.getElementById("reviewSubmissionNextPageBtn");
-const reviewSubmissionPageLabel = document.getElementById("reviewSubmissionPageLabel");
-const reviewSubmissionPdfCanvas = document.getElementById("reviewSubmissionPdfCanvas");
+const reviewSubmissionPdfFrame = document.getElementById("reviewSubmissionPdfFrame");
 const reviewSubmissionPdfStatus = document.getElementById("reviewSubmissionPdfStatus");
+const reviewSubmissionOpenDriveLink = document.getElementById("reviewSubmissionOpenDriveLink");
 const reviewSubmissionExamHost = document.getElementById("reviewSubmissionExamHost");
 const reviewSubmissionGradeState = document.getElementById("reviewSubmissionGradeState");
 const reviewSubmissionClearBtn = document.getElementById("reviewSubmissionClearBtn");
@@ -246,10 +244,7 @@ let examAnnotationState = {
 };
 let reviewSubmissionState = {
   assignmentId: "",
-  studentKey: "",
-  pdfDocument: null,
-  page: 1,
-  pageCount: 0
+  studentKey: ""
 };
 const aiAutoSyncTimers = new Map();
 const AI_PENDING_RUN_KEY = "youteachAiGradingPendingRunV1";
@@ -2175,60 +2170,26 @@ function updateReviewSubmissionPanel() {
   }
 }
 
-async function renderReviewSubmissionPdfPage() {
-  const pdfDocument = reviewSubmissionState.pdfDocument;
-  if (!pdfDocument || !reviewSubmissionPdfCanvas) return;
+function drivePreviewUrl(submission) {
+  const fileId = String(submission?.driveFileId || "").trim();
+  if (fileId) return `https://drive.google.com/file/d/${encodeURIComponent(fileId)}/preview`;
 
-  const page = await pdfDocument.getPage(reviewSubmissionState.page);
-  const baseViewport = page.getViewport({ scale: 1 });
-  const available = Math.max(
-    320,
-    Math.min(1100, Number(reviewSubmissionStandardViewer?.clientWidth || 900) - 48)
-  );
-  const scale = Math.max(0.6, Math.min(1.7, available / baseViewport.width));
-  const viewport = page.getViewport({ scale });
-  const context = reviewSubmissionPdfCanvas.getContext("2d");
-
-  reviewSubmissionPdfCanvas.width = Math.ceil(viewport.width);
-  reviewSubmissionPdfCanvas.height = Math.ceil(viewport.height);
-  reviewSubmissionPdfCanvas.style.width = `${Math.ceil(viewport.width)}px`;
-  reviewSubmissionPdfCanvas.style.height = `${Math.ceil(viewport.height)}px`;
-
-  await page.render({ canvasContext: context, viewport }).promise;
-  reviewSubmissionPageLabel.textContent =
-    `Page ${reviewSubmissionState.page} / ${reviewSubmissionState.pageCount}`;
-  reviewSubmissionPrevPageBtn.disabled = reviewSubmissionState.page <= 1;
-  reviewSubmissionNextPageBtn.disabled = reviewSubmissionState.page >= reviewSubmissionState.pageCount;
+  const viewUrl = String(submission?.driveFileUrl || "").trim();
+  if (!viewUrl) return "";
+  return viewUrl.replace(/\/view(?:\?.*)?$/i, "/preview");
 }
 
-async function loadReviewSubmissionPdf(assignmentId, studentKey) {
-  if (!window.pdfjsLib) throw new Error("PDF viewer library did not load.");
+function loadReviewSubmissionDrivePreview(submission) {
+  const previewUrl = drivePreviewUrl(submission);
+  const viewUrl = String(submission?.driveFileUrl || "").trim();
 
-  window.pdfjsLib.GlobalWorkerOptions.workerSrc =
-    "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-
-  reviewSubmissionPdfStatus.textContent = "Loading submitted PDF...";
-  reviewSubmissionPdfStatus.className = "status-text";
-
-  const response = await fetch("/api/assignment-pdf-source", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ assignmentId, studentKey })
-  });
-
-  if (!response.ok) {
-    const data = await response.json().catch(() => ({}));
-    throw new Error(data.error || "Could not load submitted PDF.");
-  }
-
-  const bytes = new Uint8Array(await response.arrayBuffer());
-  const pdfDocument = await window.pdfjsLib.getDocument({ data: bytes }).promise;
-  reviewSubmissionState.pdfDocument = pdfDocument;
-  reviewSubmissionState.pageCount = pdfDocument.numPages;
-  reviewSubmissionState.page = 1;
-  reviewSubmissionPdfStatus.textContent = "Submitted PDF";
-  reviewSubmissionPdfStatus.className = "status-text ok";
-  await renderReviewSubmissionPdfPage();
+  reviewSubmissionPdfFrame.src = previewUrl || "about:blank";
+  reviewSubmissionOpenDriveLink.href = viewUrl || "#";
+  reviewSubmissionOpenDriveLink.hidden = !viewUrl;
+  reviewSubmissionPdfStatus.textContent = previewUrl
+    ? "Submitted PDF · Drive preview"
+    : "This submission has no available Drive preview.";
+  reviewSubmissionPdfStatus.className = previewUrl ? "status-text ok" : "status-text bad";
 }
 
 async function openReviewSubmission(studentKey) {
@@ -2241,10 +2202,7 @@ async function openReviewSubmission(studentKey) {
 
   reviewSubmissionState = {
     assignmentId,
-    studentKey,
-    pdfDocument: null,
-    page: 1,
-    pageCount: 0
+    studentKey
   };
   selectedManualStudentKey = studentKey;
 
@@ -2276,13 +2234,7 @@ async function openReviewSubmission(studentKey) {
   reviewSubmissionStandardViewer.hidden = false;
   examAnnotationPanel.hidden = true;
 
-  try {
-    await loadReviewSubmissionPdf(assignmentId, studentKey);
-  } catch (error) {
-    console.error(error);
-    reviewSubmissionPdfStatus.textContent = error?.message || "Could not load submitted PDF.";
-    reviewSubmissionPdfStatus.className = "status-text bad";
-  }
+  loadReviewSubmissionDrivePreview(submission);
 }
 
 function cleanupReviewSubmission() {
@@ -2292,15 +2244,11 @@ function cleanupReviewSubmission() {
   selectedManualStudentKey = "";
   reviewSubmissionState = {
     assignmentId: "",
-    studentKey: "",
-    pdfDocument: null,
-    page: 1,
-    pageCount: 0
+    studentKey: ""
   };
-  if (reviewSubmissionPdfCanvas) {
-    const context = reviewSubmissionPdfCanvas.getContext("2d");
-    context?.clearRect(0, 0, reviewSubmissionPdfCanvas.width, reviewSubmissionPdfCanvas.height);
-  }
+  reviewSubmissionPdfFrame.src = "about:blank";
+  reviewSubmissionOpenDriveLink.href = "#";
+  reviewSubmissionOpenDriveLink.hidden = true;
   renderDetail();
 }
 
@@ -4065,18 +4013,6 @@ reviewSubmissionDialog.addEventListener("cancel", (event) => {
 });
 
 reviewSubmissionDialog.addEventListener("close", cleanupReviewSubmission);
-
-reviewSubmissionPrevPageBtn.addEventListener("click", async () => {
-  if (reviewSubmissionState.page <= 1) return;
-  reviewSubmissionState.page -= 1;
-  await renderReviewSubmissionPdfPage();
-});
-
-reviewSubmissionNextPageBtn.addEventListener("click", async () => {
-  if (reviewSubmissionState.page >= reviewSubmissionState.pageCount) return;
-  reviewSubmissionState.page += 1;
-  await renderReviewSubmissionPdfPage();
-});
 
 reviewSubmissionPublishBtn.addEventListener("click", () => {
   if (!reviewSubmissionState.studentKey) return;
