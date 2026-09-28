@@ -1728,16 +1728,12 @@
     }
     .review-submission-document{min-width:0;min-height:0;overflow:auto;padding:14px}
     .review-submission-standard-viewer{
-      min-height:100%;display:grid;grid-template-rows:auto 1fr auto;gap:10px
+      min-height:100%;display:grid;grid-template-rows:1fr auto;gap:10px
     }
-    .review-submission-page-controls{
-      display:flex;align-items:center;justify-content:center;gap:10px
+    .review-submission-frame{
+      width:100%;min-height:680px;height:100%;border:1px solid #cbd5e1;border-radius:12px;background:#fff
     }
-    .review-submission-canvas-wrap{
-      min-height:0;overflow:auto;display:flex;align-items:flex-start;justify-content:center;
-      padding:12px;border:1px solid #cbd5e1;border-radius:12px;background:#fff
-    }
-    #reviewSubmissionPdfCanvas{display:block;max-width:100%;height:auto;background:#fff}
+    .review-submission-drive-fallback{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
     .review-submission-side{
       min-width:0;min-height:0;overflow:auto;padding:14px;border-left:1px solid #cbd5e1;background:#fff
     }
@@ -2196,15 +2192,17 @@
       <div class="review-submission-body">
         <section class="review-submission-document">
           <div id="reviewSubmissionStandardViewer" class="review-submission-standard-viewer">
-            <div class="review-submission-page-controls">
-              <button id="reviewSubmissionPrevPageBtn" type="button">‹</button>
-              <span id="reviewSubmissionPageLabel">Page 1 / 1</span>
-              <button id="reviewSubmissionNextPageBtn" type="button">›</button>
+            <iframe
+              id="reviewSubmissionPdfFrame"
+              class="review-submission-frame"
+              title="Submitted PDF"
+              src="about:blank"
+              loading="eager"
+            ></iframe>
+            <div class="review-submission-drive-fallback">
+              <div id="reviewSubmissionPdfStatus" class="status-text"></div>
+              <a id="reviewSubmissionOpenDriveLink" class="pdf-link" href="#" target="_blank" rel="noopener">Open in Drive</a>
             </div>
-            <div class="review-submission-canvas-wrap">
-              <canvas id="reviewSubmissionPdfCanvas"></canvas>
-            </div>
-            <div id="reviewSubmissionPdfStatus" class="status-text"></div>
           </div>
           <div id="reviewSubmissionExamHost" hidden></div>
         </section>
