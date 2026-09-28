@@ -1707,6 +1707,60 @@
       .cog-result-chip{text-align:left;width:100%}
     }
 
+
+    .review-submission-dialog{
+      width:min(1500px,96vw);max-width:none;height:min(920px,94vh);max-height:94vh;
+      border:0;border-radius:18px;padding:0;overflow:hidden;background:#fff;
+      box-shadow:0 28px 80px rgba(15,23,42,.28)
+    }
+    .review-submission-dialog::backdrop{background:rgba(15,23,42,.48)}
+    .review-submission-shell{height:100%;display:grid;grid-template-rows:auto 1fr;min-height:0}
+    .review-submission-header{
+      display:flex;align-items:flex-start;justify-content:space-between;gap:18px;
+      padding:18px 20px;border-bottom:1px solid #dbe2ea;background:#fff
+    }
+    .review-submission-header h3{margin:0;font-size:22px;color:#111827}
+    .review-submission-meta{margin-top:4px;font-size:13px;line-height:1.45;color:#475569}
+    .review-submission-close{flex:0 0 auto}
+    .review-submission-body{
+      min-height:0;display:grid;grid-template-columns:minmax(0,1.65fr) minmax(340px,.85fr);
+      background:#eef2f6
+    }
+    .review-submission-document{min-width:0;min-height:0;overflow:auto;padding:14px}
+    .review-submission-standard-viewer{
+      min-height:100%;display:grid;grid-template-rows:auto 1fr auto;gap:10px
+    }
+    .review-submission-page-controls{
+      display:flex;align-items:center;justify-content:center;gap:10px
+    }
+    .review-submission-canvas-wrap{
+      min-height:0;overflow:auto;display:flex;align-items:flex-start;justify-content:center;
+      padding:12px;border:1px solid #cbd5e1;border-radius:12px;background:#fff
+    }
+    #reviewSubmissionPdfCanvas{display:block;max-width:100%;height:auto;background:#fff}
+    .review-submission-side{
+      min-width:0;min-height:0;overflow:auto;padding:14px;border-left:1px solid #cbd5e1;background:#fff
+    }
+    .review-submission-grade-state{
+      padding:12px;border:1px solid #d1d5db;border-radius:12px;background:#f8fafc;
+      font-size:13px;line-height:1.5;color:#1f2937
+    }
+    .review-submission-actions{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+    .review-submission-history{margin-top:12px}
+    .review-submission-history h4{margin:0 0 8px;font-size:14px}
+    .review-submission-btn{
+      border:0;background:transparent;padding:0;cursor:pointer;font:inherit
+    }
+    #reviewSubmissionGradingHost .manual-grading-panel{margin-top:0}
+    #reviewSubmissionExamHost .exam-annotation-panel{margin:0}
+    #reviewSubmissionExamHost .exam-annotation-workspace{
+      grid-template-columns:minmax(0,1fr) minmax(220px,280px)
+    }
+    @media (max-width: 920px){
+      .review-submission-dialog{width:98vw;height:96vh;max-height:96vh}
+      .review-submission-body{grid-template-columns:1fr}
+      .review-submission-side{border-left:0;border-top:1px solid #cbd5e1}
+    }
 </style>
   <script>
     if (new URLSearchParams(window.location.search).get("module") === "1") {
@@ -2127,6 +2181,49 @@
       </div>
     </main>
   </div>
+
+
+  <dialog id="reviewSubmissionDialog" class="review-submission-dialog">
+    <div class="review-submission-shell">
+      <header class="review-submission-header">
+        <div>
+          <h3 id="reviewSubmissionTitle">Review submission</h3>
+          <div id="reviewSubmissionMeta" class="review-submission-meta"></div>
+        </div>
+        <button id="reviewSubmissionCloseBtn" type="button" class="review-submission-close">Close</button>
+      </header>
+
+      <div class="review-submission-body">
+        <section class="review-submission-document">
+          <div id="reviewSubmissionStandardViewer" class="review-submission-standard-viewer">
+            <div class="review-submission-page-controls">
+              <button id="reviewSubmissionPrevPageBtn" type="button">‹</button>
+              <span id="reviewSubmissionPageLabel">Page 1 / 1</span>
+              <button id="reviewSubmissionNextPageBtn" type="button">›</button>
+            </div>
+            <div class="review-submission-canvas-wrap">
+              <canvas id="reviewSubmissionPdfCanvas"></canvas>
+            </div>
+            <div id="reviewSubmissionPdfStatus" class="status-text"></div>
+          </div>
+          <div id="reviewSubmissionExamHost" hidden></div>
+        </section>
+
+        <aside class="review-submission-side">
+          <div id="reviewSubmissionGradeState" class="review-submission-grade-state"></div>
+          <div class="review-submission-actions">
+            <button id="reviewSubmissionClearBtn" type="button">Clear grade</button>
+            <button id="reviewSubmissionPublishBtn" type="button">Publish grade</button>
+          </div>
+          <div id="reviewSubmissionGradingHost"></div>
+          <section class="review-submission-history">
+            <h4>Grading history</h4>
+            <div id="reviewSubmissionHistory"></div>
+          </section>
+        </aside>
+      </div>
+    </div>
+  </dialog>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
