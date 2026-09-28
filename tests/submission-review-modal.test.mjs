@@ -9,7 +9,6 @@ const root = join(here, '..');
 const teacherJs = readFileSync(join(root, 'teacher-assignments.js'), 'utf8');
 const teacherHtml = readFileSync(join(root, 'teacher-assignments.html'), 'utf8');
 const sourceApiPath = join(root, 'functions', 'api', 'assignment-pdf-source.js');
-const sourceApi = existsSync(sourceApiPath) ? readFileSync(sourceApiPath, 'utf8') : '';
 
 test('submitted PDFs use an in-page Review submission modal instead of the old new-tab link', () => {
   assert.match(teacherHtml, /id="reviewSubmissionDialog"/);
@@ -22,10 +21,8 @@ test('Review submission includes PDF navigation, grading context, and publicatio
   for (const id of [
     'reviewSubmissionTitle',
     'reviewSubmissionMeta',
-    'reviewSubmissionPdfCanvas',
-    'reviewSubmissionPrevPageBtn',
-    'reviewSubmissionNextPageBtn',
-    'reviewSubmissionPageLabel',
+    'reviewSubmissionPdfFrame',
+    'reviewSubmissionOpenDriveLink',
     'reviewSubmissionGradeState',
     'reviewSubmissionPublishBtn',
     'reviewSubmissionClearBtn',
@@ -36,21 +33,20 @@ test('Review submission includes PDF navigation, grading context, and publicatio
   }
 });
 
-test('general assignment PDF source reads the submitted Drive file and is not restricted to exams', () => {
-  assert.equal(existsSync(sourceApiPath), true, 'functions/api/assignment-pdf-source.js must exist');
-  assert.match(sourceApi, /assignmentSubmissions/);
-  assert.match(sourceApi, /driveFileId/);
-  assert.match(sourceApi, /alt=media/);
-  assert.match(sourceApi, /Content-Type": "application\/pdf"/);
-  assert.doesNotMatch(sourceApi, /This assignment is not an Exam/);
+test('ordinary assignment review does not introduce a universal server-side PDF proxy', () => {
+  assert.equal(existsSync(sourceApiPath), false);
+  assert.doesNotMatch(teacherJs, /\/api\/assignment-pdf-source/);
+  assert.match(teacherJs, /https:\/\/drive\.google\.com\/file\/d\/\$\{encodeURIComponent\(fileId\)\}\/preview/);
+  assert.match(teacherJs, /reviewSubmissionPdfFrame\.src = previewUrl \|\| "about:blank"/);
 });
 
-test('Review submission renders ordinary PDFs with PDF.js and keeps exam annotations in the same modal', () => {
-  assert.match(teacherJs, /fetch\("\/api\/assignment-pdf-source"/);
-  assert.match(teacherJs, /window\.pdfjsLib\.getDocument/);
-  assert.match(teacherJs, /reviewSubmissionPdfCanvas/);
+test('Review submission embeds ordinary Drive previews and keeps exam PDF.js annotations in the same modal', () => {
+  assert.match(teacherJs, /function drivePreviewUrl\(submission\)/);
+  assert.match(teacherJs, /loadReviewSubmissionDrivePreview\(submission\)/);
+  assert.match(teacherJs, /reviewSubmissionPdfFrame/);
   assert.match(teacherJs, /reviewSubmissionExamHost\.appendChild\(examAnnotationPanel\)/);
   assert.match(teacherJs, /openExamAnnotation\(studentKey\)/);
+  assert.match(teacherJs, /window\.pdfjsLib/);
 });
 
 test('Review submission reuses current manual grading and grade lifecycle operations', () => {
