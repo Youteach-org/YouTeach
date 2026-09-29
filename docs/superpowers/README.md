@@ -264,3 +264,19 @@ Next action:
 1. Review the feature diff and regression compatibility.
 2. Integrate through a pull request.
 3. Use the resulting `main` workflow as the authoritative full regression/build/deploy verification.
+
+
+## Assignment Browser visibility fix — 2026-09-28
+
+Bug confirmed after the category hierarchy rollout:
+
+- `assignmentBrowserCount` reported every stored Assignment as `existing`, even when the current working group or active Block filter showed fewer cards. This made a display such as `2 shown · 3 existing` look like a missing card in the current group.
+- `Needs category review` grouping happened only after the active Block filter. Therefore an unresolved legacy Assignment could be filtered out before it ever reached the amber review section.
+
+Fix:
+
+- Browser count now distinguishes `shown`, `in group`, and repository-wide `total` counts.
+- An Assignment whose evaluation category is unresolved (`__UNASSIGNED__`) bypasses only the untouched automatic active-Block filter so that it is surfaced under **Needs category review**.
+- Once the teacher explicitly changes the Block filter, the selected filter is respected.
+- Explicit category filters continue to behave normally.
+- Regression coverage was added to `tests/assignment-evaluation-integration.test.mjs`.
