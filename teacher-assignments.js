@@ -2160,8 +2160,14 @@ function updateReviewSubmissionPanel() {
   reviewSubmissionPublishBtn.disabled = total === null;
   reviewSubmissionPublishBtn.textContent = published ? "Unpublish grade" : "Publish grade";
   reviewSubmissionClearBtn.disabled = total === null;
+
+  const historyWasOpen = Boolean(
+    reviewSubmissionHistory.querySelector(".grade-history-details")?.open
+  );
   reviewSubmissionHistory.innerHTML = gradeHistoryHtml(submission) ||
     '<div class="status-text">No grading history yet.</div>';
+  const historyDetails = reviewSubmissionHistory.querySelector(".grade-history-details");
+  if (historyDetails) historyDetails.open = historyWasOpen;
 
   if (reviewSubmissionGradingHost.contains(manualGradingPanel)) {
     manualGradingPanel.hidden = false;
