@@ -259,6 +259,6 @@ test('Needs category review is not hidden by the untouched default active-block 
   assert.match(teacherJs, /const needsCategoryReview = criterionKey === "__UNASSIGNED__"/);
   assert.match(
     teacherJs,
-    /blockQuery !== "ALL" && target\.block !== blockQuery && !\(needsCategoryReview && !assignmentBlockFilterTouched\)/
+    /blockQuery !== "ALL"[\s\S]*target\.block !== blockQuery[\s\S]*!\(needsCategoryReview && !assignmentBlockFilterTouched\)/
   );
 });

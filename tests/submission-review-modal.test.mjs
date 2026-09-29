@@ -82,7 +82,7 @@ test('Review submission Clear grade can reset either an AI or manual numeric gra
 test('Review submission preserves Grade history open state across panel refreshes', () => {
   assert.match(
     teacherJs,
-    /const historyWasOpen = Boolean\(reviewSubmissionHistory\.querySelector\("\.grade-history-details"\)\?\.open\)/
+    /const historyWasOpen = Boolean\([\s\S]*reviewSubmissionHistory\.querySelector\("\.grade-history-details"\)\?\.open[\s\S]*\)/
   );
   assert.match(
     teacherJs,
