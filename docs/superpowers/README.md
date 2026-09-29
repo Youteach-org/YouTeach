@@ -295,3 +295,20 @@ Fix:
 - Once the teacher explicitly changes the Block filter, that filter remains strict.
 - Explicit category filters are unchanged.
 - Regression coverage was added to `tests/assignment-evaluation-integration.test.mjs`.
+
+
+## Public-repo regression suite repair — 2026-09-29
+
+After YouTeach became public, GitHub Actions could allocate a runner again and the full regression suite executed for the first time after the Assignment architecture work.
+
+Workflow run `36646953574` exposed three failures:
+
+- Assignment Browser review-filter regression test used a single-line regex while the production guard is intentionally multiline.
+- Group evaluation family inference classified `Projects` as `OTHER` because only singular task-family names matched.
+- Review submission Grade history regression test used a single-line regex while the state-preservation code is intentionally multiline.
+
+Fix:
+
+- TASK-family inference now accepts common English and Spanish plural category names such as `Projects`, `Tareas`, `Proyectos`, `Presentations`, and `Trabajos`.
+- The two source-contract tests now tolerate whitespace/newlines without weakening their behavioral assertions.
+- No changes were made to the intended active-Block review behavior or Grade history state-preservation behavior.
