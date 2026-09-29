@@ -264,3 +264,18 @@ Next action:
 1. Review the feature diff and regression compatibility.
 2. Integrate through a pull request.
 3. Use the resulting `main` workflow as the authoritative full regression/build/deploy verification.
+
+
+## Review submission Grade history state fix — 2026-09-28
+
+Bug confirmed in the in-page Review submission modal:
+
+- `Grade history` uses a native `<details>` disclosure.
+- `updateReviewSubmissionPanel()` rebuilt `reviewSubmissionHistory.innerHTML` on every refresh.
+- Replacing the HTML destroyed the open `<details>` node and recreated it closed, so tapping Grade history could appear to immediately collapse again during a refresh.
+
+Fix:
+
+- Capture whether `.grade-history-details` is open before rebuilding the history HTML.
+- Restore the `open` state on the newly rendered disclosure.
+- Added regression coverage in `tests/submission-review-modal.test.mjs`.
