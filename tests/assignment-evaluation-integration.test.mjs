@@ -243,3 +243,22 @@ test('assignment card second click opens Edit Assignment without relying only on
   assert.match(clickBlock, /openAssignmentEditorFromCard\(card\)/);
   assert.match(teacherJs, /function openAssignmentEditorFromCard\(card\)/);
 });
+
+
+test('Assignment Browser count distinguishes current-group assignments from repository total', () => {
+  assert.match(teacherJs, /const groupEntries = allEntries\.filter/);
+  assert.match(teacherJs, /\$\{groupEntries\.length\} in group/);
+  assert.match(teacherJs, /\$\{allEntries\.length\} total/);
+  assert.doesNotMatch(
+    teacherJs,
+    /\$\{entries\.length\} shown · \$\{allEntries\.length\} existing/
+  );
+});
+
+test('Needs category review is not hidden by the untouched default active-block filter', () => {
+  assert.match(teacherJs, /const needsCategoryReview = criterionKey === "__UNASSIGNED__"/);
+  assert.match(
+    teacherJs,
+    /blockQuery !== "ALL" && target\.block !== blockQuery && !\(needsCategoryReview && !assignmentBlockFilterTouched\)/
+  );
+});
