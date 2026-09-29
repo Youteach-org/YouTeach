@@ -77,3 +77,19 @@ test('Review submission Clear grade can reset either an AI or manual numeric gra
     /if \(!submission \|\| submission\?\.grading\?\.mode !== "manual"\)/
   );
 });
+
+
+test('Review submission preserves Grade history open state across panel refreshes', () => {
+  assert.match(
+    teacherJs,
+    /const historyWasOpen = Boolean\(reviewSubmissionHistory\.querySelector\("\.grade-history-details"\)\?\.open\)/
+  );
+  assert.match(
+    teacherJs,
+    /const historyDetails = reviewSubmissionHistory\.querySelector\("\.grade-history-details"\)/
+  );
+  assert.match(
+    teacherJs,
+    /if \(historyDetails\) historyDetails\.open = historyWasOpen/
+  );
+});
