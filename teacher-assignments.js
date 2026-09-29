@@ -2950,11 +2950,16 @@ function assignmentMatchesFilters(assignment, assignmentId = "") {
   const code = String(assignment?.code || "").toUpperCase();
   const target = assignmentEvaluationTarget(assignment);
   const criterionKey = assignmentCriterionFilterKey(assignment, target);
+  const needsCategoryReview = criterionKey === "__UNASSIGNED__";
 
   if (codeQuery && !code.includes(codeQuery)) return false;
   if (dateQuery && dateFilterKey(assignment?.dueAt) !== dateQuery) return false;
   if (!assignmentMatchesWorkingGroup(assignment, assignmentId)) return false;
-  if (blockQuery !== "ALL" && target.block !== blockQuery) return false;
+  if (
+    blockQuery !== "ALL" &&
+    target.block !== blockQuery &&
+    !(needsCategoryReview && !assignmentBlockFilterTouched)
+  ) return false;
   if (criterionQuery !== "ALL" && criterionKey !== criterionQuery) return false;
 
   return true;
@@ -3024,13 +3029,21 @@ function renderAssignmentList() {
       return Number(b.assignment?.createdAt || 0) - Number(a.assignment?.createdAt || 0);
     });
 
-  const entries = allEntries.filter(({ id, assignment }) => assignmentMatchesFilters(assignment, id));
+  const groupEntries = allEntries.filter(({ id, assignment }) =>
+    assignmentMatchesWorkingGroup(assignment, id)
+  );
+  const entries = groupEntries.filter(({ id, assignment }) =>
+    assignmentMatchesFilters(assignment, id)
+  );
 
   const recoveredCount = allEntries.filter(({ assignment }) =>
     assignment?.recoveredFromSubmissionHistory
   ).length;
+  const totalCountLabel = allEntries.length !== groupEntries.length
+    ? ` · ${allEntries.length} total`
+    : "";
   assignmentBrowserCount.textContent =
-    `${entries.length} shown · ${allEntries.length} existing${recoveredCount ? ` · ${recoveredCount} recovered` : ""}`;
+    `${entries.length} shown · ${groupEntries.length} in group${totalCountLabel}${recoveredCount ? ` · ${recoveredCount} recovered` : ""}`;
 
   if (!entries.length) {
     const workingGroup = getWorkingGroup();

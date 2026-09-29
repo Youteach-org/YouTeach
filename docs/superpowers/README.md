@@ -279,3 +279,19 @@ Fix:
 - Capture whether `.grade-history-details` is open before rebuilding the history HTML.
 - Restore the `open` state on the newly rendered disclosure.
 - Added regression coverage in `tests/submission-review-modal.test.mjs`.
+
+
+## Assignment Browser visibility fix — 2026-09-29
+
+Bug confirmed after the category hierarchy rollout:
+
+- `assignmentBrowserCount` reported every stored Assignment as `existing`, even when the current working group or active Block filter showed fewer cards.
+- `Needs category review` grouping happened only after the active Block filter, so an unresolved legacy Assignment could be hidden before it reached the amber review section.
+
+Fix:
+
+- Browser count now distinguishes `shown`, `in group`, and repository-wide `total` counts.
+- An Assignment whose evaluation category is unresolved (`__UNASSIGNED__`) bypasses only the untouched automatic active-Block filter so it surfaces under **Needs category review**.
+- Once the teacher explicitly changes the Block filter, that filter remains strict.
+- Explicit category filters are unchanged.
+- Regression coverage was added to `tests/assignment-evaluation-integration.test.mjs`.
