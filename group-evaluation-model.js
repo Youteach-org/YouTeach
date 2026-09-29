@@ -45,7 +45,7 @@ export function inferEvaluationSystemCategory(criterion = {}) {
   if (/\b(exam|test|oral|verb|quiz)\b/.test(name)) return "EXAM";
   if (/\b(attendance|asistencia)\b/.test(name)) return "ATTENDANCE";
   if (/\b(participation|participacion|discussion|teamwork|game|cog)\b/.test(name)) return "PARTICIPATION";
-  if (/\b(task|homework|project|practice|lab|research|presentation|portfolio|classwork|tarea|proyecto|practica|investigacion|presentacion|trabajo)\b/.test(name)) return "TASK";
+  if (/\b(tasks?|homework|projects?|practices?|labs?|research|presentations?|portfolios?|classwork|tareas?|proyectos?|practicas?|investigaciones?|presentaciones?|trabajos?)\b/.test(name)) return "TASK";
 
   return "OTHER";
 }
