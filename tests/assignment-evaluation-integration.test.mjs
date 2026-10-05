@@ -178,6 +178,24 @@ test('Assignment Browser empty state surfaces stored assignments outside the act
   assert.match(teacherJs, /evaluationTargetNeedsReview: true/);
 });
 
+test('historical Assignment relink persists groupName before optional audit metadata and verifies Firebase', () => {
+  const start = teacherJs.indexOf('async function relinkHistoricalAssignmentToWorkingGroup');
+  const end = teacherJs.indexOf('function assignmentCardHtml', start);
+  assert.ok(start >= 0 && end > start);
+  const block = teacherJs.slice(start, end);
+
+  const criticalWrite = block.indexOf('groupName: workingGroup');
+  const verificationRead = block.indexOf('assignments/${id}/groupName');
+  const auditWrite = block.indexOf('groupRelinkedFrom: previousGroup');
+
+  assert.ok(criticalWrite >= 0);
+  assert.ok(verificationRead > criticalWrite);
+  assert.ok(auditWrite > verificationRead);
+  assert.match(block, /persistedGroup !== workingGroup/);
+  assert.match(block, /assignmentsCache\[id\] =/);
+  assert.match(block, /scheduleAssignmentEvaluationMigration\(\)/);
+});
+
 
 test('Assignment Browser uses submission history to recover hidden or orphaned assignments', () => {
   assert.match(teacherJs, /assignmentMatchesGroupEvidence/);
