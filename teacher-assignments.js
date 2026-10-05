@@ -2984,7 +2984,7 @@ function unlinkedAssignmentCardHtml({ id, assignment }) {
   `;
 }
 
-async function relinkHistoricalAssignmentToWorkingGroup(assignmentId) {
+async function relinkHistoricalAssignmentToWorkingGroup(assignmentId, triggerButton = null) {
   const id = String(assignmentId || "").trim();
   const assignment = assignmentsCache?.[id];
   const workingGroup = getWorkingGroup();
@@ -2993,17 +2993,63 @@ async function relinkHistoricalAssignmentToWorkingGroup(assignmentId) {
   const previousGroup = String(assignment.groupName || "ALL").trim() || "ALL";
   const title = String(assignment.title || assignment.code || "Assignment");
   const approved = confirm(
-    `Link "${title}" from "${previousGroup}" to "${workingGroup}"? This changes the assignment group but preserves the previous group in the relink audit fields.`
+    `Link "${title}" from "${previousGroup}" to "${workingGroup}"? This changes the assignment group.`
   );
   if (!approved) return;
 
-  await update(ref(db, `assignments/${id}`), {
-    groupName: workingGroup,
-    groupRelinkedFrom: previousGroup,
-    groupRelinkedAt: Date.now(),
-    groupRelinkedBy: getTeacherName(),
-    evaluationTargetNeedsReview: true
-  });
+  const button = triggerButton instanceof HTMLButtonElement ? triggerButton : null;
+  const originalLabel = button?.textContent || "";
+  if (button) {
+    button.disabled = true;
+    button.textContent = "Linking…";
+  }
+
+  try {
+    // Persist the critical relationship first. Keep this write minimal so
+    // optional audit metadata can never block the group relink itself.
+    await update(ref(db, `assignments/${id}`), {
+      groupName: workingGroup
+    });
+
+    const persistedGroupSnapshot = await get(ref(db, `assignments/${id}/groupName`));
+    const persistedGroup = String(persistedGroupSnapshot.val() || "").trim();
+    if (persistedGroup !== workingGroup) {
+      throw new Error(
+        `Firebase verification failed. Expected group "${workingGroup}" but found "${persistedGroup || "empty"}".`
+      );
+    }
+
+    // Update the local cache immediately so the browser reacts even before
+    // the realtime listener receives the server echo.
+    assignmentsCache[id] = {
+      ...assignment,
+      groupName: workingGroup
+    };
+    renderAssignmentFilterOptions();
+    renderAssignmentEvaluationFilterOptions();
+    renderAssignmentList();
+
+    // Audit/review metadata is useful but non-critical. If an older Firebase
+    // validation rule rejects one of these fields, the already-persisted
+    // group relink must remain intact.
+    try {
+      await update(ref(db, `assignments/${id}`), {
+        groupRelinkedFrom: previousGroup,
+        groupRelinkedAt: Date.now(),
+        groupRelinkedBy: getTeacherName(),
+        evaluationTargetNeedsReview: true
+      });
+    } catch (auditError) {
+      console.warn("Assignment group relink saved, but audit metadata could not be saved:", auditError);
+    }
+
+    scheduleAssignmentEvaluationMigration();
+  } finally {
+    if (button && button.isConnected) {
+      button.disabled = false;
+      button.textContent = originalLabel || `Link to ${workingGroup}`;
+    }
+  }
 }
 
 function assignmentCardHtml({ id, assignment, evaluation }) {
@@ -3969,9 +4015,12 @@ function openAssignmentEditorFromCard(card) {
 teacherAssignmentList.addEventListener("click", (event) => {
   const relinkButton = event.target.closest("[data-relink-assignment]");
   if (relinkButton) {
-    relinkHistoricalAssignmentToWorkingGroup(relinkButton.dataset.relinkAssignment).catch((error) => {
+    relinkHistoricalAssignmentToWorkingGroup(
+      relinkButton.dataset.relinkAssignment,
+      relinkButton
+    ).catch((error) => {
       console.error("Could not relink historical assignment:", error);
-      alert(`Could not link assignment: ${error?.message || "unknown Firebase error"}`);
+      alert(`Could not save the group link: ${error?.message || "unknown Firebase error"}`);
     });
     return;
   }
