@@ -168,10 +168,14 @@ test('Assignment Browser keeps legacy, ALL, alias-linked, and submission-linked 
   assert.match(teacherJs, /normalizeGroupName/);
 });
 
-test('Assignment Browser empty state distinguishes no group assignments from deleted data', () => {
+test('Assignment Browser empty state surfaces stored assignments outside the active group instead of implying deletion', () => {
   assert.match(teacherJs, /assignmentsCache/);
   assert.match(teacherJs, /assignmentBrowserCount/);
-  assert.match(teacherJs, /existing assignment/);
+  assert.match(teacherJs, /Stored assignments outside/);
+  assert.match(teacherJs, /data-relink-assignment/);
+  assert.match(teacherJs, /relinkHistoricalAssignmentToWorkingGroup/);
+  assert.match(teacherJs, /groupRelinkedFrom/);
+  assert.match(teacherJs, /evaluationTargetNeedsReview: true/);
 });
 
 
