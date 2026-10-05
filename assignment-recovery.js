@@ -27,20 +27,66 @@ function compactGroupCode(value) {
   return tokens.map((token) => token[0]).join("").slice(0, 4);
 }
 
-function groupAliases(groups, workingGroup) {
-  const target = normalizeGroupName(workingGroup);
-  const aliases = new Set(target ? [target] : []);
+function groupIdentityValues(groups, groupName) {
+  const target = normalizeGroupName(groupName);
+  const identities = new Set(target ? [target] : []);
 
   Object.entries(groups || {}).forEach(([key, group]) => {
     const values = [key, group?.name, group?.groupName]
       .map(normalizeGroupName)
       .filter(Boolean);
     if (values.includes(target)) {
-      values.forEach((value) => aliases.add(value));
+      values.forEach((value) => identities.add(value));
     }
   });
 
-  return aliases;
+  return [...identities];
+}
+
+function groupAliases(groups, workingGroup) {
+  return new Set(groupIdentityValues(groups, workingGroup));
+}
+
+function legacyGroupSubjectSignature(value) {
+  const genericTokens = new Set([
+    "group",
+    "grupo",
+    "class",
+    "clase",
+    "section",
+    "seccion"
+  ]);
+  const tokens = normalizeGroupName(value)
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean)
+    .filter((token) => !/\d/.test(token))
+    .filter((token) => !genericTokens.has(token));
+
+  const signature = tokens.join(" ").trim();
+  return signature.replace(/\s+/g, "").length >= 6 ? signature : "";
+}
+
+function uniquelyMatchesLegacyGroupName(storedGroup, workingGroup, groups) {
+  const signature = legacyGroupSubjectSignature(storedGroup);
+  if (!signature) return false;
+
+  const activeIdentities = new Set(groupIdentityValues(groups, workingGroup));
+  if (!activeIdentities.size) return false;
+
+  const matchingGroupKeys = Object.entries(groups || {})
+    .filter(([key, group]) =>
+      [key, group?.name, group?.groupName]
+        .map(legacyGroupSubjectSignature)
+        .filter(Boolean)
+        .includes(signature)
+    )
+    .map(([key]) => key);
+
+  if (matchingGroupKeys.length !== 1) return false;
+
+  const matchedKey = matchingGroupKeys[0];
+  const matchedIdentities = groupIdentityValues(groups, matchedKey);
+  return matchedIdentities.some((identity) => activeIdentities.has(identity));
 }
 
 export function submissionGroupNames(submissions = {}) {
@@ -64,9 +110,13 @@ export function assignmentMatchesGroupEvidence({
   const storedGroup = String(assignment?.groupName || "ALL").trim();
   if (!storedGroup || storedGroup.toUpperCase() === "ALL") return true;
   if (aliases.has(normalizeGroupName(storedGroup))) return true;
+  if (uniquelyMatchesLegacyGroupName(storedGroup, active, groups)) return true;
 
   return submissionGroupNames(submissions)
-    .some((groupName) => aliases.has(normalizeGroupName(groupName)));
+    .some((groupName) =>
+      aliases.has(normalizeGroupName(groupName)) ||
+      uniquelyMatchesLegacyGroupName(groupName, active, groups)
+    );
 }
 
 function uniqueNonEmpty(values, normalize = (value) => String(value || "").trim()) {
