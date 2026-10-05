@@ -2965,6 +2965,47 @@ function assignmentMatchesFilters(assignment, assignmentId = "") {
   return true;
 }
 
+function unlinkedAssignmentCardHtml({ id, assignment }) {
+  const workingGroup = getWorkingGroup();
+  return `
+    <article class="assignment-item assignment-unlinked-item" title="${escapeHtml(assignment.title || "Assignment")}">
+      <div class="assignment-code-row">
+        <span class="assignment-code">${escapeHtml(assignment.code || "")}</span>
+      </div>
+      <strong>${escapeHtml(assignment.title || "Assignment")}</strong>
+      <span class="assignment-item-meta">
+        <span class="assignment-mini-chip">Stored group: ${escapeHtml(assignment.groupName || "ALL")}</span>
+        <span class="assignment-mini-chip">${escapeHtml(formatCompactDate(assignment.dueAt))}</span>
+      </span>
+      <button type="button" data-relink-assignment="${escapeHtml(id)}">
+        Link to ${escapeHtml(workingGroup || "current group")}
+      </button>
+    </article>
+  `;
+}
+
+async function relinkHistoricalAssignmentToWorkingGroup(assignmentId) {
+  const id = String(assignmentId || "").trim();
+  const assignment = assignmentsCache?.[id];
+  const workingGroup = getWorkingGroup();
+  if (!id || !assignment || !workingGroup) return;
+
+  const previousGroup = String(assignment.groupName || "ALL").trim() || "ALL";
+  const title = String(assignment.title || assignment.code || "Assignment");
+  const approved = confirm(
+    `Link "${title}" from "${previousGroup}" to "${workingGroup}"? This changes the assignment group but preserves the previous group in the relink audit fields.`
+  );
+  if (!approved) return;
+
+  await update(ref(db, `assignments/${id}`), {
+    groupName: workingGroup,
+    groupRelinkedFrom: previousGroup,
+    groupRelinkedAt: Date.now(),
+    groupRelinkedBy: getTeacherName(),
+    evaluationTargetNeedsReview: true
+  });
+}
+
 function assignmentCardHtml({ id, assignment, evaluation }) {
   const count = evaluation.submitted;
   const total = evaluation.totalStudents;
@@ -3047,9 +3088,27 @@ function renderAssignmentList() {
 
   if (!entries.length) {
     const workingGroup = getWorkingGroup();
-    teacherAssignmentList.innerHTML = allEntries.length
-      ? `<div class="status-text">No assignments are linked to ${escapeHtml(workingGroup || "the active group")} with the current filters. ${allEntries.length} existing assignment${allEntries.length === 1 ? "" : "s"} remain stored in YouTeach. Use the group button beside the teacher name to switch groups.</div>`
-      : '<div class="status-text">No assignments exist yet.</div>';
+    if (allEntries.length && !groupEntries.length) {
+      teacherAssignmentList.innerHTML = `
+        <section class="assignment-category-group needs-review">
+          <div class="assignment-category-heading">
+            <strong>Stored assignments outside ${escapeHtml(workingGroup || "the active group")}</strong>
+            <span>${allEntries.length}</span>
+          </div>
+          <div class="status-text">
+            These assignments still exist in YouTeach, but their saved group does not match the current working group.
+            Review the stored group below. Link only the assignments that belong to this group.
+          </div>
+          <div class="assignment-category-items">
+            ${allEntries.map(unlinkedAssignmentCardHtml).join("")}
+          </div>
+        </section>
+      `;
+    } else {
+      teacherAssignmentList.innerHTML = allEntries.length
+        ? `<div class="status-text">No assignments in ${escapeHtml(workingGroup || "the active group")} match the current code, date, Block, or category filters.</div>`
+        : '<div class="status-text">No assignments exist yet.</div>';
+    }
     selectedAssignmentId = "";
     renderDetail();
     return;
@@ -3908,6 +3967,15 @@ function openAssignmentEditorFromCard(card) {
 }
 
 teacherAssignmentList.addEventListener("click", (event) => {
+  const relinkButton = event.target.closest("[data-relink-assignment]");
+  if (relinkButton) {
+    relinkHistoricalAssignmentToWorkingGroup(relinkButton.dataset.relinkAssignment).catch((error) => {
+      console.error("Could not relink historical assignment:", error);
+      alert(`Could not link assignment: ${error?.message || "unknown Firebase error"}`);
+    });
+    return;
+  }
+
   const card = event.target.closest("[data-assignment-select]");
   if (!card) return;
 

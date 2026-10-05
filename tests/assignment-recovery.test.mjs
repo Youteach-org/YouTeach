@@ -30,6 +30,49 @@ test("submission history can recover active-group visibility when stored assignm
   assert.equal(matches, true);
 });
 
+test("legacy subject-only group names remain visible after a unique section-prefixed rename", () => {
+  const renamedGroups = {
+    ...groups,
+    "303-2 epidemiologia": { name: "303-2 epidemiologia" }
+  };
+
+  assert.equal(assignmentMatchesGroupEvidence({
+    assignment: { groupName: "Epidemiología" },
+    submissions: {},
+    workingGroup: "303-2 epidemiologia",
+    groups: renamedGroups
+  }), true);
+});
+
+test("legacy subject-only matching stays strict when multiple current sections share the subject", () => {
+  const ambiguousGroups = {
+    ...groups,
+    "303-1 epidemiologia": { name: "303-1 epidemiologia" },
+    "303-2 epidemiologia": { name: "303-2 epidemiologia" }
+  };
+
+  assert.equal(assignmentMatchesGroupEvidence({
+    assignment: { groupName: "Epidemiología" },
+    submissions: {},
+    workingGroup: "303-2 epidemiologia",
+    groups: ambiguousGroups
+  }), false);
+});
+
+test("legacy subject-only matching does not attach unrelated assignments", () => {
+  const renamedGroups = {
+    ...groups,
+    "303-2 epidemiologia": { name: "303-2 epidemiologia" }
+  };
+
+  assert.equal(assignmentMatchesGroupEvidence({
+    assignment: { groupName: "Nutrición" },
+    submissions: {},
+    workingGroup: "303-2 epidemiologia",
+    groups: renamedGroups
+  }), false);
+});
+
 test("stored ALL assignments remain visible to every active group", () => {
   assert.equal(assignmentMatchesGroupEvidence({
     assignment: { groupName: "ALL" },
