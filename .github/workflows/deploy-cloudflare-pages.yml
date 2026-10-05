@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - live-cog-20260922
+      - fix/persist-assignment-relink
   workflow_dispatch:
 
 permissions:
