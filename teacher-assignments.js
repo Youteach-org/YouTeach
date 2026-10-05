@@ -1,7 +1,7 @@
 import { db } from "./firebase.js";
 import { visibleGroups } from "./group-state.js";
 import { studentGroupNames, studentInGroup } from "./student-groups.js";
-import { activeEvaluationBlockForGroup, evaluationBlockNames } from "./group-evaluation-model.js";
+import { activeEvaluationBlockForGroup, evaluationBlockNames, groupEvaluationConfig } from "./group-evaluation-model.js";
 import { activityMetadataForAssignment } from "./assignment-activity-model.js";
 import { ref, get, onValue, push, set, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { requireTeacherAuth, getTeacherName, logoutTeacher } from "./teacher-auth.js";
