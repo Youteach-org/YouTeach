@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - live-cog-20260922
+      - fix/historical-assignment-group-visibility
   workflow_dispatch:
 
 permissions:
