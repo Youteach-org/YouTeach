@@ -143,6 +143,13 @@ test('assignment evaluation destination is the primary Evaluation category', () 
   assert.doesNotMatch(teacherJs, /"Needs criterion"/);
 });
 
+test('Teacher Assignments imports groupEvaluationConfig used by filters and category grouping', () => {
+  assert.match(
+    teacherJs,
+    /import\s*\{[^}]*groupEvaluationConfig[^}]*\}\s*from\s*["']\.\/group-evaluation-model\.js["']/
+  );
+});
+
 test('Assignment Browser groups cards under evaluation categories and labels the activity subtype', () => {
   assert.match(teacherHtml, /assignment-category-group/);
   assert.match(teacherHtml, /assignment-category-items/);
