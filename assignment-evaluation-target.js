@@ -153,8 +153,6 @@ export function legacyAssignmentMigrationTarget({
   groupName = "",
   submissions = {}
 } = {}) {
-  if (!hasAiGradedSubmission(submissions)) return null;
-
   const resolvedGroupName = String(groupName || assignment?.groupName || "").trim();
   if (!resolvedGroupName || resolvedGroupName === "ALL") return null;
 
@@ -162,6 +160,7 @@ export function legacyAssignmentMigrationTarget({
   const block = validBlockForGroup(group, current.block || assignment?.evaluationBlock || "Block 1");
 
   if (isExamAssignment(assignment)) {
+    if (!hasAiGradedSubmission(submissions)) return null;
     return buildAssignmentEvaluationTarget({
       groupName: resolvedGroupName,
       block,
@@ -172,7 +171,33 @@ export function legacyAssignmentMigrationTarget({
   const config = groupEvaluationConfig(group || {});
   const existingCriterion =
     config.criteria.find((criterion) => criterion.id === current.criterionId) || null;
-  const criterion = existingCriterion || resolveAssignmentCriterion(group, assignmentTypeCode(assignment));
+
+  const legacyCriterionName = normalizeText(
+    current.criterionNameSnapshot ||
+    assignment?.groupEvaluationCriterionName ||
+    ""
+  );
+  const sameNameCriteria = legacyCriterionName
+    ? config.criteria.filter((criterion) => normalizeText(criterion.name) === legacyCriterionName)
+    : [];
+  const exactLegacyNameCriterion = sameNameCriteria.length === 1 ? sameNameCriteria[0] : null;
+
+  if (existingCriterion || exactLegacyNameCriterion) {
+    const criterion = existingCriterion || exactLegacyNameCriterion;
+    return {
+      ...buildAssignmentEvaluationTarget({
+        groupName: resolvedGroupName,
+        block,
+        criterion,
+        assignment
+      }),
+      needsReview: false
+    };
+  }
+
+  if (!hasAiGradedSubmission(submissions)) return null;
+
+  const criterion = resolveAssignmentCriterion(group, assignmentTypeCode(assignment));
 
   return {
     ...buildAssignmentEvaluationTarget({
