@@ -101,6 +101,47 @@ test('AI grade detection requires a real score plus ChatGPT provenance', () => {
   }), false);
 });
 
+test('legacy category name relinks to the unique current criterion even without AI grading', () => {
+  const target = legacyAssignmentMigrationTarget({
+    assignment: {
+      groupName: '303-2 epidemiologia',
+      assignmentTypeCode: 'PJ',
+      groupEvaluationCriterionName: 'Tasks',
+      evaluationBlock: 'Block 1'
+    },
+    group,
+    groupName: '303-2 epidemiologia',
+    submissions: {
+      s1: { grading: { totalScore: 90, gradedBy: 'Teacher' } }
+    }
+  });
+  assert.ok(target);
+  assert.equal(target.criterionId, 'tasks');
+  assert.equal(target.criterionNameSnapshot, 'Tasks');
+  assert.equal(target.needsReview, false);
+});
+
+test('legacy category-name relink stays unassigned when the same name is ambiguous', () => {
+  const ambiguousNameGroup = {
+    evaluationUnitCount: 2,
+    evaluationCriteria: {
+      a: { id: 'a', name: 'Tasks', weight: 50, source: 'manual', order: 0 },
+      b: { id: 'b', name: 'Tasks', weight: 50, source: 'manual', order: 1 }
+    }
+  };
+  const target = legacyAssignmentMigrationTarget({
+    assignment: {
+      groupName: 'G',
+      assignmentTypeCode: 'PJ',
+      groupEvaluationCriterionName: 'Tasks'
+    },
+    group: ambiguousNameGroup,
+    groupName: 'G',
+    submissions: {}
+  });
+  assert.equal(target, null);
+});
+
 test('legacy AI graded non-exam assignments migrate to Block 1 and an unambiguous criterion', () => {
   const target = legacyAssignmentMigrationTarget({
     assignment: { groupName: 'G', assignmentTypeCode: 'HW' },
