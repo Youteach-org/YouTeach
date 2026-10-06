@@ -158,6 +158,17 @@ test('Assignment cards do not repeat the active working-group label inside every
   assert.match(teacherJs, /assignment-group-chip/);
 });
 
+test('Assignment category groups size to their actual cards instead of reserving six columns', () => {
+  assert.match(
+    teacherHtml,
+    /\.assignment-list>\.assignment-category-group\s*\{[^}]*flex:\s*0 0 auto;[^}]*width:\s*max-content/s
+  );
+  assert.match(
+    teacherHtml,
+    /\.assignment-list \.assignment-category-items\s*\{[^}]*display:\s*flex;[^}]*width:\s*max-content/s
+  );
+});
+
 test('Assignment Browser groups cards under evaluation categories and labels the activity subtype', () => {
   assert.match(teacherHtml, /assignment-category-group/);
   assert.match(teacherHtml, /assignment-category-items/);
