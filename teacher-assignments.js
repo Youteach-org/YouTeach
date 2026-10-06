@@ -3077,7 +3077,11 @@ function assignmentCardHtml({ id, assignment, evaluation }) {
 
       <span class="assignment-item-meta">
         <span class="assignment-mini-chip assignment-activity-type">${escapeHtml(activity.activitySubtypeLabel || assignment.assignmentType || "Activity")}</span>
-        <span class="assignment-mini-chip">${escapeHtml(assignment.groupName || "ALL")}</span>
+        ${
+          normalizeGroupName(assignment.groupName || "ALL") === normalizeGroupName(getWorkingGroup())
+            ? ""
+            : `<span class="assignment-mini-chip assignment-group-chip" title="${escapeHtml(assignment.groupName || "ALL")}">${escapeHtml(assignment.groupName || "ALL")}</span>`
+        }
         ${historicalGroupLabel
           ? `<span class="assignment-mini-chip assignment-history-group">${escapeHtml(historicalGroupLabel)}</span>`
           : ""}
