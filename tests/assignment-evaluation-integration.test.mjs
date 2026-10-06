@@ -150,6 +150,14 @@ test('Teacher Assignments imports groupEvaluationConfig used by filters and cate
   );
 });
 
+test('Assignment cards do not repeat the active working-group label inside every card', () => {
+  assert.match(
+    teacherJs,
+    /normalizeGroupName\(assignment\.groupName \|\| "ALL"\) === normalizeGroupName\(getWorkingGroup\(\)\)/
+  );
+  assert.match(teacherJs, /assignment-group-chip/);
+});
+
 test('Assignment Browser groups cards under evaluation categories and labels the activity subtype', () => {
   assert.match(teacherHtml, /assignment-category-group/);
   assert.match(teacherHtml, /assignment-category-items/);
