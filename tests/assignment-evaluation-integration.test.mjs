@@ -158,6 +158,25 @@ test('Assignment cards do not repeat the active working-group label inside every
   assert.match(teacherJs, /assignment-group-chip/);
 });
 
+test('Assignment Browser keeps category panels and cards vertically aligned', () => {
+  assert.match(
+    teacherHtml,
+    /\.assignment-list\s*\{[^}]*align-items:\s*stretch/s
+  );
+  assert.match(
+    teacherHtml,
+    /\.assignment-list>\.assignment-category-group\s*\{[^}]*grid-template-rows:\s*auto 1fr/s
+  );
+  assert.match(
+    teacherHtml,
+    /\.assignment-list \.assignment-category-items\s*\{[^}]*align-items:\s*stretch;[^}]*height:\s*100%/s
+  );
+  assert.match(
+    teacherHtml,
+    /\.assignment-list \.assignment-category-items>\.assignment-item\s*\{[^}]*height:\s*100%/s
+  );
+});
+
 test('Assignment category groups size to their actual cards instead of reserving six columns', () => {
   assert.match(
     teacherHtml,
