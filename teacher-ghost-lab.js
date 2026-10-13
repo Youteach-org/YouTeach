@@ -597,7 +597,7 @@ function renderAssignmentStatus() {
     return;
   }
 
-  const ghosts = ghostEntries().filter(([, student]) => assignmentAppliesToStudent(assignment, student));
+  const ghosts = ghostEntries().filter(([studentKey, student]) => assignmentAppliesToStudent(assignment, studentKey, student));
   const counts = { pending: 0, reviewed: 0, published: 0, withdrawn: 0, none: 0 };
   ghosts.forEach(([key]) => {
     const status = gradeStatus(selectedAssignmentSubmissions?.[key]);
@@ -783,7 +783,7 @@ function makePdfBlob(student, assignment) {
 async function uploadGhostSubmission(assignmentId, key, student) {
   const assignment = assignmentsCache[assignmentId];
   if (!assignment) throw new Error("Assignment not found.");
-  if (!assignmentAppliesToStudent(assignment, student)) throw new Error(`${displayName(student)} is not in the assignment group.`);
+  if (!assignmentAppliesToStudent(assignment, key, student)) throw new Error(`${displayName(student)} is not in the assignment group.`);
   const id = externalId(student);
   if (!id) throw new Error(`${displayName(student)} has no external ID.`);
 
@@ -829,7 +829,7 @@ async function runAssignmentBatch(mode) {
   }
 
   const assignment = assignmentsCache[assignmentId];
-  const entries = selectedGhostEntries().filter(([, student]) => assignmentAppliesToStudent(assignment, student));
+  const entries = selectedGhostEntries().filter(([studentKey, student]) => assignmentAppliesToStudent(assignment, studentKey, student));
   if (!entries.length) {
     assignmentProgress.textContent = "None of the selected Ghosts belong to the assignment group.";
     return;
