@@ -96,13 +96,13 @@
 
       <div class="ghost-lab">
         <div class="ghost-banner">
-          This page uses students enrolled in group <strong>FANTASMA</strong>. The existing Ghost accounts use external IDs <strong>GHOST01–GHOST20</strong> and nicknames <strong>FAKE-01–FAKE-20</strong>. Use <strong>Add Students</strong> to create/import students or enroll existing accounts into FANTASMA. Test assignments must be assigned to FANTASMA (or ALL).
+          Ghost accounts are identified by membership in <strong>FANTASMA</strong>. The existing test accounts use external IDs <strong>GHOST01–GHOST20</strong> and nicknames <strong>FAKE-01–FAKE-20</strong>. The lab now follows the <strong>active Working Group</strong>: a Ghost appears only when it also belongs to that selected group, and test assignments must target that group (or ALL). Use <strong>Add Students</strong> only to add the FANTASMA test identity to more accounts.
         </div>
 
         <section class="ghost-lab-card">
           <div class="ghost-section-label">1 · Ghost students</div>
           <h3>Simulated student presence</h3>
-          <p>Select the Ghost accounts you want to use. Activating them makes them appear online so the normal Buzzer can include them when teams are created.</p>
+          <p>Select the Ghost accounts you want to use in the active Working Group. A Ghost may belong to FANTASMA and one or more real class groups at the same time.</p>
           <div class="ghost-toolbar">
             <button id="activateGhostsBtn" type="button">Activate selected</button>
             <button id="deactivateGhostsBtn" type="button" class="danger-outline">Deactivate selected</button>
@@ -129,7 +129,7 @@
               <a class="secondary-btn" href="teacher-assignments.html">Open Assignments</a>
             </div>
             <div id="assignmentProgress" class="ghost-progress" aria-live="polite"></div>
-            <div id="assignmentStatus" class="ghost-live">Choose an open assignment assigned to FANTASMA or ALL.</div>
+            <div id="assignmentStatus" class="ghost-live">Choose an open assignment assigned to the active Working Group or ALL.</div>
           </section>
 
           <section class="ghost-lab-card">
@@ -226,7 +226,7 @@
     </div>
   </dialog>
 
-  <script type="module" src="teacher-ghost-lab.js?v=ghost-group-membership-20261013"></script>
+  <script type="module" src="teacher-ghost-lab.js?v=ghost-active-group-20261013"></script>
   <script defer src="shared-ui-fixes.js?v=titlebar-hamburger-20260916"></script>
 </body>
 </html>
