@@ -3052,6 +3052,15 @@ async function relinkHistoricalAssignmentToWorkingGroup(assignmentId, triggerBut
   }
 }
 
+function assignmentActivityCssClass(activity = {}) {
+  const subtype = String(activity.activitySubtype || "OTHER")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return `activity-${subtype || "other"}`;
+}
+
 function assignmentCardHtml({ id, assignment, evaluation }) {
   const count = evaluation.submitted;
   const total = evaluation.totalStudents;
@@ -3060,12 +3069,14 @@ function assignmentCardHtml({ id, assignment, evaluation }) {
   const evaluatedClass = evaluation.complete && !evaluation.isCog ? "evaluated" : "";
   const target = assignmentEvaluationTarget(assignment);
   const criterionLabel = assignmentCriterionLabel(assignment, target);
+  const needsCategoryReview = !String(target.criterionId || "").trim();
   const activity = activityMetadataForAssignment(assignment);
   const historicalGroupLabel = assignmentHistoricalGroupLabel(id, assignment);
+  const activityClass = assignmentActivityCssClass(activity);
 
   return `
     <article
-      class="assignment-item ${id === selectedAssignmentId ? "active" : ""} ${evaluatedClass}"
+      class="assignment-item ${escapeHtml(activityClass)} ${id === selectedAssignmentId ? "active" : ""} ${evaluatedClass}"
       data-assignment-select="${escapeHtml(id)}"
       title="${escapeHtml(assignment.title || "Assignment")}"
     >
@@ -3087,6 +3098,9 @@ function assignmentCardHtml({ id, assignment, evaluation }) {
           : ""}
         <span class="assignment-mini-chip assignment-target-block">${escapeHtml(target.block || "No block")}</span>
         <span class="assignment-mini-chip assignment-target-criterion">${escapeHtml(criterionLabel)}</span>
+        ${needsCategoryReview
+          ? '<span class="assignment-mini-chip assignment-category-review-chip">Review category</span>'
+          : ""}
         ${assignment.recipientTeamTarget
           ? `<span class="assignment-mini-chip">${escapeHtml(assignment.recipientTeamTarget)}</span>`
           : ""}

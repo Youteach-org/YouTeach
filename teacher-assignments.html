@@ -262,7 +262,7 @@
     .assignment-category-group{
       display:grid;gap:7px;min-width:0;padding:8px;border:1px solid #dbeafe;border-radius:12px;background:#f8fbff
     }
-    .assignment-category-group.needs-review{border-color:#f59e0b;background:#fffbeb}
+    .assignment-category-group.needs-review{border-color:#dbeafe;background:#f8fbff}
     .assignment-category-heading{
       display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 2px
     }
@@ -271,23 +271,77 @@
     .assignment-category-items{
       display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;min-width:0
     }
-    .assignment-activity-type{background:#ede9fe!important;color:#6d28d9!important}
     .assignment-item{
+      --activity-accent:#64748b;
+      --activity-soft:#f1f5f9;
+      --activity-ink:#475569;
       width:100%;min-width:0;text-align:left;background:#fff;border:1px solid #dbeafe;
       border-radius:12px;padding:9px;cursor:pointer;display:flex;flex-direction:column;gap:5px;
-      min-height:112px
+      min-height:112px;
+      box-shadow:inset 4px 0 0 var(--activity-accent)
     }
     .assignment-item:hover{border-color:#93c5fd;background:#f8fbff}
-    .assignment-item.active{border-color:#2563eb;box-shadow:0 0 0 2px #dbeafe;background:#eff6ff}
-    .assignment-item.evaluated{
-      border-color:#86efac;
-      background:#f0fdf4;
-      opacity:.88
+    .assignment-item.active{
+      border-color:#2563eb;
+      background:#eff6ff;
+      box-shadow:inset 4px 0 0 var(--activity-accent),0 0 0 2px #dbeafe
     }
+    .assignment-item.evaluated{background:#fff;opacity:1}
     .assignment-item.evaluated.active{
-      border-color:#22c55e;
-      box-shadow:0 0 0 2px #bbf7d0;
-      background:#ecfdf5
+      border-color:#2563eb;
+      background:#eff6ff;
+      box-shadow:inset 4px 0 0 var(--activity-accent),0 0 0 2px #dbeafe
+    }
+    .assignment-activity-type{
+      background:var(--activity-soft)!important;
+      color:var(--activity-ink)!important;
+      border:1px solid var(--activity-accent)
+    }
+    .assignment-item .assignment-code{color:var(--activity-accent)}
+
+    .assignment-item.activity-generic-exam,
+    .assignment-item.activity-written-exam,
+    .assignment-item.activity-oral-exam,
+    .assignment-item.activity-verbs-exam,
+    .assignment-item.activity-online-exam{
+      --activity-accent:#dc2626;--activity-soft:#fef2f2;--activity-ink:#991b1b
+    }
+    .assignment-item.activity-classwork{
+      --activity-accent:#0891b2;--activity-soft:#ecfeff;--activity-ink:#155e75
+    }
+    .assignment-item.activity-homework{
+      --activity-accent:#d97706;--activity-soft:#fffbeb;--activity-ink:#92400e
+    }
+    .assignment-item.activity-project{
+      --activity-accent:#16a34a;--activity-soft:#f0fdf4;--activity-ink:#166534
+    }
+    .assignment-item.activity-practice{
+      --activity-accent:#0f766e;--activity-soft:#f0fdfa;--activity-ink:#115e59
+    }
+    .assignment-item.activity-research{
+      --activity-accent:#4f46e5;--activity-soft:#eef2ff;--activity-ink:#3730a3
+    }
+    .assignment-item.activity-presentation{
+      --activity-accent:#db2777;--activity-soft:#fdf2f8;--activity-ink:#9d174d
+    }
+    .assignment-item.activity-portfolio{
+      --activity-accent:#475569;--activity-soft:#f8fafc;--activity-ink:#334155
+    }
+    .assignment-item.activity-classroom-participation,
+    .assignment-item.activity-discussion{
+      --activity-accent:#ca8a04;--activity-soft:#fefce8;--activity-ink:#854d0e
+    }
+    .assignment-item.activity-teamwork{
+      --activity-accent:#059669;--activity-soft:#ecfdf5;--activity-ink:#065f46
+    }
+    .assignment-item.activity-cog{
+      --activity-accent:#7c3aed;--activity-soft:#f5f3ff;--activity-ink:#5b21b6
+    }
+    .assignment-item.activity-attendance-event{
+      --activity-accent:#0d9488;--activity-soft:#f0fdfa;--activity-ink:#115e59
+    }
+    .assignment-item.activity-other{
+      --activity-accent:#64748b;--activity-soft:#f1f5f9;--activity-ink:#475569
     }
     .evaluated-chip{
       display:inline-flex;padding:3px 5px;border-radius:999px;
@@ -324,6 +378,9 @@
     .assignment-mini-chip{
       display:inline-flex;padding:3px 5px;border-radius:999px;background:#f1f5f9;
       color:#475569;font-size:9px;font-weight:800;white-space:nowrap
+    }
+    .assignment-category-review-chip{
+      background:#fef3c7!important;color:#92400e!important;border:1px solid #f59e0b
     }
     .assignment-mini-chip.open{background:#dcfce7;color:#166534}
     .assignment-mini-chip.closed{background:#fee2e2;color:#991b1b}
