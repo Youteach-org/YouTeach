@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - live-cog-20260922
+      - fix/ghost-lab-group-membership
   workflow_dispatch:
 
 permissions:
