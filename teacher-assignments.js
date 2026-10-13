@@ -3069,6 +3069,7 @@ function assignmentCardHtml({ id, assignment, evaluation }) {
   const evaluatedClass = evaluation.complete && !evaluation.isCog ? "evaluated" : "";
   const target = assignmentEvaluationTarget(assignment);
   const criterionLabel = assignmentCriterionLabel(assignment, target);
+  const needsCategoryReview = !String(target.criterionId || "").trim();
   const activity = activityMetadataForAssignment(assignment);
   const historicalGroupLabel = assignmentHistoricalGroupLabel(id, assignment);
   const activityClass = assignmentActivityCssClass(activity);
@@ -3097,6 +3098,9 @@ function assignmentCardHtml({ id, assignment, evaluation }) {
           : ""}
         <span class="assignment-mini-chip assignment-target-block">${escapeHtml(target.block || "No block")}</span>
         <span class="assignment-mini-chip assignment-target-criterion">${escapeHtml(criterionLabel)}</span>
+        ${needsCategoryReview
+          ? '<span class="assignment-mini-chip assignment-category-review-chip">Review category</span>'
+          : ""}
         ${assignment.recipientTeamTarget
           ? `<span class="assignment-mini-chip">${escapeHtml(assignment.recipientTeamTarget)}</span>`
           : ""}
