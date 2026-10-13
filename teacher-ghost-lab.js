@@ -146,6 +146,28 @@ sidebarIdentity.textContent = getTeacherName();
 logoutBtn.addEventListener("click", logoutTeacher);
 
 const GHOST_GROUP = "FANTASMA";
+
+function normalizeGroupName(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function studentInNamedGroup(student, groupName) {
+  const target = normalizeGroupName(groupName);
+  if (!target) return true;
+  return studentGroupNames(student)
+    .some((name) => normalizeGroupName(name) === target);
+}
+
+function ghostGroupNameForStudent(student) {
+  return studentGroupNames(student)
+    .find((name) => normalizeGroupName(name) === normalizeGroupName(GHOST_GROUP)) ||
+    (studentInNamedGroup(student, GHOST_GROUP) ? GHOST_GROUP : "");
+}
 let studentsCache = {};
 let groupsCache = {};
 let assignmentsCache = {};
@@ -280,8 +302,8 @@ function existingStudentCandidates() {
   const query = normalizeExistingSearch(existingStudentSearch?.value || "");
   const groupFilter = String(existingStudentGroupFilter?.value || "");
   return Object.entries(studentsCache || {})
-    .filter(([, student]) => !studentInGroup(student, GHOST_GROUP))
-    .filter(([, student]) => !groupFilter || studentInGroup(student, groupFilter))
+    .filter(([, student]) => !studentInNamedGroup(student, GHOST_GROUP))
+    .filter(([, student]) => !groupFilter || studentInNamedGroup(student, groupFilter))
     .filter(([studentKey, student]) => {
       if (!query) return true;
       return [
@@ -368,7 +390,7 @@ function openAddStudentsDialog() {
 async function enrollExistingStudents() {
   const selectedKeys = [...selectedExistingStudentKeys]
     .filter((studentKey) => studentsCache?.[studentKey])
-    .filter((studentKey) => !studentInGroup(studentsCache[studentKey], GHOST_GROUP));
+    .filter((studentKey) => !studentInNamedGroup(studentsCache[studentKey], GHOST_GROUP));
 
   if (!selectedKeys.length) {
     addStudentStatus.textContent = "Select at least one existing student.";
@@ -408,7 +430,7 @@ function ghostNumber(student) {
 }
 
 function isGhostStudent(student) {
-  return studentInGroup(student, GHOST_GROUP);
+  return studentInNamedGroup(student, GHOST_GROUP);
 }
 
 function ghostEntries() {
@@ -449,7 +471,7 @@ function assignmentAppliesToStudent(assignment, studentKey, student) {
   if (recipientKeys.length) return recipientKeys.includes(String(studentKey));
 
   const target = String(assignment?.groupName || "ALL");
-  return target === "ALL" || studentInGroup(student, target);
+  return target === "ALL" || studentInNamedGroup(student, target);
 }
 
 function assignmentIsOpen(assignment) {
@@ -534,7 +556,7 @@ function renderGhosts() {
         <td><input class="ghost-select" type="checkbox" data-ghost-key="${escapeHtml(key)}" ${checked} aria-label="Use ${escapeHtml(displayName(student))}"></td>
         <td><div class="ghost-name">${escapeHtml(displayName(student))}</div>${gradeHtml}</td>
         <td>${escapeHtml(externalId(student) || "—")}</td>
-        <td>${escapeHtml(student?.groupName || "GENERAL")}</td>
+        <td>${escapeHtml(ghostGroupNameForStudent(student) || GHOST_GROUP)}</td>
         <td><span class="ghost-status ${onlineClass}">${onlineLabel}</span></td>
         <td>${escapeHtml(teamForGhost(key))}</td>
         <td class="ghost-row-actions"><button type="button" data-buzz-ghost="${escapeHtml(key)}" ${buzzDisabled}>Buzz</button></td>
@@ -622,7 +644,7 @@ async function setGhostPresence(active) {
       const currentAttendance = attendanceSnap.val() || {};
       const name = displayName(student);
       const id = externalId(student);
-      const groupName = student?.groupName || "GENERAL";
+      const groupName = ghostGroupNameForStudent(student) || GHOST_GROUP;
 
       updates[`students/${key}/activeNow`] = active;
       updates[`students/${key}/lastSeenAt`] = now;
@@ -707,7 +729,7 @@ function makePdfBlob(student, assignment) {
     "",
     `Student: ${displayName(student)}`,
     `External ID: ${externalId(student)}`,
-    `Group: ${student?.groupName || "GENERAL"}`,
+    `Group: ${ghostGroupNameForStudent(student) || GHOST_GROUP}`,
     `Assignment: ${(assignment?.code || "") + (assignment?.code ? " - " : "") + (assignment?.title || "Assignment")}`,
     `Generated: ${new Date().toLocaleString()}`,
     "",
