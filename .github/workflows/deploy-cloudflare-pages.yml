@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - live-cog-20260922
+      - fix/drive-resumable-upload-request
   workflow_dispatch:
 
 permissions:
