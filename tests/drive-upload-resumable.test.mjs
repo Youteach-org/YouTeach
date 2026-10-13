@@ -21,3 +21,11 @@ test('Drive upload errors expose the failing server stage', () => {
   assert.match(source, /stage = "firebase-submission-write"/);
   assert.match(source, /error: `\$\{label\}: \$\{detail\}`/);
 });
+
+
+test('Drive OAuth failures preserve the Google OAuth error code and description', () => {
+  assert.match(source, /const oauthCode = String\(data\?\.error \|\| ""\)\.trim\(\)/);
+  assert.match(source, /const oauthDescription = String\(data\?\.error_description \|\| ""\)\.trim\(\)/);
+  assert.match(source, /parts\.join\(": "\)/);
+  assert.match(source, /error\.code = "DRIVE_AUTH_FAILED"/);
+});
