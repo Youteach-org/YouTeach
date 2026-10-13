@@ -3052,6 +3052,15 @@ async function relinkHistoricalAssignmentToWorkingGroup(assignmentId, triggerBut
   }
 }
 
+function assignmentActivityCssClass(activity = {}) {
+  const subtype = String(activity.activitySubtype || "OTHER")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return `activity-${subtype || "other"}`;
+}
+
 function assignmentCardHtml({ id, assignment, evaluation }) {
   const count = evaluation.submitted;
   const total = evaluation.totalStudents;
@@ -3062,10 +3071,11 @@ function assignmentCardHtml({ id, assignment, evaluation }) {
   const criterionLabel = assignmentCriterionLabel(assignment, target);
   const activity = activityMetadataForAssignment(assignment);
   const historicalGroupLabel = assignmentHistoricalGroupLabel(id, assignment);
+  const activityClass = assignmentActivityCssClass(activity);
 
   return `
     <article
-      class="assignment-item ${id === selectedAssignmentId ? "active" : ""} ${evaluatedClass}"
+      class="assignment-item ${escapeHtml(activityClass)} ${id === selectedAssignmentId ? "active" : ""} ${evaluatedClass}"
       data-assignment-select="${escapeHtml(id)}"
       title="${escapeHtml(assignment.title || "Assignment")}"
     >
