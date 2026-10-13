@@ -77,6 +77,7 @@ const assignmentOtherTypeField = document.getElementById("assignmentOtherTypeFie
 const assignmentOtherType = document.getElementById("assignmentOtherType");
 const assignmentTitle = document.getElementById("assignmentTitle");
 const assignmentGroup = document.getElementById("assignmentGroup");
+const assignmentGroupField = document.getElementById("assignmentGroupField");
 const assignmentGroupDisplay = document.getElementById("assignmentGroupDisplay");
 const assignmentGroupHelp = document.getElementById("assignmentGroupHelp");
 const assignmentTargetField = document.getElementById("assignmentTargetField");
@@ -1281,7 +1282,7 @@ function loadEditingAssignmentIfReady() {
 
 async function saveEditingAssignment() {
   const existing = assignmentsCache?.[editingAssignmentId];
-  if (!existing) return setStatus("Assignment not found.", "bad");
+  if (!existing) return validationError("Assignment not found.");
 
   const title = assignmentTitle.value.trim();
   const groupName = String(existing.groupName || assignmentGroup.value || getWorkingGroup() || "");
@@ -1300,15 +1301,15 @@ async function saveEditingAssignment() {
   const existingRubric = getAssignmentRubric(existing);
   const rubric = editingHasSubmissions ? existingRubric : collectRubric();
 
-  if (!title) return setStatus("Enter an assignment name.", "bad");
-  if (!groupName) return setStatus("Select a working group.", "bad");
-  if (!evaluationBlock) return setStatus("Select the block / unit for this assignment.", "bad");
-  if (!groupCriterion) return setStatus("Select the evaluation category for this assignment.", "bad");
-  if (!assignmentActivityType.value) return setStatus("Select the activity type.", "bad");
+  if (!title) return validationError("Assignment name is required.", assignmentTitle);
+  if (!groupName) return validationError("Select a working group.", assignmentGroupField);
+  if (!evaluationBlock) return validationError("Select the block / unit for this assignment.", assignmentEvaluationBlock);
+  if (!groupCriterion) return validationError("Select the evaluation category for this assignment.", assignmentGroupCriterion);
+  if (!assignmentActivityType.value) return validationError("Select the activity type.", assignmentActivityType);
   if (assignmentActivityType.value === "CUSTOM" && !assignmentOtherType.value.trim()) {
-    return setStatus("Specify the custom activity type.", "bad");
+    return validationError("Specify the custom activity type.", assignmentOtherType);
   }
-  if (rubric.error) return setStatus(rubric.error, "bad");
+  if (rubric.error) return validationError(rubric.error, createCriteriaTotal);
 
   const now = Date.now();
   const storedInstructions = buildStoredInstructions(assignmentInstructions.value.trim(), {
@@ -1361,7 +1362,7 @@ async function saveEditingAssignment() {
     patch.evaluationCriteria = rubric.criteria;
     patch.evaluationDistribution = rubric.distribution || getDistributionMode();
     const project = collectProjectCheckpoints(dueAt);
-    if (project.error) return setStatus(project.error, "bad");
+    if (project.error) return validationError(project.error, projectCheckpointBuilder);
     patch.projectCheckpoints = activity.activitySubtype === "PROJECT" ? project.checkpoints : null;
   }
 
@@ -1391,10 +1392,67 @@ async function saveEditingAssignment() {
   }
 }
 
-function setStatus(message, kind = "") {
+let highlightedValidationControl = null;
+
+function clearValidationHighlight(control = highlightedValidationControl) {
+  if (!control) return;
+  control.removeAttribute?.("aria-invalid");
+  const container = control.closest?.(".field, .rubric, .project-builder") || control;
+  container?.classList?.remove("validation-invalid");
+  if (control === highlightedValidationControl) highlightedValidationControl = null;
+}
+
+function highlightValidationControl(control) {
+  clearValidationHighlight();
+  if (!control) return;
+
+  highlightedValidationControl = control;
+  control.setAttribute?.("aria-invalid", "true");
+  const container = control.closest?.(".field, .rubric, .project-builder") || control;
+  container?.classList?.add("validation-invalid");
+
+  window.requestAnimationFrame(() => {
+    container?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+    if (typeof control.focus === "function" && /^(INPUT|SELECT|TEXTAREA|BUTTON)$/.test(control.tagName || "")) {
+      try { control.focus({ preventScroll: true }); } catch (_) { control.focus(); }
+    }
+  });
+}
+
+function setStatus(message, kind = "", control = null) {
   createAssignmentStatus.textContent = message;
   createAssignmentStatus.className = `status ${kind}`.trim();
+  createAssignmentStatus.setAttribute("role", kind === "bad" ? "alert" : "status");
+  createAssignmentStatus.setAttribute("aria-live", kind === "bad" ? "assertive" : "polite");
+
+  if (kind === "bad") {
+    if (control) highlightValidationControl(control);
+    else clearValidationHighlight();
+  } else {
+    clearValidationHighlight();
+  }
 }
+
+function validationError(message, control = null) {
+  setStatus(message, "bad", control);
+  return false;
+}
+
+[
+  assignmentTitle,
+  assignmentEvaluationBlock,
+  assignmentGroupCriterion,
+  assignmentActivityType,
+  assignmentOtherType,
+  assignmentTargetSelect,
+  assignmentCode
+].filter(Boolean).forEach((control) => {
+  const clearOwnValidation = () => {
+    if (control.getAttribute("aria-invalid") === "true") clearValidationHighlight(control);
+  };
+  control.addEventListener("input", clearOwnValidation);
+  control.addEventListener("change", clearOwnValidation);
+});
 
 async function launchCogAssignment(assignmentId, targetWindow) {
   const response = await fetch("/api/cog-live-teacher-launch", {
@@ -1435,14 +1493,14 @@ async function createAssignment() {
   const evaluationDistribution = getDistributionMode();
   const evaluationNotes = assignmentEvaluationNotes.value.trim();
 
-  if (!title) return setStatus("Enter an assignment name.", "bad");
+  if (!title) return validationError("Assignment name is required.", assignmentTitle);
   if (!groupName || groupName === "ALL") {
-    return setStatus("Choose one specific group so this assignment can be linked to a block / unit.", "bad");
+    return validationError("Choose one specific group so this assignment can be linked to a block / unit.", assignmentGroupField);
   }
   if (!groupConfig.configured) {
-    return setStatus("This group needs a valid evaluation setup before creating graded assignments.", "bad");
+    return validationError("This group needs a valid evaluation setup before creating graded assignments.", assignmentGroupField);
   }
-  if (!evaluationBlock) return setStatus("Select the block / unit for this assignment.", "bad");
+  if (!evaluationBlock) return validationError("Select the block / unit for this assignment.", assignmentEvaluationBlock);
   if (!groupCriterion) {
     return setStatus("Select the evaluation category for this assignment.", "bad");
   }
@@ -1450,27 +1508,27 @@ async function createAssignment() {
     return setStatus("Select the activity type.", "bad");
   }
   if (assignmentActivityType.value === "CUSTOM" && !assignmentOtherType.value.trim()) {
-    return setStatus("Specify the custom activity type.", "bad");
+    return validationError("Specify the custom activity type.", assignmentOtherType);
   }
 
   if (hasGeneratedTeamContext() && !normalizeRecipientKeys(targetMetadata.recipientStudentKeys).length) {
-    return setStatus("The selected generated team has no students.", "bad");
+    return validationError("The selected generated team has no students.", assignmentTargetSelect);
   }
 
-  if (rubric.error) return setStatus(rubric.error, "bad");
+  if (rubric.error) return validationError(rubric.error, createCriteriaTotal);
 
   if (rubric.criteria.length) {
     const total = rubric.criteria.reduce((sum, criterion) => sum + Number(criterion.maxPoints || 0), 0);
     if (Math.abs(total - 100) >= 0.01) {
-      return setStatus("Evaluation criteria must total exactly 100 points.", "bad");
+      return validationError("Evaluation criteria must total exactly 100 points.", createCriteriaTotal);
     }
   }
 
   const project = collectProjectCheckpoints(dueAt);
-  if (project.error) return setStatus(project.error, "bad");
+  if (project.error) return validationError(project.error, projectCheckpointBuilder);
 
-  if (!code) return setStatus("Complete type, name, and target to generate the Task Code.", "bad");
-  if (taskCodeExists(code)) return setStatus("That activity code already exists. Change the name, target, or type.", "bad");
+  if (!code) return validationError("Complete the required fields so YouTeach can generate the Task Code.", assignmentCode);
+  if (taskCodeExists(code)) return validationError("That activity code already exists. Change the name, target, or type.", assignmentCode);
 
   const cogLaunchWindow = typeCode === "COG" ? window.open("about:blank", "_blank") : null;
   if (cogLaunchWindow) cogLaunchWindow.opener = null;
