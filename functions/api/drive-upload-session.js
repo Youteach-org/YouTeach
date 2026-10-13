@@ -115,10 +115,17 @@ async function getAccessToken(env) {
     })
   });
 
-  const data = await response.json();
+  const data = await response.json().catch(() => ({}));
   if (!response.ok || !data.access_token) {
-    const error = new Error(data.error_description || data.error || "Could not authorize Google Drive.");
+    const oauthCode = String(data?.error || "").trim();
+    const oauthDescription = String(data?.error_description || "").trim();
+    const parts = [oauthCode, oauthDescription].filter(Boolean);
+    const detail = parts.length
+      ? parts.join(": ")
+      : `HTTP ${response.status} ${response.statusText || "OAuth token exchange failed"}`;
+    const error = new Error(detail);
     error.code = "DRIVE_AUTH_FAILED";
+    error.oauthCode = oauthCode;
     throw error;
   }
 
@@ -950,7 +957,10 @@ export async function onRequest(context) {
     });
   } catch (error) {
     console.error("Assignment PDF upload failed", { stage, error });
-    const status = error?.code === "DRIVE_NOT_CONFIGURED" ? 503 : 500;
+    const status =
+      error?.code === "DRIVE_NOT_CONFIGURED" || error?.code === "DRIVE_AUTH_FAILED"
+        ? 503
+        : 500;
     const stageLabels = {
       "request-validation": "Request validation",
       "firebase-read": "Firebase lookup",
