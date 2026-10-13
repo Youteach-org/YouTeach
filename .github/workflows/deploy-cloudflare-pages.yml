@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - live-cog-20260922
+      - feature/assignment-activity-color-code
   workflow_dispatch:
 
 permissions:
