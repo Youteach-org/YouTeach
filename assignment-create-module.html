@@ -116,8 +116,51 @@
     .checkpoint-evidence-types input{width:auto}
     .remove-checkpoint-btn{background:#475569}
     .footer-actions{grid-column:1/-1;display:flex;align-items:center;justify-content:flex-end;gap:10px;padding-top:2px}
-    .status{min-height:18px;font-size:10px;color:#64748b;margin-right:auto}
-    .status.bad{color:#b91c1c}.status.ok{color:#166534}
+    .status{
+      min-height:18px;
+      flex:1 1 420px;
+      max-width:760px;
+      font-size:12px;
+      line-height:1.35;
+      color:#64748b;
+      margin-right:auto
+    }
+    .status.bad{
+      position:fixed;
+      left:50%;
+      bottom:16px;
+      z-index:1200;
+      width:min(760px,calc(100vw - 28px));
+      max-width:none;
+      margin:0;
+      padding:12px 14px;
+      border:2px solid #dc2626;
+      border-radius:10px;
+      background:#fef2f2;
+      color:#991b1b;
+      font-size:14px;
+      font-weight:900;
+      line-height:1.35;
+      box-shadow:0 10px 30px rgba(15,23,42,.22);
+      transform:translateX(-50%)
+    }
+    .status.bad::before{content:"⚠ ";font-size:16px}
+    .status.ok{
+      padding:8px 10px;
+      border:1px solid #86efac;
+      border-radius:9px;
+      background:#f0fdf4;
+      color:#166534;
+      font-weight:800
+    }
+    .validation-invalid>label{color:#b91c1c}
+    .validation-invalid input:not([type="hidden"]),
+    .validation-invalid select,
+    .validation-invalid textarea{
+      border:2px solid #dc2626!important;
+      box-shadow:0 0 0 3px rgba(220,38,38,.10)!important;
+      background:#fff7f7!important
+    }
     #createAssignmentBtn{min-width:160px;min-height:38px}
     @media(max-width:1000px){
       .create-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
@@ -135,6 +178,7 @@
       .project-checkpoint-row{grid-template-columns:1fr}
       .rubric-header,.module-intro{display:grid}
       .footer-actions{display:grid;justify-content:stretch}
+      .status{max-width:none;width:100%}
       #createAssignmentBtn{width:100%}
     }
   </style>
@@ -342,7 +386,7 @@
       </div>
 
       <div class="footer-actions">
-        <div id="createAssignmentStatus" class="status" aria-live="polite"></div>
+        <div id="createAssignmentStatus" class="status" role="status" aria-live="polite" aria-atomic="true"></div>
         <button id="createAssignmentBtn" type="button">Create Assignment</button>
       </div>
     </div>
