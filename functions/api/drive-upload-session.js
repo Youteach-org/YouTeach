@@ -490,9 +490,15 @@ async function ensureFileInFolder(accessToken, fileId, folderId) {
 }
 
 async function completeResumableUpload(sessionUrl, bytes) {
+  const byteLength = Number(bytes?.byteLength || 0);
+  if (!byteLength) throw new Error("The PDF upload body is empty.");
+
   const response = await fetch(sessionUrl, {
     method: "PUT",
-    headers: { "Content-Type": "application/pdf" },
+    headers: {
+      "Content-Type": "application/pdf",
+      "Content-Length": String(byteLength)
+    },
     body: bytes
   });
 
@@ -650,6 +656,7 @@ export async function onRequest(context) {
     return json(405, { ok: false, error: "Method not allowed." }, { Allow: "POST" });
   }
 
+  let stage = "request-validation";
   try {
     const contentType = String(request.headers.get("content-type") || "").toLowerCase();
     let body = {};
@@ -692,6 +699,7 @@ export async function onRequest(context) {
       return json(400, { ok: false, error: "Only PDF files up to 15 MB are accepted." });
     }
 
+    stage = "firebase-read";
     const [student, assignment, submission] = await Promise.all([
       firebaseGet(`students/${encodeURIComponent(studentKey)}`),
       firebaseGet(`assignments/${encodeURIComponent(assignmentId)}`),
@@ -733,17 +741,20 @@ export async function onRequest(context) {
     if (recipientKeys.length && !recipientKeys.includes(String(studentKey))) {
       return json(403, { ok: false, error: "This assignment is not assigned to this student." });
     }
+    stage = "google-drive-authorization";
     const accessToken = await getAccessToken(env);
     const taskCode = safeSegment(assignment.code || assignmentId, "TASK");
     const studentName = student.fullName || student.name || student.nickname || expectedExternalId;
     const fileName = `${safeSegment(studentName, "Student")}--${taskCode}.pdf`;
 
+    stage = "google-drive-task-folder";
     const folder = await findOrCreateTaskFolder(
       accessToken,
       taskCode,
       env.GOOGLE_DRIVE_ROOT_FOLDER_ID || ""
     );
 
+    stage = "google-drive-existing-file-check";
     let existingFile = null;
     if (submission?.driveFileId) {
       existingFile = { id: submission.driveFileId };
@@ -765,6 +776,7 @@ export async function onRequest(context) {
         `assignmentSubmissions/${encodeURIComponent(assignmentId)}/${encodeURIComponent(studentKey)}`;
 
       const now = Date.now();
+      stage = "firebase-submission-write";
       await firebasePatch(submissionPath, {
         ...revisionGradeResetPatch(
           submission,
@@ -829,6 +841,7 @@ export async function onRequest(context) {
       await ensureFileInFolder(accessToken, existingFile.id, folder.id);
     }
 
+    stage = "google-drive-upload-session";
     const sessionUrl = await beginResumableUpload({
       accessToken,
       fileId: existingFile?.id || "",
@@ -853,6 +866,7 @@ export async function onRequest(context) {
         }
       }
 
+      stage = "google-drive-pdf-transfer";
       const driveFile = await completeResumableUpload(sessionUrl, uploadBytes);
       const now = Date.now();
       const driveFileName = driveFile.name || fileName;
@@ -935,11 +949,24 @@ export async function onRequest(context) {
       taskCode
     });
   } catch (error) {
-    console.error(error);
+    console.error("Assignment PDF upload failed", { stage, error });
     const status = error?.code === "DRIVE_NOT_CONFIGURED" ? 503 : 500;
+    const stageLabels = {
+      "request-validation": "Request validation",
+      "firebase-read": "Firebase lookup",
+      "google-drive-authorization": "Google Drive authorization",
+      "google-drive-task-folder": "Google Drive task folder",
+      "google-drive-existing-file-check": "Google Drive existing-file check",
+      "google-drive-upload-session": "Google Drive upload session",
+      "google-drive-pdf-transfer": "Google Drive PDF transfer",
+      "firebase-submission-write": "Saving the submission"
+    };
+    const detail = error?.message || "Could not process the assignment file.";
+    const label = stageLabels[stage] || "Assignment upload";
     return json(status, {
       ok: false,
-      error: error?.message || "Could not process the assignment file."
+      error: `${label}: ${detail}`,
+      stage
     });
   }
 }
