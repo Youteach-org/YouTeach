@@ -18,7 +18,7 @@ const createModuleHtml = readFileSync(join(root, 'assignment-create-module.html'
 test('Create Assignment requires an explicit block or unit', () => {
   assert.match(createHtml, /id="assignmentEvaluationBlock"/);
   assert.match(createHtml, /Block \/ Unit/);
-  assert.match(createJs, /if \(!evaluationBlock\) return setStatus\("Select the block \/ unit for this assignment\."/);
+  assert.match(createJs, /if \(!evaluationBlock\) return validationError\("Select the block \/ unit for this assignment\.", assignmentEvaluationBlock\)/);
   assert.match(createJs, /evaluationBlock,/);
 });
 
@@ -30,6 +30,18 @@ test('Create Assignment requires an evaluation category for every graded activit
   assert.match(createJs, /groupEvaluationCriterionId: groupCriterion\?\.id \|\| ""/);
   assert.match(targetJs, /criterionId: String\(criterion\?\.id \|\| ""\)/);
   assert.match(targetJs, /mode: exam \? "exam" : "assignment"/);
+});
+
+test('Create Assignment validation errors are prominent and focus the invalid field', () => {
+  assert.match(createHtml, /\.status\.bad\s*\{[^}]*position:\s*fixed;[^}]*font-size:\s*14px;[^}]*font-weight:\s*900/s);
+  assert.match(createHtml, /\.validation-invalid input/);
+  assert.match(createHtml, /id="createAssignmentStatus"[^>]*aria-live="polite"[^>]*aria-atomic="true"/);
+  assert.match(createJs, /function validationError\(message, control = null\)/);
+  assert.match(createJs, /function highlightValidationControl\(control\)/);
+  assert.match(createJs, /scrollIntoView\?\.\(\{ behavior: "smooth", block: "center" \}\)/);
+  assert.match(createJs, /Assignment name is required\.", assignmentTitle/);
+  assert.match(createJs, /Select the evaluation category for this assignment\.", assignmentGroupCriterion/);
+  assert.match(createJs, /Select the activity type\.", assignmentActivityType/);
 });
 
 test('Create Assignment separates category, activity type, grading scheme, and grading workflow', () => {
