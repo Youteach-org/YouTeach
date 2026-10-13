@@ -40,10 +40,14 @@ test('Ghost Lab can still manually create and import students from the shared po
   assert.match(js, /enrollmentSource: "ghost-lab-paste"/);
 });
 
-test('Ghost Lab uses FANTASMA membership rather than the unrelated primary group', () => {
-  assert.match(js, /function ghostGroupNameForStudent\(student\)/);
-  assert.match(js, /ghostGroupNameForStudent\(student\) \|\| GHOST_GROUP/);
-  assert.doesNotMatch(js, /<td>\$\{escapeHtml\(student\?\.groupName \|\| "GENERAL"\)\}<\/td>/);
+test('Ghost Lab identifies Ghost accounts by FANTASMA but filters them by the active working group', () => {
+  assert.match(js, /const WORKING_GROUP_KEY = "youteachWorkingGroup"/);
+  assert.match(js, /function activeGhostTestGroup\(\)/);
+  assert.match(js, /filter\(\(\[, student\]\) => isGhostStudent\(student\)\)/);
+  assert.match(js, /filter\(\(\[, student\]\) => studentInNamedGroup\(student, activeGroup\)\)/);
+  assert.match(js, /function studentGroupsDisplay\(student\)/);
+  assert.match(js, /studentGroupNames\(student\)/);
+  assert.match(js, /const groupName = activeGhostTestGroup\(\)/);
   assert.doesNotMatch(js, /const groupName = student\?\.groupName \|\| "GENERAL"/);
 });
 
@@ -53,6 +57,13 @@ test('Ghost Lab passes student keys to assignment eligibility checks', () => {
   assert.doesNotMatch(js, /assignmentAppliesToStudent\(assignment, student\)/);
 });
 
-test('Ghost Lab script URL is cache-busted for the current membership behavior', () => {
-  assert.match(html, /teacher-ghost-lab\.js\?v=ghost-group-membership-20261013/);
+test('Ghost Lab follows the active group for assignments and reacts to group changes', () => {
+  assert.match(js, /function assignmentMatchesActiveTestGroup\(assignment\)/);
+  assert.match(js, /normalizeGroupName\(target\) === normalizeGroupName\(activeGhostTestGroup\(\)\)/);
+  assert.match(js, /window\.addEventListener\("youteach:working-group-changed"/);
+  assert.match(html, /active Working Group/);
+});
+
+test('Ghost Lab script URL is cache-busted for active-group behavior', () => {
+  assert.match(html, /teacher-ghost-lab\.js\?v=ghost-active-group-20261013/);
 });

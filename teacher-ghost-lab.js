@@ -146,6 +146,12 @@ sidebarIdentity.textContent = getTeacherName();
 logoutBtn.addEventListener("click", logoutTeacher);
 
 const GHOST_GROUP = "FANTASMA";
+const WORKING_GROUP_KEY = "youteachWorkingGroup";
+
+function activeGhostTestGroup() {
+  const selected = String(sessionStorage.getItem(WORKING_GROUP_KEY) || "").trim();
+  return selected || GHOST_GROUP;
+}
 
 function normalizeGroupName(value) {
   return String(value || "")
@@ -434,13 +440,27 @@ function isGhostStudent(student) {
 }
 
 function ghostEntries() {
+  const activeGroup = activeGhostTestGroup();
   return Object.entries(studentsCache || {})
     .filter(([, student]) => isGhostStudent(student))
+    .filter(([, student]) => studentInNamedGroup(student, activeGroup))
     .sort((a, b) => {
       const numeric = ghostNumber(a[1]) - ghostNumber(b[1]);
       if (numeric) return numeric;
       return String(a[1]?.nickname || "").localeCompare(String(b[1]?.nickname || ""));
     });
+}
+
+function studentGroupsDisplay(student) {
+  const activeGroup = activeGhostTestGroup();
+  return studentGroupNames(student)
+    .sort((a, b) => {
+      const aActive = normalizeGroupName(a) === normalizeGroupName(activeGroup);
+      const bActive = normalizeGroupName(b) === normalizeGroupName(activeGroup);
+      if (aActive !== bActive) return aActive ? -1 : 1;
+      return String(a).localeCompare(String(b), undefined, { sensitivity: "base" });
+    })
+    .join(" · ");
 }
 
 function selectedGhostEntries() {
@@ -480,10 +500,17 @@ function assignmentIsOpen(assignment) {
   return !dueAt || Date.now() <= dueAt;
 }
 
+function assignmentMatchesActiveTestGroup(assignment) {
+  const target = String(assignment?.groupName || "ALL").trim();
+  if (!target || target.toUpperCase() === "ALL") return true;
+  return normalizeGroupName(target) === normalizeGroupName(activeGhostTestGroup());
+}
+
 function eligibleAssignments() {
   const ghosts = ghostEntries();
   return Object.entries(assignmentsCache || {})
     .filter(([, assignment]) => assignmentIsOpen(assignment))
+    .filter(([, assignment]) => assignmentMatchesActiveTestGroup(assignment))
     .filter(([, assignment]) => ghosts.some(([studentKey, student]) => assignmentAppliesToStudent(assignment, studentKey, student)))
     .sort((a, b) => Number(b[1]?.createdAt || 0) - Number(a[1]?.createdAt || 0));
 }
@@ -536,7 +563,7 @@ function renderGhosts() {
   }
 
   if (!ghosts.length) {
-    ghostTableBody.innerHTML = '<tr><td colspan="7" class="ghost-empty">No test students were found in the FANTASMA group.</td></tr>';
+    ghostTableBody.innerHTML = `<tr><td colspan="7" class="ghost-empty">No Ghost test accounts belong to ${escapeHtml(activeGhostTestGroup())}. Add that group as a membership in Group Management if you want to test it with Ghosts.</td></tr>`;
     syncGhostMasterCheckbox();
     return;
   }
@@ -556,7 +583,7 @@ function renderGhosts() {
         <td><input class="ghost-select" type="checkbox" data-ghost-key="${escapeHtml(key)}" ${checked} aria-label="Use ${escapeHtml(displayName(student))}"></td>
         <td><div class="ghost-name">${escapeHtml(displayName(student))}</div>${gradeHtml}</td>
         <td>${escapeHtml(externalId(student) || "—")}</td>
-        <td>${escapeHtml(ghostGroupNameForStudent(student) || GHOST_GROUP)}</td>
+        <td>${escapeHtml(studentGroupsDisplay(student) || GHOST_GROUP)}</td>
         <td><span class="ghost-status ${onlineClass}">${onlineLabel}</span></td>
         <td>${escapeHtml(teamForGhost(key))}</td>
         <td class="ghost-row-actions"><button type="button" data-buzz-ghost="${escapeHtml(key)}" ${buzzDisabled}>Buzz</button></td>
@@ -582,10 +609,11 @@ function renderAssignmentOptions() {
     selectedAssignmentId = "";
   }
 
+  const activeGroup = activeGhostTestGroup();
   if (!entries.length) {
-    assignmentStatus.textContent = "No open assignment currently applies to the FANTASMA test students. Create one for FANTASMA or ALL.";
+    assignmentStatus.textContent = `No open assignment currently applies to Ghost accounts in ${activeGroup}. Create one for ${activeGroup} or ALL.`;
   } else if (!selectedAssignmentId) {
-    assignmentStatus.textContent = "Choose an open assignment assigned to FANTASMA or ALL.";
+    assignmentStatus.textContent = `Choose an open assignment assigned to ${activeGroup} or ALL.`;
   }
 }
 
@@ -644,7 +672,7 @@ async function setGhostPresence(active) {
       const currentAttendance = attendanceSnap.val() || {};
       const name = displayName(student);
       const id = externalId(student);
-      const groupName = ghostGroupNameForStudent(student) || GHOST_GROUP;
+      const groupName = activeGhostTestGroup();
 
       updates[`students/${key}/activeNow`] = active;
       updates[`students/${key}/lastSeenAt`] = now;
@@ -729,7 +757,7 @@ function makePdfBlob(student, assignment) {
     "",
     `Student: ${displayName(student)}`,
     `External ID: ${externalId(student)}`,
-    `Group: ${ghostGroupNameForStudent(student) || GHOST_GROUP}`,
+    `Group: ${String(assignment?.groupName || "ALL").toUpperCase() === "ALL" ? activeGhostTestGroup() : assignment.groupName}`,
     `Assignment: ${(assignment?.code || "") + (assignment?.code ? " - " : "") + (assignment?.title || "Assignment")}`,
     `Generated: ${new Date().toLocaleString()}`,
     "",
@@ -998,6 +1026,21 @@ assignmentSelect.addEventListener("change", subscribeToSelectedAssignment);
 submitGhostWorkBtn.addEventListener("click", () => runAssignmentBatch("submit"));
 withdrawGhostWorkBtn.addEventListener("click", () => runAssignmentBatch("withdraw"));
 raceGhostsBtn.addEventListener("click", simulateRace);
+
+window.addEventListener("youteach:working-group-changed", () => {
+  if (stopSubmissionListener) {
+    stopSubmissionListener();
+    stopSubmissionListener = null;
+  }
+  selectedAssignmentId = "";
+  selectedAssignmentSubmissions = {};
+  const allowedKeys = new Set(ghostEntries().map(([key]) => key));
+  selectedGhostKeys = new Set([...selectedGhostKeys].filter((key) => allowedKeys.has(key)));
+  selectionInitialized = false;
+  renderGhosts();
+  renderAssignmentOptions();
+  renderAssignmentStatus();
+});
 
 onValue(ref(db, "groups"), (snapshot) => {
   groupsCache = snapshot.val() || {};
