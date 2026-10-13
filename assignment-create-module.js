@@ -1448,7 +1448,10 @@ function validationError(message, control = null) {
   assignmentCode
 ].filter(Boolean).forEach((control) => {
   const clearOwnValidation = () => {
-    if (control.getAttribute("aria-invalid") === "true") clearValidationHighlight(control);
+    if (control.getAttribute("aria-invalid") === "true") {
+      clearValidationHighlight(control);
+      if (createAssignmentStatus.classList.contains("bad")) setStatus("");
+    }
   };
   control.addEventListener("input", clearOwnValidation);
   control.addEventListener("change", clearOwnValidation);
@@ -1502,10 +1505,10 @@ async function createAssignment() {
   }
   if (!evaluationBlock) return validationError("Select the block / unit for this assignment.", assignmentEvaluationBlock);
   if (!groupCriterion) {
-    return setStatus("Select the evaluation category for this assignment.", "bad");
+    return validationError("Select the evaluation category for this assignment.", assignmentGroupCriterion);
   }
   if (!assignmentActivityType.value) {
-    return setStatus("Select the activity type.", "bad");
+    return validationError("Select the activity type.", assignmentActivityType);
   }
   if (assignmentActivityType.value === "CUSTOM" && !assignmentOtherType.value.trim()) {
     return validationError("Specify the custom activity type.", assignmentOtherType);
