@@ -27,7 +27,8 @@ test('Ghost Lab Add Students always targets FANTASMA without removing existing m
   assert.ok(js.includes('updates[`students/${studentKey}/groupMemberships/${GHOST_GROUP}`] = true'));
   assert.doesNotMatch(js, /updates\[`students\/\$\{studentKey\}\/groupName`\] = GHOST_GROUP/);
   assert.match(js, /existingStudentsMasterCheckbox\.addEventListener\("change"/);
-  assert.match(js, /studentGroupNames, studentInGroup/);
+  assert.match(js, /studentGroupNames/);
+  assert.match(js, /function studentInNamedGroup\(student, groupName\)/);
   assert.match(js, /studentGroupNames\(student\)\.join\(" · "\)/);
 });
 
@@ -37,4 +38,21 @@ test('Ghost Lab can still manually create and import students from the shared po
   assert.match(js, /enrollmentSource: "ghost-lab-manual"/);
   assert.match(js, /enrollmentSource: "ghost-lab-csv"/);
   assert.match(js, /enrollmentSource: "ghost-lab-paste"/);
+});
+
+test('Ghost Lab uses FANTASMA membership rather than the unrelated primary group', () => {
+  assert.match(js, /function ghostGroupNameForStudent\(student\)/);
+  assert.match(js, /ghostGroupNameForStudent\(student\) \|\| GHOST_GROUP/);
+  assert.doesNotMatch(js, /<td>\$\{escapeHtml\(student\?\.groupName \|\| "GENERAL"\)\}<\/td>/);
+  assert.doesNotMatch(js, /const groupName = student\?\.groupName \|\| "GENERAL"/);
+});
+
+test('Ghost Lab passes student keys to assignment eligibility checks', () => {
+  assert.match(js, /assignmentAppliesToStudent\(assignment, studentKey, student\)/);
+  assert.match(js, /assignmentAppliesToStudent\(assignment, key, student\)/);
+  assert.doesNotMatch(js, /assignmentAppliesToStudent\(assignment, student\)/);
+});
+
+test('Ghost Lab script URL is cache-busted for the current membership behavior', () => {
+  assert.match(html, /teacher-ghost-lab\.js\?v=ghost-group-membership-20261013/);
 });
