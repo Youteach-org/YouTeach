@@ -188,6 +188,37 @@ test('Assignment category groups size to their actual cards instead of reserving
   );
 });
 
+test('Assignment cards use activity subtype color classes while selection keeps the full-card active state', () => {
+  assert.match(teacherJs, /function assignmentActivityCssClass\(activity = \{\}\)/);
+  assert.match(teacherJs, /activityClass = assignmentActivityCssClass\(activity\)/);
+  assert.match(teacherJs, /class="assignment-item \$\{escapeHtml\(activityClass\)\}/);
+
+  for (const activityClass of [
+    'activity-cog',
+    'activity-project',
+    'activity-homework',
+    'activity-classwork',
+    'activity-practice',
+    'activity-research',
+    'activity-presentation',
+    'activity-generic-exam',
+    'activity-other'
+  ]) {
+    assert.match(teacherHtml, new RegExp('\\.assignment-item\\.' + activityClass));
+  }
+
+  assert.match(
+    teacherHtml,
+    /\.assignment-item\.active\s*\{[^}]*border-color:\s*#2563eb;[^}]*background:\s*#eff6ff/s
+  );
+  assert.match(
+    teacherHtml,
+    /\.assignment-item\.evaluated\s*\{[^}]*background:\s*#fff;[^}]*opacity:\s*1/s
+  );
+  assert.match(teacherHtml, /\.assignment-activity-type\s*\{[^}]*var\(--activity-soft\)/s);
+  assert.match(teacherHtml, /\.assignment-category-review-chip/);
+});
+
 test('Assignment Browser groups cards under evaluation categories and labels the activity subtype', () => {
   assert.match(teacherHtml, /assignment-category-group/);
   assert.match(teacherHtml, /assignment-category-items/);
